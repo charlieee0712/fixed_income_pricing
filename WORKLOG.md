@@ -5,6 +5,30 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-26 — Lock rating notch-map + implement fip/ratings.py
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Finalised the rating notch-map (S&P / Moody's granular → 7 FRED parent buckets) and
+  implemented it in `fip/ratings.py`, with `tests/test_ratings.py` locking the two red lines:
+  IG/HY split (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC (not default); D/SD → defaulted;
+  NR/WR → no-rating; S&P-primary with Moody fallback and default precedence.
+- Locked the single-primary-reason priority and MTN handling (`terms-unavailable`: a
+  data-availability gap, not a security-type issue — addable later if a terms source appears).
+- Added `requirements.txt`, root `conftest.py`; `outputs/` git-ignored (pipeline emits client CSVs).
+- Untested pending a Python env (server 47 tomorrow).
+
+**Open / next (on server 47)**
+- Implement `loaders` (openpyxl read of master + Corporate Bonds tab) and
+  `universe.build_universe()` applying join → notch-map → Layer A → Layer B; emit the
+  per-bond exclusion log + canonical universe CSV; run pytest; produce the MECE funnel.
+- Then lock the valuation date, bootstrap the ~2009 curve, port `BondPrice`, reconcile vs `BT`/`BU`/`DI`.
+- Align module layout with the colleague's bootstrap Python (still to receive).
+
+---
+
 ## 2026-06-26 — Master-sheet profiling: ratings, universe funnel, data sourcing
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`

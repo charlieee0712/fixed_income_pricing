@@ -137,14 +137,31 @@ and risk/holdings data live in different sheets and must be joined:
 > never in the pricing inputs. Price first, then join to compare (input / truth separation).
 
 **Join result** (732 master uniques vs 616 tab uniques): **597 matched** ·
-**135 master-only** → `unmatched(master-only)` (mostly MTN, no tab terms) ·
-**19 tab-only** → `unmatched(tab-only)` (not held).
+**135 master-only** → `terms-unavailable` (Medium-Term Notes etc.: *held*, but coupon terms
+are in **neither** sheet — a **data-availability gap, not a security-type issue**; most MTNs
+are plain fixed and can be added back if a terms source appears) ·
+**19 tab-only** → `unmatched(not-held)`.
 
-**Rating** — S&P `CM` primary → Moody `CL` fallback (notch-mapped), **default precedence**
-(S&P D/SD wins over a Moody rating). Of 732: **712 covered** · **4 defaulted** (→ Layer A) ·
-**16 no-rating** (S&P & Moody both NR/blank → `rating-exclusion`; do **not** force a bucket).
-Notch-map domain seen in data: S&P {AAA, AA±, A±, BBB±, BB+/BB, B-, CCC+/CCC/CC/C, D, NR},
-Moody {Aaa, Aa1-3, A1-3, Baa1-3, Ba1-3, B2, Caa1-2/Ca/C, WR} → 7 FRED buckets AAA…CCC.
+**Rating** — S&P `CM` primary → Moody `CL` fallback, **default precedence** (S&P D/SD wins
+over any Moody grade). Of 732: **712 covered** · **4 defaulted** (→ Layer A) · **16 no-rating**
+(`rating-exclusion`; do **not** force a bucket). Granular grades collapse to the **7 FRED
+parent buckets** — implemented in `fip/ratings.py`:
+
+| FRED bucket | S&P | Moody's |
+|---|---|---|
+| AAA | AAA | Aaa |
+| AA | AA+, AA, AA− | Aa1, Aa2, Aa3 |
+| A | A+, A, A− | A1, A2, A3 |
+| BBB | BBB+, BBB, **BBB−** | Baa1, Baa2, **Baa3** |
+| BB | **BB+**, BB, BB− | **Ba1**, Ba2, Ba3 |
+| B | B+, B, B− | B1, B2, B3 |
+| CCC *(lowest, catch-all)* | CCC+, CCC, CCC−, **CC, C** | Caa1, Caa2, Caa3, **Ca, C** |
+| → defaulted (exclude) | D, SD | *(no D; via C / external flag)* |
+| → no-rating (exclude) | NR | NR, WR |
+
+> **Two red lines** (most spread-sensitive — must be exact): **(1)** S&P `CC/C` and Moody
+> `Ca/C` → **CCC**, *not* defaulted (only `D/SD` are defaulted). **(2)** IG/HY boundary:
+> `BBB−`/`Baa3` → **BBB** and `BB+`/`Ba1` → **BB** land in *different* buckets — never collapse.
 
 **Layer A — security type (date-independent), within the 597 matched:**
 - non-vanilla `Type ≠ FIXED` = **54** (floating 20 / hybrid 9 / structured 6 / pass-through 6
@@ -156,8 +173,8 @@ Moody {Aaa, Aa1-3, A1-3, Baa1-3, Ba1-3, B2, Caa1-2/Ca/C, WR} → 7 FRED buckets 
 
 **Layer B — date-dependent:** matured at the chosen valuation date (`Maturity < val date`).
 
-**Single primary reason per bond — proposed priority** (makes the funnel MECE):
-`unmatched` → `defaulted` → `no-rating` → `structured/floating` → `callable` → `matured`.
+**Single primary reason per bond — LOCKED priority** (makes the funnel MECE):
+`terms-unavailable / unmatched` → `defaulted` → `no-rating` → `structured/floating` → `callable` → `matured`.
 Canonical = plain-fixed, rated, non-callable, held, not matured. Expected **< 641** (the
 earlier loose estimate) because we additionally drop callable (→v2), no-rating, and
 join-unmatched. Exact count is the **pipeline's output** once valuation date + priority are locked.

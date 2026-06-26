@@ -15,6 +15,7 @@
 # Extracted / working artifacts
 extracted/
 scratchpad/
+outputs/
 *.bak
 
 # ---- OS / editor ----

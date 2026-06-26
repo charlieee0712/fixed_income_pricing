@@ -58,8 +58,11 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   sub-cat ∈ {Corporate, MTN}, dedupe by Asset ID → **732 unique** (from 811 rows). Log every
   drop with ONE primary reason + Asset ID. Counts: join **597 matched / 135 master-only /
   19 tab-only**; rating **712 covered / 4 defaulted / 16 no-rating**; **54 non-vanilla /
-  73 callable**. Priority for the single reason: `unmatched → defaulted → no-rating →
+  73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted → no-rating →
   structured/floating → callable → matured`. Layer A = date-independent, Layer B = matured-at-val-date.
+  135 master-only = `terms-unavailable` (MTN; terms in neither sheet — **data gap, not security type**).
+  Notch-map (S&P/Moody → 7 buckets) implemented in **`fip/ratings.py`**. Red lines: keep IG/HY split
+  (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
 
 ## Validated so far
 - Bootstrap reproduced in Python: A/S/Q exact, Monthly 0.08 bp. Bloomberg cut.
