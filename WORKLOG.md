@@ -5,6 +5,29 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-26 — Decisions: valuation date 2009-06-10 + 47 interface (ssh)
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- **Valuation date chosen = 2009-06-10** (first curve after the 2008-11-10 → 2009-06-10 gap;
+  the alternative, 2008-11-10, is the crisis trough with an extreme curve).
+- Recorded the **reconciliation caveat**: holdings are 3-31, nearest curve is 6-10 (70-day
+  mismatch) → computed prices won't tie to the custodian's 3-31 `BT/BU/DI`. The port's
+  to-the-digit golden master is the **VBA tool's output**, not the custodian mark; `BT/BU/DI`
+  is an independent cross-check only.
+- **Interface to server 47 = ssh from the Windows box** (option 2); requires key-based ssh.
+
+**Open / next (server 47)**
+- **Ask the colleague**: which curve **date/source** did the original tool use to price the 3-31
+  holdings? (Likely a 3-31 Bloomberg curve absent from our txt history.) Does he have the VBA
+  tool's **pricing output** for these bonds (= the real pricing golden master)?
+- Set up key-based `ssh 47`; clone + venv + `pip install`; copy data; `pytest`.
+- Then `src/io` loaders + `universe.build_universe()`; bootstrap the 2009-06-10 USD curve.
+
+---
+
 ## 2026-06-26 — Integrate colleague's bootstrap module + adopt src/ layout
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`

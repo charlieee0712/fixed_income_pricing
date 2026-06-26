@@ -108,10 +108,15 @@ One-year-forward zero curves by rating + a **rating transition matrix** + a Mert
      (no cash flows, unpriceable) → only **123 alive**; at **2009-03-31**, **667 alive**.
    - **Conclusion:** to price the 2009 holdings we must **bootstrap a ~2009 curve**;
      the 2024 CSVs are a **demo**, not the pricing basis.
-   - **Open:** which valuation date is the deliverable target, and how to handle the
-     2009 data gap (nearest available 2009-06-10? interpolate across the gap?).
-     `bootstrap.load_par_curve` **raises** on a missing date (no silent substitution),
-     so a specific available 2009 date must be chosen.
+   - **Decision:** curve files jump **2008-11-10 → 2009-06-10** (winter/spring absent).
+     Candidates: 2008-11-10 (crisis trough, extreme curve) vs **2009-06-10 (CHOSEN** — nearest
+     available, market calmer). `bootstrap.load_par_curve` **raises** on a missing date, so it's explicit.
+   - **⚠️ Reconciliation caveat:** holdings are as-of **3-31**, nearest curve is **6-10** — a
+     **70-day mismatch**; rates/spreads moved over Q2-2009, so our 6-10 prices will **not** tie
+     to the custodian's 3-31 `BT/BU/DI`. Note the port's golden master is the **VBA tool's output**,
+     not the custodian mark (see §3.2). **Ask the colleague which curve date/source the original
+     tool used for the 3-31 book** (likely a 3-31 Bloomberg curve absent from our txt history) —
+     this matters more than the date pick itself.
 
 2. **Corporate-bond universe — RESOLVED as a deterministic pipeline (not a fixed number).** *(§3.2)*
    Start set = master `Asset sub category ∈ {Corporate, MTN}`, **deduped by Asset ID →
@@ -135,8 +140,11 @@ and risk/holdings data live in different sheets and must be joined:
 | master `Fixed Income` | rating (`CM` S&P / `CL` Moody), **par held** (`CV` Shares/Par value), book cost (`Z`, for EIR), **validation** (`BT` price / `BU` MV / `DI` YTM) |
 
 > Master coupon **rate/type are empty** (`DO`/`DP`) → terms MUST come from the tab.
-> `BT`/`BU`/`DI` are a **golden master**: keep them in a **separate reconciliation table**,
-> never in the pricing inputs. Price first, then join to compare (input / truth separation).
+> `BT`/`BU`/`DI` are the **custodian's own 3-31 marks** — keep them in a **separate
+> reconciliation table**, never in the pricing inputs (input/truth separation). They are an
+> *independent* cross-check, **not** the port's exact target: the port reproduces the **VBA
+> tool's** output (a model), and a date mismatch (§3 ①) + model-vs-mark differences mean `BT`
+> will not tie to the digit. The to-the-digit golden master for pricing = the VBA tool's output.
 
 **Join result** (732 master uniques vs 616 tab uniques): **597 matched** ·
 **135 master-only** → `terms-unavailable` (Medium-Term Notes etc.: *held*, but coupon terms

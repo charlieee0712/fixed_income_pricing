@@ -13,6 +13,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 ## Environment (important)
 - **No usable local Python** on the Windows machine (only a Microsoft Store stub).
   Run code on **server 47** or a real local install. Don't assume `python` works locally.
+- **Interface to 47 = ssh from the Windows box** (chosen). Needs **key-based ssh** (the Bash
+  tool is non-interactive — a password prompt hangs). Loop: edit locally → push → `ssh 47
+  'cd <repo> && git pull && pytest'`. Data lives on 47 (git-ignored).
 - To read the Excel files without Python, a PowerShell sheet-decoder approach works
   (unzip the xlsx/xlsm and parse `sharedStrings.xml` + `worksheets/sheetN.xml`).
 - **No Bloomberg.** Inputs are exported `*_Yield_Curve.txt` + FRED OAS (the VBA's
@@ -57,6 +60,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   2009-03-31 is **absent** from curve files (gap 2008-11-10 → 2009-06-10). At 2024-01-16
   only **123/668** corporate bonds are still alive (545 matured); at 2009-03-31, **667**.
   → To price the real 2009 book, **bootstrap a ~2009 curve**; the 2024 CSVs are a demo.
+  **Chosen curve date = 2009-06-10** (first after the gap; alt = 2008-11-10 crisis trough).
+  ⚠️ Holdings 3-31 vs curve 6-10 = **70-day mismatch** → won't tie to custodian `BT/BU/DI`.
+  **The port reproduces the VBA tool's output, not the custodian mark.** Open: ask the colleague
+  which curve date/source the original tool used for the 3-31 book (maybe a 3-31 Bloomberg curve).
 - **Universe = deterministic 2-layer pipeline** (not a fixed number). Start = master
   sub-cat ∈ {Corporate, MTN}, dedupe by Asset ID → **732 unique** (from 811 rows). Log every
   drop with ONE primary reason + Asset ID. Counts: join **597 matched / 135 master-only /
