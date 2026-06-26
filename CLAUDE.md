@@ -43,16 +43,23 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - Pricing: discount each cash flow at `z(t)+OAS(rating)`, **linear interpolation** of the
   monthly grid; dirty = Σ coupons·DF + face·DF(T); clean = dirty − accrued.
 - **OAS** = FRED **ICE BofA US Corporate** Index OAS, **one flat spread per rating** (AAA…CCC).
+- **Data sourcing (corp)**: join master↔tab on **Asset ID** (`S`↔`Asset Code`, 100%; ISIN
+  secondary). Terms (coupon rate/type/freq/maturity) ← `Corporate Bonds` tab (master coupon
+  cols are EMPTY). Rating ← master `CM` S&P / `CL` Moody (default precedence; NR→fallback→exclude).
+  Par held ← master `CV` Shares/Par value. EIR cost ← `Z`. **Golden master** = `BT` price /
+  `BU` MV / `DI` YTM — keep in a SEPARATE reconciliation table, never in pricing inputs.
 
 ## Critical corrections (don't re-derive — already validated)
 - **Valuation date**: holdings = **2009-03-31**; bundled curves = **2024-01-16** (RMSE 0).
   2009-03-31 is **absent** from curve files (gap 2008-11-10 → 2009-06-10). At 2024-01-16
   only **123/668** corporate bonds are still alive (545 matured); at 2009-03-31, **667**.
   → To price the real 2009 book, **bootstrap a ~2009 curve**; the 2024 CSVs are a demo.
-- **Universe (3 lenses)**: **811** = master `sub-category=Corporate Bonds` (684 Corp + 125 MTN,
-  by holding rows); **676** = cleaned `Corporate Bonds` tab; **641** = priceable vanilla
-  fixed/semiannual subset (excl. floating/hybrid/structured/defaulted). Pick one + keep an
-  exclusion list.
+- **Universe = deterministic 2-layer pipeline** (not a fixed number). Start = master
+  sub-cat ∈ {Corporate, MTN}, dedupe by Asset ID → **732 unique** (from 811 rows). Log every
+  drop with ONE primary reason + Asset ID. Counts: join **597 matched / 135 master-only /
+  19 tab-only**; rating **712 covered / 4 defaulted / 16 no-rating**; **54 non-vanilla /
+  73 callable**. Priority for the single reason: `unmatched → defaulted → no-rating →
+  structured/floating → callable → matured`. Layer A = date-independent, Layer B = matured-at-val-date.
 
 ## Validated so far
 - Bootstrap reproduced in Python: A/S/Q exact, Monthly 0.08 bp. Bloomberg cut.
@@ -61,7 +68,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - Canonical valuation date + how to bridge the 2009 curve gap.
 - Canonical universe definition + exclusion list.
 - **EIR (effective-interest / amortised-cost)** method — required by CEO, not yet located/ported.
-- Where per-bond **rating** and **holdings/face** are sourced for the URS corporates (master sheet, by ISIN).
+- ~~Where per-bond rating/holdings are sourced~~ **RESOLVED** — see Data sourcing above
+  (rating `CM`/`CL`, par `CV`; join on Asset ID). Remaining: build the MECE pipeline + per-bond exclusion log.
 
 ## Target architecture
 `io/` (loaders) · `instruments/` (Bond model + cash flows) · `pricing/` (bootstrap,

@@ -111,18 +111,56 @@ One-year-forward zero curves by rating + a **rating transition matrix** + a Mert
    - **Open:** which valuation date is the deliverable target, and how to handle the
      2009 data gap (nearest available 2009-06-10? interpolate across the gap?).
 
-2. **Corporate-bond universe — three reconciled counts; pick one canonical definition.**
-   | Count | Definition |
-   |---|---|
-   | **811** | Master sheet `Asset sub category = "Corporate Bonds"` — broadest; **684 Corporate Bond + 125 MTN**, counted by holding rows. |
-   | **676** | Cleaned `Corporate Bonds` tab (~668 unique bonds used in the maturity analysis). |
-   | **641** | Priceable plain-vanilla subset — fixed-rate, semi-annual; **excludes** floating / fix-to-float / hybrid / structured / defaulted. |
-   - **Open:** adopt one canonical universe + maintain an explicit **exclusion list**.
+2. **Corporate-bond universe — RESOLVED as a deterministic pipeline (not a fixed number).** *(§3.2)*
+   Start set = master `Asset sub category ∈ {Corporate, MTN}`, **deduped by Asset ID →
+   732 unique instruments** (from 811 holding rows). Every drop is logged with **one
+   primary reason + Asset ID/ISIN**, split into two layers so changing the valuation date
+   only re-runs Layer B. Detail in **§3.2** below.
 
 3. **EIR / amortised-cost method** is required (per CEO) but **not yet ported**.
 
 4. **Structured-coupon tail.** Most corporates are vanilla fixed, but a tail
    (fix-to-reset, fix-to-float, perpetual hybrids) needs explicit handling — defer to v2.
+
+### 3.2 Corporate-bond universe & data sourcing (detail)
+
+**Join key = `Asset ID` (`S`, 100% filled) ↔ tab `Asset Code`; ISIN secondary.** Terms
+and risk/holdings data live in different sheets and must be joined:
+
+| Source | Fields taken |
+|---|---|
+| `Corporate Bonds` tab | coupon **rate**, **type / formula** (Layer-A classifier), payment freq, maturity |
+| master `Fixed Income` | rating (`CM` S&P / `CL` Moody), **par held** (`CV` Shares/Par value), book cost (`Z`, for EIR), **validation** (`BT` price / `BU` MV / `DI` YTM) |
+
+> Master coupon **rate/type are empty** (`DO`/`DP`) → terms MUST come from the tab.
+> `BT`/`BU`/`DI` are a **golden master**: keep them in a **separate reconciliation table**,
+> never in the pricing inputs. Price first, then join to compare (input / truth separation).
+
+**Join result** (732 master uniques vs 616 tab uniques): **597 matched** ·
+**135 master-only** → `unmatched(master-only)` (mostly MTN, no tab terms) ·
+**19 tab-only** → `unmatched(tab-only)` (not held).
+
+**Rating** — S&P `CM` primary → Moody `CL` fallback (notch-mapped), **default precedence**
+(S&P D/SD wins over a Moody rating). Of 732: **712 covered** · **4 defaulted** (→ Layer A) ·
+**16 no-rating** (S&P & Moody both NR/blank → `rating-exclusion`; do **not** force a bucket).
+Notch-map domain seen in data: S&P {AAA, AA±, A±, BBB±, BB+/BB, B-, CCC+/CCC/CC/C, D, NR},
+Moody {Aaa, Aa1-3, A1-3, Baa1-3, Ba1-3, B2, Caa1-2/Ca/C, WR} → 7 FRED buckets AAA…CCC.
+
+**Layer A — security type (date-independent), within the 597 matched:**
+- non-vanilla `Type ≠ FIXED` = **54** (floating 20 / hybrid 9 / structured 6 / pass-through 6
+  / variable 2 / zero / step / preferred / fund) → reason `structured/floating`.
+- **callable** (master `Call date` present) = **73** → reason `requires option model
+  (deferred to v2)`; **keep `Call date` / call-price fields** for v2 (option-adjusted pricing,
+  cf. `Module1.CBondPrice`). Some callables are also hybrid/perpetual — assign **one** primary
+  reason (see priority below), do not double-count.
+
+**Layer B — date-dependent:** matured at the chosen valuation date (`Maturity < val date`).
+
+**Single primary reason per bond — proposed priority** (makes the funnel MECE):
+`unmatched` → `defaulted` → `no-rating` → `structured/floating` → `callable` → `matured`.
+Canonical = plain-fixed, rated, non-callable, held, not matured. Expected **< 641** (the
+earlier loose estimate) because we additionally drop callable (→v2), no-rating, and
+join-unmatched. Exact count is the **pipeline's output** once valuation date + priority are locked.
 
 ---
 
@@ -134,9 +172,13 @@ One-year-forward zero curves by rating + a **rating transition matrix** + a Mert
   Annual / Semiannual / Quarterly **exact (0 error)**; **Monthly within 0.08 bp**
   (difference traced to a short-end fill convention).
 - ✅ **Bloomberg dependency removed** (txt par curves + FRED OAS).
+- ✅ **Master-sheet profiling + universe funnel** (corporate bonds): rating columns
+  located (S&P/Moody ~98%; Fitch empty), Asset-ID join (597 matched / 135 master-only /
+  19 tab-only), coupon-type & callable classified, golden-master columns identified. See §3.2.
 - ✅ Repo + documentation established (this file, `WORKLOG.md`, `CLAUDE.md`).
-- ⏭️ Next: corporate-bond pricing layer (port `BondPrice`), resolve valuation date &
-  universe, then accrued/clean-dirty and an OAS/YTM solver.
+- ⏭️ Next: implement the MECE universe pipeline (per-bond exclusion log) in Python on
+  server 47; lock valuation date; bootstrap the ~2009 curve; port `BondPrice`; reconcile
+  vs `BT`/`BU`/`DI`.
 
 ---
 

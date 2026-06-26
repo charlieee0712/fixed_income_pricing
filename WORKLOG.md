@@ -5,6 +5,35 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-26 — Master-sheet profiling: ratings, universe funnel, data sourcing
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Dumped all 131 master `Fixed Income` column names. **Resolved the rating gap**: the rating
+  columns exist as "Quality rating - Fitch/Moody/S&P" (`CK`/`CL`/`CM`) — earlier scan missed
+  them. Fill-rate: S&P 794/811, Moody 796/811 (~98% of corporates); Fitch empty.
+- Profiled key columns: par held = `CV` Shares/Par value (99.9%); custodian `BT`/`BU`/`DI`
+  present → use as golden master (kept separate from inputs).
+- Built date-independent universe funnel (732 unique corporates by Asset ID):
+  - Rating (default precedence): 712 covered / **4 defaulted** / **16 no-rating** (true "neither").
+  - Join on Asset ID: **597 matched** / 135 master-only / 19 tab-only.
+  - Coupon type (within matched): 543 FIXED / 54 non-vanilla; **73 callable**.
+- Locked design: rating S&P→Moody fallback w/ default precedence; join on Asset ID (ISIN
+  secondary); par=`CV`; EIR cost=`Z`; golden master separate; callable → v2 (own reason,
+  keep call fields); single primary reason per bond by priority.
+- Updated `PROJECT_STATUS.md` (§3.2) and `CLAUDE.md` with the deterministic two-layer
+  universe pipeline, exclusion taxonomy, and data-sourcing map.
+
+**Open / next**
+- Implement the MECE universe pipeline (single primary reason by agreed priority) →
+  per-bond exclusion log; build in Python on server 47.
+- Lock valuation date (drives Layer B); bootstrap the ~2009 curve.
+- Port `BondPrice`; reconcile computed price vs `BT`/`BU`/`DI`.
+
+---
+
 ## 2026-06-26 — Onboarding: structural analysis + bootstrap validation
 **Commit:** `9b7fe7f` (docs scaffold) · `[TO FILL]` (this anchor update)
 **Hours:** `[TO FILL]`
