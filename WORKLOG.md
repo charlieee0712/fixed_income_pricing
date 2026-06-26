@@ -5,6 +5,31 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-26 — Integrate colleague's bootstrap module + adopt src/ layout
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Reviewed the colleague's validated `bootstrap.py` (faithful par→zero VBA port). Confirmed
+  conventions: Excel epoch 1899-12-30, continuous compounding, output cols
+  `Maturity, {Freq}_Rate/DF` (rates in percent), `load_par_curve` raises on a missing date.
+  Validation (US, 2024-01-16): Annual/Semiannual/Quarterly exact, Monthly < 0.1 pp (short-end).
+- Adopted a `src/<layer>/` layout: placed the module at `src/curves/bootstrap.py` and moved the
+  rating notch-map to `src/credit/ratings.py`. Root `conftest.py` now puts `src/` on `sys.path`.
+- Turned the module's `_self_test` into `tests/test_bootstrap.py` (golden-master; skips when the
+  git-ignored data files are absent — point via `FIP_US_TXT` / `FIP_US_GOLDEN`). Fixed the
+  `tests/test_ratings.py` import.
+- Updated `PROJECT_STATUS.md` (§5 architecture, §4 progress, §3.2 path) and `CLAUDE.md`.
+
+**Open / next (server 47)**
+- `pip install -r requirements.txt && pytest` — `test_ratings` green; `test_bootstrap` green once
+  the US par-curve txt + golden CSV are present.
+- Build `src/io` loaders + `universe.build_universe()`; pick the 2009 valuation date; wrap
+  bootstrap output in a `ZeroCurve`; port `BondPrice`; reconcile vs `BT`/`BU`/`DI`.
+
+---
+
 ## 2026-06-26 — Lock rating notch-map + implement fip/ratings.py
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`

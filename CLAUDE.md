@@ -43,6 +43,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - Pricing: discount each cash flow at `z(t)+OAS(rating)`, **linear interpolation** of the
   monthly grid; dirty = Σ coupons·DF + face·DF(T); clean = dirty − accrued.
 - **OAS** = FRED **ICE BofA US Corporate** Index OAS, **one flat spread per rating** (AAA…CCC).
+- **Bootstrap module** (`src/curves/bootstrap.py`, colleague's validated port): Excel epoch
+  **1899-12-30** (`excel_serial_to_date`); output cols `Maturity, {Freq}_Rate`(percent)`, {Freq}_DF`;
+  `load_par_curve` **raises** on a missing valuation date (no silent nearest-date — matters for 2009).
 - **Data sourcing (corp)**: join master↔tab on **Asset ID** (`S`↔`Asset Code`, 100%; ISIN
   secondary). Terms (coupon rate/type/freq/maturity) ← `Corporate Bonds` tab (master coupon
   cols are EMPTY). Rating ← master `CM` S&P / `CL` Moody (default precedence; NR→fallback→exclude).
@@ -61,11 +64,13 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted → no-rating →
   structured/floating → callable → matured`. Layer A = date-independent, Layer B = matured-at-val-date.
   135 master-only = `terms-unavailable` (MTN; terms in neither sheet — **data gap, not security type**).
-  Notch-map (S&P/Moody → 7 buckets) implemented in **`fip/ratings.py`**. Red lines: keep IG/HY split
+  Notch-map (S&P/Moody → 7 buckets) implemented in **`src/credit/ratings.py`**. Red lines: keep IG/HY split
   (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
 
 ## Validated so far
-- Bootstrap reproduced in Python: A/S/Q exact, Monthly 0.08 bp. Bloomberg cut.
+- **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S/Q exact,
+  Monthly <0.1 pp (short-end fill); golden-master `tests/test_bootstrap.py`. Rating notch-map
+  `src/credit/ratings.py` (`tests/test_ratings.py`). Bloomberg cut.
 
 ## Open questions
 - Canonical valuation date + how to bridge the 2009 curve gap.
@@ -74,8 +79,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - ~~Where per-bond rating/holdings are sourced~~ **RESOLVED** — see Data sourcing above
   (rating `CM`/`CL`, par `CV`; join on Asset ID). Remaining: build the MECE pipeline + per-bond exclusion log.
 
-## Target architecture
-`io/` (loaders) · `instruments/` (Bond model + cash flows) · `pricing/` (bootstrap,
-ZeroCurve, discounting, accrued, YTM/OAS solvers — port `BondPrice` here) · `risk/`
-(CreditMetrics, later) · `config/` (val date, universe, conventions) · `tests/`
-(golden-master vs VBA/CSV).
+## Target architecture (`src/<layer>/`; root `conftest.py` puts `src/` on path)
+- `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden); `ZeroCurve` next.
+- `src/credit/` — ✅ `ratings.py` (notch-map); OAS-curve loader next.
+- `src/io/` — Excel loaders (master + Corporate Bonds tab) + FRED OAS → next: `universe.build_universe()`.
+- `src/instruments/` (Bond model + cash flows) · `src/pricing/` (discount/accrued/clean-dirty/
+  YTM/OAS — port `BondPrice`) · `src/risk/` (CreditMetrics, later) · `src/config/`.
+- `tests/` — golden-master (`test_bootstrap`, `test_ratings`).

@@ -3,7 +3,7 @@
 These lock the two red lines from PROJECT_STATUS.md §3.2.
 """
 
-from fip.ratings import (
+from credit.ratings import (
     BUCKETS, DEFAULTED, NO_RATING, classify, moody_bucket, sp_bucket,
 )
 

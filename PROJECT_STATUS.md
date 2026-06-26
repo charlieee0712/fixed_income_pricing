@@ -110,6 +110,8 @@ One-year-forward zero curves by rating + a **rating transition matrix** + a Mert
      the 2024 CSVs are a **demo**, not the pricing basis.
    - **Open:** which valuation date is the deliverable target, and how to handle the
      2009 data gap (nearest available 2009-06-10? interpolate across the gap?).
+     `bootstrap.load_par_curve` **raises** on a missing date (no silent substitution),
+     so a specific available 2009 date must be chosen.
 
 2. **Corporate-bond universe — RESOLVED as a deterministic pipeline (not a fixed number).** *(§3.2)*
    Start set = master `Asset sub category ∈ {Corporate, MTN}`, **deduped by Asset ID →
@@ -145,7 +147,7 @@ are plain fixed and can be added back if a terms source appears) ·
 **Rating** — S&P `CM` primary → Moody `CL` fallback, **default precedence** (S&P D/SD wins
 over any Moody grade). Of 732: **712 covered** · **4 defaulted** (→ Layer A) · **16 no-rating**
 (`rating-exclusion`; do **not** force a bucket). Granular grades collapse to the **7 FRED
-parent buckets** — implemented in `fip/ratings.py`:
+parent buckets** — implemented in `src/credit/ratings.py`:
 
 | FRED bucket | S&P | Moody's |
 |---|---|---|
@@ -185,9 +187,10 @@ join-unmatched. Exact count is the **pipeline's output** once valuation date + p
 
 - ✅ **Structural analysis** of all four workbooks complete (sheets, columns,
   instrument fields, formula logic).
-- ✅ **Bootstrap reproduced & validated in Python** vs the VBA/CSV output:
-  Annual / Semiannual / Quarterly **exact (0 error)**; **Monthly within 0.08 bp**
-  (difference traced to a short-end fill convention).
+- ✅ **Bootstrap ported & reconciled** — `src/curves/bootstrap.py` (the colleague's
+  validated module) reproduces the golden `XX_yield_curves.csv`: Annual / Semiannual /
+  Quarterly **exact (0 error)**; **Monthly < 0.1 pp** (short-end fill). Golden-master test:
+  `tests/test_bootstrap.py`.
 - ✅ **Bloomberg dependency removed** (txt par curves + FRED OAS).
 - ✅ **Master-sheet profiling + universe funnel** (corporate bonds): rating columns
   located (S&P/Moody ~98%; Fitch empty), Asset-ID join (597 matched / 135 master-only /
@@ -201,20 +204,22 @@ join-unmatched. Exact count is the **pipeline's output** once valuation date + p
 
 ## 5. Target architecture
 
-Layered, config-driven, vectorised (numpy/pandas). Each instrument type is a plug-in
-on a shared pricing core; corporate bonds are the first.
+Layered, config-driven, vectorised (numpy/pandas). `src/<layer>/` packages; the root
+`conftest.py` puts `src/` on `sys.path`. ✅ = exists, others planned.
 
 ```
 fixed_income_pricing/
-├── io/            # loaders: par-curve txt/zip, FRED OAS, Excel positions/instruments
-│                  #   (handles country-name ⇄ 2-letter-code aliasing)
-├── instruments/   # Bond data model (coupon, freq, maturity, daycount, seniority,
-│                  #   rating, face, …) + cash-flow schedule generation
-├── pricing/       # curve bootstrap + ZeroCurve (interp/extrap); discounting;
-│                  #   accrued interest; clean/dirty; YTM & OAS solvers  ← port BondPrice here
-├── risk/          # CreditMetrics migration, transition matrix, Merton thresholds, VaR (later)
-├── config/        # valuation date, universe definition, day-count conventions
-└── tests/         # golden-master tests vs VBA / CSV outputs (bootstrap already a passing case)
+├── src/
+│   ├── curves/        # ✅ bootstrap.py (par→zero, reproduces golden CSV); ZeroCurve next
+│   ├── credit/        # ✅ ratings.py (S&P/Moody → 7 OAS buckets); OAS-curve loader next
+│   ├── io/            # Excel loaders (master + Corporate Bonds tab), FRED OAS; → universe pipeline
+│   ├── instruments/   # Bond model (coupon, freq, maturity, daycount, rating, face) + cash flows
+│   ├── pricing/       # discounting, accrued, clean/dirty, YTM/OAS solvers  ← port BondPrice
+│   ├── risk/          # CreditMetrics migration, transition matrix, Merton thresholds (later)
+│   └── config/        # valuation date, universe definition, day-count conventions
+├── tests/             # golden-master: test_bootstrap, test_ratings
+├── conftest.py        # puts src/ on sys.path
+└── requirements.txt
 ```
 
 **Design principles**
