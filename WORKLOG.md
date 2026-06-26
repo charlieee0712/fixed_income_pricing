@@ -6,7 +6,7 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 ---
 
 ## 2026-06-26 — Onboarding: structural analysis + bootstrap validation
-**Commit:** `[TO FILL — this commit]`
+**Commit:** `9b7fe7f` (docs scaffold) · `[TO FILL]` (this anchor update)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
 
