@@ -1,0 +1,36 @@
+# =============================================================================
+#  Data & client inputs — DO NOT COMMIT
+#  These workbooks contain a client's actual portfolio holdings and proprietary
+#  market-data curves. This repository is for CODE and DOCUMENTATION only.
+# =============================================================================
+*.xlsx
+*.xlsm
+*.xls
+*.zip
+*.bin
+*.csv
+*.txt
+!requirements.txt
+
+# Extracted / working artifacts
+extracted/
+scratchpad/
+*.bak
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
