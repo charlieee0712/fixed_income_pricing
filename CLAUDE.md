@@ -114,7 +114,11 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (FRED online truncated to 3y in April 2026; the workbook holds the full 1997-2025 archive).
 - ~~Canonical universe definition + exclusion list~~ **RESOLVED** — `dataio/universe.py` →
   canonical **476 @ 2009-06-10** + per-bond exclusion log (final valuation date pending colleague).
-- **EIR (effective-interest / amortised-cost)** method — required by CEO, not yet located/ported.
+- **EIR (IFRS-9 amortised cost)** — **a requirement, not legacy code**: searched both workbooks (14k VBA
+  lines + all sheets), **zero hits** → implement from the standard, **no legacy golden** to reconcile. Spec
+  preset (confirm w/ CEO): `Book cost` (Z) = amortised carrying value (data-inferred) ⇒ amortised cost ≈ Z,
+  EIR = IRR(Z, remaining CFs); deliver per-bond {eff. yield, amortised cost} + amortised-cost-vs-market table.
+  **Implement only after the v1 Mario report + spec confirmation.**
 - ~~Where per-bond rating/holdings are sourced~~ **RESOLVED** — see Data sourcing above
   (rating `CM`/`CL`, par `CV`; join on Asset ID). ~~build the MECE pipeline~~ **done**.
 
