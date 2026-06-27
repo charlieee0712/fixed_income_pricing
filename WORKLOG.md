@@ -5,6 +5,57 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-27 — Server 47 live: env + data + bootstrap reconciled + universe pipeline
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- **Server 47 stood up.** Key-based `ssh 47` verified; cloned the repo; built `.venv` with
+  `--system-site-packages` so it reuses the conda env's *already-compiled* numpy 1.26.1 /
+  pandas 2.1.1 / scipy 1.11.3 / openpyxl 3.1.2, and only pip-installed pytest. Why: CentOS 7
+  (glibc 2.17, gcc 4.8.5) can't build modern wheels from source, and the Tsinghua mirror ships
+  pandas 2.3.3 as **sdist-only** so a naive `pip install -r` tried to compile pandas and failed.
+  All five satisfy `requirements.txt`.
+- **Data on 47**: scp'd the 3 inputs into `data/` (git-ignored by extension) and unzipped —
+  `data/USD_Yield_Curve.txt` (+26 others), `data/Bootstrapped/US_yield_curves.csv`,
+  `URS …V Mainak.xlsx`. The two `.xlsm` stay local until the BondPrice port.
+- **Bootstrap golden master reconciled** (US, 2024-01-16). Adopted **segmented** tolerances in
+  `tests/test_bootstrap.py` (not one blanket threshold — so the exact columns can't hide a
+  future regression):
+  - **Annual / Semiannual rates — RED LINE, kept strict `< 1e-9`** (observed 2.7e-15 / 4.4e-15,
+    bit-exact). The OAS pricing foundation; deliberately not relaxed.
+  - Quarterly rate: exact (`< 1e-9`) for every node ≤ 30y; the single 30y+ **extrapolated** tail
+    node tolerated `< 1e-4` (observed 2.12e-05 @ 31.08y).
+  - Monthly rate `< 0.1` pp; Monthly DF `< 1e-3` (observed 6.72e-04 @ 0.92y); A/S/Q DF `< 1e-4`.
+  - **Residual source**: the USD par txt's shortest tenor is **3m**, so the Monthly grid's 1m/2m
+    nodes are flat-extrapolated and differ infinitesimally from the VBA's short-end handling; that
+    rides the recursive bootstrap `DF_i = f(Σ_{k<i} DF_k)` into the Monthly belly. Compounded by a
+    **numpy/pandas version delta** vs the colleague's original validation env (this box: 1.26.1 /
+    2.1.1). **Economic impact ≈ 0 — does not affect pricing or OAS.** `test_ratings` stays fully green.
+- **Universe pipeline built & validated** (`src/dataio/loaders.py` + `universe.py`). openpyxl loaders
+  for the master `Fixed Income` + `Corporate Bonds` tab — column letters confirmed against the V-Mainak
+  book (Asset ID=`S`, ISIN=`X`, sub-cat=`U`, S&P=`CM`, Moody=`CL`, par=`CV`, call=`AB`, maturity=`BW`,
+  gold `BT`/`BU`/`DI`); the V-Mainak appended cols (`DL` dup Asset ID, `DO`/`DP` ~empty coupon) confirm
+  terms still come from the tab. `build_universe` runs Asset-ID join → notch-map → Layer A/B with the
+  single-primary-reason LOCKED priority. **Every documented count reproduces exactly** (join 597/135/19,
+  rating 712/4/16, Layer-A raw 54/73, MECE total 732) → **canonical 476 @ 2009-06-10** + per-bond
+  exclusion log. Golden `tests/test_universe.py`; **22 tests green on 47**. Named `dataio` (not `io`):
+  `conftest` puts `src/` at `sys.path[0]`, so an `io` package would shadow the stdlib `io`.
+
+**Open / next**
+- **Ask the colleague** (both **non-blocking**): (a) which **numpy/pandas versions** + **golden CSV
+  source** he used for the bootstrap validation (his "Quarterly exact / Monthly_DF < 1e-4" is tighter
+  than this env reproduces); (b) which **curve date/source** priced the 3-31 book — drives the final
+  valuation date + whether prices can tie to the custodian `BT/BU/DI`.
+- **Data-quality (defer to pricing):** the `Corporate Bonds` tab has 3 rows with `Freq = "—"`; if any
+  are Fixed and reach canonical they'd lack a payment frequency — screen at the pricing stage.
+- **Next (curve layer first):** wrap bootstrap output in a `ZeroCurve` class and bootstrap the
+  **2009-06-10** USD curve; sanity-check the post-crisis low-rate shape before pricing. Then copy the
+  two `.xlsm`, port `BondPrice`, price the canonical 476, reconcile vs `BT`/`BU`/`DI`.
+
+---
+
 ## 2026-06-26 — Decisions: valuation date 2009-06-10 + 47 interface (ssh)
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`

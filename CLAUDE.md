@@ -64,32 +64,44 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   ⚠️ Holdings 3-31 vs curve 6-10 = **70-day mismatch** → won't tie to custodian `BT/BU/DI`.
   **The port reproduces the VBA tool's output, not the custodian mark.** Open: ask the colleague
   which curve date/source the original tool used for the 3-31 book (maybe a 3-31 Bloomberg curve).
-- **Universe = deterministic 2-layer pipeline** (not a fixed number). Start = master
-  sub-cat ∈ {Corporate, MTN}, dedupe by Asset ID → **732 unique** (from 811 rows). Log every
-  drop with ONE primary reason + Asset ID. Counts: join **597 matched / 135 master-only /
-  19 tab-only**; rating **712 covered / 4 defaulted / 16 no-rating**; **54 non-vanilla /
-  73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted → no-rating →
-  structured/floating → callable → matured`. Layer A = date-independent, Layer B = matured-at-val-date.
+- **Universe = deterministic 2-layer pipeline**, **IMPLEMENTED** in `src/dataio/universe.py`.
+  Start = master sub-cat == `Corporate Bonds`, dedupe by Asset ID → **732 unique** (from 811
+  rows; no separate MTN sub-cat — MTN = a terms-gap label, not a category). Log every drop with
+  ONE primary reason + Asset ID. Counts (all reproduce **exactly**): join **597 matched / 135
+  master-only / 19 tab-only**; rating **712 covered / 4 defaulted / 16 no-rating**; Layer-A raw
+  **54 non-vanilla / 73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted →
+  no-rating → structured/floating → callable → matured`. Layer A = date-independent, Layer B =
+  matured-at-val-date. **Result @ 2009-06-10 (post-priority MECE): canonical 476 / terms-unavailable
+  135 / structured-floating 51 / callable 51 / no-rating 9 / matured 6 / defaulted 4.**
   135 master-only = `terms-unavailable` (MTN; terms in neither sheet — **data gap, not security type**).
   Notch-map (S&P/Moody → 7 buckets) implemented in **`src/credit/ratings.py`**. Red lines: keep IG/HY split
   (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
 
 ## Validated so far
-- **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S/Q exact,
-  Monthly <0.1 pp (short-end fill); golden-master `tests/test_bootstrap.py`. Rating notch-map
+- **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,
+  Q exact ≤30y, Monthly <0.1 pp (short-end fill); golden-master `tests/test_bootstrap.py` uses
+  **segmented** thresholds — A/S strict <1e-9 red line; Quarterly terminal-extrapolation node
+  (>30y) and Monthly-DF short-end residual carved out (see WORKLOG 2026-06-27). Rating notch-map
   `src/credit/ratings.py` (`tests/test_ratings.py`). Bloomberg cut.
+- **Universe pipeline** (`src/dataio/loaders.py` + `universe.py`, run on 47): reproduces the
+  documented funnel **exactly** (join 597/135/19, rating 712/4/16, Layer-A raw 54/73, MECE=732)
+  → **canonical = 476 @ 2009-06-10**; per-bond exclusion log; golden `tests/test_universe.py`.
 
 ## Open questions
-- Canonical valuation date + how to bridge the 2009 curve gap.
-- Canonical universe definition + exclusion list.
+- Canonical valuation date + how to bridge the 2009 curve gap (**ask colleague** which curve
+  date/source priced the 3-31 book).
+- ~~Canonical universe definition + exclusion list~~ **RESOLVED** — `dataio/universe.py` →
+  canonical **476 @ 2009-06-10** + per-bond exclusion log (final valuation date pending colleague).
 - **EIR (effective-interest / amortised-cost)** method — required by CEO, not yet located/ported.
 - ~~Where per-bond rating/holdings are sourced~~ **RESOLVED** — see Data sourcing above
-  (rating `CM`/`CL`, par `CV`; join on Asset ID). Remaining: build the MECE pipeline + per-bond exclusion log.
+  (rating `CM`/`CL`, par `CV`; join on Asset ID). ~~build the MECE pipeline~~ **done**.
 
 ## Target architecture (`src/<layer>/`; root `conftest.py` puts `src/` on path)
 - `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden); `ZeroCurve` next.
 - `src/credit/` — ✅ `ratings.py` (notch-map); OAS-curve loader next.
-- `src/io/` — Excel loaders (master + Corporate Bonds tab) + FRED OAS → next: `universe.build_universe()`.
+- `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
+  MECE funnel → **canonical 476 @ 2009-06-10**); FRED OAS loader next. (Named `dataio`, **not** `io`:
+  `conftest` puts `src/` at `sys.path[0]`, so an `io` package would shadow stdlib `io`.)
 - `src/instruments/` (Bond model + cash flows) · `src/pricing/` (discount/accrued/clean-dirty/
   YTM/OAS — port `BondPrice`) · `src/risk/` (CreditMetrics, later) · `src/config/`.
-- `tests/` — golden-master (`test_bootstrap`, `test_ratings`).
+- `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`). **22 green on 47.**

@@ -185,9 +185,16 @@ parent buckets** — implemented in `src/credit/ratings.py`:
 
 **Single primary reason per bond — LOCKED priority** (makes the funnel MECE):
 `terms-unavailable / unmatched` → `defaulted` → `no-rating` → `structured/floating` → `callable` → `matured`.
-Canonical = plain-fixed, rated, non-callable, held, not matured. Expected **< 641** (the
-earlier loose estimate) because we additionally drop callable (→v2), no-rating, and
-join-unmatched. Exact count is the **pipeline's output** once valuation date + priority are locked.
+Canonical = plain-fixed, rated, non-callable, held, not matured.
+
+**IMPLEMENTED** in `src/dataio/universe.py` (`build_universe`); golden `tests/test_universe.py`.
+All date-independent counts above reproduce **exactly**. Result **@ 2009-06-10** (post-priority MECE,
+sums to 732): **canonical 476** / terms-unavailable 135 / structured-floating 51 / callable 51 /
+no-rating 9 / matured 6 / defaulted 4 — well under the earlier loose **< 641** estimate. Layer-A
+(date-independent) reasons dominate; only `matured` (=6) depends on the valuation date, so the
+**final valuation date is still pending the colleague's confirmation** of the 3-31 curve source
+(see §3 ①). The post-priority `no-rating`/`structured`/`callable` counts are below their raw
+classifications (16/54/73) because higher-priority reasons absorb the overlaps.
 
 ---
 
@@ -203,10 +210,14 @@ join-unmatched. Exact count is the **pipeline's output** once valuation date + p
 - ✅ **Master-sheet profiling + universe funnel** (corporate bonds): rating columns
   located (S&P/Moody ~98%; Fitch empty), Asset-ID join (597 matched / 135 master-only /
   19 tab-only), coupon-type & callable classified, golden-master columns identified. See §3.2.
+- ✅ **Universe pipeline IMPLEMENTED** (`src/dataio/loaders.py` + `universe.py`, on server 47):
+  openpyxl loaders + `build_universe` reproduce the funnel **exactly** → **canonical 476 @
+  2009-06-10** + per-bond exclusion log; golden `tests/test_universe.py`. **22 tests green.**
+  (Package is `dataio`, not `io`, to avoid shadowing the stdlib `io` that pandas/openpyxl import.)
 - ✅ Repo + documentation established (this file, `WORKLOG.md`, `CLAUDE.md`).
-- ⏭️ Next: implement the MECE universe pipeline (per-bond exclusion log) in Python on
-  server 47; lock valuation date; bootstrap the ~2009 curve; port `BondPrice`; reconcile
-  vs `BT`/`BU`/`DI`.
+- ⏭️ Next: wrap bootstrap output in a `ZeroCurve`; bootstrap the **2009-06-10** USD curve (sanity-
+  check the post-crisis low-rate shape); port `BondPrice`; price the canonical 476; reconcile vs
+  `BT`/`BU`/`DI`. (Universe pipeline ✅ done.)
 
 ---
 
@@ -220,12 +231,12 @@ fixed_income_pricing/
 ├── src/
 │   ├── curves/        # ✅ bootstrap.py (par→zero, reproduces golden CSV); ZeroCurve next
 │   ├── credit/        # ✅ ratings.py (S&P/Moody → 7 OAS buckets); OAS-curve loader next
-│   ├── io/            # Excel loaders (master + Corporate Bonds tab), FRED OAS; → universe pipeline
+│   ├── dataio/        # ✅ loaders.py (master + Corporate Bonds tab) + universe.py (MECE funnel → canonical 476); FRED OAS next  [named dataio, not io — stdlib clash]
 │   ├── instruments/   # Bond model (coupon, freq, maturity, daycount, rating, face) + cash flows
 │   ├── pricing/       # discounting, accrued, clean/dirty, YTM/OAS solvers  ← port BondPrice
 │   ├── risk/          # CreditMetrics migration, transition matrix, Merton thresholds (later)
 │   └── config/        # valuation date, universe definition, day-count conventions
-├── tests/             # golden-master: test_bootstrap, test_ratings
+├── tests/             # golden-master: test_bootstrap, test_ratings, test_universe
 ├── conftest.py        # puts src/ on sys.path
 └── requirements.txt
 ```
