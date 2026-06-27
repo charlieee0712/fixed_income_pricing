@@ -45,7 +45,14 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   output monthly to ~374 months × {Annual, Semiannual, Quarterly, Monthly}.
 - Pricing: discount each cash flow at `z(t)+OAS(rating)`, **linear interpolation** of the
   monthly grid; dirty = Σ coupons·DF + face·DF(T); clean = dirty − accrued.
-- **OAS** = FRED **ICE BofA US Corporate** Index OAS, **one flat spread per rating** (AAA…CCC).
+- **OAS** = **ICE BofA US Corporate/HY** Index OAS, **one flat spread per rating** (AAA…CCC).
+  **Historical source = `Pricing File.xlsm` / sheet `OAS Credit Curves`** (full daily 1997-01-02 …
+  2025-11-07, 7 buckets; archived before ICE/FRED truncated the free series to a rolling 3y window
+  in **April 2026**). Read via **`src/credit/oas.py`** (`oas_on(path, date)` → decimal dict, raises on
+  missing date). **Do NOT use the FRED online API for OAS history** — it now only serves the last 3y.
+  (UST par yields, by contrast, = FRED **`DGS*`** series — government data, **NOT** truncated — usable for
+  any historical date; e.g. the 2009-03-31 curve absent from the txt was pulled from DGS and validated
+  same-source against the 6-10 txt row.)
 - **Bootstrap module** (`src/curves/bootstrap.py`, colleague's validated port): Excel epoch
   **1899-12-30** (`excel_serial_to_date`); output cols `Maturity, {Freq}_Rate`(percent)`, {Freq}_DF`;
   `load_par_curve` **raises** on a missing valuation date (no silent nearest-date — matters for 2009).
@@ -64,32 +71,60 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   ⚠️ Holdings 3-31 vs curve 6-10 = **70-day mismatch** → won't tie to custodian `BT/BU/DI`.
   **The port reproduces the VBA tool's output, not the custodian mark.** Open: ask the colleague
   which curve date/source the original tool used for the 3-31 book (maybe a 3-31 Bloomberg curve).
-- **Universe = deterministic 2-layer pipeline** (not a fixed number). Start = master
-  sub-cat ∈ {Corporate, MTN}, dedupe by Asset ID → **732 unique** (from 811 rows). Log every
-  drop with ONE primary reason + Asset ID. Counts: join **597 matched / 135 master-only /
-  19 tab-only**; rating **712 covered / 4 defaulted / 16 no-rating**; **54 non-vanilla /
-  73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted → no-rating →
-  structured/floating → callable → matured`. Layer A = date-independent, Layer B = matured-at-val-date.
+- **Universe = deterministic 2-layer pipeline**, **IMPLEMENTED** in `src/dataio/universe.py`.
+  Start = master sub-cat == `Corporate Bonds`, dedupe by Asset ID → **732 unique** (from 811
+  rows; no separate MTN sub-cat — MTN = a terms-gap label, not a category). Log every drop with
+  ONE primary reason + Asset ID. Counts (all reproduce **exactly**): join **597 matched / 135
+  master-only / 19 tab-only**; rating **712 covered / 4 defaulted / 16 no-rating**; Layer-A raw
+  **54 non-vanilla / 73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted →
+  no-rating → structured/floating → callable → matured`. Layer A = date-independent, Layer B =
+  matured-at-val-date. **Result @ 2009-06-10 (post-priority MECE): canonical 476 / terms-unavailable
+  135 / structured-floating 51 / callable 51 / no-rating 9 / matured 6 / defaulted 4.**
   135 master-only = `terms-unavailable` (MTN; terms in neither sheet — **data gap, not security type**).
   Notch-map (S&P/Moody → 7 buckets) implemented in **`src/credit/ratings.py`**. Red lines: keep IG/HY split
   (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
 
 ## Validated so far
-- **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S/Q exact,
-  Monthly <0.1 pp (short-end fill); golden-master `tests/test_bootstrap.py`. Rating notch-map
+- **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,
+  Q exact ≤30y, Monthly <0.1 pp (short-end fill); golden-master `tests/test_bootstrap.py` uses
+  **segmented** thresholds — A/S strict <1e-9 red line; Quarterly terminal-extrapolation node
+  (>30y) and Monthly-DF short-end residual carved out (see WORKLOG 2026-06-27). Rating notch-map
   `src/credit/ratings.py` (`tests/test_ratings.py`). Bloomberg cut.
+- **Universe pipeline** (`src/dataio/loaders.py` + `universe.py`, run on 47): reproduces the
+  documented funnel **exactly** (join 597/135/19, rating 712/4/16, Layer-A raw 54/73, MECE=732)
+  → **canonical = 476 @ 2009-06-10**; per-bond exclusion log; golden `tests/test_universe.py`.
+- **Pricing + reconciliation** (`zero_curve.py` + `bond_price.py` + `oas.py`, on 47): 2009-06-10 USD curve
+  sane vs actual June-2009 UST; priced canonical 476. **v1 method VALIDATED.** *Is the method correct?* →
+  **yes, UNBIASED**: IG (AAA-BBB) signed median **−0.4% (≈0)**, curve+OAS centred on BT; plus OAS=0 near-
+  maturity high-grade ties BT **<0.2%**. *Precision?* → **~6.4% median |diff%|, which is DISPERSION not bias**
+  — name-level scatter around the index rating OAS (±300 bp normal in 2009); a **known v1 design boundary,
+  not a bug** (distress removal leaves it 6.1% → broad, not outliers). NOT a "near-miss vs 5%": success,
+  precision to improve in v1.5. Narrowing path to <5% = **finer OAS (sector/quality/name), v2** — the
+  3-31 date-match is a **tested dead end** (makes IG *worse*, 6.4%→11.1%: the 3-31 crisis-peak OAS overstates
+  these holdings' spreads — see WORKLOG). HY / distressed / callable = v2.
 
 ## Open questions
-- Canonical valuation date + how to bridge the 2009 curve gap.
-- Canonical universe definition + exclusion list.
+- ~~3-31 curve = the v1 IG lever~~ **REFUTED (tested 2026-06-27):** date-matching to 3-31 (3-31 DGS curve +
+  3-31 OAS) makes IG **worse** (6.43%→11.14%, signed −0.41%→−6.70%) — the 3-31 crisis-peak OAS (BBB 7.31% vs
+  6-10's 4.53%) overstates these high-grade holdings' spreads; **BT aligns with ~6-10 (tighter) spreads, the
+  70-day gap is NOT a precision lever** (real lever = finer OAS, v2).
+- **Confirm BT's marking date/source** (colleague) — the 6-10 model fits a nominally-3-31 BT, so BT may not be
+  strictly 3-31 (or rates/spreads moved opposite and offset). A data-understanding item now, not a precision lever.
+- ~~Historical OAS source~~ **RESOLVED** — `Pricing File.xlsm` / `OAS Credit Curves` via `src/credit/oas.py`
+  (FRED online truncated to 3y in April 2026; the workbook holds the full 1997-2025 archive).
+- ~~Canonical universe definition + exclusion list~~ **RESOLVED** — `dataio/universe.py` →
+  canonical **476 @ 2009-06-10** + per-bond exclusion log (final valuation date pending colleague).
 - **EIR (effective-interest / amortised-cost)** method — required by CEO, not yet located/ported.
 - ~~Where per-bond rating/holdings are sourced~~ **RESOLVED** — see Data sourcing above
-  (rating `CM`/`CL`, par `CV`; join on Asset ID). Remaining: build the MECE pipeline + per-bond exclusion log.
+  (rating `CM`/`CL`, par `CV`; join on Asset ID). ~~build the MECE pipeline~~ **done**.
 
 ## Target architecture (`src/<layer>/`; root `conftest.py` puts `src/` on path)
-- `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden); `ZeroCurve` next.
-- `src/credit/` — ✅ `ratings.py` (notch-map); OAS-curve loader next.
-- `src/io/` — Excel loaders (master + Corporate Bonds tab) + FRED OAS → next: `universe.build_universe()`.
-- `src/instruments/` (Bond model + cash flows) · `src/pricing/` (discount/accrued/clean-dirty/
-  YTM/OAS — port `BondPrice`) · `src/risk/` (CreditMetrics, later) · `src/config/`.
-- `tests/` — golden-master (`test_bootstrap`, `test_ratings`).
+- `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread).
+- `src/credit/` — ✅ `ratings.py` (notch-map) · ✅ `oas.py` (per-rating OAS from `OAS Credit Curves`).
+- `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
+  MECE funnel → **canonical 476 @ 2009-06-10**); FRED OAS loader next. (Named `dataio`, **not** `io`:
+  `conftest` puts `src/` at `sys.path[0]`, so an `io` package would shadow stdlib `io`.)
+- `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
+  **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params).
+- `src/instruments/` (Bond model + cash flows) · `src/risk/` (CreditMetrics, later) · `src/config/`.
+- `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`).
