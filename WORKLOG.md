@@ -31,12 +31,21 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
     outliers ⇒ a **known design boundary, not a bug**.
   - ⇒ **Not a near-miss failure; "success, precision to improve in v1.5."** Precision is limited by the
     index-rating-OAS design, which is explained and has a clear narrowing path.
-- **Narrowing path (priority, all NON-bug):**
-  ① **70-day date mismatch** (3-31 holdings vs 6-10 curve) — the OAS table has 3-31 but the yield-curve txt
-     is missing it (gap 2008-11-10 → 2009-06-10). Get the **3-31 curve** (open item, ask colleague) → removes
-     this directly. **Biggest removable residual.**
-  ② **AA +5.22 = financials subordination** (banks trade wider than the AA index OAS) → sector OAS (v1.5/v2).
+- **Narrowing path (priority) — REVISED after the 3-31 experiment (below); the residual is in OAS
+  *granularity*, not the date:**
+  ① **Finer OAS (sector / quality / name)** — the ONLY real path to <5% (v2).
+  ② **AA financials** (a concrete sector-OAS case: banks trade wider than the AA index OAS).
   ③ **Index OAS has no term structure** → a duration-based credit-spread curve (v2).
+- **[NEGATIVE RESULT — tested 2026-06-27 — 3-31 date-match is a DEAD END, do not retry].** Hypothesis was
+  that the 70-day gap (3-31 holdings vs 6-10 curve) inflated the residual; **refuted.** Re-pricing AS-OF
+  2009-03-31 (a **3-31 UST curve from FRED `DGS*`**, validated same-source against the 6-10 txt row, **+**
+  3-31 OAS, fully date-matched to BT) makes IG **worse**: median |diff%| **6.43% → 11.14%**, signed
+  **−0.41% → −6.70%**. Cause: 3-31 is the **crisis-peak OAS** (BBB **7.31%** vs 6-10's 4.53%; CCC 30.93% vs
+  17.04%) — the peak spread overwhelms the lower 3-31 rates, so the 3-31 **total** discount rate is *higher*
+  and prices fall below BT. ⇒ **BT aligns with ~6-10 (tighter) spreads, not the 3-31 peak; the 70-day date
+  gap is NOT a precision lever.** This independently **confirms** the ~6.4% residual = index-OAS dispersion
+  (not date) — a harder proof than "distress removal leaves it 6.1%". *(Earlier this entry called the 3-31
+  curve the "biggest lever" — that is now refuted; kept here with data so no future session retries it.)*
 - **One-liner for Mario/Liping:** "bootstrap→rating-OAS→discount validated for ordinary IG credit, unbiased
   vs BT (signed median ≈0); single-bond precision median ~6% is limited by the inherent dispersion of the
   index rating OAS (a known design boundary), with a clear narrowing path — the biggest being the 3-31 curve
@@ -61,7 +70,9 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
    but they stay well above BT — a method boundary, → v2.
 
 **Open / next**
-- **Ask the colleague for the 3-31 yield curve / source** — the #1 lever to tighten IG (removes the 70-day gap).
+- **Finer OAS (sector/quality/name)** is now the #1 v1.5/v2 lever to tighten IG (the 3-31 date-match was tested
+  and refuted, above). **Confirm BT's marking date/source** with the colleague — a data-understanding item
+  (6-10 fits a nominally-3-31 BT), no longer a precision lever.
 - EIR / amortised-cost method (CEO's 2nd method) — possible lead in `Pricing File.xlsm` / `Bond Px 4 Bonds w Diff Ratings`.
 - v1.5/v2: sector OAS (AA financials), term-structure OAS, distressed single-names (market price/recovery), callables.
 - Commit the pricing layer (ZeroCurve + bond_price + oas + recon) on a fresh branch after the universe PR merges.

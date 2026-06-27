@@ -49,7 +49,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   **Historical source = `Pricing File.xlsm` / sheet `OAS Credit Curves`** (full daily 1997-01-02 …
   2025-11-07, 7 buckets; archived before ICE/FRED truncated the free series to a rolling 3y window
   in **April 2026**). Read via **`src/credit/oas.py`** (`oas_on(path, date)` → decimal dict, raises on
-  missing date). **Do NOT use the FRED online API for history** — it now only serves the last 3y.
+  missing date). **Do NOT use the FRED online API for OAS history** — it now only serves the last 3y.
+  (UST par yields, by contrast, = FRED **`DGS*`** series — government data, **NOT** truncated — usable for
+  any historical date; e.g. the 2009-03-31 curve absent from the txt was pulled from DGS and validated
+  same-source against the 6-10 txt row.)
 - **Bootstrap module** (`src/curves/bootstrap.py`, colleague's validated port): Excel epoch
   **1899-12-30** (`excel_serial_to_date`); output cols `Maturity, {Freq}_Rate`(percent)`, {Freq}_DF`;
   `load_par_curve` **raises** on a missing valuation date (no silent nearest-date — matters for 2009).
@@ -96,13 +99,17 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   maturity high-grade ties BT **<0.2%**. *Precision?* → **~6.4% median |diff%|, which is DISPERSION not bias**
   — name-level scatter around the index rating OAS (±300 bp normal in 2009); a **known v1 design boundary,
   not a bug** (distress removal leaves it 6.1% → broad, not outliers). NOT a "near-miss vs 5%": success,
-  precision to improve in v1.5. Narrowing path (priority): ① 3-31 curve (70-day gap) ② sector OAS (AA
-  financials) ③ term-structure OAS. HY / distressed / callable = v2.
+  precision to improve in v1.5. Narrowing path to <5% = **finer OAS (sector/quality/name), v2** — the
+  3-31 date-match is a **tested dead end** (makes IG *worse*, 6.4%→11.1%: the 3-31 crisis-peak OAS overstates
+  these holdings' spreads — see WORKLOG). HY / distressed / callable = v2.
 
 ## Open questions
-- Canonical valuation date + how to bridge the 2009 curve gap (**ask colleague** which curve
-  date/source priced the 3-31 book). **Biggest lever to close the v1 IG gap** — a 3-31 yield curve
-  would remove the 70-day holdings/curve mismatch (the OAS history already has 3-31; the txt curve doesn't).
+- ~~3-31 curve = the v1 IG lever~~ **REFUTED (tested 2026-06-27):** date-matching to 3-31 (3-31 DGS curve +
+  3-31 OAS) makes IG **worse** (6.43%→11.14%, signed −0.41%→−6.70%) — the 3-31 crisis-peak OAS (BBB 7.31% vs
+  6-10's 4.53%) overstates these high-grade holdings' spreads; **BT aligns with ~6-10 (tighter) spreads, the
+  70-day gap is NOT a precision lever** (real lever = finer OAS, v2).
+- **Confirm BT's marking date/source** (colleague) — the 6-10 model fits a nominally-3-31 BT, so BT may not be
+  strictly 3-31 (or rates/spreads moved opposite and offset). A data-understanding item now, not a precision lever.
 - ~~Historical OAS source~~ **RESOLVED** — `Pricing File.xlsm` / `OAS Credit Curves` via `src/credit/oas.py`
   (FRED online truncated to 3y in April 2026; the workbook holds the full 1997-2025 archive).
 - ~~Canonical universe definition + exclusion list~~ **RESOLVED** — `dataio/universe.py` →
