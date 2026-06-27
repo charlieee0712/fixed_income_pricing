@@ -5,6 +5,33 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-27 — EIR located: a requirement, not legacy code (implement per IFRS-9)
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Searched ALL legacy code for EIR / amortised cost: `Pricing File.xlsm` (4 sheets + ~2k VBA lines) and
+  `Project Pricing Fixed Income Instruments.xlsm` (`Module1`/`Module2` = **11,983 VBA lines** + sheets).
+  **Zero hits** for amort / effective-interest / EIR / book-value / constant-yield. The CEO reference sheet
+  `Bond Px 4 Bonds w Diff Ratings` is the **Uganda CreditMetrics demo** (rating → sovereign-country curve +
+  1y-forward revaluation), NOT EIR.
+- ⇒ **EIR is a requirement, not code.** Implement per **IFRS-9 amortised cost** (constant-yield amortisation).
+  **No legacy golden output to reconcile against** (unlike BondPrice).
+- **Spec preset (confirm with Mario/CEO at the v1 report):**
+  - **Q1** master `Book cost` (Z) = **amortised carrying value** (data strongly suggests — another session:
+    book cost per-100 median 99.82, hugs par, corr −0.13 with BT, near-maturity closer to 100; typical of
+    amortised cost, not original purchase cost; tail exceptions exist). ⇒ amortised cost at valuation ≈ Z, and
+    EIR is computable **without a purchase date** (which is absent from the master's 131 columns).
+  - **Q2** deliverable = per-bond {effective yield, amortised cost} + an **amortised-cost vs market
+    (bootstrap+OAS)** comparison table.
+  - **Q3** scope = IFRS-9 amortised cost, carried at the book effective yield, **independent of the market curve**.
+
+**Open / next**
+- **Do NOT implement EIR yet.** Order: (1) report v1 to Mario + confirm the EIR spec; (2) then implement.
+
+---
+
 ## 2026-06-27 — Batch pricing + OAS reconciliation; v1 success criterion + method boundaries
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`
