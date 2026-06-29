@@ -39,8 +39,18 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - **Uganda** (UGANGB govt bonds, UGX) = a separate example, only in `Pricing File.xlsm`.
 
 ## Conventions (validated)
-- Bootstrap per frequency `f`: `cpn=100·par/f`; `DF_i=(100−cpn·Σ_{k<i}DF_k)/(100+cpn)`;
-  `z_i=−ln(DF_i)/t_i` (**continuous compounding**).
+- Bootstrap recursion (shared): `cpn=100·par/f`; `DF_i=(100−cpn·Σ_{k<i}DF_k)/(100+cpn)`.
+  ⚠️ **Two bootstraps exist in legacy** — do NOT conflate (Liping's catch, VERIFIED 2026-06-29):
+  (i) the *auditable* routine — **continuous** `z=−ln(DF)/t` — what our `bootstrap.py` ports;
+  (ii) `BondPrice`'s **own embedded** bootstrap (`Bootstrapping.bas`) — **semiannual**
+  `z=2·((1/DF)^(1/2t)−1)` — what legacy *pricing* actually used. Same `DF`, different expression of `z`.
+- **The VBA discounting bug + our fix** (VERIFIED 2026-06-29): `BondPrice` stores a **semiannual**
+  zero but discounts it with the **continuous** `exp(−t·z)` (l.449) → convention mismatch,
+  systematically **under-prices**. Proof: a curve must reprice its own par bonds to 100 — under
+  `exp(−t·z)` they come out **below par (10y → 99.67)**; under the consistent `(1+z/2)^(−2t)` →
+  **100.000000**. Our pipeline discounts consistently (`exp(−t·z_cont)`=DF, par→100); **`vba_compat=True`
+  reproduces the legacy output EXACTLY** (0.0000% on the sample bond). Effect ≈ **0.2% @8y** (node DF
+  −0.43% @10y) — far below v1's 6.4% IG dispersion, so it does **not** change the v1 verdict.
 - 41-tenor grid 0.08y…30y; linear interpolation (interior) / linear extrapolation (ends);
   output monthly to ~374 months × {Annual, Semiannual, Quarterly, Monthly}.
 - Pricing: discount each cash flow at `z(t)+OAS(rating)`, **linear interpolation** of the

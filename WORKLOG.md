@@ -5,6 +5,78 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-29 — WRDS data-pull plan recorded (env ready; blocked on account activation)
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **47 ↔ WRDS confirmed reachable** (`wrds-pgdata.wharton.upenn.edu:9737` OK; general outbound OK —
+  pypi/FRED hosts also reachable, so the old "FRED unreachable" was the 3y data-truncation, not the network).
+- **Env prepared on 47** (`PengSX` conda): installed `wrds` + `psycopg2-binary` (imports OK,
+  `wrds.Connection` present). Side effect: pandas **2.1.1 → 2.2.3** — verified harmless (pricing byte-identical;
+  **golden suite 26/26**). Offered to pin pandas back if the colleague's other work needs 2.1.1.
+- **Blocked:** user's WRDS account is **inactive** → must be reactivated on the WRDS portal (annual
+  re-validation / rep approval). Pull cannot run until then.
+- **Plan written → `docs/wrds_data_plan.md`** (execute-ready). Three pulls keyed by **ISIN→CUSIP**:
+  (1) **Mergent FISD** `fisd` — rescue the 135 MTN terms + callable call schedules → expand canonical >476;
+  (2) **Enhanced TRACE** `trace` — real 2009 marks for the 20 distressed BB/B/CCC names (index OAS can't
+  recover them); (3) **industry×rating spreads** — self-built (FISD SIC + TRACE) to narrow the AA-bank
+  sector-vs-index gap.
+- **Technical decisions baked into the plan** (upgrades over the raw spec): confirm all table/column names via
+  `describe_table` before bulk pulls; prefer direct ISIN join (CUSIP-derived fallback); apply **Dick-Nielsen**
+  cleaning to Enhanced TRACE; Part 3 is a **Z-spread computed by inverting our own `price_bond`** (≡ OAS for
+  option-free; drops straight into our engine; median per rating should ≈ the ICE index OAS = built-in
+  validation); **QA-gate the FISD join on the 476 known-terms bonds** before trusting it for the 135 MTNs;
+  client CUSIP/ISIN lists + all pulls stay **git-ignored** (`data/wrds/`).
+- Next on live connection: smoke query → promote skeletons to a tested `src/dataio/wrds_pull.py`.
+
+---
+
+## 2026-06-29 — Re-verified the BondPrice discounting "bug" from scratch (Liping's challenge)
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Context.** Liping questioned the 2026-06-27 call that `exp(−t·z_semi)` is a VBA bug, and flagged that
+our convention description was self-contradictory. Re-investigated from the raw VBA — not defending the
+prior conclusion.
+
+**Findings (verified, not code-reading alone):**
+- **Read the real `BondPrice`** (decompiled `Pricing File.xlsm`/`vbaProject.bin` → `Bootstrapping.bas`
+  via olevba on 47). `BondPrice` (l.108) and `BondPrice2` (l.487) BOTH bootstrap a **semiannual** zero
+  `z=2·((1/DF)^(1/2t)−1)` (l.346/364) then discount it with **continuous** `exp(−t·z)` (l.449); no
+  compensating step. (Our earlier line-refs 766–818 actually pointed at `BondPrice2` — identical
+  convention, so the conclusion held.)
+- **Root cause of the doc contradiction Liping caught: TWO bootstraps in legacy.** (i) auditable routine
+  = **continuous** (`z=−ln(DF)/t`), what our `bootstrap.py` ports; (ii) `BondPrice`'s embedded bootstrap
+  = **semiannual**. CLAUDE.md described only (i) as "the" convention while calling `exp(−t·z)` a bug —
+  logically backwards *if* z were continuous. Fixed the docs to distinguish them.
+- **Par-bond self-check = decisive proof.** A bootstrapped curve must reprice its own par bonds to 100.
+  Under the VBA's `exp(−t·z)`: 5y→99.90, **10y→99.67**, 25y→99.20 (all below par). Under the consistent
+  `(1+z/2)^(−2t)`: **100.000000** at every tenor. ⇒ the VBA discount is provably inconsistent with the
+  VBA's own curve → under-prices. (Node DF too low −0.11% @5y, −0.43% @10y, −1.31% @20y — reproduces the
+  6-27 numbers exactly.)
+- **Module check** (sample bond A 5.55% 2017, 2009-06-10 curve): VBA-literal **113.9073** vs consistent
+  **114.1365** = −0.20% (pure convention). Our `price_bond` default **114.1361** (= consistent to
+  −0.0004%; residual = our 41-tenor vs VBA 9-anchor curve build, NOT the convention); our **`vba_compat`
+  113.9073 = VBA-literal to 0.0000% (exact)**.
+
+**Verdict.**
+- **(a)** The VBA bug is **real** (semiannual zero discounted continuously; fails its own par self-check).
+- **(b)** Our fix is **correct, not a regression** (default reprices par to 100). **No rollback.** The v1
+  report's "corrected the VBA discounting bug" **stands**.
+- **(c)** `vba_compat` reproduces legacy **exactly** (0.0000%).
+- **Direction:** the *price* direction we documented (VBA under-prices) was **correct**; the only thing
+  "backwards" was the convention *description* (continuous vs semiannual bootstrap) — now fixed.
+
+**Impact scope (so no future session over-reads this).** The convention fix is worth only ≈**0.2% @8y**
+(node DF −0.43% @10y, grows with maturity), **far below v1's 6.4% IG dispersion**. Signed median ≈0
+whether default or vba_compat ⇒ **this does NOT change the v1 validation conclusion.**
+
+**Artifacts.** Line-faithful transcription kept at `47:/tmp/convention_test.py` (re-runs the par
+self-check + sample bond). Docs updated: CLAUDE.md «Conventions», this entry, `bond_price.py` docstring.
+
+---
+
 ## 2026-06-27 — EIR located: a requirement, not legacy code (implement per IFRS-9)
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`

@@ -17,16 +17,22 @@ Conventions copied from the VBA (Bootstrapping.bas, lines 766-818) — kept as-i
   * accrued interest : (rate/2 * 100) * (days since the prior coupon date) / 182.     [l.817]
   * clean = dirty - accrued.                                                          [l.817-818]
 
-Discounting — **CORRECTED** (the one place we deviate, on purpose):
-  The VBA discounts each cash flow as ``cf * exp(-t * z_semi)`` where z_semi is the SEMIANNUAL-
-  compounded zero. That mixes a semiannual rate into a continuous-compounding formula: it does
-  NOT recover the bootstrap's own discount factor (``exp(-t*z_semi) < DF`` for z>0), so it
-  under-prices by ~0.08% at 5y growing to ~0.3% at 10y. The VBA computes the correct DF
-  (``DisCF``) internally and then discards it — a methodology bug, not a convention.
+Discounting — **CORRECTED** (the one place we deviate, on purpose). VERIFIED 2026-06-29.
+  Legacy has TWO bootstraps — do not conflate: the *auditable* routine our pipeline ports
+  (``curves/bootstrap.py``) stores a CONTINUOUS zero (z = -ln(DF)/t); ``BondPrice`` in
+  Bootstrapping.bas has its OWN embedded bootstrap that stores a SEMIANNUAL zero
+  (z_semi = 2*((1/DF)^(1/2t) - 1)). The bug: ``BondPrice`` discounts that SEMIANNUAL zero with
+  the CONTINUOUS formula ``cf * exp(-t * z_semi)`` (Bootstrapping.bas l.449). A semiannual rate in
+  a continuous discount does NOT recover the curve's own DF (``exp(-t*z_semi) < DF`` for z>0), so it
+  systematically UNDER-prices. Proof: a bootstrapped curve must reprice its own par bonds to 100 —
+  under ``exp(-t*z_semi)`` they come out below par (10y -> 99.67); under the consistent
+  ``(1+z_semi/2)^(-2t)`` -> 100.000000. Node DF too low by -0.11% @5y, -0.43% @10y, -1.31% @20y;
+  clean price ~-0.2% @8y.
   CEO asked for a correct, extensible module, so by default this module discounts with the
-  bootstrapped factor ``DF = exp(-t * z_cont)`` (continuous zero), i.e. ``cf * DF * exp(-t*oas)``.
-  Pass ``vba_compat=True`` to reproduce the legacy ``exp(-t * z_semi)`` exactly (0.5y-grid
-  linear interpolation of z_semi, as the VBA does) — used only to explain the gap in reconciliation.
+  bootstrapped factor ``DF = exp(-t * z_cont)`` (continuous zero) = ``(1+z_semi/2)^(-2t)``, i.e.
+  ``cf * DF * exp(-t*oas)`` — reprices par to 100.
+  Pass ``vba_compat=True`` to reproduce the legacy ``exp(-t * z_semi)`` EXACTLY (verified 0.0000%
+  on the sample bond; 0.5y-grid linear interpolation of z_semi, as the VBA does) — reconciliation only.
 
 OAS (the rating spread) is added flat to the discount rate; ``oas = 0`` is risk-free.
 """
