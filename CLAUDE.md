@@ -15,7 +15,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   Run code on **server 47** or a real local install. Don't assume `python` works locally.
 - **Interface to 47 = ssh from the Windows box** (chosen). Needs **key-based ssh** (the Bash
   tool is non-interactive — a password prompt hangs). Loop: edit locally → push → `ssh 47
-  'cd <repo> && git pull && pytest'`. Data lives on 47 (git-ignored).
+  'cd <repo> && git pull && pytest'`. Data lives on 47 (git-ignored). Repo on 47 = **`/home/PengSX/fixed_income_pricing`** (conda env `PengSX`);
+  run scripts via **`PYTHONPATH=src python3 scripts/…`**, run tests via **`.venv/bin/python -m pytest`** (pytest
+  is in the repo `.venv`, NOT conda's `python3` — bare `python3 -m pytest` fails "No module named pytest"). Quick
+  iter: `scp` the file to 47 then run (working-tree edit), or push + `git pull`. Use `ssh -o BatchMode=yes 47`.
 - To read the Excel files without Python, a PowerShell sheet-decoder approach works
   (unzip the xlsx/xlsm and parse `sharedStrings.xml` + `worksheets/sheetN.xml`).
 - **No Bloomberg.** Inputs are exported `*_Yield_Curve.txt` + FRED OAS (the VBA's
