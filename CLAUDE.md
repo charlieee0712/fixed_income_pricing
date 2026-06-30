@@ -138,9 +138,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 ## Open questions
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
-  for Mario: (a) calibration date — 6-10 vs a **3-31 curve+date** to fix near-maturity OAS (the v1 3-31
-  *rating-OAS* refutation below does **NOT** apply to calibration); (b) **17/476 EUR/GBP** → own-ccy curves
-  (curves in `data/`); (c) FX direction **÷BB** (BB = local-per-USD) + are MV/par already base-USD?; (d) confirm
+  for Mario: (a) calibration date — **3-31 flat file incoming from Liping** (Mario's authoritative all-ccy 2009-03-31 curves) → swap `VAL`→3-31 to fix near-maturity OAS (the v1 3-31
+  *rating-OAS* refutation below does **NOT** apply to calibration); (b) **EUR/GBP own-ccy curves DONE** (15 EUR fixed, 2 GBP curve-blocked) —
+  (curves in `data/`); (c) **FX RESOLVED** — custodian base-USD columns (`BU`='Market value - base', `Z`='Book cost - base') read directly, no self-convert (`to_usd` removed; `currency` kept for routing); (d) confirm
   BT marking date/source (now pressing — drives the short-end OAS).
 - ~~3-31 curve = the v1 IG lever~~ **REFUTED (tested 2026-06-27, for the v1 rating-OAS method; REOPENS for calibration — see above):** date-matching to 3-31 (3-31 DGS curve +
   3-31 OAS) makes IG **worse** (6.43%→11.14%, signed −0.41%→−6.70%) — the 3-31 crisis-peak OAS (BBB 7.31% vs

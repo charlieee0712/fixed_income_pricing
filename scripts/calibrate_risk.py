@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 from curves.zero_curve import ZeroCurve
-from dataio.loaders import load_corporate_terms, load_master, to_usd
+from dataio.loaders import load_corporate_terms, load_master
 from dataio.universe import build_universe
 from pricing.calibrate import implied_oas, near_maturity
 from pricing.risk import risk_metrics
@@ -115,7 +115,8 @@ def main():
             bt=float(bt), clean=rm["clean"], implied_oas=oas, implied_bp=oas * 1e4,
             implied_bp_usd_curve=(oas_usd * 1e4 if pd.notna(oas_usd) else np.nan),
             eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
-            our_mv_usd=(to_usd(rm["clean"] / 100.0 * par, fx) if pd.notna(par) else np.nan),
+            mv_base_usd=(pd.to_numeric(recon.loc[aid, "gold_mkt_value"], errors="coerce")
+                        if aid in recon.index else np.nan),   # custodian 'Market value - base' (already USD)
             near_maturity=nm, recovery_plug=rp,
             flag=("near-maturity" if nm else ("recovery-plug" if rp else "")),
         ))

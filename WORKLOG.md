@@ -5,6 +5,34 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-30 — FX resolved (custodian base-USD columns) + 3-31 flat-file prep
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **FX self-conversion REMOVED — the custodian pre-converts.** Probed the master: it carries paired
+  `… - base` / `… - local` columns, and our loader already reads the **base-USD** ones — `BU` = **'Market value
+  - base'** (USD), `Z` = 'Book cost value - base' (USD). Verified on EUR bonds (e.g. `…22656W` BU 1,731,459 ==
+  local 1,304,104 / fx 0.7532; sibling `BV` = 'Market value - local' = 1,304,104). ⇒ per Mario, **no self-FX**:
+  dropped `loaders.to_usd`; the driver now takes position MV from `BU` directly (`mv_base_usd`). Kept `currency`
+  (AJ) — still needed to route each bond to its own-ccy **pricing** curve (**MV basis ≠ pricing curve** — Mario's
+  warning, don't conflate). `fx_rate` (BB) kept as a reference/audit link only. 26/26 golden tests green;
+  implied-OAS / risk table **unchanged** (per-100, FX-independent).
+- **3-31 flat file (Mario→Liping) — the caveat-1 fix, prepped, awaiting the file.** Mario gave Liping a flat file
+  with **all 2009-03-31** yield curves (the authoritative holdings-date curve). Plan: feed it through the existing
+  bootstrap and swap `VAL`→2009-03-31; the near-maturity OAS distortion should clear (each short bond gets its
+  true residual horizon). **Integration seam =** `bootstrap.load_par_curve(txt, date)`'s contract — it returns
+  `(tenors_years_ascending, par_pct)`; the 3-31 adapter only needs to emit that same tuple per (currency,
+  2009-03-31), then `bootstrap()` does the rest unchanged. **Need from Liping's file** to write the adapter fast:
+  layout (one file all ccys vs per-ccy), date/tenor encoding, and units (decimal vs %). The **2 GBP** curve-blocked
+  bonds may also resolve if the 3-31 file carries GBP — revisit together.
+
+**Open / next**
+- Get Liping's 3-31 flat file → write the adapter → re-calibrate at 3-31 → expect near-maturity OAS to normalise.
+- Position-level risk (use `mv_base_usd` × per-100 sensitivities): portfolio DV01 / duration. Golden tests for
+  `calibrate` / `risk`.
+
+---
+
 ## 2026-06-30 — OAS REDEFINED as a calibration factor (Mario call) + implied-OAS & risk-metric layer
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`

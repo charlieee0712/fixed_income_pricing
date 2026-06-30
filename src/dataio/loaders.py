@@ -36,13 +36,16 @@ MASTER_COLS = {
     "AB": "call_date",         # 'Call date'  (callable flag)
     "BW": "maturity_master",   # 'Maturity date'
     "AL": "last_priced",       # 'Date of last pricing' = 2009-03-31
-    # --- currency / FX (multi-currency support; URS corporates are ~all USD) ---
-    "AJ": "currency",          # 'Currency code - asset'  (asset denomination)
-    "BB": "fx_rate",           # 'Exchange rate' — quoted LOCAL units per 1 USD (JPY 98.77, GBP 0.70,
-                               #  EUR 0.75 @ 2009), so local->USD is value / fx_rate. USD rows = 1.0.
+    # --- currency (for own-ccy curve routing) + FX rate (REFERENCE only) ---
+    # The custodian already provides base-USD columns (Market value / Book cost "- base", below), so we
+    # never self-convert. `currency` routes the pricing curve (a EUR bond discounts on the EUR curve);
+    # `fx_rate` is kept only as an audit link (base = local / fx_rate; BB is quoted LOCAL per 1 USD).
+    "AJ": "currency",          # 'Currency code - asset'  (drives own-ccy curve routing)
+    "BB": "fx_rate",           # 'Exchange rate' (LOCAL per 1 USD) — reference only; MV uses the base col
     # --- custodian golden master: reconciliation only, never a pricing input ---
-    "BT": "gold_price",
-    "BU": "gold_mkt_value",
+    "BT": "gold_price",        # 'Market price' (clean, per 100 face — currency-agnostic)
+    "BU": "gold_mkt_value",    # 'Market value - base' = already BASE USD (custodian-converted; use directly).
+                               #  ('Market value - local' is the sibling col BV; we do NOT use it.)
     "DI": "gold_ytm",
 }
 
@@ -91,25 +94,7 @@ def load_corporate_terms(path):
     return _read_sheet(path, TAB_SHEET, TAB_COLS)
 
 
-def to_usd(value_local, fx_rate):
-    """Convert a local-currency value to USD using the master ``fx_rate`` (column ``BB``,
-    'Exchange rate').
-
-    The custodian quotes ``BB`` as **local-currency units per 1 USD** (empirically: JPY 98.77,
-    GBP 0.70, EUR 0.75 at 2009), so the USD value is ``value_local / fx_rate``. A missing / zero /
-    NaN rate is treated as ``1.0`` (USD asset, no conversion).
-
-    URS corporates are essentially all USD (``fx_rate == 1``), so this is a no-op for the current
-    book; it exists so the framework carries multi-currency holdings correctly. *Open item for
-    Mario:* (a) BB is local-per-USD, so this DIVIDES — confirm vs the spoken "× exchange rate";
-    (b) confirm whether the stored market values are already base-USD (then no conversion at all).
-    """
-    import math
-
-    try:
-        r = float(fx_rate)
-    except (TypeError, ValueError):
-        return value_local
-    if r == 0 or math.isnan(r):
-        return value_local
-    return value_local / r
+# NB: no currency-conversion helper here, by design. Mario (2026-06-30) confirmed the custodian
+# supplies BASE-USD columns ("Market value - base" = BU, "Book cost value - base" = Z), verified in the
+# data (e.g. EUR bond BU == local / fx_rate). So USD values are read directly from the "- base" columns
+# and never self-converted. `currency` (AJ) is retained only to route each bond to its own-ccy curve.
