@@ -5,6 +5,87 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-06-30 — OAS REDEFINED as a calibration factor (Mario call) + implied-OAS & risk-metric layer
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Redefinition (Mario, phone).** OAS is a **calibration factor, NOT a pricing input.** New flow:
+(1) back out each bond's **implied OAS** from the custodian price `BT` (solve OAS s.t. model clean = `BT`);
+(2) on that calibrated model compute **risk metrics** (duration / DV01 / convexity / Greeks). The deliverable
+is the risk metrics; implied OAS is the intermediate product. This **moots v1's 6.4% IG dispersion** (no
+rating-average OAS forced onto single names) and **changes the data plan**: the WRDS/Bloomberg pulls for
+*distressed* and *sector* OAS are **CANCELLED** (each bond's OAS now comes from its own `BT`). FISD (MTN +
+callable terms) may still be needed — risk metrics need each bond's full cash flows — but that's a
+*pricing/terms* need, unrelated to OAS; still gated on WRDS account activation.
+
+**Implemented (on 47, default corrected engine; 26/26 golden tests still green).**
+- `src/pricing/calibrate.py` — `implied_oas(target_clean, …)`: Brent root-find of the flat OAS s.t.
+  `price_bond(...).clean == BT`. Clean is strictly decreasing in OAS ⇒ unique root; auto-widening bracket.
+- `src/pricing/risk.py` — `risk_metrics(...)`: effective **duration / DV01 / convexity** by ±1 bp central
+  difference. Key identity: `price_bond` adds OAS flat to the continuous zero, so **bumping OAS ≡ a parallel
+  curve shift** — no curve object is mutated. Duration/convexity use the dirty (full) PV; DV01 = price change
+  per +1 bp (per 100; ×par/100 for a position).
+- FX: `loaders.py` now carries `currency` (`AJ`) + `fx_rate` (`BB`) + a `to_usd()` helper. **BB is quoted
+  LOCAL-per-USD** (JPY 98.77, GBP 0.70, EUR 0.75 @ 2009) ⇒ local→USD is **÷ BB** (NOT the spoken "× rate" —
+  confirm w/ Mario; also confirm whether the stored MV/par are already base-USD).
+
+**Results @ 2009-06-10, canonical 476** (`outputs/implied_oas.csv`).
+- **Calibration exact**: `|clean(implied_oas) − BT|` max **2.2e-8**. **475/476 implied OAS > 0** (1 negative).
+- **Risk metrics validated**: numerical effective duration == continuous Macaulay (`Σ tᵢ·PVᵢ / P`) to **1e-7**;
+  sane (~10y → dur ≈ 6.6, DV01 ≈ 0.069, cvx ≈ 56; 30y AA → dur ≈ 12.3, DV01 ≈ 0.13, cvx ≈ 244).
+- **Implied OAS vs rating** (median bp): AAA 176 / AA 390 / A 292 / BBB 414 / BB 1374 / CCC 2585 — broadly
+  monotone, aligned with the v1 index OAS (148/227/302/453/741/1704) but **wider, with name dispersion**, and
+  **distressed clearly larger** (as Mario expected).
+
+**Three caveats found (pasted to the user — need a decision).**
+1. **Near-maturity distortion.** Bonds maturing within ~6 mo of 6-10 get inflated / negative implied OAS
+   (a 5-day AA → **1372 bp**; the lone negative is a 35-day A → −177 bp). A tiny BT-vs-model price gap ÷ a
+   near-zero horizon annualises to a huge "spread"; the gap is mostly the **70-day 3-31(holdings)/6-10(curve)
+   mismatch**. ⇒ for **calibration** the 3-31 date-match question **REOPENS** — different from the v1 *rating-OAS*
+   result (where 3-31 hurt): a 3-31 curve+date gives each short bond its true residual horizon and cleans the
+   short end. Ties to the still-open **"confirm BT's marking date/source."**
+2. **17 / 476 canonical bonds are EUR/GBP**, not USD (the book is **not** all-USD: 459 USD + 16 EUR + 1 GBP,
+   `TNTG…` ISINs). They're being priced on the **USD** curve (as v1 silently did) ⇒ their implied OAS is a
+   USD-vs-EUR-curve artifact. The EUR/GBP par curves **are** in `data/` ⇒ price them on their own-ccy curves
+   (v1.5). Surfaced by the FX work.
+3. **Distressed implied OAS** (BT 11–35 → OAS up to **~11,800 bp**) is a **recovery-driven plug**, not an
+   economic spread — fine as a calibration factor, not interpretable as credit.
+
+**Recon — legacy callable/option engine (background agent, read-only).** All option/Greek code is in
+`Project Pricing…/Module1` (`extracted/project_vba.txt`, 11,983 lines). **The straight callable/puttable engine
+is `BondOAS`** (l.4397-5861) — a **binomial short-rate/credit lattice** (0.5/0.5), `analysisType` 2=callable /
+3=putable / 4=sink / **5=solve implied OAS** / **6=±10 bp effective duration**. ⇒ **Mario's redefined flow
+(implied OAS → duration) literally IS the legacy `BondOAS` design.** `CBondPrice` (l.3904-4394) is a
+**convertible** pricer (CRR equity tree + Tsiveriotis-Fernandes), **not** the callable target — porting note.
+Greeks (l.6928-7225) are closed-form **Black-Scholes equity** option Greeks (for convertibles). **No
+DV01/convexity/Macaulay anywhere in legacy** (only ±10 bp effective duration) ⇒ our `risk.py` fills a real gap.
+Both callable engines build their **own** rate lattice (not the bootstrapped curve) ⇒ a v2 port re-points them
+at `ZeroCurve`.
+
+**Caveats — HANDLED this session (per Mario).** (1) near-maturity `<1y` now flagged (`calibrate.near_maturity`)
+and **excluded from the by-rating medians** (16 bonds; kept in the CSV); the 3-31 calibration-date question stays
+open. (2) **EUR/GBP FIXED** — `ZeroCurve.from_currency` routes by `currency`; the **15 EUR** re-priced on the EUR
+curve tighten implied OAS **~20–55 bp** (EUR rates > USD in 2009); the **2 GBP** can't bootstrap (GBP par
+non-arb-free at the 3y node @ 2009-06-10 — `bootstrap()` builds all variants together so the whole curve fails)
+→ skipped+flagged for follow-up (nearby GBP date / bootstrap robustness). (3) distressed → `recovery-plug` flag
+(BT<50) + a distress-excluded median. **Refined by-rating implied OAS (excl. near-maturity, own-ccy curves; bp):**
+AAA 171 / AA 386 / A 291 / BBB 413 / BB 1374 (855 excl-distress) / CCC 2585 (2279) — **A & BBB land on the index
+(302/453)**; **AA wide (386 vs 227) = the AA-financials sector effect** (real, not an artifact); HY wide = distress.
+New code: `zero_curve.from_currency`, `calibrate.near_maturity`, `scripts/calibrate_risk.py`. Also scrubbed a
+client-ISIN leak from `docs/wrds_data_plan.md` and `.gitignore` now blocks all of `data/`.
+
+**Open / next**
+- **Decide (Mario):** (a) calibration date — keep 6-10 or use a 3-31 curve+date to fix the short end (needs the
+  3-31 curve source / BT date confirmation); (b) FX direction (÷BB) + whether MV/par are already base-USD;
+  (c) price the 17 EUR/GBP names on their own-ccy curves now (v1.5) or defer.
+- Then: position-level risk (×par; portfolio DV01 / duration), spread / key-rate durations.
+- v2 callables: port `BondOAS` (lattice), re-pointed at `ZeroCurve`; needs vol + call/put schedules (FISD).
+- Amend `docs/wrds_data_plan.md` (Parts 2 & 3 — distressed/sector OAS — cancelled; Part 1 FISD still maybe).
+- Commit the calibrate/risk layer + FX on a fresh branch (currently scp'd to 47, uncommitted).
+
+---
+
 ## 2026-06-29 — WRDS data-pull plan recorded (env ready; blocked on account activation)
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

@@ -12,6 +12,10 @@
 *.txt
 !requirements.txt
 
+# Whole client-data dir — belt-and-suspenders beyond the extensions above (covers any future
+# WRDS/FISD pull in a non-listed format, e.g. data/wrds/*.parquet).
+data/
+
 # Extracted / working artifacts
 extracted/
 scratchpad/

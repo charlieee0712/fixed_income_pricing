@@ -36,6 +36,10 @@ MASTER_COLS = {
     "AB": "call_date",         # 'Call date'  (callable flag)
     "BW": "maturity_master",   # 'Maturity date'
     "AL": "last_priced",       # 'Date of last pricing' = 2009-03-31
+    # --- currency / FX (multi-currency support; URS corporates are ~all USD) ---
+    "AJ": "currency",          # 'Currency code - asset'  (asset denomination)
+    "BB": "fx_rate",           # 'Exchange rate' — quoted LOCAL units per 1 USD (JPY 98.77, GBP 0.70,
+                               #  EUR 0.75 @ 2009), so local->USD is value / fx_rate. USD rows = 1.0.
     # --- custodian golden master: reconciliation only, never a pricing input ---
     "BT": "gold_price",
     "BU": "gold_mkt_value",
@@ -85,3 +89,27 @@ def load_corporate_terms(path):
     """The ``Corporate Bonds`` terms tab (coupon / type / freq / maturity), pre-dedupe
     (676 rows / 616 unique Asset Codes — dedupe in the universe pipeline)."""
     return _read_sheet(path, TAB_SHEET, TAB_COLS)
+
+
+def to_usd(value_local, fx_rate):
+    """Convert a local-currency value to USD using the master ``fx_rate`` (column ``BB``,
+    'Exchange rate').
+
+    The custodian quotes ``BB`` as **local-currency units per 1 USD** (empirically: JPY 98.77,
+    GBP 0.70, EUR 0.75 at 2009), so the USD value is ``value_local / fx_rate``. A missing / zero /
+    NaN rate is treated as ``1.0`` (USD asset, no conversion).
+
+    URS corporates are essentially all USD (``fx_rate == 1``), so this is a no-op for the current
+    book; it exists so the framework carries multi-currency holdings correctly. *Open item for
+    Mario:* (a) BB is local-per-USD, so this DIVIDES — confirm vs the spoken "× exchange rate";
+    (b) confirm whether the stored market values are already base-USD (then no conversion at all).
+    """
+    import math
+
+    try:
+        r = float(fx_rate)
+    except (TypeError, ValueError):
+        return value_local
+    if r == 0 or math.isnan(r):
+        return value_local
+    return value_local / r

@@ -46,7 +46,7 @@ def isin_to_cusip(isin: str) -> str | None:
     if not isin or len(isin) != 12 or isin[:2] not in ("US", "CA"):
         return None                      # non-US domicile: NSIN != CUSIP -> handle manually / flag
     return isin[2:11]
-# verified: US12189TAZ75 -> 12189TAZ7  (matches recon_oas.csv asset TNTD03002424)
+# illustration (PUBLIC example, not client data): US0378331005 -> 037833100  (Apple ISIN -> CUSIP)
 ```
 **Join strategy:** prefer a **direct ISIN match** (`fisd_mergedissue.isin`) where populated; fall back to
 the CUSIP-derived join on `complete_cusip` (9-char, FISD's primary key). Keep both match flags so we can

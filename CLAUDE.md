@@ -29,8 +29,13 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `Bootstrapped-*.zip` — Stage-1 output, **demo @ 2024-01-16** (not the pricing basis).
 - `Pricing File.xlsm` — reference VBA: `Bootstrapping.bas` (1706 lines: **`BondPrice`**,
   `ZeroCalc`, `Parcurve`), `Matrix.bas`, `Copulas.bas`. **Port `BondPrice`** — do **not**
-  port the ~11k-line `Module1` in the other workbook. Contains a *separate* Uganda demo.
-- `Project Pricing Fixed Income Instruments.xlsm` — legacy risk-system sample (huge `Module1`).
+  port the ~11k-line `Module1` in the other workbook *for v1* (v2 callables DO port `BondOAS` from it — see below).
+  Contains a *separate* Uganda demo.
+- `Project Pricing Fixed Income Instruments.xlsm` — legacy risk-system sample (huge `Module1`). **v2 callable
+  source** (recon 2026-06-30; VBA → `47:extracted/project_vba.txt`): **`BondOAS`** l.4397-5861 = straight
+  callable/putable/sink **binomial short-rate lattice** (`analysisType` 5=implied-OAS, 6=±10bp eff-dur = the
+  redefined flow); `CBondPrice` l.3904-4394 = **convertible** (CRR equity tree, NOT the callable target); BS
+  equity Greeks l.6928-7225; **no DV01/convexity/Macaulay in legacy**.
 - `URS …xlsx` — **the portfolio to price**: a US engineering-company pension, USD ISINs,
   positions split by asset type; `Corporate Bonds` tab is current focus.
 
@@ -55,7 +60,19 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   output monthly to ~374 months × {Annual, Semiannual, Quarterly, Monthly}.
 - Pricing: discount each cash flow at `z(t)+OAS(rating)`, **linear interpolation** of the
   monthly grid; dirty = Σ coupons·DF + face·DF(T); clean = dirty − accrued.
-- **OAS** = **ICE BofA US Corporate/HY** Index OAS, **one flat spread per rating** (AAA…CCC).
+- **OAS — REDEFINED 2026-06-30 (Mario call): a per-bond CALIBRATION factor, NOT a pricing input.** New flow:
+  back out each bond's **implied OAS** from the custodian price `BT` (solve OAS s.t. model clean = `BT`,
+  `src/pricing/calibrate.py`), then compute **risk metrics** on the calibrated model (`src/pricing/risk.py`).
+  Goal = risk metrics; implied OAS is the intermediate. **Supersedes index-rating-OAS as the endpoint**; moots
+  v1's 6.4% IG dispersion (no rating average forced on names). ⇒ WRDS *distressed/sector OAS* pulls **CANCELLED**
+  (FISD terms-rescue may still be needed — cash flows for risk metrics, not OAS). Calibration @ 2009-06-10/476:
+  exact (`|clean−BT|`<2.2e-8), 475/476 OAS>0. Caveats: near-maturity OAS distorted by the 70-day date mismatch
+  (3-31 date-match **REOPENS for calibration**), **17/476 EUR/GBP** (→ own-ccy curves), distressed OAS =
+  recovery plug. **Caveats handled (2026-06-30):** near-maturity (<1y) flagged + excluded from medians (16);
+  EUR/GBP routed to own-ccy curves via `ZeroCurve.from_currency` (15 EUR fixed → OAS −20..55bp, 2 GBP curve-blocked
+  @ 6-10); distressed = `recovery-plug` flag. After fixes A/BBB land on the index (291/413 vs 302/453), AA wide
+  (386 vs 227 = AA-financials). 3-31 calibration date still open. [v1 index OAS below, kept for history.]
+- **OAS (v1 index, kept for history)** = **ICE BofA US Corporate/HY** Index OAS, **one flat spread per rating** (AAA…CCC).
   **Historical source = `Pricing File.xlsm` / sheet `OAS Credit Curves`** (full daily 1997-01-02 …
   2025-11-07, 7 buckets; archived before ICE/FRED truncated the free series to a rolling 3y window
   in **April 2026**). Read via **`src/credit/oas.py`** (`oas_on(path, date)` → decimal dict, raises on
@@ -112,9 +129,20 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   precision to improve in v1.5. Narrowing path to <5% = **finer OAS (sector/quality/name), v2** — the
   3-31 date-match is a **tested dead end** (makes IG *worse*, 6.4%→11.1%: the 3-31 crisis-peak OAS overstates
   these holdings' spreads — see WORKLOG). HY / distressed / callable = v2.
+- **Calibration + risk layer** (`src/pricing/calibrate.py` + `risk.py`, on 47) — **the redefined direction**:
+  per-bond **implied OAS** from `BT` (canonical 476: exact, 475/476>0) → **effective duration / DV01 / convexity**
+  (numerical ±1bp = parallel-shift bump; == continuous Macaulay to 1e-7). `outputs/implied_oas.csv`. Driver `scripts/calibrate_risk.py`. **Caveats handled:** `from_currency` routes per-ccy curves (15 EUR
+  fixed, 2 GBP curve-blocked), `near_maturity` flags+excludes <1y → A/BBB land on the index (291/413 vs
+  302/453), AA wide (386) = AA-financials, HY = distress. See WORKLOG 2026-06-30.
 
 ## Open questions
-- ~~3-31 curve = the v1 IG lever~~ **REFUTED (tested 2026-06-27):** date-matching to 3-31 (3-31 DGS curve +
+- **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
+  index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
+  for Mario: (a) calibration date — 6-10 vs a **3-31 curve+date** to fix near-maturity OAS (the v1 3-31
+  *rating-OAS* refutation below does **NOT** apply to calibration); (b) **17/476 EUR/GBP** → own-ccy curves
+  (curves in `data/`); (c) FX direction **÷BB** (BB = local-per-USD) + are MV/par already base-USD?; (d) confirm
+  BT marking date/source (now pressing — drives the short-end OAS).
+- ~~3-31 curve = the v1 IG lever~~ **REFUTED (tested 2026-06-27, for the v1 rating-OAS method; REOPENS for calibration — see above):** date-matching to 3-31 (3-31 DGS curve +
   3-31 OAS) makes IG **worse** (6.43%→11.14%, signed −0.41%→−6.70%) — the 3-31 crisis-peak OAS (BBB 7.31% vs
   6-10's 4.53%) overstates these high-grade holdings' spreads; **BT aligns with ~6-10 (tighter) spreads, the
   70-day gap is NOT a precision lever** (real lever = finer OAS, v2).
@@ -133,12 +161,14 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (rating `CM`/`CL`, par `CV`; join on Asset ID). ~~build the MECE pipeline~~ **done**.
 
 ## Target architecture (`src/<layer>/`; root `conftest.py` puts `src/` on path)
-- `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread).
+- `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread; `from_currency` per-ccy curves).
 - `src/credit/` — ✅ `ratings.py` (notch-map) · ✅ `oas.py` (per-rating OAS from `OAS Credit Curves`).
 - `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
   MECE funnel → **canonical 476 @ 2009-06-10**); FRED OAS loader next. (Named `dataio`, **not** `io`:
   `conftest` puts `src/` at `sys.path[0]`, so an `io` package would shadow stdlib `io`.)
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
-  **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params).
+  **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params) ·
+  ✅ `calibrate.py` (`implied_oas`: solve OAS s.t. clean=`BT`) · ✅ `risk.py` (`risk_metrics`: effective
+  duration / DV01 / convexity by ±1bp = parallel-shift bump).
 - `src/instruments/` (Bond model + cash flows) · `src/risk/` (CreditMetrics, later) · `src/config/`.
 - `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`).

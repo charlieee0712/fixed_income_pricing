@@ -18,6 +18,14 @@ import pandas as pd
 
 from curves.bootstrap import FREQUENCIES, bootstrap
 
+# Par-curve export file per currency (in the data/ dir). Country-name aliases exist (JAPAN==JPY)
+# but the URS corporates use ISO codes; extend as needed.
+CURVE_FILE = {
+    "USD": "USD_Yield_Curve.txt",
+    "EUR": "EUR_Yield_Curve.txt",
+    "GBP": "GBP_Yield_Curve.txt",
+}
+
 
 class ZeroCurve:
     """Zero curve for one valuation date and one compounding-frequency variant.
@@ -46,6 +54,21 @@ class ZeroCurve:
         """Bootstrap the par-yield txt at ``valuation_date`` and wrap the result."""
         grid = bootstrap(txt_path, valuation_date)
         return cls(grid, freq=freq, valuation_date=valuation_date)
+
+    @classmethod
+    def from_currency(cls, data_dir, currency, valuation_date, freq: str = "Semiannual"):
+        """Bootstrap the par-yield curve for ``currency`` (USD/EUR/GBP/…) from ``data_dir``.
+
+        Routes a bond to its OWN-currency discount curve — a non-USD bond discounted on the USD
+        curve is mispriced (the v1 pipeline did exactly that for the 17 EUR/GBP corporates). Raises
+        if the currency has no mapped par-curve file."""
+        import os
+
+        code = str(currency).strip().upper()
+        fname = CURVE_FILE.get(code)
+        if fname is None:
+            raise ValueError(f"no par-curve file for currency {currency!r} (have {sorted(CURVE_FILE)})")
+        return cls.from_par_txt(os.path.join(data_dir, fname), valuation_date, freq=freq)
 
     def zero_rate(self, t, spread: float = 0.0):
         """Continuous zero rate (decimal) at year ``t`` (linear-interpolated) + ``spread``."""
