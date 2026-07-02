@@ -5,6 +5,83 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-02 — 3-31 calibration ADOPTED as baseline (Mario's USD curve) + date-matched index fix
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Mario's 2009-03-31 USD curve arrived** (`USD_Yield_Curve.txt`, dropped at the repo root). Format = the
+**native `*_Yield_Curve.txt` schema** — `Date`(Excel serial)`,0.25,0.5,1,2,3,5,10,20,30`, values **decimal**,
+**USD-only** (no EUR/GBP inside). ⇒ **no adapter needed**: `bootstrap.load_par_curve` reads it directly;
+integration = drop the file in + swap `VAL`. It is a **superset of the old USD file** (14,794 rows ~1962→2026):
+fills the 2008-11-10→2009-06-10 gap (**3-31 = serial 39903 present**), and its 2024-01-16 row is **byte-identical**
+to the old file (only diffs at overlapping dates = higher precision + a corrected 6-10 20y: old 4.75% → 4.3555%).
+Swapped in on 47 (`data/USD_Yield_Curve.txt`; old kept as `…_pre_mario.txt`); **26/26 tests still green**.
+
+**Curve self-check (bootstrap @ 3-31, Semiannual).** Short end ~ZIRP (0.5y 0.42%, 1y 0.55%); belly/long
+**~100–137bp below 6-10** (2y 0.80 vs 1.36; 10y 2.75 vs 4.09; 30y 3.88 vs 5.26) — the March-lows→June sell-off.
+**Par bonds reprice to 100.0000** at 2/5/10/30y, DFs monotone → arb-free & self-consistent. 3-31 levels tie to
+actual end-Mar-2009 UST (5y≈1.66, 10y≈2.67, 30y≈3.54).
+
+**DECISION — 3-31 ADOPTED as the calibration baseline; 6-10 retained as control.** Reasons: matches the
+**holdings date**; **more correct universe** (481 vs 476 — 5 bonds alive @3-31 that 6-10 wrongly dropped as
+matured); **fixes near-maturity distortion**; risk metrics barely move; and it is Mario's instruction. Calibration
+exact both dates (`|clean−BT|`≈2e-8; 479/481 priced @3-31).
+
+**Near-maturity distortion CLEARED (the caveat-1 fix, confirmed).** Date-matching the curve to the holdings date
+removes the 70-day annualisation artefact:
+- `TNTD04216534` (AA, matures 2009-06-15): **1371bp → 464bp**.
+- `TNTD04598394` (A, matures 2009-07-15): **−177bp → +199bp** (the negative OAS).
+- `TNTD04215797` (BBB, matures 2009-08-15): 12bp (implausibly tight) → 375bp.
+- Aggregate over the near-mat set: `|bp|>1000-or-neg` **3→1**, negatives **1→0**, median|bp| 602→485, max 3182→2486.
+  4 bonds cross >1y and **rejoin the by-rating medians**. The lone survivor (2486bp) is a genuine discount bond
+  (BT 84), not a date artefact.
+
+**By-rating implied OAS (excl. near-mat) + BT-MARKING-DATE EVIDENCE.** The ~100bp-lower 3-31 curve lifts every IG
+median by ~+100bp. Paired with the **date-matched** ICE index (fix below), the two-date table is the evidence that
+**BT embeds a ~June (post-rally, tighter) credit level, not a March crisis-peak level** (bp):
+
+| rating | implied 6-10 | index 6-10 | implied 3-31 | index 3-31 |
+|--------|-------------:|-----------:|-------------:|-----------:|
+| AAA    |  171 |  148 |  278 |  246 |
+| AA     |  388 |  227 |  489 |  403 |
+| A      |  297 |  302 |  406 |  549 |
+| BBB    |  420 |  453 |  525 |  731 |
+| BB     | 1375 |  741 | 1423 | 1112 |
+| B      | 1310 |  945 | 1389 | 1537 |
+| CCC    | 2587 | 1704 | 2451 | 3093 |
+
+Read: **@6-10 implied ≈ 6-10 index** (A 297 vs 302, BBB 420 vs 453); **@3-31 implied sits 143–206bp BELOW the 3-31
+crisis-peak index** (A 406 vs 549, BBB 525 vs 731). Implied spreads move with the risk-free curve but do **not**
+climb to the March index ⇒ the custodian marks were struck against ~June credit spreads. **⇒ question for
+Mario/the colleague: what is the custodian's actual BT marking convention (date/source)?** NB: this affects the
+**interpretation of the OAS absolute level only** — it does **not** affect the calibration+risk-metric deliverable
+(which reprices BT exactly by construction, whatever BT's date).
+
+**Risk metrics robust to the date.** Excl. near-mat (n=462 @3-31): eff-dur median 5.95y, DV01 0.051/100/bp,
+convexity 41.6. Shift 6-10→3-31: eff-dur **+0.13y**, DV01 +0.0009, convexity +2.2 (earlier date = longer horizon +
+lower yield). The deliverable is stable across the curve-date choice.
+
+**GBP still blocked (2 bonds, `TNTG019421U`/`TNTG301334W`).** Mario's file is USD-only, and the *existing* GBP curve
+@3-31 still hits its non-arb 3y node (Annual variant): `bootstrap()` builds all four freq variants and dies on the
+bad Annual node even for a semiannual bond. **Root cause = GBP curve data (or the eager all-variant bootstrap), NOT
+the valuation date.** Revisit when a GBP replacement curve arrives, or robustify `bootstrap` to build only the
+needed variant. Non-blocking.
+
+**Code (`scripts/calibrate_risk.py`).** (1) added `FIP_OUT` env override → per-date output files, no clobbering;
+(2) **fixed a latent bug** — the by-rating index was a hardcoded 6-10 dict, wrong for any other date; now pulled
+**date-matched** via `oas_on(OAS_WB, VAL)` (`FIP_OAS_WB` overridable). Verified: 6-10 reproduces the old hardcode
+(148/227/302/453/741/945/1704), 3-31 gives the crisis-peak index (246/403/549/731/1112/1537/3093). 26/26 green.
+
+**Open / next**
+- **Ask Mario/colleague the BT marking date/source** (evidence above) — OAS-level interpretation, not a pipeline blocker.
+- GBP ×2: needs a GBP replacement curve or `bootstrap` variant-isolation (parked, non-blocking).
+- Position-level risk (portfolio DV01/duration via `mv_base_usd` × per-100 sensitivities); golden tests for
+  `calibrate`/`risk`.
+- EIR (IFRS-9) after the v1 Mario report + spec confirmation.
+
+---
+
 ## 2026-06-30 — FX resolved (custodian base-USD columns) + 3-31 flat-file prep
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

@@ -74,7 +74,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   recovery plug. **Caveats handled (2026-06-30):** near-maturity (<1y) flagged + excluded from medians (16);
   EUR/GBP routed to own-ccy curves via `ZeroCurve.from_currency` (15 EUR fixed → OAS −20..55bp, 2 GBP curve-blocked
   @ 6-10); distressed = `recovery-plug` flag. After fixes A/BBB land on the index (291/413 vs 302/453), AA wide
-  (386 vs 227 = AA-financials). 3-31 calibration date still open. [v1 index OAS below, kept for history.]
+  (386 vs 227 = AA-financials). **3-31 ADOPTED as calibration baseline (2026-07-02)** — Mario's USD 3-31 curve
+  (native schema, no adapter) swapped in; near-maturity distortion cleared (1371→464bp, −177→+199bp), universe
+  481 (>476: 5 bonds alive @3-31 that 6-10 dropped), IG medians +~100bp (= the ~100bp-lower curve), risk metrics
+  stable (eff-dur +0.13y). 6-10 kept as control. See WORKLOG 2026-07-02. [v1 index OAS below, kept for history.]
 - **OAS (v1 index, kept for history)** = **ICE BofA US Corporate/HY** Index OAS, **one flat spread per rating** (AAA…CCC).
   **Historical source = `Pricing File.xlsm` / sheet `OAS Credit Curves`** (full daily 1997-01-02 …
   2025-11-07, 7 buckets; archived before ICE/FRED truncated the free series to a rolling 3y window
@@ -97,10 +100,11 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   2009-03-31 is **absent** from curve files (gap 2008-11-10 → 2009-06-10). At 2024-01-16
   only **123/668** corporate bonds are still alive (545 matured); at 2009-03-31, **667**.
   → To price the real 2009 book, **bootstrap a ~2009 curve**; the 2024 CSVs are a demo.
-  **Chosen curve date = 2009-06-10** (first after the gap; alt = 2008-11-10 crisis trough).
-  ⚠️ Holdings 3-31 vs curve 6-10 = **70-day mismatch** → won't tie to custodian `BT/BU/DI`.
-  **The port reproduces the VBA tool's output, not the custodian mark.** Open: ask the colleague
-  which curve date/source the original tool used for the 3-31 book (maybe a 3-31 Bloomberg curve).
+  **Curve date: calibration baseline = 2009-03-31** (Mario's USD curve arrived 2026-07-02, fills the gap;
+  matches the holdings date → near-maturity distortion cleared, universe 481). 6-10 kept as control (v1 +
+  BT-date evidence). [was "6-10 chosen", pre-3-31-file.]
+  ⚠️ Even @3-31 the model reproduces the VBA tool's output, not the custodian mark; **BT marking date/source
+  still open** — evidence now points to BT ≈ ~June credit level (see WORKLOG 2026-07-02).
 - **Universe = deterministic 2-layer pipeline**, **IMPLEMENTED** in `src/dataio/universe.py`.
   Start = master sub-cat == `Corporate Bonds`, dedupe by Asset ID → **732 unique** (from 811
   rows; no separate MTN sub-cat — MTN = a terms-gap label, not a category). Log every drop with
@@ -109,7 +113,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   **54 non-vanilla / 73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted →
   no-rating → structured/floating → callable → matured`. Layer A = date-independent, Layer B =
   matured-at-val-date. **Result @ 2009-06-10 (post-priority MECE): canonical 476 / terms-unavailable
-  135 / structured-floating 51 / callable 51 / no-rating 9 / matured 6 / defaulted 4.**
+  135 / structured-floating 51 / callable 51 / no-rating 9 / matured 6 / defaulted 4.** **@2009-03-31 (adopted
+  baseline): canonical 481** (5 more alive — bonds that matured 3-31→6-10 and 6-10 dropped).
   135 master-only = `terms-unavailable` (MTN; terms in neither sheet — **data gap, not security type**).
   Notch-map (S&P/Moody → 7 buckets) implemented in **`src/credit/ratings.py`**. Red lines: keep IG/HY split
   (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
@@ -137,20 +142,28 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (numerical ±1bp = parallel-shift bump; == continuous Macaulay to 1e-7). `outputs/implied_oas.csv`. Driver `scripts/calibrate_risk.py`. **Caveats handled:** `from_currency` routes per-ccy curves (15 EUR
   fixed, 2 GBP curve-blocked), `near_maturity` flags+excludes <1y → A/BBB land on the index (291/413 vs
   302/453), AA wide (386) = AA-financials, HY = distress. See WORKLOG 2026-06-30.
+  **3-31 adopted as baseline (2026-07-02):** re-calibrated @2009-03-31 (canonical 481, exact), near-maturity
+  cleared, by-rating index now **date-matched** via `oas_on(VAL)`; driver env-parameterised
+  (`FIP_VAL_DATE`/`FIP_OUT`/`FIP_OAS_WB`). See WORKLOG 2026-07-02.
 
 ## Open questions
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
-  for Mario: (a) calibration date — **3-31 flat file incoming from Liping** (Mario's authoritative all-ccy 2009-03-31 curves) → swap `VAL`→3-31 to fix near-maturity OAS (the v1 3-31
-  *rating-OAS* refutation below does **NOT** apply to calibration); (b) **EUR/GBP own-ccy curves DONE** (15 EUR fixed, 2 GBP curve-blocked) —
-  (curves in `data/`); (c) **FX RESOLVED** — custodian base-USD columns (`BU`='Market value - base', `Z`='Book cost - base') read directly, no self-convert (`to_usd` removed; `currency` kept for routing); (d) confirm
-  BT marking date/source (now pressing — drives the short-end OAS).
+  for Mario: (a) calibration date — **3-31 ARRIVED & ADOPTED (2026-07-02)**: Mario's USD 3-31 curve (native schema)
+  swapped in, `VAL`=2009-03-31, near-maturity distortion cleared (the v1 3-31 *rating-OAS* refutation below does
+  **NOT** apply to calibration); (b) **EUR/GBP own-ccy curves DONE** (15 EUR fixed, **2 GBP still curve-blocked** —
+  non-arb 3y node, needs a GBP replacement curve or `bootstrap` variant-isolation, NOT a date issue); (c) **FX
+  RESOLVED** — custodian base-USD columns (`BU`='Market value - base', `Z`='Book cost - base') read directly, no
+  self-convert (`to_usd` removed; `currency` kept for routing); (d) **confirm BT marking date/source — now the key
+  open**: two-date evidence shows implied@6-10 ≈ 6-10 index but implied@3-31 sits 143–206bp *below* the 3-31 crisis
+  index ⇒ BT embeds ~June credit; affects OAS-level *interpretation* only, not the calibration/risk deliverable.
 - ~~3-31 curve = the v1 IG lever~~ **REFUTED (tested 2026-06-27, for the v1 rating-OAS method; REOPENS for calibration — see above):** date-matching to 3-31 (3-31 DGS curve +
   3-31 OAS) makes IG **worse** (6.43%→11.14%, signed −0.41%→−6.70%) — the 3-31 crisis-peak OAS (BBB 7.31% vs
   6-10's 4.53%) overstates these high-grade holdings' spreads; **BT aligns with ~6-10 (tighter) spreads, the
   70-day gap is NOT a precision lever** (real lever = finer OAS, v2).
-- **Confirm BT's marking date/source** (colleague) — the 6-10 model fits a nominally-3-31 BT, so BT may not be
-  strictly 3-31 (or rates/spreads moved opposite and offset). A data-understanding item now, not a precision lever.
+- **Confirm BT's marking date/source** (colleague) — **now corroborated by the 2026-07-02 two-date calibration**:
+  implied OAS @6-10 ≈ the 6-10 index but @3-31 sits 143–206bp *below* the 3-31 crisis-peak index ⇒ BT embeds a
+  ~June (post-rally) credit level. Interpretation of the OAS level, not a calibration/risk-delivery blocker.
 - ~~Historical OAS source~~ **RESOLVED** — `Pricing File.xlsm` / `OAS Credit Curves` via `src/credit/oas.py`
   (FRED online truncated to 3y in April 2026; the workbook holds the full 1997-2025 archive).
 - ~~Canonical universe definition + exclusion list~~ **RESOLVED** — `dataio/universe.py` →

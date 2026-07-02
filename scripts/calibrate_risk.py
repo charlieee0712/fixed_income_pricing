@@ -25,6 +25,7 @@ sys.path.insert(0, "src")
 import numpy as np
 import pandas as pd
 
+from credit.oas import oas_on
 from curves.zero_curve import ZeroCurve
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.universe import build_universe
@@ -34,11 +35,11 @@ from pricing.risk import risk_metrics
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
 WB = os.environ.get("FIP_URS_WB", os.path.join(DATA_DIR, "URS Fixed Income Mar 2009 - FI Positions V Mainak.xlsx"))
 VAL = os.environ.get("FIP_VAL_DATE", "2009-06-10")
+OUT = os.environ.get("FIP_OUT", "outputs/implied_oas.csv")  # per-date override avoids clobbering
+OAS_WB = os.environ.get("FIP_OAS_WB", os.path.join(DATA_DIR, "Pricing File.xlsm"))  # index OAS source
 MIN_YEARS = 1.0          # below this remaining maturity -> implied OAS unreliable -> excluded
 DISTRESS_BT = 50.0       # below this clean price -> implied OAS is a recovery plug -> flagged, kept
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
-# v1 index rating OAS @ 2009-06-10 (percent), for the implied-vs-index comparison (WORKLOG).
-INDEX_OAS_PCT = {"AAA": 1.48, "AA": 2.27, "A": 3.02, "BBB": 4.53, "BB": 7.41, "B": 9.45, "CCC": 17.04}
 RATING_ORDER = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"]
 
 pd.set_option("display.width", 220)
@@ -122,8 +123,8 @@ def main():
         ))
 
     df = pd.DataFrame(rows)
-    os.makedirs("outputs", exist_ok=True)
-    df.to_csv("outputs/implied_oas.csv", index=False)
+    os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
+    df.to_csv(OUT, index=False)
 
     # ---- integrity ----
     print(f"# calibrate_risk @ {VAL}  canonical={len(canon)} priced={len(df)} skipped={len(skipped)}")
@@ -143,15 +144,22 @@ def main():
         ].to_string(index=False))
 
     # ---- by-rating review table, EXCLUDING near-maturity (caveat 1) ----
+    # Index OAS = ICE BofA rating OAS on the SAME valuation date (date-matched via oas_on), a
+    # historical reference only (OAS redefined 2026-06-30 as a per-bond calibration factor).
+    try:
+        index_oas = oas_on(OAS_WB, VAL)                      # {bucket: decimal} on VAL
+    except Exception as e:                                   # date absent / workbook missing
+        print(f"[index OAS] unavailable for {VAL}: {e}")
+        index_oas = {}
     review = df[~df["near_maturity"]]
     idx = [r for r in RATING_ORDER if r in set(review["rating"])]
     g = review.groupby("rating")["implied_bp"].agg(["count", "median", "min", "max"]).reindex(idx)
-    g["index_oas_bp"] = [INDEX_OAS_PCT.get(r, np.nan) * 100 for r in g.index]
+    g["index_oas_bp"] = [index_oas[r] * 1e4 if r in index_oas else np.nan for r in g.index]
     g["median_excl_distress"] = review[~review["recovery_plug"]].groupby("rating")["implied_bp"].median().reindex(g.index)
-    print(f"\n[BY-RATING IMPLIED OAS — review, EXCLUDING {int(df['near_maturity'].sum())} near-maturity (<{MIN_YEARS:g}y)] (bp)")
+    print(f"\n[BY-RATING IMPLIED OAS — review, EXCLUDING {int(df['near_maturity'].sum())} near-maturity (<{MIN_YEARS:g}y)] (bp; index @ {VAL})")
     print(g.round(0).to_string())
     print(f"(median_excl_distress also drops {int(review['recovery_plug'].sum())} recovery-plug names, BT<{DISTRESS_BT:g})")
-    print("\nwrote outputs/implied_oas.csv")
+    print(f"\nwrote {OUT}")
 
 
 if __name__ == "__main__":
