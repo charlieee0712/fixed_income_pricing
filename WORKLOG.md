@@ -5,6 +5,65 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-02 — v2 callables: BondOAS recon + clean BDT lattice engine (invariant-validated) + genuine-callable run
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Recon of legacy `BondOAS`** (Project Pricing xlsm / Module1 l.4397-5861; VBA at `47:extracted/project_vba.txt`):
+a constant-vol **lognormal recombining binomial short-rate lattice** (u/d = exp(±σ√Δt), p=0.5), curve-fit by a
+bespoke per-step "sloperow" hack (Veloz Newton search), Bermudan exercise = min(cont, callprice) / max(cont,
+putprice) per step, implied OAS by brute-force increment (OAS a flat spread on the lattice), effective duration
+via ±10bp OAS bump (`analysisType` 5=OAS, 6=eff-dur). **Inputs come from Bloomberg** (short-end fixings, call/put/
+sink SCHEDULES via `c_s`/`c_t`) + bespoke "SteepFlat" ASCII tables → **unrunnable / unreconcilable here.**
+
+**5 decisions (Mario-track, LOCKED this session):**
+1. **Validation = INVARIANTS, not a legacy golden** (BondOAS can't run without Bloomberg). Hermetic pytest
+   `tests/test_lattice.py` (26): (i) lattice reprices the curve's zeros to curve DFs + par bond→100 + straight
+   price σ-invariant; (ii) callable ≤ straight ≤ putable; (iii) σ=0 ⇒ straight==curve-discounted & callable==
+   straight(OTM) & option value ↑ in σ; + implied-OAS round-trip + callable dur < straight dur.
+2. **Clean standard BDT, not the bespoke sloperow.** `src/pricing/lattice.py`: lognormal short-rate tree,
+   FORWARD-INDUCTION Arrow-Debreu calibration to our validated `ZeroCurve` (arb-free by construction), continuous
+   per-step discount so OAS adds flat (= parallel shift, matches vanilla). Same philosophy as the BondPrice z_semi
+   fix — correct engine over a faithful replica of a flaw; here replication is impossible anyway.
+3. **Call price/schedule assumption:** make-whole (gap≤7d)→vanilla; genuine-gap fixed→**par call (100) American**
+   from call_date; structured/floating callables stay excluded. `call_price` is a replaceable input.
+4. **Vol assumption:** flat σ = `FIP_VOL` (default **0.18**); output annotated "σ=assumed, not market".
+5. **Scope:** build the engine (reusable for MBS/CMO), apply to genuine fixed callables; make-whole→vanilla.
+
+**Results (`scripts/callable_risk.py` @ 2009-03-31, σ=0.18, par-call; 52/52 tests green).** Of the 51-bond
+callable bucket, **only 4 are genuine fixed callables**; 46 are make-whole (→vanilla).
+
+| bond | rating | BT | eff-dur straight→callable | impl OAS callable | note |
+|---|---|---:|---|---:|---|
+| TNTD04441873 | A | 90.04 | 11.56 → **10.03** | 409 bp | **call-active** (call shortens duration −1.5y) |
+| TNTD04115619 | BBB | 60.65 | 3.42 → 3.42 | 1959 bp | call-not-binding (distressed ⇒ option worthless) |
+| TNTG701850W | EUR/A | 94.54 | 5.31 → 5.28 | 293 bp | call-not-binding |
+| TNTD03203204 | BBB | 108.69 | 3.83 → 0.50 | **−838 bp** | **par-call-refuted** (BT≫par-call ⇒ real call premium/make-whole) |
+
+- **Lattice materially moves numbers on exactly 1 bond** (TNTD04441873: call shortens eff-dur 11.56→10.03y).
+- **AQ cross-check (invariant iv):** custodian 'Duration - effective' (11.73) ≈ our STRAIGHT dur (11.56), NOT the
+  option-adjusted callable dur (10.03) ⇒ **the custodian AQ does not capture the call; our lattice does.**
+- **par-call@100 refuted for TNTD03203204** (BT 108.69 ⇒ negative OAS): the assumption self-flags; real call terms
+  are premium/make-whole. ⇒ without call PRICES we can't even reliably classify genuine vs make-whole.
+
+**Positioning for Mario:** engine built + correct (invariants); numerical impact on THIS book confined to ~1 name;
+call schedule/price + vol are ASSUMPTIONS (data gaps), not market-sourced.
+
+**QUESTIONS FOR MARIO (package for the next call):**
+  (a) **Call schedule/price** — is there a source (Bloomberg / FISD terms pull), or is the par-call assumption
+      acceptable? (par-call@100 already refuted for TNTD03203204 ⇒ we likely need real terms.)
+  (b) **Volatility** — what assumed level, or does Liping pull swaption vol from Bloomberg? (σ=0.18 is a placeholder.)
+  (c) **BT marking-date** convention — the 2026-07-02 two-date evidence (implied@6-10 ≈ 6-10 index; @3-31 sits
+      143-206bp *below* the 3-31 crisis index ⇒ BT embeds ~June credit).
+
+**Open / next**
+- Make-whole callables (46) → route through the vanilla calibrator (universe reclassification: move gap≤7d callables
+  from the `callable` exclusion into canonical). Currently unpriced.
+- Real call schedules (FISD) + a vol decision would upgrade the 4 genuine names from assumption to sourced.
+- Lattice extensibility: sinking-fund node logic (present in legacy) + MBS/CMO reuse.
+
+---
+
 ## 2026-07-02 — 3-31 calibration ADOPTED as baseline (Mario's USD curve) + date-matched index fix
 **Commit:** `[TO FILL]`
 **Hours:** `[TO FILL]`

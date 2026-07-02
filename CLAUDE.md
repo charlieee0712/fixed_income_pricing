@@ -145,6 +145,12 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   **3-31 adopted as baseline (2026-07-02):** re-calibrated @2009-03-31 (canonical 481, exact), near-maturity
   cleared, by-rating index now **date-matched** via `oas_on(VAL)`; driver env-parameterised
   (`FIP_VAL_DATE`/`FIP_OUT`/`FIP_OAS_WB`). See WORKLOG 2026-07-02.
+- **v2 callable lattice** (`src/pricing/lattice.py` + `scripts/callable_risk.py`, on 47) — **clean standard BDT**
+  short-rate tree (fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free), **NOT a `BondOAS` replica** (legacy
+  unrunnable w/o Bloomberg). Invariant-validated (`test_lattice`, 26). Only **4 genuine fixed callables** in the
+  book (46 make-whole → vanilla); lattice moves numbers on ~1 (TNTD04441873 eff-dur 11.56→10.03). Custodian AQ
+  ≈ straight dur (doesn't capture the call). **Call price/schedule + σ=0.18 are ASSUMPTIONS** (data gaps; par-call@100
+  refuted for TNTD03203204 ⇒ BT≫par-call). Mario Qs: call-schedule source, vol level, BT date. See WORKLOG 2026-07-02.
 
 ## Open questions
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
@@ -185,6 +191,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
   **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params) ·
   ✅ `calibrate.py` (`implied_oas`: solve OAS s.t. clean=`BT`) · ✅ `risk.py` (`risk_metrics`: effective
-  duration / DV01 / convexity by ±1bp = parallel-shift bump).
+  duration / DV01 / convexity by ±1bp = parallel-shift bump) · ✅ `lattice.py` (**v2** callable/putable BDT
+  short-rate tree: fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free; implied OAS + eff-dur; NOT a
+  `BondOAS` replica — invariant-validated; driver `scripts/callable_risk.py`).
 - `src/instruments/` (Bond model + cash flows) · `src/risk/` (CreditMetrics, later) · `src/config/`.
-- `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`).
+- `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`) + `test_lattice`
+  (v2 callable-lattice **invariants**: par-reprice/arb-free, callable≤straight≤putable, σ=0 degeneracy). 52 total.
