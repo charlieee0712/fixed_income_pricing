@@ -35,6 +35,12 @@ REASON_PRIORITY = (
 )
 FUNNEL_ORDER = ("canonical",) + REASON_PRIORITY
 
+# A "make-whole" call (call date within this many days of maturity) has ~zero option value, so the
+# bond is routed to VANILLA pricing (enters canonical) rather than excluded as callable — the embedded
+# option is not economically exercised for value (WORKLOG 2026-07-02). Genuine calls (gap > this) stay
+# excluded as `callable` and are priced on the v2 lattice (scripts/callable_risk.py).
+MAKE_WHOLE_MAX_GAP_DAYS = 7
+
 
 def _present(v):
     """True when a cell carries a real value (not None / NaN / blank / 'NULL')."""
@@ -92,6 +98,11 @@ def build_universe(master, terms, val_date):
     maturity = pd.to_datetime(merged["maturity"], errors="coerce")
     merged["maturity"] = maturity
     merged["is_matured"] = maturity.notna() & (maturity < val_ts)
+    # make-whole call (call date ~ maturity) -> option value ~ 0 -> price as vanilla (canonical). A NaN
+    # gap (missing call date or maturity) -> not make-whole -> the bond stays callable-excluded.
+    call_date = pd.to_datetime(merged["call_date"], errors="coerce")
+    gap_days = (maturity - call_date).dt.days
+    merged["is_make_whole"] = merged["is_callable"] & gap_days.le(MAKE_WHOLE_MAX_GAP_DAYS)
 
     # ---- single primary reason by LOCKED priority ----
     def _reason(r):
@@ -103,7 +114,7 @@ def build_universe(master, terms, val_date):
             return "no-rating"
         if not r["is_fixed"]:
             return "structured/floating"
-        if r["is_callable"]:
+        if r["is_callable"] and not r["is_make_whole"]:   # make-whole falls through to vanilla/canonical
             return "callable"
         if r["is_matured"]:
             return "matured"
@@ -130,6 +141,8 @@ def build_universe(master, terms, val_date):
         "rating_no_rating": int((merged["rating_bucket"] == NO_RATING).sum()),
         "raw_non_fixed_in_matched": int((in_matched & ~merged["is_fixed"]).sum()),
         "raw_callable_in_matched": int((in_matched & merged["is_callable"]).sum()),
+        "make_whole_total": int(merged["is_make_whole"].sum()),
+        "make_whole_as_vanilla": int((merged["is_make_whole"] & (merged["primary_reason"] == "canonical")).sum()),
         "reconciliation": merged[
             ["asset_id", "isin"] + [c for c in GOLDEN_FIELDS if c in merged.columns]
         ].copy(),

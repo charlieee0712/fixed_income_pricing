@@ -5,6 +5,35 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-02 — make-whole callables re-routed to vanilla (universe reclassification)
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Follow-through on the v2-callable finding: of the `callable` exclusion bucket the large majority are **make-whole**
+(call date ~ maturity, option value ≈ 0) and were **unpriced**. Now routed to the vanilla calibrator.
+
+- **`universe.py`:** new `MAKE_WHOLE_MAX_GAP_DAYS = 7`; `is_make_whole = is_callable & (maturity − call_date ≤ 7d)`;
+  `_reason` returns `callable` only when `is_callable AND NOT is_make_whole` → make-whole falls through to canonical,
+  flagged `is_make_whole` (extras `make_whole_total`=47, `make_whole_as_vanilla`=46). Single-primary-reason priority
+  unchanged; MECE intact (732).
+- **Funnel shift:** **@6-10 canonical 476→522, callable 51→5**; **@3-31 canonical 481→527, callable 51→5**. The 5
+  remaining `callable` = 4 genuine-gap (>1y → v2 lattice) + 1 short-gap (32–180d, currently unpriced). `test_universe`
+  golden updated (canonical 522 @6-10 + a make-whole assertion); **53/53 green**.
+- **`calibrate_risk.py`:** added a `route` column (`make-whole-as-vanilla` | `vanilla`) — transparent tagging + a
+  make-whole-subset by-rating print.
+- **By-rating @3-31 (now 527 canonical) — NO anomaly.** Adding 46 make-whole (all A/BBB) barely moves the medians:
+  A 406→402 (n 218→240), BBB 525→521 (n 155→175); AAA/AA/BB/B/CCC unchanged. Make-whole subset medians A 328bp /
+  BBB 505bp sit inside the normal rating range. Near-maturity 17→21 (4 make-whole names <1y, correctly excluded).
+
+Make-whole bonds are now first-class priced (implied OAS + duration/DV01/convexity) via the vanilla calibrator; the
+4 genuine callables stay on the lattice (pending Mario: call schedule/price + vol — see prior entry).
+
+**Open / next**
+- 1 short-gap callable (32–180d) not yet priced (neither make-whole nor the >1y lattice threshold) — minor loose end.
+- Await Mario on call schedule/price + vol to upgrade the 4 genuine names from assumption to sourced.
+
+---
+
 ## 2026-07-02 — v2 callables: BondOAS recon + clean BDT lattice engine (invariant-validated) + genuine-callable run
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

@@ -70,10 +70,21 @@ def test_funnel_is_mece(built):
 
 
 def test_canonical_count_at_locked_date(built):
-    # Priceable universe at 2009-06-10 (regression guard; well under the 641 loose estimate).
+    # Priceable universe at 2009-06-10 (regression guard). 522 = 476 plain-vanilla + 46 make-whole
+    # callables now routed to vanilla pricing (WORKLOG 2026-07-02); genuine callables (5) stay excluded.
     canonical, _, funnel, _ = built
-    assert len(canonical) == 476
-    assert int(funnel["canonical"]) == 476
+    assert len(canonical) == 522
+    assert int(funnel["canonical"]) == 522
+
+
+def test_make_whole_routed_to_vanilla(built):
+    # make-whole calls (call date ~ maturity, gap <= 7d) have ~zero option value -> priced as vanilla
+    # (enter canonical, flagged is_make_whole); only genuine-gap callables remain excluded as `callable`.
+    canonical, _, funnel, extras = built
+    assert extras["make_whole_as_vanilla"] == 46
+    assert int(funnel["callable"]) == 5
+    assert "is_make_whole" in canonical.columns
+    assert int(canonical["is_make_whole"].sum()) == 46
 
 
 def test_golden_marks_not_in_canonical(built):

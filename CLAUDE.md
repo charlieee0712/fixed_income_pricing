@@ -112,9 +112,12 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   master-only / 19 tab-only**; rating **712 covered / 4 defaulted / 16 no-rating**; Layer-A raw
   **54 non-vanilla / 73 callable**. Priority (LOCKED): `terms-unavailable/unmatched → defaulted →
   no-rating → structured/floating → callable → matured`. Layer A = date-independent, Layer B =
-  matured-at-val-date. **Result @ 2009-06-10 (post-priority MECE): canonical 476 / terms-unavailable
-  135 / structured-floating 51 / callable 51 / no-rating 9 / matured 6 / defaulted 4.** **@2009-03-31 (adopted
-  baseline): canonical 481** (5 more alive — bonds that matured 3-31→6-10 and 6-10 dropped).
+  matured-at-val-date. **Result @ 2009-06-10 (post-priority MECE): canonical 522 / terms-unavailable
+  135 / structured-floating 51 / callable 5 / no-rating 9 / matured 6 / defaulted 4.** **@2009-03-31 (adopted
+  baseline): canonical 527** (5 more alive). **Make-whole callables (call date within `MAKE_WHOLE_MAX_GAP_DAYS`=7d
+  of maturity, option value≈0) route to VANILLA — enter canonical, flagged `is_make_whole` (46 bonds) — NOT the
+  `callable` exclusion (WORKLOG 2026-07-02); only 5 genuine-gap callables stay excluded → v2 lattice.** [was
+  canonical 476/481, callable 51 pre-reclassification.]
   135 master-only = `terms-unavailable` (MTN; terms in neither sheet — **data gap, not security type**).
   Notch-map (S&P/Moody → 7 buckets) implemented in **`src/credit/ratings.py`**. Red lines: keep IG/HY split
   (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
@@ -127,7 +130,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   `src/credit/ratings.py` (`tests/test_ratings.py`). Bloomberg cut.
 - **Universe pipeline** (`src/dataio/loaders.py` + `universe.py`, run on 47): reproduces the
   documented funnel **exactly** (join 597/135/19, rating 712/4/16, Layer-A raw 54/73, MECE=732)
-  → **canonical = 476 @ 2009-06-10**; per-bond exclusion log; golden `tests/test_universe.py`.
+  → **canonical = 522 @ 2009-06-10** (incl. 46 make-whole-as-vanilla; callable=5); per-bond exclusion log; golden
+  `tests/test_universe.py` (53 tests).
 - **Pricing + reconciliation** (`zero_curve.py` + `bond_price.py` + `oas.py`, on 47): 2009-06-10 USD curve
   sane vs actual June-2009 UST; priced canonical 476. **v1 method VALIDATED.** *Is the method correct?* →
   **yes, UNBIASED**: IG (AAA-BBB) signed median **−0.4% (≈0)**, curve+OAS centred on BT; plus OAS=0 near-
@@ -186,7 +190,7 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread; `from_currency` per-ccy curves).
 - `src/credit/` — ✅ `ratings.py` (notch-map) · ✅ `oas.py` (per-rating OAS from `OAS Credit Curves`).
 - `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
-  MECE funnel → **canonical 476 @ 2009-06-10**); FRED OAS loader next. (Named `dataio`, **not** `io`:
+  MECE funnel → **canonical 522 @ 2009-06-10** (46 make-whole→vanilla)); FRED OAS loader next. (Named `dataio`, **not** `io`:
   `conftest` puts `src/` at `sys.path[0]`, so an `io` package would shadow stdlib `io`.)
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
   **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params) ·

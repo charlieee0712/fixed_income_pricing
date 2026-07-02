@@ -110,6 +110,7 @@ def main():
         ttm = (pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25
         nm = near_maturity(VAL, mat, MIN_YEARS)
         rp = float(bt) < DISTRESS_BT
+        mw = bool(b.get("is_make_whole"))
         rows.append(dict(
             asset_id=aid, isin=b.get("isin"), ccy=ccy, fx=fx, rating=b["rating_bucket"], src=b["rating_source"],
             coupon=float(cpn), freq=fr, maturity=pd.Timestamp(mat).date(), ttm=round(ttm, 3), par=par,
@@ -118,7 +119,7 @@ def main():
             eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
             mv_base_usd=(pd.to_numeric(recon.loc[aid, "gold_mkt_value"], errors="coerce")
                         if aid in recon.index else np.nan),   # custodian 'Market value - base' (already USD)
-            near_maturity=nm, recovery_plug=rp,
+            near_maturity=nm, recovery_plug=rp, route=("make-whole-as-vanilla" if mw else "vanilla"),
             flag=("near-maturity" if nm else ("recovery-plug" if rp else "")),
         ))
 
@@ -134,6 +135,7 @@ def main():
     print(f"[flags] near-maturity={int(df['near_maturity'].sum())} "
           f"recovery-plug(non-NM)={int((df['recovery_plug'] & ~df['near_maturity']).sum())} "
           f"clean={int((df['flag'] == '').sum())}")
+    print(f"[make-whole-as-vanilla] {int((df['route'] == 'make-whole-as-vanilla').sum())} bonds priced as vanilla (gap<=7d call)")
 
     # ---- caveat 2: EUR/GBP own-ccy vs USD-curve implied OAS ----
     nonusd = df[df["ccy"] != "USD"]
@@ -159,6 +161,13 @@ def main():
     print(f"\n[BY-RATING IMPLIED OAS — review, EXCLUDING {int(df['near_maturity'].sum())} near-maturity (<{MIN_YEARS:g}y)] (bp; index @ {VAL})")
     print(g.round(0).to_string())
     print(f"(median_excl_distress also drops {int(review['recovery_plug'].sum())} recovery-plug names, BT<{DISTRESS_BT:g})")
+    mw = df[df["route"] == "make-whole-as-vanilla"]
+    if len(mw):
+        mwr = mw[~mw["near_maturity"]]
+        mwg = mwr.groupby("rating")["implied_bp"].agg(["count", "median"]).reindex(
+            [r for r in RATING_ORDER if r in set(mwr["rating"])])
+        print(f"\n[make-whole-as-vanilla subset (n={len(mw)}), implied OAS bp by rating, excl near-mat]")
+        print(mwg.round(0).to_string())
     print(f"\nwrote {OUT}")
 
 
