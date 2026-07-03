@@ -104,7 +104,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   matches the holdings date → near-maturity distortion cleared, universe 481). 6-10 kept as control (v1 +
   BT-date evidence). [was "6-10 chosen", pre-3-31-file.]
   ⚠️ Even @3-31 the model reproduces the VBA tool's output, not the custodian mark; **BT marking date/source
-  still open** — evidence now points to BT ≈ ~June credit level (see WORKLOG 2026-07-02).
+  RESOLVED (2026-07-03, Mario):** by 3-31 the crisis was near its end & spreads had retreated from peak, so BT's
+  tighter credit is the real recovering-market mark (not a date mismatch); implied OAS below the 3-31 peak = that
+  recovery. 3-31 baseline unchanged (see WORKLOG 2026-07-03).
 - **Universe = deterministic 2-layer pipeline**, **IMPLEMENTED** in `src/dataio/universe.py`.
   Start = master sub-cat == `Corporate Bonds`, dedupe by Asset ID → **732 unique** (from 811
   rows; no separate MTN sub-cat — MTN = a terms-gap label, not a category). Log every drop with
@@ -151,10 +153,14 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (`FIP_VAL_DATE`/`FIP_OUT`/`FIP_OAS_WB`). See WORKLOG 2026-07-02.
 - **v2 callable lattice** (`src/pricing/lattice.py` + `scripts/callable_risk.py`, on 47) — **clean standard BDT**
   short-rate tree (fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free), **NOT a `BondOAS` replica** (legacy
-  unrunnable w/o Bloomberg). Invariant-validated (`test_lattice`, 26). Only **4 genuine fixed callables** in the
-  book (46 make-whole → vanilla); lattice moves numbers on ~1 (TNTD04441873 eff-dur 11.56→10.03). Custodian AQ
-  ≈ straight dur (doesn't capture the call). **Call price/schedule + σ=0.18 are ASSUMPTIONS** (data gaps; par-call@100
-  refuted for TNTD03203204 ⇒ BT≫par-call). Mario Qs: call-schedule source, vol level, BT date. See WORKLOG 2026-07-02.
+  unrunnable w/o Bloomberg). Invariant-validated (`test_lattice` 29 + `test_call_schedules` 4). Only **4 genuine
+  fixed callables** (46 make-whole → vanilla); lattice moves ~1 (TNTD04441873 eff-dur 11.56→**10.54 @σ=0.15**);
+  custodian AQ ≈ straight dur (misses the call). **Mario v1 (2026-07-03): σ=0.15** (was 0.18); **call schedule
+  DATA-DRIVEN** — `data/call_schedules.csv` (`asset_id|call_date|call_price`, git-ignored) via
+  `dataio.call_schedules`, seeded by `scripts/init_call_schedules.py`; the lattice reads a `[(time,price)]` step
+  schedule (**no hard-coded par-call** — a real schedule = CSV-only change). v1 values = par-call@100, call_date ←
+  AB; TNTD03203204 note "par-call conflicts w/ BT 108.69; awaiting actual schedule". **All 3 Mario Qs
+  (schedule/vol/BT) RESOLVED — WORKLOG 2026-07-03.**
 
 ## Open questions
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
@@ -164,16 +170,18 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   **NOT** apply to calibration); (b) **EUR/GBP own-ccy curves DONE** (15 EUR fixed, **2 GBP still curve-blocked** —
   non-arb 3y node, needs a GBP replacement curve or `bootstrap` variant-isolation, NOT a date issue); (c) **FX
   RESOLVED** — custodian base-USD columns (`BU`='Market value - base', `Z`='Book cost - base') read directly, no
-  self-convert (`to_usd` removed; `currency` kept for routing); (d) **confirm BT marking date/source — now the key
-  open**: two-date evidence shows implied@6-10 ≈ 6-10 index but implied@3-31 sits 143–206bp *below* the 3-31 crisis
-  index ⇒ BT embeds ~June credit; affects OAS-level *interpretation* only, not the calibration/risk deliverable.
+  self-convert (`to_usd` removed; `currency` kept for routing); (d) **BT marking date/source — RESOLVED
+  (2026-07-03, Mario):** by 3-31 the crisis was near its end & spreads had retreated from peak, so BT's tighter
+  credit = the real recovering-market mark, NOT a date mismatch (implied@3-31 143–206bp *below* the 3-31 peak index
+  IS that recovery). 3-31 baseline unchanged.
 - ~~3-31 curve = the v1 IG lever~~ **REFUTED (tested 2026-06-27, for the v1 rating-OAS method; REOPENS for calibration — see above):** date-matching to 3-31 (3-31 DGS curve +
   3-31 OAS) makes IG **worse** (6.43%→11.14%, signed −0.41%→−6.70%) — the 3-31 crisis-peak OAS (BBB 7.31% vs
   6-10's 4.53%) overstates these high-grade holdings' spreads; **BT aligns with ~6-10 (tighter) spreads, the
   70-day gap is NOT a precision lever** (real lever = finer OAS, v2).
-- **Confirm BT's marking date/source** (colleague) — **now corroborated by the 2026-07-02 two-date calibration**:
-  implied OAS @6-10 ≈ the 6-10 index but @3-31 sits 143–206bp *below* the 3-31 crisis-peak index ⇒ BT embeds a
-  ~June (post-rally) credit level. Interpretation of the OAS level, not a calibration/risk-delivery blocker.
+- ~~Confirm BT's marking date/source~~ **RESOLVED (2026-07-03, Mario):** by 2009-03-31 the crisis was near its end
+  and spreads had already retreated from the peak ⇒ BT's tighter credit is the genuine recovering-market mark, not
+  a date mismatch; the implied OAS sitting 143–206bp below the 3-31 crisis-peak index is that recovery, not an
+  error. 3-31 stays the calibration baseline. See WORKLOG 2026-07-03.
 - ~~Historical OAS source~~ **RESOLVED** — `Pricing File.xlsm` / `OAS Credit Curves` via `src/credit/oas.py`
   (FRED online truncated to 3y in April 2026; the workbook holds the full 1997-2025 archive).
 - ~~Canonical universe definition + exclusion list~~ **RESOLVED** — `dataio/universe.py` →
@@ -190,14 +198,18 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread; `from_currency` per-ccy curves).
 - `src/credit/` — ✅ `ratings.py` (notch-map) · ✅ `oas.py` (per-rating OAS from `OAS Credit Curves`).
 - `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
-  MECE funnel → **canonical 522 @ 2009-06-10** (46 make-whole→vanilla)); FRED OAS loader next. (Named `dataio`, **not** `io`:
-  `conftest` puts `src/` at `sys.path[0]`, so an `io` package would shadow stdlib `io`.)
+  MECE funnel → **canonical 522 @ 2009-06-10** (46 make-whole→vanilla)) + ✅ `call_schedules.py` (call/put
+  exercise table `data/call_schedules.csv` → per-asset `[(date,price)]`; the lattice's only call-terms source);
+  FRED OAS loader next. (Named `dataio`, **not** `io`: `conftest` puts `src/` at `sys.path[0]`, so an `io` package
+  would shadow stdlib `io`.)
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
   **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params) ·
   ✅ `calibrate.py` (`implied_oas`: solve OAS s.t. clean=`BT`) · ✅ `risk.py` (`risk_metrics`: effective
   duration / DV01 / convexity by ±1bp = parallel-shift bump) · ✅ `lattice.py` (**v2** callable/putable BDT
   short-rate tree: fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free; implied OAS + eff-dur; NOT a
-  `BondOAS` replica — invariant-validated; driver `scripts/callable_risk.py`).
+  `BondOAS` replica — invariant-validated; `call_array`/`put_array` read a `[(time,price)]` schedule from
+  `dataio.call_schedules` — no hard-coded par-call; driver `scripts/callable_risk.py`, σ=0.15).
 - `src/instruments/` (Bond model + cash flows) · `src/risk/` (CreditMetrics, later) · `src/config/`.
 - `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`) + `test_lattice`
-  (v2 callable-lattice **invariants**: par-reprice/arb-free, callable≤straight≤putable, σ=0 degeneracy). 52 total.
+  (v2 callable-lattice **invariants**: par-reprice/arb-free, callable≤straight≤putable, σ=0 degeneracy, multi-date
+  schedule ordering) + `test_call_schedules` (loader: multi-row grouping, date→time clamp). **60 total.**

@@ -67,10 +67,10 @@ class ShortRateLattice:
 
     Build once per (curve, T, freq, sigma); then :meth:`price_bond` / :meth:`implied_oas` /
     :meth:`risk_metrics` reuse the calibration (only the backward pass re-runs, since the OAS and
-    coupon do not affect the tree).
+    coupon do not affect the tree). Default ``sigma`` = 0.15 = the Mario v1 house assumption (2026-07-03).
     """
 
-    def __init__(self, curve, T, freq: int = 2, sigma: float = 0.18):
+    def __init__(self, curve, T, freq: int = 2, sigma: float = 0.15):
         self.freq = int(freq)
         self.dt = 1.0 / self.freq
         self.N = max(1, int(round(float(T) * self.freq)))
@@ -105,22 +105,43 @@ class ShortRateLattice:
         j = np.arange(i + 1)
         return self.a[i] * np.exp(self.sigma * np.sqrt(self.dt) * (2 * j - i))
 
-    def par_call_array(self, first_call_time: float, call_price: float = 100.0):
-        """Bermudan call schedule: ``call_price`` at every step on/after ``first_call_time`` (years),
-        ``inf`` (inactive) at the root and the terminal. Replace with a real schedule when available."""
-        arr = np.full(self.N + 1, np.inf)
-        for i in range(1, self.N):
-            if self.t[i] >= first_call_time - 1e-9:
-                arr[i] = call_price
+    def _schedule_array(self, entries, side):
+        """Per-step exercise-price array (length ``N+1``) from an option *schedule*.
+
+        ``entries`` = iterable of ``(time_years, price)`` — the option is exercisable at ``price`` from
+        ``time_years`` onward, until a later entry supersedes it (a step-function schedule: e.g. call
+        @102 from y1, @101 from y2, @100 from y3+). A single entry ``[(t, p)]`` is the common "one flat
+        price from date ``t`` to maturity" case. The root (``i=0``) and terminal (``i=N``) are always
+        inactive — you do not exercise at issue or at redemption.
+
+        This is the ONLY place the exercise schedule is built and it is driven ENTIRELY by ``entries``
+        (sourced from ``data/call_schedules.csv`` via ``dataio.call_schedules`` in the driver). There is
+        no hard-coded par-call: swapping in a real Bloomberg schedule is a data-only change (Mario,
+        2026-07-03).
+
+        ``side``: ``+1`` call (issuer caps the node value; inactive = ``+inf``); ``-1`` put (holder
+        floors it; inactive = ``-inf``).
+        """
+        arr = np.full(self.N + 1, np.inf if side > 0 else -np.inf)
+        sched = sorted((float(t), float(p)) for t, p in entries)
+        for i in range(1, self.N):                       # root & terminal stay inactive
+            price = None
+            for t0, p in sched:
+                if self.t[i] >= t0 - 1e-9:
+                    price = p                            # latest entry effective at t_i
+                else:
+                    break
+            if price is not None:
+                arr[i] = price
         return arr
 
-    def par_put_array(self, first_put_time: float, put_price: float = 100.0):
-        """Bermudan put schedule: ``put_price`` at every step on/after ``first_put_time``; ``-inf`` else."""
-        arr = np.full(self.N + 1, -np.inf)
-        for i in range(1, self.N):
-            if self.t[i] >= first_put_time - 1e-9:
-                arr[i] = put_price
-        return arr
+    def call_array(self, schedule):
+        """Bermudan CALL price array (length ``N+1``) from a ``[(time_years, price), ...]`` schedule."""
+        return self._schedule_array(schedule, side=+1)
+
+    def put_array(self, schedule):
+        """Bermudan PUT price array (length ``N+1``) from a ``[(time_years, price), ...]`` schedule."""
+        return self._schedule_array(schedule, side=-1)
 
     def price_bond(self, coupon_rate, oas: float = 0.0, call_price=None, put_price=None) -> float:
         """Clean price (per 100 face) by backward induction. ``call_price`` / ``put_price`` are arrays of

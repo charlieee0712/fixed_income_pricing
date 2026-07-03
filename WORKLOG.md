@@ -5,6 +5,68 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-03 — Mario's 3 answers landed: schedule-driven calls, σ=0.15, BT-marking closed
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario answered the three open v2-callable questions (prior entry's Qs a/b/c); all three are now landed in
+code + docs. Order: schedule architecture → σ=0.15 rerun → doc closure.
+
+**(1) Call schedule — par-call APPROVED for v1, but the exercise schedule is now DATA-DRIVEN.** Mario's
+architecture requirement: the lattice must read its call terms from a standalone table, even while that table
+holds only a single par-call row per bond, so a future Bloomberg/FISD schedule drops in with **zero code change**
+(data/logic separation). Implemented:
+- **New `data/call_schedules.csv`** (`asset_id | call_date | call_price`) = the ONLY source of call terms. Seeded
+  by **`scripts/init_call_schedules.py`** for the 4 genuine callables: `call_date` = master col **AB** (via the
+  universe pipeline), `call_price` = **100** (v1 par). **Git-ignored** (client asset_ids; `data/` already blocked
+  — verified); lives on 47. The seed refuses to overwrite an existing file, so a real schedule is never clobbered.
+- **New `src/dataio/call_schedules.py`** — `load_call_schedules` → `{asset_id: [(call_date, price), …]}` (multiple
+  rows per asset = a step-function schedule); `to_lattice_schedule` converts dates → years-from-VAL (centralised
+  day-count, clamp at 0). Malformed table (missing column) raises loudly.
+- **`lattice.py`**: removed the hard-coded `par_call_array` / `par_put_array`; added `call_array(schedule)` /
+  `put_array(schedule)` on a general `_schedule_array` (step function — the latest entry effective at each node;
+  a single entry reproduces the old par-call exactly). **No par-call baked into the engine.**
+- **`callable_risk.py`**: reads the CSV, passes each bond's schedule to `call_array`. A genuine callable missing
+  from the table is **skipped loudly**, not silently par-called.
+- **TNTD03203204** (BT 108.69 ≫ par-call): official line adopted — the note now reads *"par-call assumption
+  conflicts with market price (BT 108.69); awaiting actual schedule"*. No longer a puzzle.
+
+**(2) Volatility = 15%** (Mario's v1 assumption; 0.18 was a placeholder). `FIP_VOL` default 0.18→**0.15** (and the
+`ShortRateLattice` class default), reran. Effect as expected — lower σ → less option value → callable closer to
+straight:
+
+| bond | rating | BT | eff-dur straight→callable @σ=0.15 | (was @σ=0.18) | impl OAS callable | note |
+|---|---|---:|---|---|---:|---|
+| TNTD04441873 | A | 90.04 | 11.56 → **10.54** | 10.03 | 412 bp | **call-active** (only bond the call moves) |
+| TNTD04115619 | BBB | 60.65 | 3.42 → 3.42 | 3.42 | 1959 bp | call-not-binding (distressed) |
+| TNTG701850W | EUR/A | 94.54 | 5.31 → 5.31 | 5.28 | 293 bp | call-not-binding (option value ~0 at σ=0.15) |
+| TNTD03203204 | BBB | 108.69 | 3.83 → 0.50 | 0.50 | −838 bp | par-call conflicts w/ BT 108.69 (see above) |
+
+The lattice still materially moves **exactly one** name (TNTD04441873): at σ=0.15 its option-adjusted duration is
+**10.54y** (vs 10.03 @0.18, vs 11.56 straight). **AQ cross-check** conclusion unchanged: custodian 'Duration -
+effective' 11.73 ≈ our STRAIGHT dur 11.56, NOT the callable 10.54 → the custodian mark does not capture the call;
+our lattice does.
+
+**(3) BT marking-date — CLOSED.** Mario confirmed: by 2009-03-31 the crisis was near its end and market spreads had
+already retreated from the peak. So the tighter credit level embedded in `BT` is the **real market state at the
+custodian's marking (a recovering market), not a date mismatch**. Our two-date evidence (implied OAS 143–206bp
+*below* the 3-31 crisis-peak index) IS that recovery, not an error. The **3-31 curve stays the calibration
+baseline**. This closes the last open v2 question and the BT-marking open question tracked since 2026-06-30
+(CLAUDE.md Open-questions + Critical-corrections updated).
+
+**Tests.** `test_lattice.py` +3 (single-entry array contents; multi-date step-schedule ordering invariant
+flat-@100 ≤ step ≤ flat-@102; put-array symmetry) = **29**; new **`test_call_schedules.py`** (4: multi-row
+grouping, string asset-id, missing-column raise, date→time clamp). **Full suite 60/60 green on 47.**
+
+**Run (47):** `FIP_VAL_DATE=2009-03-31 PYTHONPATH=src python3 scripts/init_call_schedules.py` (seed, once) then
+`… scripts/callable_risk.py` (σ default 0.15; `FIP_VOL` overrides).
+
+**Open / next**
+- 1 short-gap callable (32–180d) still unpriced (neither make-whole nor the >1y lattice threshold) — minor loose end.
+- Real Bloomberg/FISD call schedules, when available, replace `data/call_schedules.csv` rows — **zero code change**.
+
+---
+
 ## 2026-07-02 — make-whole callables re-routed to vanilla (universe reclassification)
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

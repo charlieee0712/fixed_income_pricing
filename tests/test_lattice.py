@@ -79,8 +79,8 @@ def test_callable_le_straight_le_putable(zfun):
     lat = ShortRateLattice(c, T=10, freq=2, sigma=0.25)
     cr = 0.05
     straight = lat.price_bond(cr, 0.0)
-    callable_ = lat.price_bond(cr, 0.0, call_price=lat.par_call_array(1.0, 100.0))
-    putable = lat.price_bond(cr, 0.0, put_price=lat.par_put_array(1.0, 100.0))
+    callable_ = lat.price_bond(cr, 0.0, call_price=lat.call_array([(1.0, 100.0)]))
+    putable = lat.price_bond(cr, 0.0, put_price=lat.put_array([(1.0, 100.0)]))
     assert callable_ <= straight + 1e-9
     assert straight <= putable + 1e-9
 
@@ -100,7 +100,7 @@ def test_zero_vol_callable_equals_straight_when_otm():
     lat = ShortRateLattice(c, T=8, freq=2, sigma=0.0)
     cr = 0.01
     s = lat.price_bond(cr, 0.0)
-    k = lat.price_bond(cr, 0.0, call_price=lat.par_call_array(1.0, 100.0))
+    k = lat.price_bond(cr, 0.0, call_price=lat.call_array([(1.0, 100.0)]))
     assert s < 100.0                                   # confirm it is a discount bond
     assert k == pytest.approx(s, abs=1e-9)
 
@@ -111,7 +111,7 @@ def test_option_value_monotone_in_sigma():
     for sig in (0.0, 0.10, 0.20, 0.35):
         lat = ShortRateLattice(c, T=10, freq=2, sigma=sig)
         st = lat.price_bond(0.05, 0.0)
-        cl = lat.price_bond(0.05, 0.0, call_price=lat.par_call_array(1.0, 100.0))
+        cl = lat.price_bond(0.05, 0.0, call_price=lat.call_array([(1.0, 100.0)]))
         ov.append(st - cl)
     assert all(ov[i] <= ov[i + 1] + 1e-9 for i in range(len(ov) - 1))   # non-decreasing
     assert ov[-1] > ov[0] + 1e-6                                        # real option value at high sigma
@@ -121,7 +121,7 @@ def test_option_value_monotone_in_sigma():
 def test_implied_oas_roundtrip():
     c = curve_from_z(UP)
     lat = ShortRateLattice(c, T=9, freq=2, sigma=0.2)
-    cp = lat.par_call_array(2.0, 100.0)
+    cp = lat.call_array([(2.0, 100.0)])
     target = lat.price_bond(0.06, oas=0.0123, call_price=cp)
     solved = lat.implied_oas(target, 0.06, call_price=cp)
     assert solved == pytest.approx(0.0123, abs=1e-6)
@@ -131,7 +131,44 @@ def test_callable_duration_shorter_than_straight():
     c = curve_from_z(FLAT3)
     lat = ShortRateLattice(c, T=12, freq=2, sigma=0.25)
     cr = 0.06                                          # premium coupon -> call bites
-    cp = lat.par_call_array(1.0, 100.0)
+    cp = lat.call_array([(1.0, 100.0)])
     dur_straight = lat.risk_metrics(cr, 0.0)["eff_duration"]
     dur_callable = lat.risk_metrics(cr, 0.0, call_price=cp)["eff_duration"]
     assert dur_callable < dur_straight
+
+
+# ---- schedule API (Mario 2026-07-03): single-entry contents + multi-date (step) schedule ----
+def test_call_array_single_entry_contents():
+    """A one-row schedule => inactive (+inf) at root/terminal, the call price at every step on/after
+    the call time — pins the exact semantics the old hard-coded par_call_array used to bake in."""
+    c = curve_from_z(FLAT3)
+    lat = ShortRateLattice(c, T=5, freq=2, sigma=0.2)          # N = 10 steps
+    arr = lat.call_array([(2.0, 100.0)])
+    assert np.isposinf(arr[0]) and np.isposinf(arr[lat.N])     # never callable at issue or redemption
+    for i in range(1, lat.N):
+        assert arr[i] == (100.0 if lat.t[i] >= 2.0 - 1e-9 else np.inf)
+
+
+def test_multi_date_call_schedule_monotone():
+    """A step-down schedule (call @102 early -> @100 late) must price BETWEEN the flat-@100 and
+    flat-@102 callables — exercises the multi-date machinery with a golden-free ordering invariant
+    (lattice price is monotone non-decreasing in the call cap)."""
+    c = curve_from_z(FLAT3)
+    lat = ShortRateLattice(c, T=10, freq=2, sigma=0.25)
+    cr = 0.06                                                  # premium coupon -> the call bites
+    p_step = lat.price_bond(cr, 0.0, call_price=lat.call_array([(1.0, 102.0), (5.0, 100.0)]))
+    p_hi = lat.price_bond(cr, 0.0, call_price=lat.call_array([(1.0, 102.0)]))
+    p_lo = lat.price_bond(cr, 0.0, call_price=lat.call_array([(1.0, 100.0)]))
+    assert p_lo <= p_step + 1e-9
+    assert p_step <= p_hi + 1e-9
+    assert p_lo < p_hi                                         # the schedule genuinely changes the price
+
+
+def test_put_array_from_schedule():
+    """put_array mirrors call_array: -inf inactive, floors at the put price on/after the put time."""
+    c = curve_from_z(UP)
+    lat = ShortRateLattice(c, T=6, freq=2, sigma=0.2)          # N = 12 steps
+    arr = lat.put_array([(3.0, 100.0)])
+    assert np.isneginf(arr[0]) and np.isneginf(arr[lat.N])
+    for i in range(1, lat.N):
+        assert arr[i] == (100.0 if lat.t[i] >= 3.0 - 1e-9 else -np.inf)

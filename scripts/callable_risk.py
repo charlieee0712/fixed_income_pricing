@@ -6,16 +6,19 @@ callable bucket, ``coupon_type == fixed``, and a real call gap (maturity - call_
 make-whole majority (gap <= 7d, option value ~ 0) route to the vanilla calibrator and are only counted
 here. Structured/floating callables stay excluded (v1).
 
-ASSUMPTIONS (data gaps — NOT market-sourced; flagged for Mario):
-  * call price = par (100), American from call_date to maturity  (workbook has only a call DATE, no
-    price/schedule; the legacy pulled the schedule from Bloomberg). ``call_price`` is a replaceable input.
-  * volatility = flat sigma = FIP_VOL (default 0.18) — a defensible lognormal short-rate level, NOT a
+ASSUMPTIONS (Mario v1, 2026-07-03 — replaceable, NOT market-sourced):
+  * call schedule <- ``data/call_schedules.csv`` (asset_id | call_date | call_price), read via
+    ``dataio.call_schedules``. Seeded par-call (price 100 from master col AB) — the v1 assumption Mario
+    approved — but the lattice reads the schedule from that DATA table, so a real Bloomberg schedule
+    (incl. multi-date step calls) drops in with ZERO code change. No hard-coded par-call here.
+  * volatility = flat sigma = FIP_VOL (default 0.15, Mario v1) — a lognormal short-rate level, NOT a
     market vol. Output is annotated accordingly.
 
 Cross-check: effective duration vs the custodian 'Duration - effective' (master col AQ) — a free
 external benchmark (the 4th agreed invariant; data-dependent, so it lives here not in pytest).
 
-Run on 47:  FIP_VAL_DATE=2009-03-31 FIP_VOL=0.18 PYTHONPATH=src python3 scripts/callable_risk.py
+Run on 47:  FIP_VAL_DATE=2009-03-31 PYTHONPATH=src python3 scripts/callable_risk.py   (sigma default
+0.15; set FIP_VOL to override). Seed the schedule first with scripts/init_call_schedules.py.
 Writes outputs/callable_risk.csv (git-ignored)."""
 import os
 import sys
@@ -27,6 +30,7 @@ import openpyxl
 from openpyxl.utils import column_index_from_string
 
 from curves.zero_curve import ZeroCurve
+from dataio.call_schedules import load_call_schedules, to_lattice_schedule
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.universe import build_universe
 from pricing.lattice import ShortRateLattice
@@ -34,7 +38,8 @@ from pricing.lattice import ShortRateLattice
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
 WB = os.environ.get("FIP_URS_WB", os.path.join(DATA_DIR, "URS Fixed Income Mar 2009 - FI Positions V Mainak.xlsx"))
 VAL = os.environ.get("FIP_VAL_DATE", "2009-03-31")
-SIGMA = float(os.environ.get("FIP_VOL", "0.18"))     # ASSUMED flat short-rate vol (not market)
+SIGMA = float(os.environ.get("FIP_VOL", "0.15"))     # Mario v1 flat short-rate vol (not market)
+SCHED = os.environ.get("FIP_CALL_SCHED", os.path.join(DATA_DIR, "call_schedules.csv"))
 OUT = os.environ.get("FIP_OUT", "outputs/callable_risk.csv")
 GAP_DAYS = 366                                        # > this -> genuine call gap (else make-whole)
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
@@ -61,6 +66,7 @@ def main():
     recon = extras["reconciliation"].drop_duplicates("asset_id").set_index("asset_id")
     recon.index = recon.index.astype(str)
     aq = load_aq(WB)
+    schedules = load_call_schedules(SCHED)   # {asset_id: [(call_date, call_price), ...]} — the ONLY call-terms source
 
     cb = excl[excl["primary_reason"] == "callable"].copy()      # fixed, rated, matched, callable
     cb["call_date"] = pd.to_datetime(cb["call_date"], errors="coerce")
@@ -68,7 +74,7 @@ def main():
     cb["gap_days"] = (cb["maturity"] - cb["call_date"]).dt.days
     genuine = cb[cb["gap_days"] > GAP_DAYS].copy()
     makewhole = cb[cb["gap_days"] <= 7]
-    print(f"# callable_risk @ {VAL}  sigma={SIGMA:.2%} (ASSUMED)  call=par(100) American (ASSUMED)")
+    print(f"# callable_risk @ {VAL}  sigma={SIGMA:.2%} (Mario v1)  call schedule <- {SCHED} ({len(schedules)} asset(s))")
     print(f"# callable bucket={len(cb)}  genuine(gap>{GAP_DAYS}d)={len(genuine)}  make-whole(<=7d, ->vanilla)={len(makewhole)}")
 
     rows, skip = [], []
@@ -86,15 +92,18 @@ def main():
         if pd.isna(bt) or bt <= 0:
             skip.append((aid, f"bt={bt}")); continue
 
+        if aid not in schedules:                                 # every genuine callable must be in the table
+            skip.append((aid, f"no row in {SCHED}")); continue
+        sched = to_lattice_schedule(schedules[aid], VAL)         # [(time_yrs, price), ...] from the data table
+
         T = (b["maturity"] - pd.Timestamp(VAL)).days / 365.25
-        first_call = max(0.0, (b["call_date"] - pd.Timestamp(VAL)).days / 365.25)
         try:
             curve = ZeroCurve.from_currency(DATA_DIR, ccy, VAL, freq=FREQ_VARIANT[fr])
         except Exception as e:                                   # GBP non-arb node, unmapped ccy, ...
             skip.append((aid, f"curve {ccy}: {e}")); continue
 
         lat = ShortRateLattice(curve, T, freq=fr, sigma=SIGMA)
-        carr = lat.par_call_array(first_call, 100.0)
+        carr = lat.call_array(sched)                             # exercise schedule driven by the CSV, not hard-coded
         # option value at OAS=0 (raw), then calibrate OAS to BT for callable AND straight
         px_str0 = lat.price_bond(float(cpn), 0.0)
         px_cal0 = lat.price_bond(float(cpn), 0.0, call_price=carr)
@@ -105,15 +114,16 @@ def main():
             skip.append((aid, f"no-bracket bt={bt:.2f}: {e}")); continue
         rm_cal = lat.risk_metrics(float(cpn), oas_cal, call_price=carr)
         rm_str = lat.risk_metrics(float(cpn), oas_str)
-        if oas_cal < 0:                       # BT above the par-call value -> assumption refuted
-            note = "par-call-refuted"
-        elif abs(oas_cal - oas_str) < 1e-4:   # call never in the money (bond << par)
+        if oas_cal < 0:                       # BT above the scheduled call value -> assumption conflicts w/ the mark
+            note = f"par-call assumption conflicts with market price (BT {bt:.2f}); awaiting actual schedule"
+        elif abs(oas_cal - oas_str) < 1e-4:   # call never in the money (bond << call price)
             note = "call-not-binding"
         else:
             note = "call-active"
         rows.append(dict(
             asset_id=aid, ccy=ccy, rating=b["rating_bucket"], coupon=float(cpn), freq=fr,
-            maturity=b["maturity"].date(), call_date=b["call_date"].date(), gap_yrs=round(b["gap_days"] / 365.25, 2),
+            maturity=b["maturity"].date(), call_date=schedules[aid][0][0].date(), call_price=schedules[aid][0][1],
+            n_call_rows=len(schedules[aid]), gap_yrs=round(b["gap_days"] / 365.25, 2),
             ttm=round(T, 2), bt=float(bt), px_straight_oas0=round(px_str0, 3), px_callable_oas0=round(px_cal0, 3),
             opt_val_oas0=round(px_str0 - px_cal0, 3),
             implied_oas_bp_callable=round(oas_cal * 1e4, 1), implied_oas_bp_straight=round(oas_str * 1e4, 1),
@@ -132,8 +142,8 @@ def main():
     for aid, why in skip:
         print("  skip", aid, why)
     if len(df):
-        cols = ["asset_id", "ccy", "rating", "coupon", "maturity", "call_date", "gap_yrs", "ttm", "bt",
-                "px_straight_oas0", "px_callable_oas0", "opt_val_oas0",
+        cols = ["asset_id", "ccy", "rating", "coupon", "maturity", "call_date", "call_price", "n_call_rows",
+                "gap_yrs", "ttm", "bt", "px_straight_oas0", "px_callable_oas0", "opt_val_oas0",
                 "implied_oas_bp_straight", "implied_oas_bp_callable", "oas_cost_of_call_bp",
                 "eff_dur_straight", "eff_dur_callable", "aq_custodian", "dur_vs_aq", "note"]
         print("\n" + df[cols].to_string(index=False))
