@@ -128,6 +128,31 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   Notch-map (S&P/Moody → 7 buckets) implemented in **`src/credit/ratings.py`**. Red lines: keep IG/HY split
   (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
 
+## Coupon-type routing (Mario 2026-07-08) — read `Coupon_Formula2`, route by structure
+- **Directive:** the module defaulted every bond to `F`; now it reads **`Coupon_Formula2`** (Corporate
+  Bonds tab, Excel col **M** — Mario said "N", header confirms **M**; N is empty, loader was right) and
+  routes by coupon structure. Classifier = **`src/dataio/coupon_types.py`** (`classify_coupon_formula` +
+  `ROUTE`), wired into `universe.py` (adds `coupon_class`+`route`; splits the old blanket
+  structured/floating funnel bucket). Reconciles **EXACTLY** to Mario's 676-row pivot: **F 617 · floating
+  27 · fixed-to-reset 6 · stepped 2 · step-up 1 · zero 1 · defaulted 1 · excluded 21** (in
+  `extras["coupon_class_pivot"]`).
+- **Route → engine:** F/zero → vanilla · stepped/step-up → vanilla-schedule (Step 3) · floating +
+  fixed-to-reset → floating engine (Step 4, TBD) · defaulted → recovery mark (Step 3) ·
+  **pass-through/amortizing/na → EXCLUDED per Mario** (16/1/4 = 21; prepayment/amortization models or
+  unclassified). Pass-through sheet's Collateral-col loader **kept** for the later MBS phase.
+- **Funnel @6-10:** canonical stays **522** but now 100% `coupon_class F`/`route vanilla` — the 1
+  `Amortizing` bond coupon_type mislabelled "Fixed" left canonical (correctness fix), a formula-`Fixed`
+  hybrid replaced it; **callable 5→6** (a formula-`Fixed` bond coupon_type had mislabelled non-fixed = real
+  fixed callable → v2 lattice). `test_universe` +3, **63 green**.
+- **FRN legacy = Step-1 recon (NOT ported):** `BondOAS` **analysisType 7/8/9**
+  (`47:extracted/project_vba.txt` **l.5693–5829**) = 7 price / 8 implied-OAS (`Veloz` solve) / 9 eff-dur
+  (±10bp) on a **curve-forward FRN recombining tree** — floating coupon `Forward = Discount·sloperow` off
+  the discount curve; discount `(OAS+Forward)/Freq` on the **same** curve (single-curve, periodic-simple,
+  ≤30 steps). **Bloomberg data = substitutable (the callable-schedule pattern):** `swapcurve` short-end
+  (EURIBOR `EU000nM` / GBP-LIBOR `BP000nM` / USD-LIBOR `US000nM` or **H.15 `h15tnM` = FRED-able**),
+  `multi_cpn_schedule` (steps), `flt_cpn_hist` (spread+resets) → our ZeroCurve forwards + parsed
+  spread/schedule. Step 4 ports this after Mario confirms the method.
+
 ## Validated so far
 - **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,
   Q exact ≤30y, Monthly <0.1 pp (short-end fill); golden-master `tests/test_bootstrap.py` uses
@@ -203,7 +228,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `src/credit/` — ✅ `ratings.py` (notch-map) · ✅ `oas.py` (per-rating OAS from `OAS Credit Curves`).
 - `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
   MECE funnel → **canonical 522 @ 2009-06-10** (46 make-whole→vanilla)) + ✅ `call_schedules.py` (call/put
-  exercise table `data/call_schedules.csv` → per-asset `[(date,price)]`; the lattice's only call-terms source);
+  exercise table `data/call_schedules.csv` → per-asset `[(date,price)]`; the lattice's only call-terms source)
+  + ✅ `coupon_types.py` (`Coupon_Formula2` → coupon-class + engine route, Mario 2026-07-08);
   FRED OAS loader next. (Named `dataio`, **not** `io`: `conftest` puts `src/` at `sys.path[0]`, so an `io` package
   would shadow stdlib `io`.)
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
@@ -216,4 +242,5 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `src/instruments/` (Bond model + cash flows) · `src/risk/` (CreditMetrics, later) · `src/config/`.
 - `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`) + `test_lattice`
   (v2 callable-lattice **invariants**: par-reprice/arb-free, callable≤straight≤putable, σ=0 degeneracy, multi-date
-  schedule ordering) + `test_call_schedules` (loader: multi-row grouping, date→time clamp). **60 total.**
+  schedule ordering) + `test_call_schedules` (loader: multi-row grouping, date→time clamp) + `test_universe`
+  coupon-class locks (pivot reconciliation, canonical-all-F/vanilla, funnel-bucket split). **63 total.**

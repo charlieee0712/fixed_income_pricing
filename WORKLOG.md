@@ -5,6 +5,63 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-08 — Coupon_Formula2 classification + routing (Mario new task, Steps 1–2 of 4)
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario: the module defaulted **every** bond to `F` (plain fixed), but the `Corporate Bonds` tab's
+`Coupon_Formula2` column carries the real coupon structure (some bonds fixed→reset / fixed→floating).
+Task = read `Coupon_Formula2`, classify, route to the right engine. Four steps, report after each; this
+round did **Step 1 (FRN recon, read-only)** + **Step 2 (classifier + routing framework)**. Steps 3
+(simple types) and 4 (floating engine) held pending my confirmation.
+
+**Step 1 — FRN legacy recon (`BondOAS` analysisType 7/8/9, `47:extracted/project_vba.txt`).** Located
+the FRN branches at **l.5693–5829** (sibling of the callable 1/5/6 block in the same `BondOAS`):
+- **7 = FRN price** (`ans7 = FRN(inicio,1)`), **8 = implied OAS** (`Veloz` root-solve to `givenprice`,
+  `ans8 = impliedOAS*100`), **9 = eff-duration** (±10bp bump, `ans9 = FRNDuration`) — the SAME
+  price/OAS/duration triple our vanilla + callable engines already emit.
+- **Mechanism = curve-forward FRN recombining tree.** Floating coupon at each node = `Forward =
+  Discount·sloperow` (a forward rate off the discount curve); node discounts at `(OAS+Forward)/Freq` on
+  the **same** curve (single-curve, pre-crisis convention), periodic-simple compounding, up to 30 steps
+  (`cols` by maturity bucket, l.4498–4569). `coupon_rate(k)` = per-period spread/step coupon.
+- **Bloomberg data (exactly the callable-call-schedule situation — algo portable, data substitutable):**
+  `swapcurve` short-end index pulled per-ccy from money-market tickers (l.4655–4697: EURIBOR `EU000nM`,
+  GBP-LIBOR `BP000nM`, USD-LIBOR `US000nM`, CIBOR/STIBOR/TIBOR, **and a Fed H.15 `h15tnM` USD fallback =
+  FRED-replaceable**); `multi_cpn_schedule` (l.4783, step coupons); `flt_cpn_hist` (l.4798, spread +
+  resets). Substitutes: our bootstrapped `ZeroCurve` forwards + spread/schedule parsed from
+  `coupon_formula`/`Coupon` (or a `call_schedules.csv`-style CSV). **Conventions:** Forward/OAS/coupon in
+  **percent**; discount `(1+(OAS+Fwd)/100/Freq)` = periodic simple (matches our corrected DF family, not
+  the `exp(−t·z_semi)` bug). No code written (recon only, per instruction).
+
+**Step 2 — classifier + routing framework (implemented, validated).**
+- **Column trap resolved:** `Coupon_Formula2` = Excel col **M** (header confirms; N is empty). Mario's
+  brief said "N列" — off by one; the loader's `M→coupon_formula2` mapping was already right.
+- New module **`src/dataio/coupon_types.py`**: `classify_coupon_formula` (18 raw values → 1 of
+  F/floating/fixed-to-reset/stepped/step-up/zero/defaulted/pass-through/amortizing/na/unknown) +
+  `ROUTE` (class → vanilla / vanilla-schedule / floating / recovery / excluded) + `EXCLUDED_REASON`
+  controlled vocab. Wired into `universe.py` (adds `coupon_class`+`route` columns; splits the old blanket
+  `structured/floating` funnel bucket into `excluded-structured` / `floating` / `special-fixed`).
+- **Pivot reconciles to Mario EXACTLY** (676 tab rows): F 617 · floating 27 (Ref-Rate 12 + EURIBOR 9 +
+  Fixed→Floating 5 + GBP-LIBOR 1) · fixed-to-reset 6 · stepped 2 · step-up 1 · zero 1 · defaulted 1 ·
+  excluded 21 (pass-through 16 + amortizing 1 + na 4) · unknown 0. Stashed in `extras["coupon_class_pivot"]`.
+- **IGNORE per Mario (~21):** pass-through 16 / amortizing 1 / na 4 → `route=excluded`. (Pass-through
+  sheet keeps its Collateral-col loader for the future MBS phase — not deleted.)
+- **Funnel impact @2009-06-10 (correctness improvements surfaced):** canonical **stays 522** but is now
+  100% `coupon_class F` / `route vanilla` — the **1 `Amortizing (mortgage-backed)` bond that coupon_type
+  mislabelled "Fixed"** dropped out of canonical (Mario-excluded), and a genuinely-`Fixed`-by-formula
+  hybrid took its slot (net 0). **Genuine callables 5→6:** a formula-`Fixed` bond that coupon_type had
+  mislabelled non-fixed is now correctly a fixed callable → v2 lattice. Old `structured/floating` 51 →
+  `excluded-structured 15 + floating 32 + special-fixed 3` (=50) + the +1 callable. MECE holds (732).
+- **Tests:** golden `test_universe` +3 (pivot lock, canonical-all-F/vanilla, funnel-bucket split);
+  updated callable 5→6 + the MECE reason list. **Full suite 63 passed on 47** (was 60).
+
+**Open / next (await my confirm before coding):**
+- **Step 3 (simple types, no floating engine):** zero (1, degenerate vanilla) → step-up (1) + segmented
+  7.00%/7.50% (2) via a coupon-schedule cash-flow generator → defaulted (1) recovery mark; then run
+  implied-OAS + risk on them, merge into the main output with a `route` column.
+- **Step 4 (floating engine, 27 + reset 6):** port the curve-forward FRN tree (Step-1 algo) with our
+  ZeroCurve forwards + parsed spread/schedule replacing Bloomberg; method to be confirmed with Mario.
+
 ## 2026-07-03 — Mario's 3 answers landed: schedule-driven calls, σ=0.15, BT-marking closed
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

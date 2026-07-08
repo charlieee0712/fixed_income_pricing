@@ -16,6 +16,7 @@ from __future__ import annotations
 import pandas as pd
 
 from credit.ratings import DEFAULTED, NO_RATING, classify
+from dataio import coupon_types as ct
 from dataio.loaders import (
     CORP_SUBCATEGORY,
     GOLDEN_FIELDS,
@@ -27,9 +28,11 @@ from dataio.loaders import (
 # kept set, not an exclusion.
 REASON_PRIORITY = (
     "terms-unavailable",
-    "defaulted",
+    "defaulted",                # rating-defaulted (D/SD)
     "no-rating",
-    "structured/floating",
+    "excluded-structured",      # Mario-excluded coupon class: pass-through / amortizing / na / unknown
+    "floating",                 # floating + fixed-to-reset -> forward-projection engine (Step 4)
+    "special-fixed",            # stepped / step-up / zero / defaulted-coupon -> Step 3 engines
     "callable",
     "matured",
 )
@@ -79,7 +82,8 @@ def build_universe(master, terms, val_date):
     tab_ids = set(terms_u["asset_id"].astype(str))
     master_ids = set(uniq["asset_id"].astype(str))
     merged = uniq.merge(
-        terms_u[["asset_id", "coupon", "coupon_type", "freq", "maturity", "coupon_formula"]],
+        terms_u[["asset_id", "coupon", "coupon_type", "freq", "maturity",
+                 "coupon_formula", "coupon_formula2"]],
         on="asset_id",
         how="left",
     )
@@ -104,6 +108,11 @@ def build_universe(master, terms, val_date):
     gap_days = (maturity - call_date).dt.days
     merged["is_make_whole"] = merged["is_callable"] & gap_days.le(MAKE_WHOLE_MAX_GAP_DAYS)
 
+    # ---- coupon-structure class + engine route (Mario 2026-07-08: read Coupon_Formula2, route by
+    #      type). Data-driven; supersedes the coupon_type(E) "fixed" test for canonical membership. ----
+    merged["coupon_class"] = merged["coupon_formula2"].map(ct.classify_coupon_formula)
+    merged["route"] = merged["coupon_class"].map(ct.route_for)
+
     # ---- single primary reason by LOCKED priority ----
     def _reason(r):
         if not r["matched"]:
@@ -112,8 +121,14 @@ def build_universe(master, terms, val_date):
             return "defaulted"
         if r["rating_bucket"] == NO_RATING:
             return "no-rating"
-        if not r["is_fixed"]:
-            return "structured/floating"
+        cc = r["coupon_class"]                             # data-driven from Coupon_Formula2
+        if cc in ct.EXCLUDED_CLASSES:                      # pass-through / amortizing / na / unknown
+            return "excluded-structured"
+        if cc in (ct.FLOATING, ct.FIXED_TO_RESET):         # -> forward-projection engine (Step 4)
+            return "floating"
+        if cc in (ct.STEPPED, ct.STEP_UP, ct.ZERO, ct.DEFAULTED):   # -> Step 3 engines
+            return "special-fixed"
+        # cc == F (plain fixed): the vanilla path — genuine call / maturity still apply
         if r["is_callable"] and not r["is_make_whole"]:   # make-whole falls through to vanilla/canonical
             return "callable"
         if r["is_matured"]:
@@ -143,6 +158,13 @@ def build_universe(master, terms, val_date):
         "raw_callable_in_matched": int((in_matched & merged["is_callable"]).sum()),
         "make_whole_total": int(merged["is_make_whole"].sum()),
         "make_whole_as_vanilla": int((merged["is_make_whole"] & (merged["primary_reason"] == "canonical")).sum()),
+        # coupon-structure classification (Mario 2026-07-08). ``coupon_class_pivot`` = raw 676-row tab
+        # pivot -> reconciles to Mario's targets exactly; ``route_counts`` = engine assignment over the 732.
+        "coupon_class_pivot": {
+            k: int(v)
+            for k, v in terms["coupon_formula2"].map(ct.classify_coupon_formula).value_counts().items()
+        },
+        "route_counts": {k: int(v) for k, v in merged["route"].value_counts().items()},
         "reconciliation": merged[
             ["asset_id", "isin"] + [c for c in GOLDEN_FIELDS if c in merged.columns]
         ].copy(),
