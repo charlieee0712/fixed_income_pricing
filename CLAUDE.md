@@ -190,10 +190,15 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   terms — 2 FRN + 3 reset have no maturity (CF truncation / perp formula); (d) **step-up** coupon table +
   **zero** structured-payoff terms (Step 3); (e) a usable **GBP curve** (non-arb 3y node blocks the 1 GBP
   floater + any GBP bond).
-- **Reset-6 (fixed-to-reset) recon done — awaiting approach decision.** 6 deep-discount hybrids (BT 36–47,
-  one 92.7): TNTD03020850 (perp, call'37), TNTD04509751 (perp), TNTG532803U (2049), TNTG532805U (2049,
-  Variable), TNTG533596W (perp, call'15), TNTG701894W (2033, step/var). Half perpetual; reset date ≈ the
-  call date where present. Share the FRN forward projection but need per-bond reset terms → decide next.
+- **Reset-6 DONE (2026-07-08) — coupon-continuation.** 4 known-coupon hybrids priced as their current
+  fixed coupon continued (perp → 90y truncation, face PV≈0; finite → maturity): TNTD03020850 1089bp,
+  TNTD04509751 876bp, TNTG532803U 564bp, TNTG533596W 627bp (route `reset-continuation`, LONG dur = correct,
+  kept out of by-rating medians). **price-to-call = reference only**: TNTG533596W BT 36 ⇒ to-call 1884bp is
+  spurious (market prices extension, not call) ⇒ continuation is the main column. 2 Variable-coupon
+  (TNTG532805U, TNTG701894W) → BT-mark `reset-terms-unavailable`.
+- **Coupon_Formula2 coverage CLOSED → see `COVERAGE.md`** (class→engine→status over the 676 pivot; output
+  558 = 545 priced + 13 flagged/BT-mark + 21 excluded-per-Mario). FRN neg-duration mechanism + spread=0
+  convention documented in `frn.py`. Remaining work = data-gap fills as Mario/Bloomberg terms arrive.
 
 ## Validated so far
 - **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,

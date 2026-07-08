@@ -19,6 +19,19 @@ forwards rise with the discount rate and (largely) offset it, so an FRN's effect
 ~ the time to the next reset — far shorter than a same-maturity fixed bond. Bumping only the OAS
 (which leaves the forwards fixed) would wrongly make the FRN look like a fixed bond. This is the
 signature floating-rate check.
+
+Duration regimes (so a NEGATIVE eff-dur is never mistaken for a bug):
+  * near par            -> eff-dur ~ the time to the next reset (the note resets its rate risk away);
+  * deep discount (below par on credit) -> price = par - OAS*annuity_PV, so a rate rise discounts that
+    annuity harder, the below-par gap shrinks, and the price RISES -> a NEGATIVE
+    (credit-spread-annuity) duration of magnitude ~ OAS * annuity_duration. Self-consistent on the
+    real book: a 57y BT~50 floater has gap ~50 * annuity-dur ~10 / price ~50 ~ -10 (observed -10.6);
+  * universally |eff-dur| <<< a same-maturity FIXED bond -- the reliability invariant.
+
+Spread convention (confirmed 2026-07-08): all 27 URS ``coupon_formula`` are generic ("... + Spread",
+no number), so the 18 priced FRNs use ``spread=0`` and the implied OAS ABSORBS the unknown quoted
+spread. The calibrated price reprices BT exactly and the duration is (to leading order)
+spread-independent; once a real spread is supplied it can be separated back out of the OAS.
 """
 from __future__ import annotations
 

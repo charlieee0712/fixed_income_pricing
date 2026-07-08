@@ -41,6 +41,8 @@ OUT = os.environ.get("FIP_OUT", "outputs/implied_oas.csv")  # per-date override 
 OAS_WB = os.environ.get("FIP_OAS_WB", os.path.join(DATA_DIR, "Pricing File.xlsm"))  # index OAS source
 MIN_YEARS = 1.0          # below this remaining maturity -> implied OAS unreliable -> excluded
 DISTRESS_BT = 50.0       # below this clean price -> implied OAS is a recovery plug -> flagged, kept
+PERP_TRUNC_YEARS = 90    # perpetual reset bonds priced by coupon-continuation to a long truncation
+                         # (face PV at 90y is negligible under crisis discount rates; noted per bond)
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
 RATING_ORDER = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"]
 # Routes whose implied OAS is a clean, model-repriced spread (feed the by-rating medians). The other
@@ -266,13 +268,83 @@ def main():
             oas = implied_oas_frn(float(bt), VAL, mat, curve, current_coupon=cur,
                                   spread=(spread or 0.0), freq=fr)
             rm = frn_risk_metrics(VAL, mat, curve, oas, current_coupon=cur, spread=(spread or 0.0), freq=fr)
-            note = "spread parsed" if spread is not None else "no spread in workbook -> folded into OAS"
+            note = ("spread parsed" if spread is not None else
+                    "spread unknown->0, OAS absorbs it (price exact for BT calib; dur ~spread-independent; separable later)")
             row.update(route="floating", clean=rm["clean"], implied_oas=oas, implied_bp=oas * 1e4,
                        eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
                        next_reset_t=rm["next_reset_t"],
                        flag=f"FRN; {note}" + ("" if cur is not None else "; current coupon 'Variable'->forward"))
         except ValueError as e:
             row.update(route="frn-no-bracket", clean=float(bt), flag=f"FRN OAS not bracketable ({e})")
+        rows.append(row)
+
+    # ---- Reset-6 (fixed-to-reset hybrids, Mario 2026-07-08 plan): coupon-continuation MAIN column +
+    #      price-to-call SECONDARY. Known-coupon bonds price as their current fixed coupon continued
+    #      (perpetual -> long truncation; the OAS absorbs the unknown reset terms). Variable-coupon
+    #      ones are BT-marked pending terms. Price-to-call is a reference only: for a deep-discount name
+    #      the market prices EXTENSION, not the call, so a to-call OAS is spurious (see WORKLOG).
+    resets = _excluded[_excluded["coupon_class"] == "fixed-to-reset"]
+    for _, b in resets.iterrows():
+        aid = str(b["asset_id"])
+        mat = b["maturity"]
+        ccy = str(b.get("currency")).strip().upper() if b.get("currency") is not None else "USD"
+        bt = pd.to_numeric(recon.loc[aid, "gold_price"], errors="coerce") if aid in recon.index else np.nan
+        mv = pd.to_numeric(recon.loc[aid, "gold_mkt_value"], errors="coerce") if aid in recon.index else np.nan
+        cur = pd.to_numeric(b.get("coupon"), errors="coerce")
+        call = pd.to_datetime(b.get("call_date"), errors="coerce")
+        try:
+            fr = int(b["freq"])
+        except (TypeError, ValueError):
+            fr = 2
+        ttm = (pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25 if pd.notna(mat) else np.nan
+        row = dict(
+            asset_id=aid, isin=b.get("isin"), ccy=ccy, fx=b.get("fx_rate"),
+            rating=b["rating_bucket"], src=b.get("rating_source"),
+            coupon=(float(cur) if pd.notna(cur) else np.nan), freq=fr,
+            maturity=(pd.Timestamp(mat).date() if pd.notna(mat) else None),
+            ttm=(round(ttm, 3) if pd.notna(ttm) else np.nan),
+            par=pd.to_numeric(b.get("par_value"), errors="coerce"),
+            bt=(float(bt) if pd.notna(bt) else np.nan), clean=np.nan, implied_oas=np.nan,
+            implied_bp=np.nan, implied_bp_usd_curve=np.nan, eff_dur=np.nan, dv01=np.nan,
+            convexity=np.nan, mv_base_usd=mv, near_maturity=False, recovery_plug=False,
+            next_reset_t=np.nan, implied_bp_to_call=np.nan, eff_dur_to_call=np.nan,
+            call_date_used=(call.date() if pd.notna(call) else None), route="", flag="",
+        )
+        if pd.isna(cur) or pd.isna(bt) or bt <= 0:      # Variable coupon / no mark -> awaiting terms
+            row.update(route="reset-terms-unavailable", clean=(float(bt) if pd.notna(bt) else np.nan),
+                       flag="Variable coupon / no BT — awaiting reset terms (BT mark)")
+            rows.append(row); continue
+        variant = FREQ_VARIANT.get(fr, "Semiannual")
+        try:
+            curve = get_curve(ccy, variant)
+        except Exception as e:
+            row.update(route="reset-terms-unavailable", clean=float(bt), flag=f"curve {ccy}/{variant} blocked: {e}")
+            rows.append(row); continue
+
+        perp = pd.isna(mat)
+        cont_mat = (pd.Timestamp(VAL) + pd.DateOffset(years=PERP_TRUNC_YEARS)) if perp else mat
+        try:
+            oas = implied_oas(float(bt), VAL, cont_mat, float(cur), curve, freq=fr)
+            rm = risk_metrics(VAL, cont_mat, float(cur), curve, oas, freq=fr)
+        except ValueError as e:
+            row.update(route="reset-terms-unavailable", clean=float(bt), flag=f"continuation price failed ({e})")
+            rows.append(row); continue
+
+        oas_call = eff_call = np.nan                     # secondary: price-to-call reference
+        if pd.notna(call) and pd.Timestamp(call) > pd.Timestamp(VAL):
+            try:
+                oas_call = implied_oas(float(bt), VAL, call, float(cur), curve, freq=fr)
+                eff_call = risk_metrics(VAL, call, float(cur), curve, oas_call, freq=fr)["eff_duration"]
+            except ValueError:
+                pass
+        trunc = (f"; perp truncated at {PERP_TRUNC_YEARS}y (face PV~{100 * curve.discount_factor(float(PERP_TRUNC_YEARS), oas):.2f})"
+                 if perp else "")
+        callref = (f"; price-to-call REFERENCE only" + (", deep-discount->extension priced" if float(bt) < DISTRESS_BT else "")
+                   if pd.notna(oas_call) else "")
+        row.update(route="reset-continuation", clean=rm["clean"], implied_oas=oas, implied_bp=oas * 1e4,
+                   eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
+                   implied_bp_to_call=(oas_call * 1e4 if pd.notna(oas_call) else np.nan), eff_dur_to_call=eff_call,
+                   flag="reset-terms-unavailable; coupon-continuation (main)" + trunc + callref)
         rows.append(row)
 
     df = pd.DataFrame(rows)
@@ -308,6 +380,14 @@ def main():
         if len(pr):
             print(f"\n  priced FRNs: {len(pr)}  eff_dur range [{pr['eff_dur'].min():.2f}, {pr['eff_dur'].max():.2f}]"
                   f"  for maturities up to {pr['ttm'].max():.0f}y  -> durations SHORT = the reset feature")
+
+    # ---- Reset-6 fixed-to-reset (coupon-continuation main + price-to-call secondary) ----
+    rs_df = df[df["route"].isin(["reset-continuation", "reset-terms-unavailable"])]
+    if len(rs_df):
+        print(f"\n[RESET-6 fixed-to-reset] {len(rs_df)} bonds — main=coupon-continuation, 2nd=price-to-call:")
+        print(rs_df.sort_values("route")[
+            ["asset_id", "ccy", "route", "rating", "coupon", "maturity", "bt", "implied_bp", "eff_dur",
+             "implied_bp_to_call", "eff_dur_to_call", "call_date_used", "flag"]].to_string(index=False))
 
     # ---- caveat 2: EUR/GBP own-ccy vs USD-curve implied OAS ----
     nonusd = df[df["ccy"] != "USD"]

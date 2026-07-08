@@ -5,6 +5,43 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-08 (cont. 3) — Reset-6 priced (coupon-continuation); Coupon_Formula2 coverage closed
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario's reset-6 decision (improved plan a): known-coupon reset bonds price by coupon-continuation,
+Variable-coupon ones BT-mark. Plus his two doc asks (FRN negative-duration mechanism; spread=0
+annotation) and closing the Coupon_Formula2 coverage (`COVERAGE.md`).
+
+**Reset-6 (fixed-to-reset), `calibrate_risk.py`:**
+- **4 priced by coupon-continuation** (current fixed coupon continued; perpetual → 90y truncation with
+  face PV ~0.00 noted; finite → to maturity): TNTD03020850 (A, 7.195%, perp) **1089bp / eff-dur 6.37**;
+  TNTD04509751 (A, 5.506%, perp) 876bp / 7.29; TNTG532803U (BBB, 4.125%, 2049) 564bp / 9.95; TNTG533596W
+  (BBB, 4.028%, perp) 627bp / 8.75. Route `reset-continuation`. Durations are LONG (fixed-coupon) — correct,
+  unlike the floaters. Kept OUT of the by-rating medians (distressed calibration plugs).
+- **price-to-call = secondary/reference** for the 2 with call dates. **TNTG533596W (BT 36.3, call 2015):
+  continuation 627bp vs price-to-call 1884bp** — a deep-discount hybrid is priced by the market for
+  EXTENSION, not the call, so the to-call OAS is spurious ⇒ continuation is the main column, price-to-call
+  reference only. TNTD03020850 (call 2037, far out): 1089 vs 1109bp — close.
+- **2 Variable-coupon → BT-mark** (route `reset-terms-unavailable`): TNTG532805U (2049), TNTG701894W (2033).
+
+**FRN negative-duration mechanism documented** (Mario ask) in `frn.py` docstring + here: a deep-discount
+floater = par − OAS·annuity_PV; a rate rise discounts that annuity harder → the below-par gap shrinks →
+price RISES → a negative (credit-spread-annuity) duration ~ OAS·annuity-dur (BT~50 57y: 50×~10/50 ≈ −10,
+matches −10.6). Near par ≈ time-to-reset; universally |dur| ≪ same-maturity fixed. **Not a bug.**
+
+**Spread=0 confirmed + annotated:** all 27 `coupon_formula` are generic "... + Spread" (0/27 numeric) → the
+18 FRNs use spread=0 and the implied OAS absorbs the unknown quoted spread (price exact for BT calibration,
+duration ~spread-independent, separable when a real spread arrives). Flag text + docstring updated.
+
+**Coupon_Formula2 coverage CLOSED — new `COVERAGE.md`.** Full class→engine→status map over the 676 pivot;
+output universe 558 rows = **545 priced end-to-end + 13 flagged/BT-mark + 21 excluded-per-Mario**. Data-gap
+table (spreads, switch dates, perp/reset terms, step-up, zero, GBP curve) → empty `data/coupon_schedules.csv`
+seeded. **Suite 80 green.**
+
+**Next:** fill the data gaps as Mario/Bloomberg terms arrive; otherwise the corporate Coupon_Formula2 pass
+is complete.
+
 ## 2026-07-08 (cont. 2) — Step 4 pure-floating FRN engine (18 priced); reset-6 recon
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712
