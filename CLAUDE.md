@@ -176,6 +176,24 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   pattern): spread=0 & flat curve ⇒ price≈par; implied-OAS round-trip; **FRN eff-dur ≪ same-maturity
   fixed (≈ time-to-next-reset)** = the signature FRN check. ⑥ output: 27 floaters → main table
   (route=floating) with implied OAS + duration/DV01/convexity.
+- **Step 4 pure-floating DONE (2026-07-08) — `src/pricing/frn.py`.** Coupons = simple forward off our
+  `ZeroCurve` + spread; single-curve discount + implied OAS (calibrated to BT). **Effective duration bumps
+  the CURVE (reprojects forwards), NOT the OAS** → ~ time to next reset. Bug fixed en route: the stub
+  (current) period's forward must start at the true last-reset (t_prev<0), else the par-floater telescoping
+  breaks. `test_frn` (7 invariants: par-under-any-shift, OAS round-trip, near-par dur≈0, **dur ≪
+  same-maturity fixed even @78y**). Of 27: **18 priced FRNs** — durations SHORT across maturities to 58y
+  (the 2066/2067 floaters: eff-dur **~−10.7** vs a ~+20y fixed; near-par ones ≈0; deep-discount ones carry a
+  credit-spread-annuity duration, hence negative). **80 green.**
+- **Data needed from Mario/Bloomberg** (flagged, gap-blocked, NOT force-priced; empty
+  `data/coupon_schedules.csv` seeded `asset_id,effective_date,coupon_rate`): (a) FRN **spreads**
+  ("...+ Spread" has no number → folded into OAS); (b) **Fixed→Floating switch dates** (5); (c) **perpetual**
+  terms — 2 FRN + 3 reset have no maturity (CF truncation / perp formula); (d) **step-up** coupon table +
+  **zero** structured-payoff terms (Step 3); (e) a usable **GBP curve** (non-arb 3y node blocks the 1 GBP
+  floater + any GBP bond).
+- **Reset-6 (fixed-to-reset) recon done — awaiting approach decision.** 6 deep-discount hybrids (BT 36–47,
+  one 92.7): TNTD03020850 (perp, call'37), TNTD04509751 (perp), TNTG532803U (2049), TNTG532805U (2049,
+  Variable), TNTG533596W (perp, call'15), TNTG701894W (2033, step/var). Half perpetual; reset date ≈ the
+  call date where present. Share the FRN forward projection but need per-bond reset terms → decide next.
 
 ## Validated so far
 - **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,
@@ -261,6 +279,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   ✅ `calibrate.py` (`implied_oas`: solve OAS s.t. clean=`BT`) · ✅ `risk.py` (`risk_metrics`: effective
   duration / DV01 / convexity by ±1bp = parallel-shift bump) · ✅ `coupon_schedule.py` (**Step-3** coupon
   time-table for stepped/step-up/zero; threaded through `price_bond`/`implied_oas`/`risk_metrics`) ·
+  ✅ `frn.py` (**Step-4** FRN: forward-projection off `ZeroCurve` + spread, single-curve discount, implied
+  OAS; **curve-bump eff-dur ~ next reset**) ·
   ✅ `lattice.py` (**v2** callable/putable BDT
   short-rate tree: fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free; implied OAS + eff-dur; NOT a
   `BondOAS` replica — invariant-validated; `call_array`/`put_array` read a `[(time,price)]` schedule from
@@ -270,4 +290,5 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (v2 callable-lattice **invariants**: par-reprice/arb-free, callable≤straight≤putable, σ=0 degeneracy, multi-date
   schedule ordering) + `test_call_schedules` (loader: multi-row grouping, date→time clamp) + `test_universe`
   coupon-class locks (pivot reconciliation, canonical-all-F/vanilla, funnel-bucket split) + `test_coupon_schedule`
-  (formula parser + schedule-aware pricing: past-step→flat, future-step, zero). **73 total.**
+  (formula parser + schedule-aware pricing: past-step→flat, future-step, zero) + `test_frn` (FRN
+  invariants: par-under-any-shift, OAS round-trip, near-par dur≈0, dur ≪ same-maturity fixed). **80 total.**

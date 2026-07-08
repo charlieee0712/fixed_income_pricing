@@ -5,6 +5,64 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-08 (cont. 2) — Step 4 pure-floating FRN engine (18 priced); reset-6 recon
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario green-lit Step 4 (pure-floating 27) on the locked plan. Built the FRN engine, priced the true
+floaters, flagged the data-gap ones, and did the reset-6 terms recon for the next decision.
+
+**FRN engine (new `src/pricing/frn.py`).** Ports the Step-1 `BondOAS` 7/8/9 idea with our data:
+- **Projection:** each future coupon = `simple_forward(t0,t1) = (DF(t0)/DF(t1)-1)/(t1-t0)` off our
+  bootstrapped `ZeroCurve` + spread. **Discount:** same curve + flat implied OAS (single-curve; OIS
+  dual-curve documented as a future enhancement). Conventions mirror `bond_price` (ACT/364, 364/freq-day
+  schedule, accrued) so FRN/vanilla numbers are comparable; for freq 1,2 the period = 1/freq exactly so the
+  par identity is exact.
+- **Effective duration bumps the CURVE (reprojects the forwards AND rediscounts), NOT the OAS** — the whole
+  point. Under a curve bump the floating coupons rise with the discount and offset it → duration ~ time to
+  next reset. Bumping only the OAS would (wrongly) make an FRN look like a fixed bond.
+- **Bug caught + fixed via the invariant test:** first attempt clamped the stub (current) period's forward
+  start to `val` (`max(t_prev,0)`), breaking the par-floater telescoping → a "pure floater" didn't hold par
+  under shifts and threw a spurious duration. Fix: use the ACTUAL last-reset start (t_prev<0). After the fix
+  a pure floater holds par to <0.01 across ±5% shifts and near-par duration ≈ 0.
+- `parse_frn_spread` ("EURIBOR + 45bp"→0.0045, "EURIBOR + Spread"→None — the None principle). `test_frn`
+  (+7): par-under-any-shift, OAS round-trip, near-par dur≈0, **dur ≪ same-maturity fixed even at 78y**.
+  **Full suite 80 green.**
+
+**Data reality (inspected first, as in Step 3):** all 27 `coupon_formula` are generic ("... + Spread",
+**0/27 contain a digit**) → no spread in the book → folded into the calibrated OAS (⇒ a discount-margin
+-type spread; the *risk metrics* are robust to this). Current reset coupon ← master `Coupon` (D) when
+numeric (~8 bonds), else the forward.
+
+**Driver (`calibrate_risk.py`) — 27 floaters routed:**
+- **18 priced FRNs** (route `floating`): eff-dur SHORT across maturities to 58y — near-par names (BT ~98–104)
+  ≈ 0; the 2066/2067 floaters (BT ~48–50) eff-dur **~−10.7** (vs a same-maturity fixed ~+20y) — the credit
+  -spread-annuity duration of a deep-discount ultra-long floater (negative: rates up → credit discount
+  shrinks → price up). The headline holds: |eff-dur| ≪ fixed for every one. USD short-end used pure
+  ZeroCurve forwards (no external fixing needed); EUR own-ccy curves.
+- **Flagged, not force-priced:** 5 `frn-switch-unavailable` (Fixed→Floating, need switch date — 2 still
+  show a fixed coupon 6.375/7.8%); 2 `frn-no-maturity` (EUR perpetual); 1 `frn-curve-blocked` (GBP non-arb
+  3y node — the known GBP block, skipped per Mario); 1 `recovery` (defaulted floater BT 0.01).
+- `next_reset_t` added to the output; floaters kept OUT of the fixed by-rating medians (different spread
+  type). Empty `data/coupon_schedules.csv` seeded for the Step-3 gaps.
+
+**Reset-6 (fixed-to-reset) recon — for the approach decision (Mario asked to list before acting):**
+| asset | cpn | freq | maturity | call(reset?) | formula2 | rtg | BT | ccy |
+|---|---|---|---|---|---|---|---|---|
+| TNTD03020850 | 7.195% | 2 | **perp** | 2037-06-25 | per prospectus | A | 47.3 | USD |
+| TNTD04509751 | 5.506% | 2 | **perp** | — | perpetual structure | A | 42.0 | USD |
+| TNTG532803U | 4.125% | 1 | 2049 | — | long-dated hybrid | BBB | 40.5 | EUR |
+| TNTG532805U | Variable | 1 | 2049 | — | 144A hybrid | BBB | 39.5 | EUR |
+| TNTG533596W | 4.028% | 1 | **perp** | 2015-10-27 | perpetual | BBB | 36.3 | EUR |
+| TNTG701894W | Variable | 1 | 2033 | — | step/var | BBB | 92.7 | EUR |
+
+Half are perpetual (no maturity → need CF truncation / perp formula); reset date ≈ the call date where
+present; all deep-discount except TNTG701894W. Share the FRN forward projection but need per-bond reset
+terms. **Approach TBD with Mario.**
+
+**Next:** decide the reset-6 approach (perp handling + per-bond reset terms), then the remaining data-gap
+fills (spreads, switch dates) when Mario/Bloomberg data arrives.
+
 ## 2026-07-08 (cont.) — Step 3: simple special coupon types priced; Step 4 plan locked
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

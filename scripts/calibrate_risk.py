@@ -31,6 +31,7 @@ from dataio.loaders import load_corporate_terms, load_master
 from dataio.universe import build_universe
 from pricing.calibrate import implied_oas, near_maturity
 from pricing.coupon_schedule import coupon_at, parse_coupon_schedule
+from pricing.frn import frn_risk_metrics, implied_oas_frn, parse_frn_spread
 from pricing.risk import risk_metrics
 
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
@@ -204,6 +205,76 @@ def main():
             row.update(route="schedule-unavailable", clean=float(bt), flag=f"schedule price failed ({e})")
         rows.append(row)
 
+    # ---- Step-4 floating-rate notes (coupon_class == "floating"): FRN forward-projection engine ----
+    # Coupons project as the simple forward off our ZeroCurve + spread; the spread is absent from this
+    # workbook ("... + Spread", no number) so it is folded into the calibrated OAS (a discount-margin
+    # -type spread). Effective duration bumps the CURVE (reprojects), so it is ~ time to the next reset,
+    # far below a same-maturity fixed bond. Fixed->Floating (needs a switch date), perpetual/no-maturity,
+    # defaulted and curve-blocked names are flagged, NOT force-priced.
+    floaters = _excluded[_excluded["coupon_class"] == "floating"]
+    for _, b in floaters.iterrows():
+        aid = str(b["asset_id"])
+        mat = b["maturity"]
+        ccy = str(b.get("currency")).strip().upper() if b.get("currency") is not None else "USD"
+        bt = pd.to_numeric(recon.loc[aid, "gold_price"], errors="coerce") if aid in recon.index else np.nan
+        mv = pd.to_numeric(recon.loc[aid, "gold_mkt_value"], errors="coerce") if aid in recon.index else np.nan
+        cpn_d = pd.to_numeric(b.get("coupon"), errors="coerce")
+        try:
+            fr = int(b["freq"])
+        except (TypeError, ValueError):
+            fr = 2
+        ttm = (pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25 if pd.notna(mat) else np.nan
+        low = str(b.get("coupon_formula")).lower()
+        row = dict(
+            asset_id=aid, isin=b.get("isin"), ccy=ccy, fx=b.get("fx_rate"),
+            rating=b["rating_bucket"], src=b.get("rating_source"),
+            coupon=(float(cpn_d) if pd.notna(cpn_d) else np.nan), freq=fr,
+            maturity=(pd.Timestamp(mat).date() if pd.notna(mat) else None),
+            ttm=(round(ttm, 3) if pd.notna(ttm) else np.nan),
+            par=pd.to_numeric(b.get("par_value"), errors="coerce"),
+            bt=(float(bt) if pd.notna(bt) else np.nan), clean=np.nan, implied_oas=np.nan,
+            implied_bp=np.nan, implied_bp_usd_curve=np.nan, eff_dur=np.nan, dv01=np.nan,
+            convexity=np.nan, mv_base_usd=mv, near_maturity=False, recovery_plug=False,
+            next_reset_t=np.nan, route="", flag="",
+        )
+        if b["primary_reason"] == "defaulted" or (pd.notna(bt) and bt <= 1.0):
+            row.update(route="recovery", clean=(float(bt) if pd.notna(bt) else np.nan),
+                       flag="recovery mark: defaulted floater, BT used, no OAS")
+            rows.append(row); continue
+        if pd.isna(mat):
+            row.update(route="frn-no-maturity", clean=(float(bt) if pd.notna(bt) else np.nan),
+                       flag="no maturity (perpetual?) — needs terms; BT mark")
+            rows.append(row); continue
+        if "fixed" in low and "float" in low:
+            row.update(route="frn-switch-unavailable", clean=(float(bt) if pd.notna(bt) else np.nan),
+                       flag="Fixed->Floating: switch date not in workbook (may still be fixed) — BT mark")
+            rows.append(row); continue
+        if pd.isna(bt) or bt <= 0:
+            row.update(route="frn-no-data", flag=f"missing BT (bt={bt})")
+            rows.append(row); continue
+
+        variant = FREQ_VARIANT.get(fr, "Semiannual")
+        try:
+            curve = get_curve(ccy, variant)
+        except Exception as e:
+            row.update(route="frn-curve-blocked", clean=float(bt), flag=f"curve {ccy}/{variant} blocked: {e}")
+            rows.append(row); continue
+
+        spread = parse_frn_spread(b.get("coupon_formula"), b.get("coupon_formula2"))
+        cur = float(cpn_d) if pd.notna(cpn_d) else None      # current reset coupon (master D) if numeric
+        try:
+            oas = implied_oas_frn(float(bt), VAL, mat, curve, current_coupon=cur,
+                                  spread=(spread or 0.0), freq=fr)
+            rm = frn_risk_metrics(VAL, mat, curve, oas, current_coupon=cur, spread=(spread or 0.0), freq=fr)
+            note = "spread parsed" if spread is not None else "no spread in workbook -> folded into OAS"
+            row.update(route="floating", clean=rm["clean"], implied_oas=oas, implied_bp=oas * 1e4,
+                       eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
+                       next_reset_t=rm["next_reset_t"],
+                       flag=f"FRN; {note}" + ("" if cur is not None else "; current coupon 'Variable'->forward"))
+        except ValueError as e:
+            row.update(route="frn-no-bracket", clean=float(bt), flag=f"FRN OAS not bracketable ({e})")
+        rows.append(row)
+
     df = pd.DataFrame(rows)
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     df.to_csv(OUT, index=False)
@@ -219,11 +290,24 @@ def main():
     print(f"[make-whole-as-vanilla] {int((df['route'] == 'make-whole-as-vanilla').sum())} bonds priced as vanilla (gap<=7d call)")
 
     # ---- Step-3 special coupon types (zero / stepped / step-up / defaulted) ----
-    sp = df[~df["route"].isin({"vanilla", "make-whole-as-vanilla"})]
+    fl_ids = set(floaters["asset_id"].astype(str))
+    sp = df[~df["route"].isin({"vanilla", "make-whole-as-vanilla"}) & ~df["asset_id"].astype(str).isin(fl_ids)]
     if len(sp):
         print(f"\n[STEP-3 special coupon types] {len(sp)} bonds routed by structure:")
         print(sp[["asset_id", "route", "rating", "maturity", "ttm", "coupon", "bt", "clean",
                   "implied_bp", "eff_dur", "flag"]].to_string(index=False))
+
+    # ---- Step-4 floating-rate notes (eff_dur = curve-bump duration ~ time to next reset) ----
+    flt = df[df["asset_id"].astype(str).isin(fl_ids)]
+    if len(flt):
+        print(f"\n[STEP-4 FLOATING-RATE NOTES] {len(flt)} bonds (eff_dur ~ time to next reset, NOT maturity):")
+        print(flt.sort_values(["route", "ttm"])[
+            ["asset_id", "ccy", "route", "rating", "maturity", "ttm", "coupon", "bt",
+             "implied_bp", "eff_dur", "next_reset_t", "flag"]].to_string(index=False))
+        pr = flt[flt["route"] == "floating"]
+        if len(pr):
+            print(f"\n  priced FRNs: {len(pr)}  eff_dur range [{pr['eff_dur'].min():.2f}, {pr['eff_dur'].max():.2f}]"
+                  f"  for maturities up to {pr['ttm'].max():.0f}y  -> durations SHORT = the reset feature")
 
     # ---- caveat 2: EUR/GBP own-ccy vs USD-curve implied OAS ----
     nonusd = df[df["ccy"] != "USD"]
