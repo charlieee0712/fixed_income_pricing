@@ -8,11 +8,12 @@ generalise to MBS / CMBS / ABS / CMO / callables and to a credit-risk
 
 Repo: `github.com/charlieee0712/fixed_income_pricing`
 
-> ⚠️ **Data handling.** Raw client portfolios and market-data workbooks
-> (`*.xlsx / *.xlsm / *.zip / *.csv / *.txt`) are **git-ignored** and must never be
-> committed — they contain a client's actual holdings and proprietary curves. This
-> repo holds code and documentation only. Because the docs reference a client
-> portfolio, **keep the GitHub repo private.**
+> ⚠️ **Data handling — CHANGED 2026-07-08 (boss-approved).** Client portfolios and
+> market-data workbooks (`*.xlsx / *.xlsm / *.zip / *.csv / *.txt`) are now **committed
+> in-repo** — they contain a client's actual holdings and proprietary curves. Because the
+> repo now holds real client data (not just code/docs), **keeping the GitHub repo PRIVATE
+> is mandatory, not optional.** `.gitignore` now excludes only build/cache/editor artifacts.
+> *(Prior policy: data git-ignored, "must never be committed" — superseded.)*
 
 ---
 

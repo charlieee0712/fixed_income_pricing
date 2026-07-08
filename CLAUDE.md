@@ -23,7 +23,11 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (unzip the xlsx/xlsm and parse `sharedStrings.xml` + `worksheets/sheetN.xml`).
 - **No Bloomberg.** Inputs are exported `*_Yield_Curve.txt` + FRED OAS (the VBA's
   `GetBloomberg` is replaced).
-- **Never commit client data** — `*.xlsx/*.xlsm/*.zip/*.csv/*.txt` are git-ignored.
+- **Client data is now TRACKED in-repo** (policy change 2026-07-08, boss-approved): the client
+  portfolio, proprietary workbooks/curves, and derived reports are committed here. The repo **MUST
+  stay private** (`github.com/charlieee0712/fixed_income_pricing`). `.gitignore` now excludes only
+  build/cache/editor junk (`__pycache__/`, `.venv/`, `outputs/`, `.claude/`, …), not data. [was:
+  "Never commit client data — *.xlsx/*.xlsm/*.zip/*.csv/*.txt are git-ignored".]
 
 ## File roles
 - `All_Yield_Curve.zip` — raw **par-yield** history per country/ccy (`Date(Excel serial), 0.25..30`).

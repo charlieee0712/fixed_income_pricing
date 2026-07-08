@@ -1,22 +1,12 @@
 # =============================================================================
-#  Data & client inputs — DO NOT COMMIT
-#  These workbooks contain a client's actual portfolio holdings and proprietary
-#  market-data curves. This repository is for CODE and DOCUMENTATION only.
+#  .gitignore
+#  POLICY CHANGE 2026-07-08 (boss-approved): client data is now TRACKED in-repo.
+#  This repository intentionally contains the client portfolio, the proprietary
+#  reference workbooks/curves, and derived reports. It MUST stay PRIVATE.
+#  Only machine-local build/cache/editor artifacts are excluded below.
 # =============================================================================
-*.xlsx
-*.xlsm
-*.xls
-*.zip
-*.bin
-*.csv
-*.txt
-!requirements.txt
 
-# Whole client-data dir — belt-and-suspenders beyond the extensions above (covers any future
-# WRDS/FISD pull in a non-listed format, e.g. data/wrds/*.parquet).
-data/
-
-# Extracted / working artifacts
+# ---- Regenerable / working artifacts (not source, rebuilt on server 47) ----
 extracted/
 scratchpad/
 outputs/
@@ -28,6 +18,9 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# ---- Claude Code local settings ----
+.claude/
 
 # ---- Python ----
 __pycache__/
