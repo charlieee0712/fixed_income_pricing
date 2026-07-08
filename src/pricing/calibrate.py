@@ -24,6 +24,7 @@ from pricing.bond_price import price_bond
 
 def implied_oas(target_clean, valuation_date, maturity, coupon_rate, curve, *,
                 face: float = 100.0, freq: int = 2, vba_compat: bool = False,
+                coupon_schedule=None,
                 lo: float = -0.20, hi: float = 2.0, xtol: float = 1e-10,
                 max_expand: int = 40) -> float:
     """Solve for the flat continuous OAS (decimal) s.t. model CLEAN price == ``target_clean``.
@@ -37,7 +38,8 @@ def implied_oas(target_clean, valuation_date, maturity, coupon_rate, curve, *,
     """
     def f(oas: float) -> float:
         return price_bond(valuation_date, maturity, coupon_rate, curve, oas=oas,
-                          face=face, vba_compat=vba_compat, freq=freq).clean - target_clean
+                          face=face, vba_compat=vba_compat, freq=freq,
+                          coupon_schedule=coupon_schedule).clean - target_clean
 
     flo, fhi = f(lo), f(hi)
     n = 0

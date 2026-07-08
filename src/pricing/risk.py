@@ -22,7 +22,7 @@ ONE_BP = 1e-4
 
 def risk_metrics(valuation_date, maturity, coupon_rate, curve, oas, *,
                  face: float = 100.0, freq: int = 2, vba_compat: bool = False,
-                 bump: float = ONE_BP) -> dict:
+                 coupon_schedule=None, bump: float = ONE_BP) -> dict:
     """Return ``{dirty, clean, dv01, eff_duration, convexity}`` for the calibrated bond.
 
     ``oas`` should be the calibrated implied OAS (so ``dirty``/``clean`` reproduce the mark).
@@ -32,7 +32,8 @@ def risk_metrics(valuation_date, maturity, coupon_rate, curve, oas, *,
     """
     def priced(o: float):
         return price_bond(valuation_date, maturity, coupon_rate, curve, oas=o,
-                          face=face, vba_compat=vba_compat, freq=freq)
+                          face=face, vba_compat=vba_compat, freq=freq,
+                          coupon_schedule=coupon_schedule)
 
     base = priced(oas)
     p0 = base.dirty

@@ -5,6 +5,44 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-08 (cont.) — Step 3: simple special coupon types priced; Step 4 plan locked
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario accepted Steps 1–2 and green-lit Step 3 (do now) + locked the Step 4 floating-engine method.
+This entry = **Step 3** (Step 4 recorded in CLAUDE.md, executed next).
+
+**Coupon-schedule engine + parser (new `src/pricing/coupon_schedule.py`).** `parse_coupon_schedule`
+reads the free-text `Coupon_Formula`/`Formula2` cell into `[(effective_from|None, rate_decimal), ...]`,
+or **returns None (never guesses)** when there are no numeric coupons. `coupon_at(schedule, date)`
+gives the in-force rate. `price_bond` / `implied_oas` / `risk_metrics` gained an optional
+`coupon_schedule` kwarg (per-period coupon looked up by date; discounting/day-count/accrual unchanged).
+`tests/test_coupon_schedule.py` (+10, no workbook needed): parser formats (`t< / t≥`, `until/then`,
+single-fixed, no-numbers→None, ambiguous→None, multi-arg fallback), `coupon_at` boundaries, and
+schedule pricing (past-step reduces to flat, future-step prices between the two flats, zero = single
+discounted face).
+
+**Driver routes the 4 held special bonds** (`calibrate_risk.py`, from the excluded frame):
+- **stepped** TNTD04283895 (A, 2011-03): schedule "7.00% t<2006 / 7.50% t≥2006"; switch is **before**
+  valuation ⇒ flat 7.50% forward → priced via the schedule path → implied **210bp**, eff-dur **1.63**,
+  route `vanilla-schedule`; **joins the A median**.
+- **zero** TNTD03037132 (BBB, **2037**): priced as degenerate vanilla (single face CF), but BT **93.12**
+  on a 28y pure zero ⇒ implied OAS **−486bp** — proof the mark is a *structured payoff*, not a discount
+  zero. Route `zero-structured`, **kept in the table but excluded from medians** (flagged).
+- **step-up** TNTD04150829 (BBB, 2012): `coupon_formula`="Step-up schedule" carries **no numbers** —
+  parser returns None → route `schedule-unavailable`, **BT mark**, flagged (needs a terms source, like a
+  call schedule). 2nd stepped/step-up row in the pivot is **tab-only (not held)** → not priced.
+- **defaulted** TNTD03037967 (BT **12**): route `recovery`, **BT used as the mark, no implied OAS**
+  (solving an OAS for a defaulted bond is meaningless — Mario's instruction).
+
+`PRICED_ROUTES` = {vanilla, make-whole-as-vanilla, vanilla-schedule} — only these feed the by-rating
+medians (recovery / schedule-unavailable / zero-structured are BT marks or anomalous). By-rating table
+regenerated (A picks up the stepped bond; medians essentially unchanged). **Full suite 73 passed on 47.**
+
+**Next:** Step 4 pure-floating 27 (plan locked in CLAUDE.md — implied forward off ZeroCurve, single-curve
+discount + OIS-as-future-enhancement note, spread parsed from `coupon_formula`, invariant tests incl.
+FRN-dur≈time-to-reset), then reset-6 after per-bond terms recon.
+
 ## 2026-07-08 — Coupon_Formula2 classification + routing (Mario new task, Steps 1–2 of 4)
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

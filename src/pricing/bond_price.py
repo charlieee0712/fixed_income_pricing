@@ -44,6 +44,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from pricing.coupon_schedule import coupon_at
+
 YEAR_DAYS = 364.0     # VBA: a year is 364 days (diasmat / 364)
 HALF_DAYS = 182       # VBA: coupon period is 182 days (fechamobil - 182)
 _VBA_MAX_TENOR = 25.0  # the VBA's Zerout spans only 0.5..25y
@@ -98,7 +100,8 @@ def _as_date(x) -> dt.date:
 
 
 def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
-               face: float = 100.0, vba_compat: bool = False, freq: int = 2):
+               face: float = 100.0, vba_compat: bool = False, freq: int = 2,
+               coupon_schedule=None):
     """Port of BondPrice (curva = 1). Returns a :class:`PriceResult` with the CLEAN price.
 
     By default discounts with the bootstrapped factor exp(-t*(z_cont+oas)); ``vba_compat=True``
@@ -109,6 +112,12 @@ def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
     other frequencies are the natural generalisation (step = round(364/freq) days, coupon =
     rate/freq*face) and are only meaningful in the corrected (default) mode — ``vba_compat`` is
     semiannual-only.
+
+    ``coupon_schedule`` (Step 3): an optional ``[(effective_from|None, rate_decimal), ...]`` table
+    (see :mod:`pricing.coupon_schedule`) for stepped / step-up / segmented-fixed bonds. When given,
+    each period's coupon is looked up by its date instead of the flat ``coupon_rate`` (which is then
+    ignored); the discounting, day count and accrual are unchanged. ``coupon_rate=0`` with no
+    schedule is the zero-coupon degenerate case (single face cash flow).
     """
     val = _as_date(valuation_date)
     mat = _as_date(maturity)
@@ -116,8 +125,8 @@ def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
         return PriceResult(0.0, 0.0, 0.0, 0, mat, [], vba_compat)
 
     step_days = max(1, round(YEAR_DAYS / freq))         # 182 for semiannual (the VBA), 364 for annual
-    period_cpn = coupon_rate / freq * face
     cfs, dirty, d = [], 0.0, mat
+    period_cpn = coupon_rate / freq * face
     while d >= val:
         days = (d - val).days
         t = days / YEAR_DAYS
@@ -125,12 +134,15 @@ def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
         z_semi = _vba_semi_rate(curve, t)               # VBA semiannual, 0.5y-grid interp
         rate = (z_semi if vba_compat else z_cont) + oas
         df = math.exp(-t * rate)
+        if coupon_schedule is not None:                 # per-period coupon from the schedule
+            period_cpn = coupon_at(coupon_schedule, d) / freq * face
         amount = period_cpn + (face if d == mat else 0.0)
         pv = amount * df
         dirty += pv
         cfs.append(CashFlow(0, d, days, t, z_cont, z_semi, df, amount, pv))
         d = d - dt.timedelta(days=step_days)
 
+    # after the loop period_cpn = coupon of the accruing (first >= val) period — correct for a schedule
     accrued_days = (val - d).days                       # d = coupon date just before valuation
     accrued = period_cpn * accrued_days / step_days
     clean = dirty - accrued

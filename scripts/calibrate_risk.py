@@ -30,6 +30,7 @@ from curves.zero_curve import ZeroCurve
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.universe import build_universe
 from pricing.calibrate import implied_oas, near_maturity
+from pricing.coupon_schedule import coupon_at, parse_coupon_schedule
 from pricing.risk import risk_metrics
 
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
@@ -41,6 +42,10 @@ MIN_YEARS = 1.0          # below this remaining maturity -> implied OAS unreliab
 DISTRESS_BT = 50.0       # below this clean price -> implied OAS is a recovery plug -> flagged, kept
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
 RATING_ORDER = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"]
+# Routes whose implied OAS is a clean, model-repriced spread (feed the by-rating medians). The other
+# routes (recovery / schedule-unavailable / zero-structured / excluded-no-data) are BT marks or
+# anomalous and are reported but kept out of the medians.
+PRICED_ROUTES = {"vanilla", "make-whole-as-vanilla", "vanilla-schedule"}
 
 pd.set_option("display.width", 220)
 
@@ -123,6 +128,82 @@ def main():
             flag=("near-maturity" if nm else ("recovery-plug" if rp else "")),
         ))
 
+    # ---- Step-3 special coupon types: zero / stepped / step-up / defaulted (from the excluded frame) ----
+    # Priced where possible: zero as a degenerate vanilla (single face cash flow), stepped via its
+    # parsed coupon schedule. Defaulted = recovery mark (BT, no OAS — solving an OAS for a defaulted
+    # bond is meaningless). Step-up whose steps aren't in the workbook = schedule-unavailable (BT mark,
+    # flagged for a terms source, exactly like a missing call schedule).
+    special = _excluded[_excluded["coupon_class"].isin(["zero", "stepped", "step-up", "defaulted"])]
+    for _, b in special.iterrows():
+        aid = str(b["asset_id"])
+        cc = b["coupon_class"]
+        mat = b["maturity"]
+        ccy = str(b.get("currency")).strip().upper() if b.get("currency") is not None else "USD"
+        bt = pd.to_numeric(recon.loc[aid, "gold_price"], errors="coerce") if aid in recon.index else np.nan
+        mv = pd.to_numeric(recon.loc[aid, "gold_mkt_value"], errors="coerce") if aid in recon.index else np.nan
+        try:
+            fr = int(b["freq"])
+        except (TypeError, ValueError):
+            fr = 2
+        ttm = (pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25 if pd.notna(mat) else np.nan
+        row = dict(
+            asset_id=aid, isin=b.get("isin"), ccy=ccy, fx=b.get("fx_rate"),
+            rating=b["rating_bucket"], src=b.get("rating_source"), coupon=np.nan, freq=fr,
+            maturity=(pd.Timestamp(mat).date() if pd.notna(mat) else None),
+            ttm=(round(ttm, 3) if pd.notna(ttm) else np.nan),
+            par=pd.to_numeric(b.get("par_value"), errors="coerce"),
+            bt=(float(bt) if pd.notna(bt) else np.nan), clean=np.nan, implied_oas=np.nan,
+            implied_bp=np.nan, implied_bp_usd_curve=np.nan, eff_dur=np.nan, dv01=np.nan,
+            convexity=np.nan, mv_base_usd=mv, near_maturity=False, recovery_plug=False,
+            route="", flag="",
+        )
+
+        if cc == "defaulted":
+            row.update(route="recovery", clean=(float(bt) if pd.notna(bt) else np.nan),
+                       flag="recovery mark: BT used as price, not model-priced (no OAS for a defaulted bond)")
+            rows.append(row); continue
+        if pd.isna(bt) or bt <= 0 or pd.isna(mat):
+            row.update(route="excluded-no-data", flag=f"missing BT/maturity (bt={bt})")
+            rows.append(row); continue
+
+        variant = FREQ_VARIANT.get(fr, "Semiannual")
+        try:
+            curve = get_curve(ccy, variant)
+        except Exception as e:
+            row.update(route="schedule-unavailable", clean=float(bt), flag=f"curve {ccy}/{variant} failed: {e}")
+            rows.append(row); continue
+
+        if cc == "zero":                                # degenerate vanilla: single face cash flow
+            try:
+                oas = implied_oas(float(bt), VAL, mat, 0.0, curve, freq=fr)
+                rm = risk_metrics(VAL, mat, 0.0, curve, oas, freq=fr)
+                row.update(route="zero-structured", coupon=0.0, clean=rm["clean"], implied_oas=oas,
+                           implied_bp=oas * 1e4, eff_dur=rm["eff_duration"], dv01=rm["dv01"],
+                           convexity=rm["convexity"],
+                           flag="zero-structured: BT inconsistent with a pure-discount zero (structured payoff) -> OAS not a clean spread; excluded from medians")
+            except ValueError as e:
+                row.update(route="zero-structured", clean=float(bt), flag=f"zero: OAS not bracketable ({e})")
+            rows.append(row); continue
+
+        # stepped / step-up: need a numeric coupon schedule parsed from the formula text
+        sched = parse_coupon_schedule(b.get("coupon_formula2"), b.get("coupon_formula"))
+        if sched is None:                               # e.g. "Step-up schedule" with no numbers in the book
+            row.update(route="schedule-unavailable", clean=float(bt),
+                       flag="coupon schedule not in workbook (needs a terms source, like the call schedule)")
+            rows.append(row); continue
+        try:
+            eff = coupon_at(sched, VAL)                 # coupon in force at valuation (steps before VAL are settled)
+            oas = implied_oas(float(bt), VAL, mat, eff, curve, freq=fr, coupon_schedule=sched)
+            rm = risk_metrics(VAL, mat, eff, curve, oas, freq=fr, coupon_schedule=sched)
+            nm = near_maturity(VAL, mat, MIN_YEARS)
+            row.update(route="vanilla-schedule", coupon=eff, clean=rm["clean"], implied_oas=oas,
+                       implied_bp=oas * 1e4, eff_dur=rm["eff_duration"], dv01=rm["dv01"],
+                       convexity=rm["convexity"], near_maturity=nm,
+                       flag=("near-maturity" if nm else f"coupon schedule: {len(sched)} step(s), {eff * 100:.3f}% from {VAL}"))
+        except ValueError as e:
+            row.update(route="schedule-unavailable", clean=float(bt), flag=f"schedule price failed ({e})")
+        rows.append(row)
+
     df = pd.DataFrame(rows)
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     df.to_csv(OUT, index=False)
@@ -136,6 +217,13 @@ def main():
           f"recovery-plug(non-NM)={int((df['recovery_plug'] & ~df['near_maturity']).sum())} "
           f"clean={int((df['flag'] == '').sum())}")
     print(f"[make-whole-as-vanilla] {int((df['route'] == 'make-whole-as-vanilla').sum())} bonds priced as vanilla (gap<=7d call)")
+
+    # ---- Step-3 special coupon types (zero / stepped / step-up / defaulted) ----
+    sp = df[~df["route"].isin({"vanilla", "make-whole-as-vanilla"})]
+    if len(sp):
+        print(f"\n[STEP-3 special coupon types] {len(sp)} bonds routed by structure:")
+        print(sp[["asset_id", "route", "rating", "maturity", "ttm", "coupon", "bt", "clean",
+                  "implied_bp", "eff_dur", "flag"]].to_string(index=False))
 
     # ---- caveat 2: EUR/GBP own-ccy vs USD-curve implied OAS ----
     nonusd = df[df["ccy"] != "USD"]
@@ -153,7 +241,9 @@ def main():
     except Exception as e:                                   # date absent / workbook missing
         print(f"[index OAS] unavailable for {VAL}: {e}")
         index_oas = {}
-    review = df[~df["near_maturity"]]
+    # Only clean-OAS routes feed the medians: vanilla + make-whole + parsed schedule. The BT-mark /
+    # anomalous routes (recovery, schedule-unavailable, zero-structured) carry no meaningful spread.
+    review = df[df["route"].isin(PRICED_ROUTES) & ~df["near_maturity"]]
     idx = [r for r in RATING_ORDER if r in set(review["rating"])]
     g = review.groupby("rating")["implied_bp"].agg(["count", "median", "min", "max"]).reindex(idx)
     g["index_oas_bp"] = [index_oas[r] * 1e4 if r in index_oas else np.nan for r in g.index]

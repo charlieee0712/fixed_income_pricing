@@ -151,7 +151,31 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   ≤30 steps). **Bloomberg data = substitutable (the callable-schedule pattern):** `swapcurve` short-end
   (EURIBOR `EU000nM` / GBP-LIBOR `BP000nM` / USD-LIBOR `US000nM` or **H.15 `h15tnM` = FRED-able**),
   `multi_cpn_schedule` (steps), `flt_cpn_hist` (spread+resets) → our ZeroCurve forwards + parsed
-  spread/schedule. Step 4 ports this after Mario confirms the method.
+  spread/schedule. Step 4 method **CONFIRMED 2026-07-08** — plan below.
+- **Step 3 DONE (2026-07-08) — simple special types priced.** New `src/pricing/coupon_schedule.py`
+  (`parse_coupon_schedule` free-text → `[(eff_date|None, rate_decimal)]` + `coupon_at`; returns
+  **None, never a guess**, when a cell has no numeric coupons); `price_bond`/`implied_oas`/`risk_metrics`
+  take an optional `coupon_schedule`. Driver routes the 4 **held** special bonds:
+  **stepped** TNTD04283895 (A; switch 2006 < val ⇒ flat 7.50%) → clean **210bp**, eff-dur 1.63, joins the
+  A median; **zero** TNTD03037132 (BBB, 2037) priced degenerate-vanilla but BT 93.1 ⇒ **OAS −486bp** =
+  BT inconsistent with a pure-discount zero (structured payoff) → route `zero-structured`, **excluded
+  from medians**; **step-up** TNTD04150829 → `schedule-unavailable` (steps not in workbook — needs a
+  terms source like the call schedule) → BT mark; **defaulted** TNTD03037967 (BT 12) → route `recovery`,
+  BT mark, **no OAS**. Only `PRICED_ROUTES` {vanilla, make-whole-as-vanilla, vanilla-schedule} feed the
+  by-rating medians. `test_coupon_schedule` (+10) → **73 green**.
+- **Step 4 plan LOCKED (2026-07-08, Mario) — floating engine; do pure-FRN 27 FIRST, then reset 6:**
+  ① fwd projection = **implied forward off our bootstrapped `ZeroCurve`** (`F(t1,t2)=(DF(t1)/DF(t2)−1)/
+  (t2−t1)`, simple — matches legacy periodic discounting; Step-1 recon confirmed the legacy tree does
+  exactly this). ② discount = **same curve + implied OAS (single-curve)**, matching legacy; **record in
+  code/docs that single-curve = 2009 convention, OIS dual-curve = future enhancement** (transparency,
+  not now). ③ data subs: USD short-end → **try pure ZeroCurve forwards first** (may need no external
+  fixing), else FRED H.15; EUR/GBP → 47 own-ccy curves; **spread parsed from `coupon_formula`**
+  ("EURIBOR + 45bp"→45bp, standalone parser + tests); current-reset coupon ← master `Coupon` (D).
+  ④ **Fixed→Reset (6, incl perpetual) DEFERRED** — recon each one's terms first (perpetual = no maturity
+  ⇒ CF truncation / perp formula); don't batch. ⑤ **no legacy golden (bbg) → invariant tests** (callable
+  pattern): spread=0 & flat curve ⇒ price≈par; implied-OAS round-trip; **FRN eff-dur ≪ same-maturity
+  fixed (≈ time-to-next-reset)** = the signature FRN check. ⑥ output: 27 floaters → main table
+  (route=floating) with implied OAS + duration/DV01/convexity.
 
 ## Validated so far
 - **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,
@@ -235,7 +259,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
   **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params) ·
   ✅ `calibrate.py` (`implied_oas`: solve OAS s.t. clean=`BT`) · ✅ `risk.py` (`risk_metrics`: effective
-  duration / DV01 / convexity by ±1bp = parallel-shift bump) · ✅ `lattice.py` (**v2** callable/putable BDT
+  duration / DV01 / convexity by ±1bp = parallel-shift bump) · ✅ `coupon_schedule.py` (**Step-3** coupon
+  time-table for stepped/step-up/zero; threaded through `price_bond`/`implied_oas`/`risk_metrics`) ·
+  ✅ `lattice.py` (**v2** callable/putable BDT
   short-rate tree: fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free; implied OAS + eff-dur; NOT a
   `BondOAS` replica — invariant-validated; `call_array`/`put_array` read a `[(time,price)]` schedule from
   `dataio.call_schedules` — no hard-coded par-call; driver `scripts/callable_risk.py`, σ=0.15).
@@ -243,4 +269,5 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`) + `test_lattice`
   (v2 callable-lattice **invariants**: par-reprice/arb-free, callable≤straight≤putable, σ=0 degeneracy, multi-date
   schedule ordering) + `test_call_schedules` (loader: multi-row grouping, date→time clamp) + `test_universe`
-  coupon-class locks (pivot reconciliation, canonical-all-F/vanilla, funnel-bucket split). **63 total.**
+  coupon-class locks (pivot reconciliation, canonical-all-F/vanilla, funnel-bucket split) + `test_coupon_schedule`
+  (formula parser + schedule-aware pricing: past-step→flat, future-step, zero). **73 total.**
