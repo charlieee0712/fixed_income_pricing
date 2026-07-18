@@ -1,0 +1,3 @@
+# Data files are byte-frozen: no EOL conversion ever (curve txt/csv come from 47 as LF;
+# local autocrlf must not rewrite them — see CLAUDE.md "CRLF blocks pull" trap, 2026-07-18).
+data/** -text

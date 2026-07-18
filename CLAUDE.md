@@ -20,8 +20,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   is in the repo `.venv`, NOT conda's `python3` — bare `python3 -m pytest` fails "No module named pytest"). Quick
   iter: `scp` the file to 47 then run (working-tree edit), or push + `git pull`. Use `ssh -o BatchMode=yes 47`.
 - **47 data mirrored locally (2026-07-18):** `data/` + `extracted/` + `outputs/` copied 47→local (68 files;
-  sizes verified). `extracted/`/`outputs/` git-ignored both sides; `data/` untracked — commit decision open
-  (6 of its files duplicate root-tracked copies). ⚠️ Windows scp quick-iter leaves **CRLF** working-tree copies
+  sizes verified). `extracted/`/`outputs/` git-ignored both sides; `data/` **tracked in full (59 files)** —
+  the 6 root duplicates removed (see canonical-location note above). ⚠️ Windows scp quick-iter leaves **CRLF** working-tree copies
   on 47 that later **block `git pull`** ("would be overwritten … Aborting"); fix = confirm
   `git diff --ignore-cr-at-eol origin/main -- <files>` is empty, then discard & pull (done 2026-07-18:
   47 fast-forwarded `24689a7`→`07fe2a1`, 80 green).
@@ -34,6 +34,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   stay private** (`github.com/charlieee0712/fixed_income_pricing`). `.gitignore` now excludes only
   build/cache/editor junk (`__pycache__/`, `.venv/`, `outputs/`, `.claude/`, …), not data. [was:
   "Never commit client data — *.xlsx/*.xlsm/*.zip/*.csv/*.txt are git-ignored".]
+  **Canonical location = `data/` (2026-07-18):** the root workbook/curve copies were `git rm`'d
+  (SHA256-verified identical to the `data/` copies first) — the code's default paths
+  (`FIP_DATA_DIR="data"`) ARE the tracked layout. `.gitattributes` marks `data/** -text`
+  (byte-frozen, no EOL conversion).
 
 ## File roles
 - `All_Yield_Curve.zip` — raw **par-yield** history per country/ccy (`Date(Excel serial), 0.25..30`).

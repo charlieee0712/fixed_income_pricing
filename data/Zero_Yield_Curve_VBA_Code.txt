@@ -1,0 +1,865 @@
+Option Explicit
+
+Public IYC() As Double
+Public Annual() As Double
+Public Semiannual() As Double
+Public Quarterly() As Double
+Public Monthly() As Double
+Public Discount() As Double
+
+
+'## Main auditable routine
+
+Public Sub zeroyield4auditable(ByVal countryname As String, ByVal fechadas As Date)
+
+    Dim Term2() As Double
+    Dim Termstructure() As Double
+    Dim mats() As Double
+    Dim yields() As Double
+    Dim i As Long
+
+    ReDim Term2(1 To 41, 1 To 2)
+
+    Call LoadStandardTenorsAudit(Term2)
+
+    countryname = UCase$(Trim$(countryname))
+    Call LoadCountryParCurveAudit(countryname, fechadas, Term2)
+
+    ReDim Termstructure(1 To 41, 1 To 2)
+    For i = 1 To 41
+        Termstructure(i, 1) = Term2(i, 1)
+        Termstructure(i, 2) = Term2(i, 2)
+    Next i
+
+    Call BuildIYCAudit(Termstructure)
+
+    ReDim mats(1 To 41)
+    ReDim yields(1 To 41)
+
+    For i = 1 To 41
+        mats(i) = Termstructure(i, 1)
+        yields(i) = Termstructure(i, 2) / 100#
+    Next i
+
+    Call BuildFrequencyCurveAudit(mats, yields, 1, Annual)
+    Call BuildFrequencyCurveAudit(mats, yields, 2, Semiannual)
+    Call BuildFrequencyCurveAudit(mats, yields, 4, Quarterly)
+    Call BuildFrequencyCurveAudit(mats, yields, 12, Monthly)
+
+End Sub
+
+
+
+'## Standard tenor grid
+
+
+Private Sub LoadStandardTenorsAudit(ByRef Term2() As Double)
+
+    Term2(1, 1) = 0.08
+    Term2(2, 1) = 0.17
+    Term2(3, 1) = 0.25
+    Term2(4, 1) = 0.33
+    Term2(5, 1) = 0.42
+    Term2(6, 1) = 0.5
+    Term2(7, 1) = 0.58
+    Term2(8, 1) = 0.67
+    Term2(9, 1) = 0.75
+    Term2(10, 1) = 0.83
+    Term2(11, 1) = 0.92
+    Term2(12, 1) = 1#
+    Term2(13, 1) = 2#
+    Term2(14, 1) = 3#
+    Term2(15, 1) = 4#
+    Term2(16, 1) = 5#
+    Term2(17, 1) = 6#
+    Term2(18, 1) = 7#
+    Term2(19, 1) = 8#
+    Term2(20, 1) = 9#
+    Term2(21, 1) = 10#
+    Term2(22, 1) = 11#
+    Term2(23, 1) = 12#
+    Term2(24, 1) = 13#
+    Term2(25, 1) = 14#
+    Term2(26, 1) = 15#
+    Term2(27, 1) = 16#
+    Term2(28, 1) = 17#
+    Term2(29, 1) = 18#
+    Term2(30, 1) = 19#
+    Term2(31, 1) = 20#
+    Term2(32, 1) = 21#
+    Term2(33, 1) = 22#
+    Term2(34, 1) = 23#
+    Term2(35, 1) = 24#
+    Term2(36, 1) = 25#
+    Term2(37, 1) = 26#
+    Term2(38, 1) = 27#
+    Term2(39, 1) = 28#
+    Term2(40, 1) = 29#
+    Term2(41, 1) = 30#
+
+End Sub
+
+
+
+
+'## Country loader
+
+'Below I am giving you **USD fully coded** first, because that is the best one to test immediately.
+
+'After that, I also show you how to extend to the other currencies.
+
+
+Private Sub LoadCountryParCurveAudit(ByVal countryname As String, ByVal fechadas As Date, ByRef Term2() As Double)
+
+    Dim calendario As String
+    calendario = Format$(fechadas, "yyyymmdd")
+
+    Select Case countryname
+
+        Case "USD"
+            Term2(1, 2) = GetBloomberg("H15T1M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(3, 2) = GetBloomberg("H15T3M INDEX", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("H15T6M INDEX", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("H15T1Y INDEX", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("H15T2Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("H15T3Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("H15T5Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("H15T7Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("H15T10Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("H15T20Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("H15T30Y index", "px_last", calendario, calendario, "daily", "USD")
+
+            Term2(2, 2) = (Term2(1, 2) + Term2(3, 2)) / 2#
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Term2(15, 2) = (Term2(14, 2) + Term2(16, 2)) / 2#
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 18, 21)
+            Call FillMissingLinearAudit(Term2, 21, 31)
+            Call FillMissingLinearAudit(Term2, 31, 41)
+
+        Case "DKK"
+            Term2(3, 2) = GetBloomberg("C2673M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C2676M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C2671Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C2672Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C2673Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C2674Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C2675Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C2677Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C2678Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C2679Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C26710Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C26715Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C26720Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C26725Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C26730Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "AUD"
+            Term2(3, 2) = GetBloomberg("c1273M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("c1276M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("c1271Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("c1272Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("c1273Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("c1274Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("c1275Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("c1277Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("c1278Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("c1279Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("c12710Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("c12715Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C26730Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 41)
+
+        Case "BRL"
+            Term2(3, 2) = GetBloomberg("C8023M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C8026M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C8021Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C8022Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C8023Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C8024Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C8025Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C8027Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C8028Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C8029Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C80210Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C80215Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C80220Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C80225Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C80230Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "CAN"
+            Term2(3, 2) = GetBloomberg("C1013M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C1016M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C1011Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C1012Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C1013Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C1014Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C1015Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C1017Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C1018Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C1019Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C10110Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C10115Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C10120Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C10125Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C10130Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "EUR"
+            Term2(1, 2) = GetBloomberg("EUR001M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(2, 2) = GetBloomberg("EUR002M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(3, 2) = GetBloomberg("EUR003M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(4, 2) = GetBloomberg("EUR004M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(5, 2) = GetBloomberg("EUR005M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("EUR006M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("EUSA1 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("EUSA2 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("EUSA3 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("EUSA4 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("EUSA5 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(17, 2) = GetBloomberg("EUSA6 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("EUSA7 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("EUSA8 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("EUSA9 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("EUSA10 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(22, 2) = GetBloomberg("EUSA11 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(23, 2) = GetBloomberg("EUSA12 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("EUSA15 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("EUSA20 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("EUSA25 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("EUSA30 CURNCY", "px_last", calendario, calendario, "daily", "USD")
+
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 23, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "GBP"
+            Term2(3, 2) = GetBloomberg("C1123M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C1126M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C1121Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C1122Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C1123Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C1124Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C1125Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C1127Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C1128Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C1129Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C11210Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C11215Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C11220Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C11225Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C11230Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "ILS"
+            Term2(1, 2) = GetBloomberg("telbor01 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(2, 2) = GetBloomberg("telbor02 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(3, 2) = GetBloomberg("telbor03 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("telbor06 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(9, 2) = GetBloomberg("telbor09 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("ISSW1 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("ISSW2 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("ISSW3 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("ISSW4 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("ISSW5 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("ISSW7 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("ISSW10 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(23, 2) = GetBloomberg("ISSW10 Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("ISSW15 index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("ISSW20 Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 9)
+            Call FillMissingLinearAudit(Term2, 9, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 18, 21)
+            Call FillMissingLinearAudit(Term2, 21, 23)
+            Call FillMissingLinearAudit(Term2, 23, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call ExtrapolateForwardLinearAudit(Term2, 26, 31, 32, 41)
+
+        Case "JPY"
+            Term2(3, 2) = GetBloomberg("C1053M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C1056M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C1051Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C1052Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C1053Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C1054Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C1055Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C1057Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C1058Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C1059Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C10510Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C10515Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C10520Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C10525Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C10530Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "KRW"
+            Term2(3, 2) = GetBloomberg("C2323M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C2326M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C2321Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C2322Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C2323Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C2324Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C2325Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C2327Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C2328Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C2329Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C23210Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C23215Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C23220Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call ExtrapolateForwardLinearAudit(Term2, 26, 31, 32, 41)
+
+        Case "MXN"
+            Term2(3, 2) = GetBloomberg("C8043M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C8046M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C8041Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C8042Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C8043Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C8044Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C8045Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C8047Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C8048Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C8049Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C80410Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C80415Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C80420Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C80425Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C80430Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "MYR"
+            Term2(3, 2) = GetBloomberg("C1283M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C1286M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C1281Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C1282Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C1283Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C1284Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C1285Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C1287Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C1288Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C1289Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C12810Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C12815Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C12820Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C12825Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C12830Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "NOK"
+            Term2(3, 2) = GetBloomberg("C2663M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C2666M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C2661Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C2662Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C2663Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C2664Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C2665Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C2667Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C2668Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C2669Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C26610Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call ExtrapolateForwardLinearAudit(Term2, 20, 21, 22, 41)
+
+        Case "SEK"
+            Term2(3, 2) = GetBloomberg("C2593M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C2596M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C2591Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C2592Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C2593Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C2594Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C2595Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C2597Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C2598Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C2599Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C25910Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C25915Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C25920Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C25925Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C25930Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "SGD"
+            Term2(3, 2) = GetBloomberg("C1243M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C1246M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C1241Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C1242Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C1243Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C1244Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C1245Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C1247Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C1248Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C1249Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C12410Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C12415Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C12420Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C12425Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C12430Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case "THB"
+            Term2(3, 2) = GetBloomberg("C1223M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(6, 2) = GetBloomberg("C1226M Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(12, 2) = GetBloomberg("C1221Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(13, 2) = GetBloomberg("C1222Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(14, 2) = GetBloomberg("C1223Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(15, 2) = GetBloomberg("C1224Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(16, 2) = GetBloomberg("C1225Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(18, 2) = GetBloomberg("C1227Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(19, 2) = GetBloomberg("C1228Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(20, 2) = GetBloomberg("C1229Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(21, 2) = GetBloomberg("C12210Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(26, 2) = GetBloomberg("C12215Y index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(31, 2) = GetBloomberg("C12220Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(36, 2) = GetBloomberg("C12225Y Index", "px_last", calendario, calendario, "daily", "USD")
+            Term2(41, 2) = GetBloomberg("C12230Y Index", "px_last", calendario, calendario, "daily", "USD")
+
+            Call BackFillLinearAudit(Term2, 3, 6, 1, 2)
+            Call FillMissingLinearAudit(Term2, 3, 6)
+            Call FillMissingLinearAudit(Term2, 6, 12)
+            Call FillMissingLinearAudit(Term2, 16, 18)
+            Call FillMissingLinearAudit(Term2, 21, 26)
+            Call FillMissingLinearAudit(Term2, 26, 31)
+            Call FillMissingLinearAudit(Term2, 31, 36)
+            Call FillMissingLinearAudit(Term2, 36, 41)
+
+        Case Else
+            Err.Raise vbObjectError + 2000, "zeroyield4auditable", _
+                      "Currency not yet added in LoadCountryParCurveAudit: " & countryname
+    End Select
+
+End Sub
+
+Private Sub BackFillLinearAudit(ByRef Term2() As Double, ByVal iKnown1 As Long, ByVal iKnown2 As Long, ByVal iFillFrom As Long, ByVal iFillTo As Long)
+
+    Dim slope As Double
+    Dim i As Long
+
+    slope = (Term2(iKnown2, 2) - Term2(iKnown1, 2)) / (Term2(iKnown2, 1) - Term2(iKnown1, 1))
+
+    For i = iFillTo To iFillFrom Step -1
+        Term2(i, 2) = Term2(i + 1, 2) - slope * (Term2(i + 1, 1) - Term2(i, 1))
+    Next i
+
+End Sub
+
+
+
+Private Sub ExtrapolateForwardLinearAudit(ByRef Term2() As Double, ByVal iKnown1 As Long, ByVal iKnown2 As Long, ByVal iFillFrom As Long, ByVal iFillTo As Long)
+
+    Dim slope As Double
+    Dim i As Long
+
+    slope = (Term2(iKnown2, 2) - Term2(iKnown1, 2)) / (Term2(iKnown2, 1) - Term2(iKnown1, 1))
+
+    For i = iFillFrom To iFillTo
+        Term2(i, 2) = Term2(i - 1, 2) + slope * (Term2(i, 1) - Term2(i - 1, 1))
+    Next i
+
+End Sub
+
+
+
+'## Linear interpolation helper
+
+
+Private Sub FillMissingLinearAudit(ByRef Term2() As Double, ByVal iStart As Long, ByVal iEnd As Long)
+
+    Dim slope As Double
+    Dim i As Long
+
+    If iEnd <= iStart Then Exit Sub
+    If Abs(Term2(iEnd, 1) - Term2(iStart, 1)) < 0.0000001 Then Exit Sub
+
+    slope = (Term2(iEnd, 2) - Term2(iStart, 2)) / (Term2(iEnd, 1) - Term2(iStart, 1))
+
+    For i = iStart + 1 To iEnd - 1
+        Term2(i, 2) = Term2(iStart, 2) + slope * (Term2(i, 1) - Term2(iStart, 1))
+    Next i
+
+End Sub
+
+
+
+
+'## Build IYC
+
+
+Private Sub BuildIYCAudit(ByRef Termstructure() As Double)
+
+    Dim i As Long
+    Dim j As Long
+    Dim rowsCount As Long
+
+    rowsCount = UBound(Termstructure, 1)
+
+    j = 0
+    For i = 1 To rowsCount
+        If Abs(Termstructure(i, 1) - 0.5) < 0.000001 Or Termstructure(i, 1) >= 1# Then
+            j = j + 1
+        End If
+    Next i
+
+    ReDim IYC(1 To j, 1 To 2)
+
+    j = 0
+    For i = 1 To rowsCount
+        If Abs(Termstructure(i, 1) - 0.5) < 0.000001 Or Termstructure(i, 1) >= 1# Then
+            j = j + 1
+            IYC(j, 1) = Termstructure(i, 1)
+            IYC(j, 2) = Termstructure(i, 2) / 100#
+        End If
+    Next i
+
+End Sub
+
+
+
+'## Build annual / semiannual / quarterly / monthly curves
+
+
+Private Sub BuildFrequencyCurveAudit(ByRef mats() As Double, _
+                                     ByRef parYields() As Double, _
+                                     ByVal freq As Long, _
+                                     ByRef outArr() As Double)
+
+    Dim maxMonths As Long
+    Dim maxYears As Double
+    Dim nPeriods As Long
+    Dim periodStep As Double
+    Dim couponTimes() As Double
+    Dim parAtCoupons() As Double
+    Dim dfsAtCoupons() As Double
+    Dim zeroAtCoupons() As Double
+    Dim i As Long
+    Dim t As Double
+
+    maxMonths = 374
+    maxYears = maxMonths / 12#
+    periodStep = 1# / freq
+    nPeriods = CLng(Int(maxYears * freq))
+
+    ReDim couponTimes(1 To nPeriods)
+    ReDim parAtCoupons(1 To nPeriods)
+    ReDim dfsAtCoupons(1 To nPeriods)
+    ReDim zeroAtCoupons(1 To nPeriods)
+
+    For i = 1 To nPeriods
+        couponTimes(i) = i * periodStep
+        parAtCoupons(i) = InterpLinearAudit(couponTimes(i), mats, parYields)
+    Next i
+
+    Call BootstrapParCurveToZeroAudit(couponTimes, parAtCoupons, freq, dfsAtCoupons, zeroAtCoupons)
+
+    ReDim outArr(1 To 400, 1 To 4)
+
+    For i = 1 To maxMonths
+        t = i / 12#
+        outArr(i, 1) = t
+        outArr(i, 2) = InterpLinearAudit(t, couponTimes, zeroAtCoupons)
+        outArr(i, 3) = Exp(-outArr(i, 2) * t)
+        outArr(i, 4) = 0#
+    Next i
+
+    ReDim Discount(1 To 400, 1 To 4)
+    For i = 1 To maxMonths
+        Discount(i, 1) = outArr(i, 1)
+        Discount(i, 2) = outArr(i, 2)
+        Discount(i, 3) = outArr(i, 3)
+        Discount(i, 4) = outArr(i, 4)
+    Next i
+
+End Sub
+
+
+
+'## Explicit auditable bootstrap
+
+'This is the part that replaces `Veloz`.
+
+
+Private Sub BootstrapParCurveToZeroAudit(ByRef couponTimes() As Double, _
+                                         ByRef parYields() As Double, _
+                                         ByVal freq As Long, _
+                                         ByRef dfs() As Double, _
+                                         ByRef zeros() As Double)
+
+    Dim i As Long
+    Dim k As Long
+    Dim cpn As Double
+    Dim sumPrev As Double
+    Dim t As Double
+
+    For i = 1 To UBound(couponTimes)
+
+        cpn = 100# * parYields(i) / freq
+        sumPrev = 0#
+
+        For k = 1 To i - 1
+            sumPrev = sumPrev + dfs(k)
+        Next k
+
+        dfs(i) = (100# - cpn * sumPrev) / (100# + cpn)
+
+        If dfs(i) <= 0# Then
+            Err.Raise vbObjectError + 2001, "BootstrapParCurveToZeroAudit", _
+                      "Non-positive discount factor at t=" & Format$(couponTimes(i), "0.000")
+        End If
+
+        t = couponTimes(i)
+        zeros(i) = -Log(dfs(i)) / t
+
+    Next i
+
+End Sub
+
+
+
+
+'## Generic interpolation function
+
+
+Private Function InterpLinearAudit(ByVal x As Double, ByRef xs() As Double, ByRef ys() As Double) As Double
+
+    Dim i As Long
+    Dim n As Long
+
+    n = UBound(xs)
+
+    If x <= xs(1) Then
+        InterpLinearAudit = ys(1)
+        Exit Function
+    End If
+
+    If x >= xs(n) Then
+        InterpLinearAudit = ys(n)
+        Exit Function
+    End If
+
+    For i = 1 To n - 1
+        If x >= xs(i) And x <= xs(i + 1) Then
+            InterpLinearAudit = ys(i) + (ys(i + 1) - ys(i)) * (x - xs(i)) / (xs(i + 1) - xs(i))
+            Exit Function
+        End If
+    Next i
+
+    InterpLinearAudit = ys(n)
+
+End Function
+
+Public Function GetBloomberg(ticker As String, campo As String, bini As String, bend As String, blfreq As String, BLcurr As String)
+    
+Dim Errr As Integer
+Dim tticker As String
+    
+    ticker = LCase(ticker)
+Errr = 0
+If InStr(ticker, "corp") > 0 Then If InStr(ticker, "corp") < 4 Then Errr = 1
+If InStr(ticker, "govt") > 0 Then If InStr(ticker, "govt") < 4 Then Errr = 1
+If InStr(ticker, "mtge") > 0 Then If InStr(ticker, "mtge") < 4 Then Errr = 1
+If InStr(ticker, "muni") > 0 Then If InStr(ticker, "muni") < 4 Then Errr = 1
+If InStr(ticker, "equity") > 0 Then If InStr(ticker, "equity") < 4 Then Errr = 1
+If InStr(ticker, "cmdty") > 0 Then If InStr(ticker, "cmdty") < 4 Then Errr = 1
+If InStr(ticker, "index") > 0 Then If InStr(ticker, "index") < 4 Then Errr = 1
+If InStr(ticker, "curncy") > 0 Then If InStr(ticker, "curncy") < 4 Then Errr = 1
+If Len(Trim(campo)) < 3 Then Errr = 1
+
+
+
+
+If Errr = 1 Then
+
+ Else
+    
+    ' calc number of securities and number of fields
+    Dim numSecurity As Integer
+    Dim numFields As Integer
+    Dim j As Integer
+    Dim cal, cal2, acl4, cal5 As Double
+    Dim cal3 As Date
+    
+'    fechada = DateValue("5 / 22 / 2007")
+    numSecurity = 1
+    numFields = 1
+    
+    Dim sSecurity() As String
+    Dim sFields() As Variant
+    
+    ReDim sSecurity(0 To numSecurity - 1) As String
+    ReDim sFields(0 To numFields - 1) As Variant
+    
+    Dim i, k As Integer
+    sSecurity(0) = ticker
+    sFields(0) = campo
+'    bbControl.Class_Initialize
+    bbControl.MakeRequest sSecurity, sFields, bini, bend, blfreq, BLcurr
+'    bbControl.Class_Terminate
+    
+    i = refilas
+    j = 0
+    k = 0
+    If refilas > 0 Then
+        For i = 1 To refilas
+            If Call_Sched(i, 1) = 0 Then Call_Sched(i, 1) = DateValue("1/1/1900")
+            cal = DateValue(Call_Sched(i, 1))
+            cal2 = Val(Call_Sched(i, 2))
+                If k = 0 Then
+                    j = j + 1
+                    k = 1
+                    cal3 = cal
+                  Else
+                    acl4 = (Year(cal) - Year(cal3)) * 360 + (Month(cal) - Month(cal3)) * 30 + (Day(cal) - Day(cal3))
+                    acl4 = Round(acl4 / 180, 0)
+                    If acl4 >= 1 Then
+                        j = j + 1
+                        cal3 = cal
+                    End If
+                End If
+        Next i
+        j = j
+        
+        ReDim c_s(1 To j)
+        ReDim c_t(1 To j)
+        i = refilas
+        j = 0
+        k = 0
+        For i = 1 To refilas
+            cal = DateValue(Call_Sched(i, 1))
+            cal2 = Val(Call_Sched(i, 2))
+                If k = 0 Then
+                    j = j + 1
+                    k = 1
+                    cal3 = cal
+                    cal5 = 0
+                  Else
+                    acl4 = (Year(cal) - Year(cal3)) * 360 + (Month(cal) - Month(cal3)) * 30 + (Day(cal) - Day(cal3))
+                    acl4 = Round(acl4 / 180, 0)
+                    cal5 = cal5 + cal2
+                    If acl4 >= 1 Then
+                        j = j + 1
+                        cal3 = cal
+                        cal2 = cal5
+                        cal5 = 0
+                    End If
+                End If
+                c_s(j) = j
+                If cal5 = 0 Then
+                    c_t(j) = cal2
+                End If
+        Next i
+      Else
+        If refilas = -2 Then
+            Call_Sched(1, 1) = 0
+            ReDim c_s(0 To 0)
+            ReDim c_t(0 To 0)
+            GetBloomberg = Call_Sched(1, 1)
+          Else
+            GetBloomberg = Call_Sched(1, 1)
+        End If
+    End If
+    bloombegdate = bini
+    bloomendate = bend
+    If Len(Trim(bloombegdate) + Trim(bloomendate)) > 0 Then
+        GetBloomberg = Call_Sched(1, 2)
+    End If
+End If
+
+
+
+End Function
