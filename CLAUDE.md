@@ -14,8 +14,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - **No usable local Python** on the Windows machine (only a Microsoft Store stub).
   Run code on **server 47** or a real local install. Don't assume `python` works locally.
 - **Interface to 47 = ssh from the Windows box** (chosen). Needs **key-based ssh** (the Bash
-  tool is non-interactive — a password prompt hangs). Loop: edit locally → push → `ssh 47
-  'cd <repo> && git pull && pytest'`. Repo on 47 = **`/home/PengSX/fixed_income_pricing`** (conda env `PengSX`);
+  tool is non-interactive — a password prompt hangs). Loop: edit locally → commit → `git push origin main`
+  **+ `git push 47 main`** (direct deploy — see GFW bullet below; `git pull` on 47 only works when
+  47→GitHub is up). Repo on 47 = **`/home/PengSX/fixed_income_pricing`** (conda env `PengSX`);
   run scripts via **`PYTHONPATH=src python3 scripts/…`**, run tests via **`.venv/bin/python -m pytest`** (pytest
   is in the repo `.venv`, NOT conda's `python3` — bare `python3 -m pytest` fails "No module named pytest"). Quick
   iter: `scp` the file to 47 then run (working-tree edit), or push + `git pull`. Use `ssh -o BatchMode=yes 47`.
@@ -25,6 +26,14 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   on 47 that later **block `git pull`** ("would be overwritten … Aborting"); fix = confirm
   `git diff --ignore-cr-at-eol origin/main -- <files>` is empty, then discard & pull (done 2026-07-18:
   47 fast-forwarded `24689a7`→`07fe2a1`, 80 green).
+- **47→GitHub is GFW-flaky (diagnosed 2026-07-18):** from 47, TCP to github.com connects (0.25s) but the
+  TLS stream is blackholed/reset (baidu 200 in 1.3s ⇒ egress healthy ⇒ targeted interference); symptoms
+  seen same-day: crawl-speed fetch, `SSL_read: unexpected eof`, 127s connect failure. Local→GitHub and
+  local↔47 stay reliable ⇒ **sync 47 by pushing from local: `git push 47 main`** (local remote `47` =
+  `ssh://47/home/PengSX/fixed_income_pricing`; 47 repo has `receive.denyCurrentBranch=updateInstead`, so
+  the push updates 47's checked-out working tree). A dirty tree on 47 makes the push REFUSE — that
+  guardrail protects scp quick-iter edits (commit/discard on 47, then re-push). 47's stale `origin/main`
+  ref is cosmetic. Last-ditch fallback: `git bundle` + scp + `git pull <bundle> main` (used 2026-07-18).
 - To read the Excel files without Python, a PowerShell sheet-decoder approach works
   (unzip the xlsx/xlsm and parse `sharedStrings.xml` + `worksheets/sheetN.xml`).
 - **No Bloomberg.** Inputs are exported `*_Yield_Curve.txt` + FRED OAS (the VBA's
