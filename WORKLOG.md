@@ -5,6 +5,44 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-18 — v3 delivered & committed; repo/47 sync overhaul (CRLF unblock, data/ canonical, GFW bypass)
+**Commit:** `07fe2a1` (v3 deliverables) · `737fc42` (data/ canonicalization) · `c81b20c`+`950b4f6` (ops notes) · `[TO FILL]` (this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Packaging/infra day — no pricing-logic changes; suite **80 green on 47 twice** (post-unblock, post-data-move).
+
+**v3 deliverables verified + committed (`07fe2a1`).** The prior session stalled right after writing them;
+verified before committing: `README_v3.md` complete (all sections, numbers reconcile exactly to
+`COVERAGE.md`: 676 pivot / 558 out = 545 priced + 13 flagged / 21 excluded / 80 tests / snapshot
+`b7caa65`); `fixed_income_code_v3.zip` 40 entries — SHA256 vs working tree = **0 content diffs** (19
+files CRLF-only), vs the v2 zip = exactly the 7 expected new files, no repo code file missing. Also
+committed README_v1/v2 + `v3_report_coverage.md/.pdf`.
+
+**47 unblocked (was 5 commits behind).** 47 sat at `24689a7`: the 7-08 scp quick-iter left **CRLF**
+working copies of 6 tracked + 5 new files → every `git pull` refused ("would be overwritten … Aborting").
+Verified **0 real diffs** vs origin/main (`git diff --ignore-cr-at-eol`; the untracked 5 byte-identical)
+→ discarded, fast-forwarded, 80 green. Trap + fix documented in CLAUDE.md.
+
+**Data layout canonicalized (`737fc42`).** First mirrored 47→local (68 files: `data/` 59, `extracted/` 2,
+`outputs/` 7; sizes verified). Then: the 6 root workbook/curve copies SHA256-matched their `data/` twins
+→ `git rm` root (git records them as renames), **`data/` tracked in full (59 files)** = the code's
+default `FIP_DATA_DIR="data"` layout; `.gitattributes` `data/** -text` freezes bytes (no EOL conversion
+ever). 47 re-synced (bundle; untracked-collision resolved by rm + checkout-restore) → clean tree, 80 green.
+
+**47→GitHub = GFW-blocked (diagnosed); direct-push channel built (`950b4f6`).** Evidence: from 47, TCP to
+github.com connects (0.25s) but the TLS stream is blackholed (0 bytes / 15s; earlier same-day: SSL_read
+unexpected-EOF mid-transfer, one 127s connect-fail), while baidu = 200 / 1.3s and local→GitHub +
+local↔47 stayed fast ⇒ targeted interference, not egress/GitHub/repo. Fix: local remote **`47`**
+(`ssh://47/home/PengSX/fixed_income_pricing`), 47 repo `receive.denyCurrentBranch=updateInstead` ⇒
+**`git push 47 main` deploys straight to 47's checked-out tree** (a dirty tree on 47 refuses the push =
+quick-iter guard). Live-tested; `git bundle` + scp = last-ditch fallback (used 2× today). End state:
+**local = GitHub = 47 = `950b4f6`, all working trees clean.**
+
+**Next:** ⏳ **awaiting Mario's feedback/suggestions on `v3_report_coverage`** — next phase gated on his
+reply. Standing data-gap fills (COVERAGE.md table: FRN spreads, switch dates, perp/reset terms, step-up
+table, zero structure, GBP curve) unchanged.
+
 ## 2026-07-08 (cont. 3) — Reset-6 priced (coupon-continuation); Coupon_Formula2 coverage closed
 **Commit:** `[TO FILL]`
 **Author:** charlieee0712

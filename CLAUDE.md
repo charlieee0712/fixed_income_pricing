@@ -258,6 +258,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (schedule/vol/BT) RESOLVED — WORKLOG 2026-07-03.**
 
 ## Open questions
+- **⏳ AWAITING Mario (since 2026-07-18): feedback/suggestions on `v3_report_coverage`** — v3 fully
+  delivered (`07fe2a1`: code pkg + READMEs + report; coverage closed per COVERAGE.md). **Next phase gated
+  on his reply**; the COVERAGE.md data-gap list stands ready for his terms/Bloomberg fills.
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
   for Mario: (a) calibration date — **3-31 ARRIVED & ADOPTED (2026-07-02)**: Mario's USD 3-31 curve (native schema)
