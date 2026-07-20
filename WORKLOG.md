@@ -6,7 +6,7 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 ---
 
 ## 2026-07-20 (evening) — phase-2 inventory: four new asset classes (no code)
-**Commit:** `[TO FILL]` (this entry + docs/phase2_inventory_2026-07-20.md)
+**Commit:** `a679fef` (this entry + docs/phase2_inventory_2026-07-20.md)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
 
@@ -30,8 +30,30 @@ next round; no engine work started.
 
 ---
 
+## 2026-07-20 (afternoon) — v3 addendum + Google-Drive `corporate_bond` staging
+**Commit:** `a42c466` (addendum md + v3-report banner) · `b9bc440` (addendum PDF) · `415a88e`
+(PROJECT_STATUS current-state front-section; wrds plan → CANCELLED; README_v3 banner) · `0c62f02`
+(v3.1 code snapshot) · `e64a9a1` (.gitignore staging dir)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario asked for the project folder on Google Drive, named `corporate_bond`. Versioned deliverables
+stay frozen (v3 report/README/zip untouched); instead: **`v3_report_addendum.md/.pdf`** — the ISIN
+lookup + hybrid engine + corrected coverage, led by the two v3 §3 "alarms" the lookup resolved
+(Sempra make-whole; Comcast custodian coupon error) — plus pointer banners on the v3 report and
+README_v3, and **`fixed_income_code_v3.1.zip`** (38 files; built on 47 so zip paths use forward
+slashes). Staleness sweep: PROJECT_STATUS.md had drifted to the v1 era (canonical 476,
+index-rating-OAS as current) → fronted with an as-of-2026-07-20 state section, §2-4/§7 marked
+historical; `docs/wrds_data_plan.md` status corrected to CANCELLED. Staging copy
+**`corporate_bond/`** at repo root (git-ignored): repo-layout mirror, 127 files / 38MB, +
+`00_README_START_HERE.md` reading-order index; EXCLUDES `.git` and the internal CLAUDE.md/WORKLOG.md
+memos. Regenerate via robocopy and re-drag on future updates; Drive access = Mario only (client
+data). PDF toolchain (no pdflatex on 47): pandoc→HTML on 47, Edge-headless print locally.
+
+---
+
 ## 2026-07-20 (later) — fixed-then-float hybrid engine (design拍板 by user; 103 green)
-**Commit:** `27985ff` (engine + driver + tests) · `[TO FILL]` (docs, this entry)
+**Commit:** `27985ff` (engine + driver + tests) · `1c092ea` (docs, this entry)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
 
@@ -68,7 +90,7 @@ composition improved. Both drivers re-run on 47; outputs mirrored locally.
 ---
 
 ## 2026-07-20 — Mario meeting → ISIN lookup of all 35 flagged bonds → term-overrides layer (90 green)
-**Commit:** `8a38bb0` (overrides layer + data + tests) · `[TO FILL]` (docs, this entry)
+**Commit:** `8a38bb0` (overrides layer + data + tests) · `b52c3fa` (docs, this entry)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
 

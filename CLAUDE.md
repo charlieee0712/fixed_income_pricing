@@ -334,6 +334,12 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   design拍板 by user — see the hybrid bullet in Validated): the 10 fully-termed hybrids are priced
   (route `hybrid`), the 8 margin-gap names BT-marked `hybrid-margin-unavailable`; **a Mario margin
   fill = one `hybrid_switch_terms.csv` cell → the bond prices with zero code change.**
+  **Comms state:** 11-security list WhatsApp'd to Mario **2026-07-20** (awaiting reply); phase-2
+  Bloomberg request (8 `MTG_*` fields × 882 CUSIPs + KTBi terms + agency call schedules + inflation-
+  assumption preference) DRAFTED, user sends **2026-07-21** with `outputs/govt_mtge_cusips.csv`
+  attached (mirrored on 47). Project folder delivered to Mario via Google Drive as `corporate_bond`
+  (staging dir at repo root, git-ignored — regenerate via robocopy + re-drag on updates, see WORKLOG
+  2026-07-20 afternoon; Drive access = Mario only).
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
   for Mario: (a) calibration date — **3-31 ARRIVED & ADOPTED (2026-07-02)**: Mario's USD 3-31 curve (native schema)
