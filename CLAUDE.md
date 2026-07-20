@@ -240,15 +240,37 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (same guarantor). ② `frn_spreads.csv` — quoted margins priced explicitly (OAS no longer absorbs them):
   Bear L+40, PNC L+14, MS L+45 (all corrected to QUARTERLY via `freq` col; `FRN_FREQ_VARIANT` maps 4→
   Quarterly curve), IndepComm L+182. ③ `make_whole_overrides.csv` — Sempra (see universe bullet).
-  Plus **`hybrid_switch_terms.csv`** (18 rows, no consumer yet) = the future **fixed-then-float engine's**
-  input: at VAL **every** fixed-to-float hybrid was still in its FIXED leg (switches 2009-10…2037) —
+  Plus **`hybrid_switch_terms.csv`** (18 rows; consumed by `pricing/hybrid.py` since same-day — see the
+  hybrid bullet in Validated) = the **fixed-then-float engine's** input:
+  at VAL **every** fixed-to-float hybrid was still in its FIXED leg (switches 2009-10…2037) —
   Allstate 6.125→L+193.5 (2017) · Lincoln 7→L+235.75 (2016) · Liberty 7.8→L+357.6 (2037) · Chubb
   6.375→L+225 (2017) · **AmEx 6.80→L+222.75 (2016) & GE 6.375→L+228.9 (2017) — both were misrouted as
   plain FRNs** · SMBC 4.375→6mE+225 (2009-10!) · BofA 4.75→3mE+146 (2014) · BNP 7.195→L+129 (2037) ·
   UniCredit 4.028→3mE+176 (2015) + margin-gap rows. Shinsei "frn-no-maturity" pair RESOLVED = dated
   2016-02-23, 3.75% to call 2011-02-23 (margin → Mario). **Remaining gaps = 11-security Bloomberg list
   for Mario** (3 exempt US FRNs all-terms; 8 hybrids post-call margin only) — table in the lookup doc.
-  Tests **90 green on 47**; drivers re-run @3-31 + @6-10, outputs mirrored locally.
+  Drivers re-run @3-31 + @6-10, outputs mirrored locally.
+- **Fixed-then-float HYBRID engine (2026-07-20, same-day follow-up; design拍板 by user)** —
+  **`src/pricing/hybrid.py`**: fixed leg val→switch on price_bond's EXACT conventions (grid anchored at
+  the SWITCH, accrued off it, no face) + floating leg switch→maturity on price_frn's EXACT conventions
+  (grid anchored at MATURITY truncated at the switch, first period starts AT the switch, fwd·tau +
+  documented margin, face at maturity); one curve + one implied OAS discounts both (`exp(-t(z+shift+oas))`);
+  risk = CURVE bump (frn convention). **Degenerate limits DELEGATE** (switch≥mat → price_bond with
+  `oas+shift`; switch≤val → price_frn) ⇒ bit-exact; **composition validated by the margin-0 identity**:
+  spread=0 & oas=0 ⇒ floating leg telescopes EXACTLY to `face·DF(t_switch)` on ANY curve ⇒ hybrid ==
+  fixed-to-switch bullet (= the price-to-call reference bond). Driver: `hyb_terms` intercepts in the
+  floating + resets loops — margin known → route **`hybrid`** (main column) + **price-to-call REFERENCE**
+  columns (reset-6 dual-column rule; deep-discount to-call OAS is spurious = extension priced, e.g. SMBC
+  415bp hybrid vs 1869bp to-call); margin missing → **`hybrid-margin-unavailable`** BT-mark (8 names —
+  incl. previously FRN-priced BTMU/Resona-EUR and continuation-priced Chuo/Resona-4.125: never
+  half-modelled; a Mario margin fill = one CSV cell → priced, zero code change). Perps (BNP, UniCredit)
+  truncate at 90y; `next_switch_t` output per bond (e.g. SMBC 0.58y → dur 0.44; Liberty sw-2037 →
+  dur 4.66). **reset-continuation RETIRED.** Hybrid OAS kept OUT of by-rating medians (jr-sub/T1 capital
+  spreads). Sanity @3-31: BNP 1209bp (was 1089 continuation — the par-floater tail is worth more than a
+  deep-discounted 7.195% annuity tail ⇒ OAS up, direction correct); totals 553 priced / 11 flagged
+  unchanged, composition improved. **Tests 90→103 green on 47** (`test_hybrid` 10: bit-exact limits,
+  any-curve margin-0 identity, monotonicity, OAS round-trip, dur ≪ fixed & ~switch-bounded, near-limit
+  continuity, perp truncation, to-call spuriousness; +3 loader/repo locks).
 
 ## Validated so far
 - **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,
@@ -298,8 +320,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   ③ EXECUTED same day: 35 bonds looked up, term-overrides layer landed (see the 2026-07-20 bullet above +
   `docs/isin_lookup_2026-07-20.md`). **Now ⏳ AWAITING Mario: (a) the 11-security Bloomberg request list**
   (in the lookup doc — 3 exempt US FRNs all-terms, 8 hybrids post-call margin), **(b) pass-through
-  Bloomberg data.** Our next engine step (not Mario-gated): **fixed-then-float pricer** consuming
-  `data/hybrid_switch_terms.csv` (10 hybrids fully termed, all still fixed at VAL).
+  Bloomberg data.** ~~Next engine step: fixed-then-float pricer~~ **DONE same-day** (`pricing/hybrid.py`,
+  design拍板 by user — see the hybrid bullet in Validated): the 10 fully-termed hybrids are priced
+  (route `hybrid`), the 8 margin-gap names BT-marked `hybrid-margin-unavailable`; **a Mario margin
+  fill = one `hybrid_switch_terms.csv` cell → the bond prices with zero code change.**
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
   for Mario: (a) calibration date — **3-31 ARRIVED & ADOPTED (2026-07-02)**: Mario's USD 3-31 curve (native schema)
@@ -350,6 +374,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   time-table for stepped/step-up/zero; threaded through `price_bond`/`implied_oas`/`risk_metrics`) ·
   ✅ `frn.py` (**Step-4** FRN: forward-projection off `ZeroCurve` + spread, single-curve discount, implied
   OAS; **curve-bump eff-dur ~ next reset**) ·
+  ✅ `hybrid.py` (**fixed-then-float** = price_bond fixed leg to the switch + price_frn floating leg after,
+  glued on one curve+OAS; degenerate limits delegate bit-exact; margin-0 telescoping identity = the
+  composition test; consumes `data/hybrid_switch_terms.csv`; `next_switch_t` + price-to-call reference) ·
   ✅ `lattice.py` (**v2** callable/putable BDT
   short-rate tree: fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free; implied OAS + eff-dur; NOT a
   `BondOAS` replica — invariant-validated; `call_array`/`put_array` read a `[(time,price)]` schedule from

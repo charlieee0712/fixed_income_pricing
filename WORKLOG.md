@@ -5,6 +5,43 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-20 (later) — fixed-then-float hybrid engine (design拍板 by user; 103 green)
+**Commit:** `27985ff` (engine + driver + tests) · `[TO FILL]` (docs, this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Engine (`src/pricing/hybrid.py`) = the two validated engines glued at the switch date,** per the
+user's locked design: fixed leg val→switch on `price_bond`'s exact conventions (grid anchored at the
+SWITCH date, accrued off that grid, no face) + floating leg switch→maturity on `price_frn`'s exact
+conventions (grid anchored at MATURITY truncated at the switch, first period starts AT the switch,
+simple forward × actual tau + the bond's documented quoted margin, face at maturity); one curve + one
+flat implied OAS discount both legs; risk metrics bump the CURVE (floating leg reprojects).
+
+**Invariants (pytest, `test_hybrid` — all green first run):** ① switch=maturity ⇒ ==`price_bond`
+bit-for-bit and ② switch=valuation ⇒ ==`price_frn` bit-for-bit (the limits DELEGATE, guarded by
+near-limit continuity tests just inside each boundary); ③ the margin-0 identity — spread=0 & oas=0
+makes the floating leg telescope EXACTLY to `face·DF(t_switch)` on ANY curve (not just flat), so the
+hybrid equals the fixed-to-switch bullet = the composition test; ④ duration ≪ same-maturity fixed and
+~bounded by the switch time, `next_switch_t` output per bond; ⑤ perp = 90y truncation main column +
+price-to-call REFERENCE column (reset-6 dual-column rule), deep-discount to-call OAS = spurious
+(extension priced). Plus OAS round-trip + spread/OAS monotonicity + loader/repo-lock tests. **80→103.**
+
+**Driver:** `hyb_terms` intercepts in the floating + resets loops. Margin known → route **`hybrid`**
+(10 bonds: Allstate 789bp/dur 2.26/sw 8.15y · GE 967 · Lincoln 2616 (BT 23) · AmEx 1069 · Liberty
+1724/sw 28.1y · Chubb 806 · SMBC 415/dur 0.44/sw 0.58y · BofA 1058 · BNP 1209/sw 28.3y perp ·
+UniCredit 979 perp; to-call reference shows the expected spuriousness on deep discounts, e.g. SMBC
+1869bp to-call vs 415 hybrid, and near-equality where switch≈2037 ⇒ hybrid≈bullet: Liberty 1733 vs
+1724). Margin missing → **`hybrid-margin-unavailable`** BT-mark (8: Resona-US, BTMU, Resona-EUR,
+Chuo, Resona-perp ×2, Shinsei ×2 — per instruction the previously FRN-priced BTMU/Resona-EUR and
+continuation-priced Chuo/Resona-4.125 now wait for Mario's margins rather than staying half-modelled;
+one CSV cell fill re-prices them with zero code change). **reset-continuation RETIRED.** Hybrid OAS
+stays OUT of the by-rating medians (jr-sub/T1 capital spreads; same policy as the floating route).
+BNP 1209bp vs old continuation 1089bp = the par-floater tail out-valuing a deep-discounted 7.195%
+annuity tail — direction correct. Totals unchanged (**553 priced / 11 flagged @3-31; 548/11 @6-10**),
+composition improved. Both drivers re-run on 47; outputs mirrored locally.
+
+---
+
 ## 2026-07-20 — Mario meeting → ISIN lookup of all 35 flagged bonds → term-overrides layer (90 green)
 **Commit:** `8a38bb0` (overrides layer + data + tests) · `[TO FILL]` (docs, this entry)
 **Hours:** `[TO FILL]`
