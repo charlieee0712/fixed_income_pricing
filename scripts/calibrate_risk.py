@@ -30,6 +30,8 @@ from curves.zero_curve import ZeroCurve
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.universe import build_universe
 from pricing.calibrate import implied_oas, near_maturity
+from dataio.term_overrides import (load_coupon_schedule_overrides, load_frn_spreads,
+                                   load_make_whole_overrides)
 from pricing.coupon_schedule import coupon_at, parse_coupon_schedule
 from pricing.frn import frn_risk_metrics, implied_oas_frn, parse_frn_spread
 from pricing.risk import risk_metrics
@@ -39,11 +41,20 @@ WB = os.environ.get("FIP_URS_WB", os.path.join(DATA_DIR, "URS Fixed Income Mar 2
 VAL = os.environ.get("FIP_VAL_DATE", "2009-06-10")
 OUT = os.environ.get("FIP_OUT", "outputs/implied_oas.csv")  # per-date override avoids clobbering
 OAS_WB = os.environ.get("FIP_OAS_WB", os.path.join(DATA_DIR, "Pricing File.xlsm"))  # index OAS source
+# Term-override tables (dataio.term_overrides; evidence in docs/isin_lookup_2026-07-20.md).
+# All optional: absent file = no overrides.
+SCHED_CSV = os.environ.get("FIP_COUPON_SCHED", os.path.join(DATA_DIR, "coupon_schedules.csv"))
+FRN_SPREADS_CSV = os.environ.get("FIP_FRN_SPREADS", os.path.join(DATA_DIR, "frn_spreads.csv"))
+MW_CSV = os.environ.get("FIP_MAKE_WHOLE", os.path.join(DATA_DIR, "make_whole_overrides.csv"))
 MIN_YEARS = 1.0          # below this remaining maturity -> implied OAS unreliable -> excluded
 DISTRESS_BT = 50.0       # below this clean price -> implied OAS is a recovery plug -> flagged, kept
 PERP_TRUNC_YEARS = 90    # perpetual reset bonds priced by coupon-continuation to a long truncation
                          # (face PV at 90y is negligible under crisis discount rates; noted per bond)
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
+# FRN engine only: quarterly is legitimate there (several documented FRNs pay quarterly; the
+# custodian freq is corrected via data/frn_spreads.csv). Kept separate so the canonical-loop
+# guard (`fr not in FREQ_VARIANT`) is unchanged.
+FRN_FREQ_VARIANT = {1: "Annual", 2: "Semiannual", 4: "Quarterly"}
 RATING_ORDER = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"]
 # Routes whose implied OAS is a clean, model-repriced spread (feed the by-rating medians). The other
 # routes (recovery / schedule-unavailable / zero-structured / excluded-no-data) are BT marks or
@@ -51,6 +62,27 @@ RATING_ORDER = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"]
 PRICED_ROUTES = {"vanilla", "make-whole-as-vanilla", "vanilla-schedule"}
 
 pd.set_option("display.width", 220)
+
+
+def _apply_schedule_override(row, sched, bt, mat, fr, curve):
+    """Price on an authoritative coupon path (``data/coupon_schedules.csv``) and fill ``row``.
+
+    The override carries primary-source coupon terms the workbook lacks or mis-states (step-up
+    levels, rating-step levels in force, custodian coupon errors — docs/isin_lookup_2026-07-20.md),
+    so it beats the free-text parse, the degenerate-zero branch and the FRN fallback.
+    """
+    try:
+        eff = coupon_at(sched, pd.Timestamp(VAL).date())
+        oas = implied_oas(float(bt), VAL, mat, eff, curve, freq=fr, coupon_schedule=sched)
+        rm = risk_metrics(VAL, mat, eff, curve, oas, freq=fr, coupon_schedule=sched)
+        nm = near_maturity(VAL, mat, MIN_YEARS)
+        row.update(route="vanilla-schedule", coupon=eff, clean=rm["clean"], implied_oas=oas,
+                   implied_bp=oas * 1e4, eff_dur=rm["eff_duration"], dv01=rm["dv01"],
+                   convexity=rm["convexity"], near_maturity=nm,
+                   flag=("near-maturity" if nm else
+                         f"coupon path from data/coupon_schedules.csv ({eff * 100:.3f}% at VAL; ISIN lookup 2026-07-20)"))
+    except ValueError as e:
+        row.update(route="schedule-unavailable", clean=float(bt), flag=f"override schedule price failed ({e})")
 
 
 def _curve_cache():
@@ -69,7 +101,11 @@ def _curve_cache():
 def main():
     master = load_master(WB)
     terms = load_corporate_terms(WB)
-    canon, _excluded, _funnel, extras = build_universe(master, terms, VAL)
+    csv_scheds = load_coupon_schedule_overrides(SCHED_CSV)   # {aid: [(date|None, rate), ...]}
+    frn_over = load_frn_spreads(FRN_SPREADS_CSV)             # {aid: {"spread": dec, "freq": int|None}}
+    mw_over = load_make_whole_overrides(MW_CSV)              # {aid, ...} documented make-whole-only
+    canon, _excluded, _funnel, extras = build_universe(master, terms, VAL,
+                                                       make_whole_overrides=mw_over)
     recon = extras["reconciliation"].drop_duplicates("asset_id").set_index("asset_id")
     recon.index = recon.index.astype(str)
     get_curve = _curve_cache()
@@ -176,6 +212,13 @@ def main():
             row.update(route="schedule-unavailable", clean=float(bt), flag=f"curve {ccy}/{variant} failed: {e}")
             rows.append(row); continue
 
+        # terms-override first: a documented coupon path beats the degenerate-zero branch AND the
+        # free-text parse (e.g. Comcast 20030NAV3 "zero" = a custodian coupon error, really 6.95%;
+        # Aquila step-up = flat 11.875% for the remaining life).
+        if aid in csv_scheds:
+            _apply_schedule_override(row, csv_scheds[aid], bt, mat, fr, curve)
+            rows.append(row); continue
+
         if cc == "zero":                                # degenerate vanilla: single face cash flow
             try:
                 oas = implied_oas(float(bt), VAL, mat, 0.0, curve, freq=fr)
@@ -243,6 +286,20 @@ def main():
             row.update(route="recovery", clean=(float(bt) if pd.notna(bt) else np.nan),
                        flag="recovery mark: defaulted floater, BT used, no OAS")
             rows.append(row); continue
+        # terms-override: several workbook "(VAR)"/floating tags turned out to be rating-step or
+        # plain-FIXED bonds with a deterministic coupon path (BT 8.625/9.125, Sogerim 7.50,
+        # TI-2012 7.25, Anglian 5.375, RBS 6.00, FT-GBP 7.50 — docs/isin_lookup_2026-07-20.md).
+        # A data/coupon_schedules.csv entry re-routes them off the FRN engine to vanilla-schedule.
+        if aid in csv_scheds and pd.notna(mat) and pd.notna(bt) and bt > 0:
+            variant = FREQ_VARIANT.get(fr, "Semiannual")
+            try:
+                curve = get_curve(ccy, variant)
+            except Exception as e:                       # e.g. the GBP non-arb 3y node
+                row.update(route="frn-curve-blocked", clean=float(bt),
+                           flag=f"coupon path known (override) but curve {ccy}/{variant} blocked: {e}")
+                rows.append(row); continue
+            _apply_schedule_override(row, csv_scheds[aid], bt, mat, fr, curve)
+            rows.append(row); continue
         if pd.isna(mat):
             row.update(route="frn-no-maturity", clean=(float(bt) if pd.notna(bt) else np.nan),
                        flag="no maturity (perpetual?) — needs terms; BT mark")
@@ -255,20 +312,28 @@ def main():
             row.update(route="frn-no-data", flag=f"missing BT (bt={bt})")
             rows.append(row); continue
 
-        variant = FREQ_VARIANT.get(fr, "Semiannual")
+        # documented quoted margin / payment-frequency fix (data/frn_spreads.csv): the margin then
+        # prices explicitly instead of being folded into the OAS, and a wrong custodian freq
+        # (e.g. quarterly FRNs recorded semiannual) is corrected before the curve variant is chosen.
+        over = frn_over.get(aid)
+        if over and over.get("freq"):
+            fr = over["freq"]
+            row["freq"] = fr
+        variant = FRN_FREQ_VARIANT.get(fr, "Semiannual")
         try:
             curve = get_curve(ccy, variant)
         except Exception as e:
             row.update(route="frn-curve-blocked", clean=float(bt), flag=f"curve {ccy}/{variant} blocked: {e}")
             rows.append(row); continue
 
-        spread = parse_frn_spread(b.get("coupon_formula"), b.get("coupon_formula2"))
+        spread = over["spread"] if over else parse_frn_spread(b.get("coupon_formula"), b.get("coupon_formula2"))
         cur = float(cpn_d) if pd.notna(cpn_d) else None      # current reset coupon (master D) if numeric
         try:
             oas = implied_oas_frn(float(bt), VAL, mat, curve, current_coupon=cur,
                                   spread=(spread or 0.0), freq=fr)
             rm = frn_risk_metrics(VAL, mat, curve, oas, current_coupon=cur, spread=(spread or 0.0), freq=fr)
-            note = ("spread parsed" if spread is not None else
+            note = ("spread from data/frn_spreads.csv (ISIN lookup 2026-07-20)" if over else
+                    "spread parsed" if spread is not None else
                     "spread unknown->0, OAS absorbs it (price exact for BT calib; dur ~spread-independent; separable later)")
             row.update(route="floating", clean=rm["clean"], implied_oas=oas, implied_bp=oas * 1e4,
                        eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
@@ -310,6 +375,20 @@ def main():
             next_reset_t=np.nan, implied_bp_to_call=np.nan, eff_dur_to_call=np.nan,
             call_date_used=(call.date() if pd.notna(call) else None), route="", flag="",
         )
+        # terms-override: a workbook "Fixed -> Reset" tag can be plain wrong — e.g. the TI/Olivetti
+        # 7.75% 2033 notes are a documented PLAIN FIXED bullet (docs/isin_lookup_2026-07-20.md).
+        # A data/coupon_schedules.csv entry prices them on their real deterministic path.
+        if aid in csv_scheds and pd.notna(mat) and pd.notna(bt) and bt > 0:
+            variant = FREQ_VARIANT.get(fr, "Semiannual")
+            try:
+                curve = get_curve(ccy, variant)
+            except Exception as e:
+                row.update(route="reset-terms-unavailable", clean=float(bt),
+                           flag=f"coupon path known (override) but curve {ccy}/{variant} blocked: {e}")
+                rows.append(row); continue
+            _apply_schedule_override(row, csv_scheds[aid], bt, mat, fr, curve)
+            rows.append(row); continue
+
         if pd.isna(cur) or pd.isna(bt) or bt <= 0:      # Variable coupon / no mark -> awaiting terms
             row.update(route="reset-terms-unavailable", clean=(float(bt) if pd.notna(bt) else np.nan),
                        flag="Variable coupon / no BT — awaiting reset terms (BT mark)")

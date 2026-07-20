@@ -1,0 +1,5 @@
+asset_id,isin,index,quoted_margin_bp,freq,confidence,source
+TNTD03027773,US073928X243,3M USD LIBOR,40,4,HIGH,"Bear Stearns Series B FRN due 2010-07-19: L+40bp quarterly on the 19th (Jan/Apr/Jul/Oct) - custodian freq 2 corrected to 4; SEC 424B2 pricing supplement No.16 2007-07-12"
+TNTD04131505,US693476AZ63,3M USD LIBOR,14,4,HIGH,"PNC Funding Corp FRN due 2012-01-31: L+14bp quarterly (Jan/Apr/Jul/Oct 31, ACT/360), PNC parent guarantee (not TLGP); issuer FWP 2007-01"
+TNTD04882955,US61746BDC72,3M USD LIBOR,45,4,HIGH,"Morgan Stanley Series F FRN due 2016-10-18: L+45bp quarterly on the 18th, ACT/360, non-callable; issuer FWP + 424B2 2006-10"
+TNTD04259874,US453414AB08,3M USD LIBOR,182,,HIGH,"Independence Community Bank 3.75% fixed/floating sub due 2014-04-01: fixed leg ends ~2009-04-01 (1 day after VAL) then 3mL+182bp, callable par from 2009-04-01; ICBC FY2004 10-K Note 13 (freq unstated - custodian kept)"

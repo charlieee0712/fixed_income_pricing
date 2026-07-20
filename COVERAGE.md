@@ -20,9 +20,9 @@ and routes it to a pricing engine **or explicitly flags it** — nothing is sile
 | **step-up** | 1 | `coupon_schedule` → vanilla | ⚠️ schedule-unavailable → BT-mark |
 | **zero** — zero coupon / structured payoff | 1 | vanilla (degenerate, single CF) | ⚠️ priced but flagged: BT 93 ≠ a pure 28y zero (structured) |
 | **defaulted** — N/A (Defaulted) | 1 | recovery mark | ✅ BT-mark, no OAS |
-| **pass-through** | 16 | — | ❌ excluded per Mario (needs prepayment / Monte-Carlo) |
-| **amortizing** | 1 | — | ❌ excluded per Mario (needs amortization model) |
-| **na** — N/A | 4 | — | ❌ excluded per Mario (unclassified) |
+| **pass-through** | 16 | — | ⏳ Mario is sourcing the needed data on Bloomberg (meeting 2026-07-20); prepayment engine work starts when it lands. Out of the output until then. [was: excluded] |
+| **amortizing** | 1 | — | ❌ ignore permanently (Mario, confirmed 2026-07-20) |
+| **na** — N/A | 4 | — | ❌ ignore permanently (Mario, confirmed 2026-07-20) |
 | **total** | **676** | | |
 
 ## Priced vs flagged vs excluded (output universe, 558 rows)

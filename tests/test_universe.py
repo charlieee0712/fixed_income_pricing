@@ -127,3 +127,19 @@ def test_funnel_new_buckets_split_structured_floating(built):
     assert int(funnel["excluded-structured"]) == 15   # pass-through / amortizing / na / unknown
     assert int(funnel["floating"]) == 32              # floating + fixed-to-reset  -> Step 4 engine
     assert int(funnel["special-fixed"]) == 3          # stepped / step-up / zero / defaulted-coupon -> Step 3
+
+
+def test_make_whole_override_reroutes_sempra():
+    # ISIN lookup 2026-07-20 (docs/isin_lookup_2026-07-20.md): Sempra 8.9% 2013 (TNTD03203204)
+    # is DOCUMENTED make-whole-only (SEC 424B2: Adjusted Treasury Rate + 50bp, NO par call) — the
+    # 7-day gap heuristic can't see that, so data/make_whole_overrides.csv routes it
+    # make-whole -> vanilla: canonical 522 -> 523, genuine callables 6 -> 5. The no-override
+    # counts above stay untouched (the override is an explicit data layer, not a rule change).
+    canonical, _excluded, funnel, _extras = build_universe_from_path(
+        str(URS), VAL_DATE, make_whole_overrides={"TNTD03203204"})
+    assert int(funnel["canonical"]) == 523
+    assert int(funnel["callable"]) == 5
+    row = canonical[canonical["asset_id"].astype(str) == "TNTD03203204"]
+    assert len(row) == 1
+    assert bool(row["is_make_whole"].iloc[0])
+    assert int(canonical["is_make_whole"].sum()) == 47

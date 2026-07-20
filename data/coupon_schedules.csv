@@ -1,1 +1,11 @@
-asset_id,effective_date,coupon_rate
+asset_id,effective_date,coupon_rate,source
+TNTD04150829,,0.11875,"Aquila 11.875% sr notes due 2012-07-01: rating-linked steps (max 14.875% 2003-08) all reversed to base by 2009 (GXP Q1-09 10-Q at exactly 3/31/09 lists 11.875%); SEC S-4 333-100204 + 424B3 2003"
+TNTD03037132,,0.0695,"Comcast 6.95% notes due 2037-08-15 (custodian 0% coupon is a data error, NOT a zero/structured); SEC 424B2 2007-08-21 + Comcast 8-K exhibit 2017 CUSIP<->title map"
+TNTD04087449,,0.08625,"British Telecom rating-step notes due 2010-12-15 (base 8.125% + 25bp/notch/agency): 8.625% in force through the June-2009 coupon; BT 20-F FY2009"
+TNTD04087449,2009-07-01,0.09125,"BT steps to 9.125% from the coupon period after June-2009 (Mar-09 downgrades bite next period; BT 20-F FY2010 '9.125% (2009: 8.625%)'); effective date placed between the model's Jun-09 and Dec-09 grid dates"
+TNTG700496W,,0.075,"Sogerim/Telecom Italia Finance notes due 2011-04-20, rating-step: 7.00->7.25 (Apr-2004)->7.50 from the Apr-2008 coupon; TI 20-F FY2008 F-61 ('the new rate is now equal to 7.50%')"
+TNTG701369W,,0.0725,"Olivetti Finance/TI 7.25% Guaranteed Notes due 2012-04-24: PLAIN FIXED annual, no step/no call (custodian '(VAR)' wrong); pricing supplement (oblible XS0146643191) + TI 20-F step-list exclusion"
+TNTG701894W,,0.0775,"Olivetti Finance/TI Finance 7.75% Guaranteed Notes due 2033-01-24: PLAIN FIXED annual, no step/no call/no put (workbook 'Fixed->Reset (step/var)' wrong); both pricing supplements (gruppotim.it archive) + TI 20-F FY2003 step enumeration"
+TNTG001023W,,0.05375,"Anglian Water Services Financing EUR350m 5.375% due 2009-07-02: PLAIN FIXED (issuer statutory accounts drawn at 2009-03-31 list '5.375% Fixed', no step footnote; '(VAR)' wrong); AWSF Accounts FY2009"
+TNTG405928W,,0.06,"RBS EUR1.5bn 6% Subordinated Eurobonds due 2013-05-10: PLAIN FIXED bullet (call/float hypothesis refuted by FY2007+FY2008 20-F callable-annotation convention); RBS 6-K 2009-10-30 + 20-Fs"
+TNTG700307W,,0.075,"France Telecom GBP600m 7.50% due 2011-03-14, rating-step floored at issue rate: FT at A3/A- (on, not below, the trigger) through 2008 => 7.50% floor in force; FT 20-F FY2008 (GBP curve still blocked - seeded for when it lands)"

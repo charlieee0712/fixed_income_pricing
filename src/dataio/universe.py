@@ -64,8 +64,14 @@ def _corporate_uniques(master):
     return corp, uniq
 
 
-def build_universe(master, terms, val_date):
+def build_universe(master, terms, val_date, make_whole_overrides=None):
     """Build the universe.
+
+    ``make_whole_overrides``: optional iterable of asset_ids DOCUMENTED (prospectus-level, see
+    ``docs/isin_lookup_2026-07-20.md`` / ``dataio.term_overrides``) as carrying a continuous
+    make-whole call only. A make-whole custodian "next call" can sit years from maturity, so the
+    ``MAKE_WHOLE_MAX_GAP_DAYS`` heuristic cannot recognise it; the override routes those bonds
+    make-whole -> vanilla (canonical) instead of callable -> lattice.
 
     Returns ``(canonical, excluded, funnel, extras)``:
       * ``canonical`` — DataFrame of priceable bonds (golden marks stripped).
@@ -107,6 +113,9 @@ def build_universe(master, terms, val_date):
     call_date = pd.to_datetime(merged["call_date"], errors="coerce")
     gap_days = (maturity - call_date).dt.days
     merged["is_make_whole"] = merged["is_callable"] & gap_days.le(MAKE_WHOLE_MAX_GAP_DAYS)
+    if make_whole_overrides:
+        mw_ids = {str(a) for a in make_whole_overrides}
+        merged["is_make_whole"] |= merged["is_callable"] & merged["asset_id"].astype(str).isin(mw_ids)
 
     # ---- coupon-structure class + engine route (Mario 2026-07-08: read Coupon_Formula2, route by
     #      type). Data-driven; supersedes the coupon_type(E) "fixed" test for canonical membership. ----
@@ -175,6 +184,7 @@ def build_universe(master, terms, val_date):
     return canonical, excluded, funnel, extras
 
 
-def build_universe_from_path(path, val_date):
+def build_universe_from_path(path, val_date, make_whole_overrides=None):
     """Convenience: load the workbook and build the universe in one call."""
-    return build_universe(load_master(path), load_corporate_terms(path), val_date)
+    return build_universe(load_master(path), load_corporate_terms(path), val_date,
+                          make_whole_overrides=make_whole_overrides)

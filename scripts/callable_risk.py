@@ -32,6 +32,7 @@ from openpyxl.utils import column_index_from_string
 from curves.zero_curve import ZeroCurve
 from dataio.call_schedules import load_call_schedules, to_lattice_schedule
 from dataio.loaders import load_corporate_terms, load_master
+from dataio.term_overrides import load_make_whole_overrides
 from dataio.universe import build_universe
 from pricing.lattice import ShortRateLattice
 
@@ -40,6 +41,7 @@ WB = os.environ.get("FIP_URS_WB", os.path.join(DATA_DIR, "URS Fixed Income Mar 2
 VAL = os.environ.get("FIP_VAL_DATE", "2009-03-31")
 SIGMA = float(os.environ.get("FIP_VOL", "0.15"))     # Mario v1 flat short-rate vol (not market)
 SCHED = os.environ.get("FIP_CALL_SCHED", os.path.join(DATA_DIR, "call_schedules.csv"))
+MW_CSV = os.environ.get("FIP_MAKE_WHOLE", os.path.join(DATA_DIR, "make_whole_overrides.csv"))
 OUT = os.environ.get("FIP_OUT", "outputs/callable_risk.csv")
 GAP_DAYS = 366                                        # > this -> genuine call gap (else make-whole)
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
@@ -62,7 +64,10 @@ def load_aq(path):
 def main():
     master = load_master(WB)
     terms = load_corporate_terms(WB)
-    canon, excl, funnel, extras = build_universe(master, terms, VAL)
+    # documented make-whole-only bonds (e.g. Sempra 8.9% 2013) route make-whole -> vanilla and
+    # leave the lattice set — same override the calibration driver uses.
+    canon, excl, funnel, extras = build_universe(master, terms, VAL,
+                                                 make_whole_overrides=load_make_whole_overrides(MW_CSV))
     recon = extras["reconciliation"].drop_duplicates("asset_id").set_index("asset_id")
     recon.index = recon.index.astype(str)
     aq = load_aq(WB)
