@@ -314,6 +314,16 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (schedule/vol/BT) RESOLVED — WORKLOG 2026-07-03.**
 
 ## Open questions
+- **PHASE 2 SET (Mario 2026-07-20 evening): four Summary asset classes — INVENTORIED, methods TBD.**
+  `docs/phase2_inventory_2026-07-20.md` = the findings. Gov Agencies 42 (BG=coupon ✓ complete; ~5-8
+  callable + 2 zero strips) · Guaranteed 11 (all FDIC-TLGP, pure vanilla) · Index-Linked 16 (14 TIPS +
+  JGBi + KTBi; per-bond index ratio = BG÷desc-coupon; BT = inflated price = BU/CV·100; v1 path =
+  nominal curve + inflation assumption) · Govt MBS 888 (`Govt MTGE` tab joins 1:1; **WAC/WARM/WALA/PREP
+  all dead `#NAME?` Bloomberg formulas — 0/888**; recovered mnemonics MTG_WACPN/MTG_WAM/
+  MTG_STATED_WALA/MTG_AOLS/MTG_GEN_CPR_3M/6M/12M/MTG_HIST_COLLAT_CPR_LIFE keyed `CUSIP MTGE` ⇒ exact
+  8-field × 882-CUSIP Bloomberg request for Mario; usable now: BE coupon 888, BV mat 870, BZ factor 849,
+  BS golden 888). Master col discoveries: **BG/BH Income rate = the coupon carrier** (DO/DP empty), CB =
+  Payment frequency, BX = Original face. Static-CPR engine design + per-class方案 = next session.
 - **Mario meeting HELD 2026-07-20** (was: awaiting v3 feedback). Decisions: ① **pass-through 16 — Mario
   pulls the data from Bloomberg** and sends it (prepayment engine work starts then); ② **amortizing 1 +
   na 4 — ignore permanently**; ③ flagged bonds → resolve by ISIN online, unresolvable → back to Mario.

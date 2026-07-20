@@ -5,6 +5,31 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-20 (evening) — phase-2 inventory: four new asset classes (no code)
+**Commit:** `[TO FILL]` (this entry + docs/phase2_inventory_2026-07-20.md)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario set the next phase: Government Agencies (42) / Guaranteed Fixed Income (11) / Index Linked
+Government Bonds (16) / Government Mortgage Backed Securities (888, terms on the `Govt MTGE` tab).
+Inventory only (scratch scripts on 47, nothing committed to src/) — full findings in
+**`docs/phase2_inventory_2026-07-20.md`**. Headlines: ① master **BG "Income rate" IS the coupon**
+(validated vs description-embedded rates) and CB the payment frequency — the three small classes
+are data-complete (AGY has ~5-8 CALLABLE agency debentures + 2 zero strips; GTD = 11 FDIC-TLGP
+crisis notes, pure vanilla; both ≈ vanilla reuse). ② Linkers: 14 TIPS + JGBi + KTBi, and the file
+itself yields the 2009-03-31 **index ratio per bond** (BG ÷ desc-coupon) plus the BT convention
+(BT = inflated price = BU/CV×100 exactly) — v1 path = nominal curve + inflation assumption.
+③ **Govt MTGE static-CPR inputs are 0/888**: WAC/WARM/WALA/PREP are cached `#NAME?` — dead
+Bloomberg `=blp(CUSIP&" MTGE", …)` formulas; recovered the intended mnemonics from FB2:FI2
+(MTG_WACPN / MTG_WAM / MTG_STATED_WALA / MTG_AOLS / MTG_GEN_CPR_3M/6M/12M /
+MTG_HIST_COLLAT_CPR_LIFE) ⇒ an EXACT 8-field × 882-CUSIP Bloomberg request for Mario. Usable
+today: BE coupon 888/888, BV maturity 870/888, BZ factor 849/888 (⚠️ max>1), BS golden 888/888;
+anomalies logged (10 negative-par short rows, 3 near-zero prices, income-rate max 30%). Master↔tab
+join is 1:1 (882↔882). ④ Golden BT = 100% in all four classes. Methods per class to be decided
+next round; no engine work started.
+
+---
+
 ## 2026-07-20 (later) — fixed-then-float hybrid engine (design拍板 by user; 103 green)
 **Commit:** `27985ff` (engine + driver + tests) · `[TO FILL]` (docs, this entry)
 **Hours:** `[TO FILL]`
