@@ -2,6 +2,11 @@
 
 *Full Coupon_Formula2 routing, engine reliability, and outstanding data items*
 
+> **⚠️ Superseded in part — see `v3_report_addendum.md` (2026-07-20).** The ISIN lookup and the new
+> fixed-then-float engine resolved two of the three §3 alarms (Sempra = make-whole only; the "zero"
+> = a custodian coupon error, really Comcast 6.95% '37), re-priced the step-up/"(VAR)"/hybrid names,
+> and updated the coverage totals to 559 = 548 + 11 (@6-10). This v3 body is kept as delivered.
+
 ---
 
 ## 1. Summary
