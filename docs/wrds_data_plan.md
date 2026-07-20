@@ -1,6 +1,10 @@
 # WRDS Data-Pull Plan
 
-**Status:** execute-ready, **blocked on WRDS account reactivation** (account currently *inactive*).
+**Status: CANCELLED 2026-06-30** — the OAS redefinition (per-bond calibration to the custodian
+mark, Mario 2026-06-30) removed the need for external distressed/sector OAS; the remaining terms
+gaps were later closed by the 2026-07-20 ISIN lookup (`docs/isin_lookup_2026-07-20.md`) or sit on
+the Mario/Bloomberg list. Kept for the record only.
+~~execute-ready, blocked on WRDS account reactivation (account currently *inactive*).~~
 **Environment:** ✅ ready on server 47 — `wrds` + `psycopg2-binary` installed in the `PengSX` conda env;
 `wrds-pgdata.wharton.upenn.edu:9737` confirmed reachable from 47; golden suite still 26/26.
 **Run location:** server 47 (has outbound to WRDS). Do **not** assume local Python.

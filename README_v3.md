@@ -1,5 +1,10 @@
 # Fixed-Income Pricing — v3 code package
 
+> **⚠️ Superseded by v3.1 — see `v3_report_addendum.md` + `fixed_income_code_v3.1.zip`
+> (2026-07-20):** the ISIN-lookup term overrides, the Sempra make-whole re-route, and the new
+> fixed-then-float hybrid engine update the counts quoted below (output 559 = 548 + 11 @6-10;
+> tests 80 → 103). This v3 package is kept as delivered.
+
 Code-only snapshot at commit `b7caa65`. A Python re-implementation of a legacy Excel/VBA
 fixed-income pricing toolkit; **corporate bonds are the first reference implementation.**
 

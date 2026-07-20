@@ -17,6 +17,35 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 
 ---
 
+> ## ⚠️ Read this first — state as of 2026-07-20
+>
+> Sections 2–4 and 7 below describe the project as of the **v1 era** and are kept for the record;
+> the method has since evolved materially. The current picture:
+>
+> - **Methodology (redefined 2026-06-30, Mario):** OAS is a per-bond **calibration output**, not a
+>   pricing input — each bond's implied OAS is solved so the model clean price equals the custodian
+>   mark (`BT`), and **risk metrics** (effective duration / DV01 / convexity, ±1bp parallel curve
+>   bump) are computed on the calibrated model. The v1 index-rating-OAS flow in §2 is historical.
+> - **Valuation baseline = 2009-03-31** (Mario's USD curve, adopted 2026-07-02; matches the
+>   holdings date); 2009-06-10 kept as control. EUR/GBP bonds route to own-currency curves.
+> - **Engines by coupon structure** (`Coupon_Formula2` routing, 2026-07-08): vanilla fixed ·
+>   coupon-schedule (stepped / rating-step / documented paths) · FRN forward-projection ·
+>   **fixed-then-float hybrid** (2026-07-20) · BDT callable lattice (v2) · recovery marks.
+> - **Term-override data layer (2026-07-20):** flagged bonds resolved from public primary sources
+>   by ISIN/CUSIP (22 of 35 fully, sources cited per bond in `docs/isin_lookup_2026-07-20.md`);
+>   fills live in `data/coupon_schedules.csv`, `data/frn_spreads.csv`,
+>   `data/make_whole_overrides.csv`, `data/hybrid_switch_terms.csv`.
+> - **Universe:** canonical **523** @2009-06-10 / **528** @2009-03-31 (documented make-whole
+>   override incl.), callable bucket 5, make-whole-as-vanilla 47. §3's canonical-476 figures are
+>   the pre-reclassification history.
+> - **Coverage:** output **564 bonds = 553 priced end-to-end + 11 flagged** @2009-03-31
+>   (559 = 548 + 11 @6-10); **103 tests green**. Live map: `COVERAGE.md`; reports:
+>   `v3_report_coverage` + `v3_report_addendum` (2026-07-20).
+> - **Outstanding:** an 11-security Bloomberg margin list, the pass-through data (Mario sourcing),
+>   a usable GBP par curve. Amortizing + N/A excluded permanently (Mario 2026-07-20).
+
+---
+
 ## 1. Source material (file map)
 
 | File | Role | Notes |
