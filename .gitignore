@@ -12,6 +12,9 @@ scratchpad/
 outputs/
 *.bak
 
+# ---- Google-Drive staging copy (curated duplicate of this tree; never commit) ----
+corporate_bond/
+
 # ---- OS / editor ----
 .DS_Store
 Thumbs.db
