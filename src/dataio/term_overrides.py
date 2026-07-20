@@ -21,6 +21,10 @@ pipeline still runs on a bare checkout), but a present file with wrong columns r
   from maturity, so :data:`dataio.universe.MAKE_WHOLE_MAX_GAP_DAYS` cannot recognise them;
   ``build_universe(..., make_whole_overrides=...)`` routes them make-whole -> vanilla instead of
   callable -> lattice.
+* ``data/hybrid_switch_terms.csv`` — fixed-to-float hybrid terms (fixed rate/freq, switch date,
+  post-switch index+margin, call, maturity or perp) for :mod:`pricing.hybrid`. A row WITH a margin
+  prices on the fixed-then-float engine; a row WITHOUT one BT-marks the bond
+  ``hybrid-margin-unavailable`` (the Mario/Bloomberg request list).
 """
 from __future__ import annotations
 
@@ -90,3 +94,37 @@ def load_make_whole_overrides(path):
     if df is None or df.empty:
         return set()
     return {str(a) for a in df["asset_id"].dropna()}
+
+
+def _blank(v):
+    return v is None or (isinstance(v, float) and pd.isna(v)) or str(v).strip() == ""
+
+
+def load_hybrid_terms(path):
+    """``data/hybrid_switch_terms.csv`` -> ``{asset_id: {...}}`` for the fixed-then-float engine.
+
+    Per bond: ``fixed_rate`` (decimal), ``fixed_freq``, ``switch_date`` (date), ``margin``
+    (decimal, from ``float_margin_bp``; **None = the post-switch margin is a documented data gap**
+    -> the driver BT-marks the bond ``hybrid-margin-unavailable`` instead of half-modelling it),
+    ``float_freq``, ``maturity`` (date; **None = perpetual** -> driver truncates), ``first_call``
+    (date), ``confidence``. Blank cells -> None throughout (the None principle).
+    """
+    df = _read_optional(path, ("asset_id", "fixed_rate", "fixed_freq", "switch_date",
+                               "float_margin_bp", "float_freq", "maturity"))
+    if df is None or df.empty:
+        return {}
+    out = {}
+    for r in df.itertuples():
+        out[str(r.asset_id)] = {
+            "fixed_rate": None if _blank(r.fixed_rate) else float(r.fixed_rate),
+            "fixed_freq": None if _blank(r.fixed_freq) else int(r.fixed_freq),
+            "switch_date": None if _blank(r.switch_date) else pd.Timestamp(r.switch_date).date(),
+            "margin": None if _blank(r.float_margin_bp) else float(r.float_margin_bp) / 1e4,
+            "float_freq": None if _blank(r.float_freq) else int(r.float_freq),
+            "maturity": None if _blank(r.maturity) else pd.Timestamp(r.maturity).date(),
+            "first_call": (None if "first_call_date" not in df.columns or _blank(r.first_call_date)
+                           else pd.Timestamp(r.first_call_date).date()),
+            "confidence": (None if "confidence" not in df.columns or _blank(r.confidence)
+                           else str(r.confidence)),
+        }
+    return out

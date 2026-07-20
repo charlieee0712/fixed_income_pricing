@@ -10,7 +10,7 @@ import pathlib
 import pytest
 
 from dataio.term_overrides import (load_coupon_schedule_overrides, load_frn_spreads,
-                                   load_make_whole_overrides)
+                                   load_hybrid_terms, load_make_whole_overrides)
 
 _DATA = pathlib.Path(__file__).resolve().parents[1] / "data"
 
@@ -101,3 +101,42 @@ def test_repo_frn_spreads_lock():
     assert sp["TNTD04131505"] == {"spread": 0.0014, "freq": 4}   # PNC L+14 qtly
     assert sp["TNTD04882955"] == {"spread": 0.0045, "freq": 4}   # MS L+45 qtly
     assert sp["TNTD04259874"] == {"spread": 0.0182, "freq": None}  # IndepComm L+182
+
+
+def test_hybrid_terms_loader(tmp_path):
+    p = tmp_path / "hyb.csv"
+    p.write_text(
+        "asset_id,isin,fixed_rate,fixed_freq,switch_date,float_index,float_margin_bp,float_freq,"
+        "first_call_date,first_call_price,maturity,confidence,source_note\n"
+        "A1,XX,0.06125,2,2017-05-15,3M USD LIBOR,193.5,4,2017-05-15,100,2067-05-15,HIGH,src\n"
+        "B2,YY,0.0375,1,2011-02-23,,,,2011-02-23,100,2016-02-23,HIGH,margin gap\n"
+        "C3,ZZ,0.07195,2,2037-06-25,3M USD LIBOR,129,4,2037-06-25,100,,HIGH,perp\n"
+    )
+    out = load_hybrid_terms(str(p))
+    a = out["A1"]
+    assert a["fixed_rate"] == 0.06125 and a["fixed_freq"] == 2 and a["float_freq"] == 4
+    assert a["margin"] == 0.019350
+    assert a["switch_date"] == dt.date(2017, 5, 15) and a["maturity"] == dt.date(2067, 5, 15)
+    b = out["B2"]
+    assert b["margin"] is None and b["float_freq"] is None       # documented margin gap -> None
+    assert b["maturity"] == dt.date(2016, 2, 23)
+    assert out["C3"]["maturity"] is None                         # blank maturity = perpetual
+
+
+def test_repo_hybrid_terms_lock():
+    hyb = load_hybrid_terms(str(_DATA / "hybrid_switch_terms.csv"))
+    assert len(hyb) == 18
+    with_margin = {a for a, h in hyb.items() if h["margin"] is not None}
+    assert with_margin == {                     # the 10 fully-termed hybrids on the engine
+        "TNTD03009347", "TNTD04735032", "TNTD04967448", "TNTD04986722",   # Allstate/Lincoln/Liberty/Chubb
+        "TNTD04794469", "TNTD03057893",                                    # AmEx / GE
+        "TNTG010475U", "TNTG522013U",                                      # SMBC / BofA
+        "TNTD03020850", "TNTG533596W",                                     # BNP / UniCredit (perps)
+    }
+    assert hyb["TNTD03009347"]["margin"] == 0.019350             # Allstate 3mL+193.5
+    assert hyb["TNTG010475U"]["margin"] == 0.0225                # SMBC 6mE+225
+    assert hyb["TNTG010475U"]["float_freq"] == 2                 # ...paid s.a. after the switch
+    assert hyb["TNTD03020850"]["maturity"] is None               # BNP = perpetual
+    assert hyb["TNTG533596W"]["maturity"] is None                # UniCredit = perpetual
+    assert hyb["TNTG614042U"]["margin"] is None                  # Shinsei margin gap -> BT-mark
+    assert hyb["TNTG614042U"]["maturity"] == dt.date(2016, 2, 23)  # ...but maturity is resolved

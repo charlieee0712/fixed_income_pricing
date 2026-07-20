@@ -31,8 +31,9 @@ from dataio.loaders import load_corporate_terms, load_master
 from dataio.universe import build_universe
 from pricing.calibrate import implied_oas, near_maturity
 from dataio.term_overrides import (load_coupon_schedule_overrides, load_frn_spreads,
-                                   load_make_whole_overrides)
+                                   load_hybrid_terms, load_make_whole_overrides)
 from pricing.coupon_schedule import coupon_at, parse_coupon_schedule
+from pricing.hybrid import hybrid_risk_metrics, implied_oas_hybrid
 from pricing.frn import frn_risk_metrics, implied_oas_frn, parse_frn_spread
 from pricing.risk import risk_metrics
 
@@ -46,6 +47,7 @@ OAS_WB = os.environ.get("FIP_OAS_WB", os.path.join(DATA_DIR, "Pricing File.xlsm"
 SCHED_CSV = os.environ.get("FIP_COUPON_SCHED", os.path.join(DATA_DIR, "coupon_schedules.csv"))
 FRN_SPREADS_CSV = os.environ.get("FIP_FRN_SPREADS", os.path.join(DATA_DIR, "frn_spreads.csv"))
 MW_CSV = os.environ.get("FIP_MAKE_WHOLE", os.path.join(DATA_DIR, "make_whole_overrides.csv"))
+HYBRID_CSV = os.environ.get("FIP_HYBRID_TERMS", os.path.join(DATA_DIR, "hybrid_switch_terms.csv"))
 MIN_YEARS = 1.0          # below this remaining maturity -> implied OAS unreliable -> excluded
 DISTRESS_BT = 50.0       # below this clean price -> implied OAS is a recovery plug -> flagged, kept
 PERP_TRUNC_YEARS = 90    # perpetual reset bonds priced by coupon-continuation to a long truncation
@@ -62,6 +64,66 @@ RATING_ORDER = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"]
 PRICED_ROUTES = {"vanilla", "make-whole-as-vanilla", "vanilla-schedule"}
 
 pd.set_option("display.width", 220)
+
+
+def _hybrid_route(row, hb, bt, ccy, get_curve):
+    """Route a bond with documented fixed-to-float terms (``data/hybrid_switch_terms.csv``).
+
+    Margin known -> the fixed-then-float engine (:mod:`pricing.hybrid`) as the MAIN column +
+    price-to-call as a REFERENCE column (the fixed-to-switch bullet — every documented hybrid is
+    par-callable at its switch; reset-6 dual-column convention: for a deep-discount name the market
+    prices EXTENSION, so a to-call OAS is spurious). Margin missing -> BT-mark
+    ``hybrid-margin-unavailable`` (the Mario/Bloomberg list) — never half-modelled.
+    """
+    if hb.get("margin") is None or hb.get("fixed_rate") is None or hb.get("switch_date") is None:
+        row.update(route="hybrid-margin-unavailable",
+                   clean=(float(bt) if pd.notna(bt) else np.nan),
+                   flag="fixed-to-float structure documented (data/hybrid_switch_terms.csv) but the "
+                        "post-switch margin is not public — Mario/Bloomberg list; BT mark")
+        return
+    if pd.isna(bt) or bt <= 0:
+        row.update(route="hybrid-no-data", flag=f"hybrid terms known but no BT (bt={bt})")
+        return
+    fr_fix = hb.get("fixed_freq") or 2
+    fr_flt = hb.get("float_freq") or fr_fix
+    variant = FRN_FREQ_VARIANT.get(fr_fix, "Semiannual")
+    try:
+        curve = get_curve(ccy, variant)
+    except Exception as e:
+        row.update(route="hybrid-curve-blocked", clean=float(bt),
+                   flag=f"hybrid terms known but curve {ccy}/{variant} blocked: {e}")
+        return
+    perp = hb.get("maturity") is None
+    mat = ((pd.Timestamp(VAL) + pd.DateOffset(years=PERP_TRUNC_YEARS)).date() if perp
+           else hb["maturity"])
+    sw = hb["switch_date"]
+    try:
+        oas = implied_oas_hybrid(float(bt), VAL, mat, curve, fixed_rate=hb["fixed_rate"],
+                                 switch_date=sw, spread=hb["margin"], fixed_freq=fr_fix,
+                                 float_freq=fr_flt)
+        rm = hybrid_risk_metrics(VAL, mat, curve, oas, fixed_rate=hb["fixed_rate"], switch_date=sw,
+                                 spread=hb["margin"], fixed_freq=fr_fix, float_freq=fr_flt)
+    except ValueError as e:
+        row.update(route="hybrid-no-bracket", clean=float(bt), flag=f"hybrid OAS not bracketable ({e})")
+        return
+    oas_tc, dur_tc = np.nan, np.nan
+    try:
+        oas_tc = implied_oas(float(bt), VAL, sw, hb["fixed_rate"], curve, freq=fr_fix)
+        dur_tc = risk_metrics(VAL, sw, hb["fixed_rate"], curve, oas_tc, freq=fr_fix)["eff_duration"]
+    except ValueError:
+        pass
+    ttm = np.nan if perp else round((pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25, 3)
+    row.update(route="hybrid", coupon=hb["fixed_rate"], freq=fr_fix,
+               maturity=(None if perp else mat), ttm=ttm,
+               clean=rm["clean"], implied_oas=oas, implied_bp=oas * 1e4,
+               eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
+               next_switch_t=rm["next_switch_t"],
+               implied_bp_to_call=(oas_tc * 1e4 if pd.notna(oas_tc) else np.nan),
+               eff_dur_to_call=dur_tc, call_date_used=sw,
+               flag=(f"fixed-then-float: {hb['fixed_rate'] * 100:.3f}% to {sw}, then fwd+"
+                     f"{hb['margin'] * 1e4:.1f}bp"
+                     + ("; perp truncated at 90y" if perp else "")
+                     + "; price-to-call REFERENCE only"))
 
 
 def _apply_schedule_override(row, sched, bt, mat, fr, curve):
@@ -104,6 +166,7 @@ def main():
     csv_scheds = load_coupon_schedule_overrides(SCHED_CSV)   # {aid: [(date|None, rate), ...]}
     frn_over = load_frn_spreads(FRN_SPREADS_CSV)             # {aid: {"spread": dec, "freq": int|None}}
     mw_over = load_make_whole_overrides(MW_CSV)              # {aid, ...} documented make-whole-only
+    hyb_terms = load_hybrid_terms(HYBRID_CSV)                # {aid: fixed-to-float terms} (margin None = gap)
     canon, _excluded, _funnel, extras = build_universe(master, terms, VAL,
                                                        make_whole_overrides=mw_over)
     recon = extras["reconciliation"].drop_duplicates("asset_id").set_index("asset_id")
@@ -286,6 +349,12 @@ def main():
             row.update(route="recovery", clean=(float(bt) if pd.notna(bt) else np.nan),
                        flag="recovery mark: defaulted floater, BT used, no OAS")
             rows.append(row); continue
+        # fixed-to-float hybrids (data/hybrid_switch_terms.csv): the fixed-then-float engine — or a
+        # hybrid-margin-unavailable BT-mark when the post-switch margin is a documented gap. The CSV
+        # is authoritative for switch/maturity (it resolves e.g. the Shinsei "no-maturity" pair).
+        if aid in hyb_terms:
+            _hybrid_route(row, hyb_terms[aid], bt, ccy, get_curve)
+            rows.append(row); continue
         # terms-override: several workbook "(VAR)"/floating tags turned out to be rating-step or
         # plain-FIXED bonds with a deterministic coupon path (BT 8.625/9.125, Sogerim 7.50,
         # TI-2012 7.25, Anglian 5.375, RBS 6.00, FT-GBP 7.50 — docs/isin_lookup_2026-07-20.md).
@@ -375,6 +444,12 @@ def main():
             next_reset_t=np.nan, implied_bp_to_call=np.nan, eff_dur_to_call=np.nan,
             call_date_used=(call.date() if pd.notna(call) else None), route="", flag="",
         )
+        # fixed-to-float hybrids among the resets (BNP/UniCredit perp T1: margin known -> hybrid
+        # engine, perp truncated; Chuo/Resona: margin gap -> hybrid-margin-unavailable BT-mark,
+        # replacing the coupon-continuation column until Mario's margins arrive).
+        if aid in hyb_terms:
+            _hybrid_route(row, hyb_terms[aid], bt, ccy, get_curve)
+            rows.append(row); continue
         # terms-override: a workbook "Fixed -> Reset" tag can be plain wrong — e.g. the TI/Olivetti
         # 7.75% 2033 notes are a documented PLAIN FIXED bullet (docs/isin_lookup_2026-07-20.md).
         # A data/coupon_schedules.csv entry prices them on their real deterministic path.
