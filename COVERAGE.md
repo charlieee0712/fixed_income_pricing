@@ -13,26 +13,32 @@ and routes it to a pricing engine **or explicitly flags it** — nothing is sile
 
 | `Coupon_Formula2` class | pivot n | engine / route | status @2009-06-10 |
 |---|---|---|---|
-| **F** — plain fixed | 617 | `bond_price` vanilla · make-whole→vanilla · genuine-callable→BDT lattice (v2) | ✅ 521 priced (475 vanilla + 46 make-whole) + 6 callable on the lattice; rest excluded for rating/maturity/terms |
-| **floating** — Ref-Rate / EURIBOR / GBP-LIBOR + Spread, Fixed→Floating | 27 | `frn.py` forward-projection FRN | ✅ 18 priced · ⚠️ 9 flagged (5 switch-date, 2 perp, 1 GBP curve, 1 defaulted) |
-| **fixed-to-reset** | 6 | coupon-continuation (vanilla) + price-to-call reference | ✅ 4 priced · ⚠️ 2 Variable → BT-mark |
+| **F** — plain fixed | 617 | `bond_price` vanilla · make-whole→vanilla · genuine-callable→BDT lattice (v2) | ✅ 522 priced (475 vanilla + **47 make-whole** — Sempra re-routed off the lattice 2026-07-20, make-whole documented) + 5 in the callable bucket (3 on the lattice); rest excluded for rating/maturity/terms |
+| **floating** — Ref-Rate / EURIBOR / GBP-LIBOR + Spread, Fixed→Floating | 27 | `frn.py` forward-projection FRN · **override → vanilla-schedule** | ✅ 13 FRN-priced (4 with documented margins, `frn_spreads.csv`) + **5 re-routed vanilla-schedule** (BT/Sogerim rating-step; TI-2012/Anglian/RBS plain fixed — "(VAR)" tags wrong) · ⚠️ 9 flagged (5 switch-date [terms now in `hybrid_switch_terms.csv`, engine pending], 2 Shinsei [maturity resolved 2016-02-23, margin pending], 1 GBP curve, 1 defaulted) |
+| **fixed-to-reset** | 6 | coupon-continuation (vanilla) + price-to-call reference · **override → vanilla-schedule** | ✅ 4 continuation + **1 re-routed vanilla-schedule** (TI-2033 = documented PLAIN FIXED 7.75%, workbook tag wrong) · ⚠️ 1 BT-mark (Resona 144A tranche, terms unresolved) |
 | **stepped** — 7.00/7.50 date-segmented | 2 | `coupon_schedule` → vanilla | ✅ 1 priced (1 tab-only, not held) |
-| **step-up** | 1 | `coupon_schedule` → vanilla | ⚠️ schedule-unavailable → BT-mark |
-| **zero** — zero coupon / structured payoff | 1 | vanilla (degenerate, single CF) | ⚠️ priced but flagged: BT 93 ≠ a pure 28y zero (structured) |
+| **step-up** | 1 | `coupon_schedule` → vanilla | ✅ **priced** — flat 11.875% (Aquila: rating-linked steps all reversed by 2009; SEC-sourced) |
+| **zero** — zero coupon / structured payoff | 1 | vanilla | ✅ **re-routed vanilla 6.95%** — the custodian 0% was a DATA ERROR (Comcast 6.95% due 2037), not a structured zero; OAS now 431bp (was −486bp artifact) |
 | **defaulted** — N/A (Defaulted) | 1 | recovery mark | ✅ BT-mark, no OAS |
 | **pass-through** | 16 | — | ⏳ Mario is sourcing the needed data on Bloomberg (meeting 2026-07-20); prepayment engine work starts when it lands. Out of the output until then. [was: excluded] |
 | **amortizing** | 1 | — | ❌ ignore permanently (Mario, confirmed 2026-07-20) |
 | **na** — N/A | 4 | — | ❌ ignore permanently (Mario, confirmed 2026-07-20) |
 | **total** | **676** | | |
 
-## Priced vs flagged vs excluded (output universe, 558 rows)
+## Priced vs flagged vs excluded (output universe, 559 rows @6-10 / 564 @3-31)
 
-- **545 priced end-to-end** (implied OAS + effective duration / DV01 / convexity): vanilla 475,
-  make-whole 46, floating 18, reset-continuation 4, stepped 1, zero-structured 1.
-- **13 flagged / BT-mark** (awaiting terms): frn-switch-unavailable 5, recovery 2,
-  reset-terms-unavailable 2, frn-no-maturity 2, schedule-unavailable 1, frn-curve-blocked 1.
-- **21 excluded per Mario** (never enter the output): pass-through 16, amortizing 1, na 4.
-- Genuine fixed callables (6) are priced separately on the v2 BDT lattice (`scripts/callable_risk.py`).
+Updated 2026-07-20 after the ISIN-lookup term overrides (`docs/isin_lookup_2026-07-20.md`):
+
+- **548 priced end-to-end @6-10 (553 @3-31)** (implied OAS + effective duration / DV01 /
+  convexity): vanilla 475 (480 @3-31), make-whole 47 (incl. Sempra), vanilla-schedule 9
+  (stepped 1 + the 8 override paths), floating 13, reset-continuation 4.
+- **11 flagged / BT-mark** (was 13; Aquila + TI-2033 moved to priced): frn-switch-unavailable 5,
+  recovery 2, frn-no-maturity 2 (Shinsei — maturity known, margin pending), frn-curve-blocked 1
+  (FT GBP — coupon path known, curve blocked), reset-terms-unavailable 1 (Resona 144A tranche).
+- **21 excluded per Mario** (never enter the output): pass-through 16 (⏳ Mario sourcing Bloomberg
+  data), amortizing 1, na 4 (permanent).
+- Callable bucket now **5** (Sempra re-routed): 3 priced on the v2 BDT lattice, 1 awaiting a
+  `call_schedules.csv` row (TNTD04923866).
 
 ## Interpretation guards (not bugs)
 
@@ -43,14 +49,16 @@ and routes it to a pricing engine **or explicitly flags it** — nothing is sile
   BT 36) it solves a spurious OAS because the market prices extension, not the call.
 - Implied OAS for flagged / distressed names is a recovery/calibration plug, **not** a clean spread.
 
-## Data gaps — awaiting Mario / Bloomberg (empty `data/coupon_schedules.csv` seeded)
+## Data gaps — after the 2026-07-20 ISIN lookup
 
-| gap | bonds | needed |
+Most of the old gap table is CLOSED from public primary sources — per-bond evidence, the filled
+tables (`coupon_schedules.csv` / `frn_spreads.csv` / `make_whole_overrides.csv` /
+`hybrid_switch_terms.csv`) and the remaining **11-security Bloomberg request list for Mario** all
+live in **`docs/isin_lookup_2026-07-20.md`**. What still stands:
+
+| gap | bonds | status |
 |---|---|---|
-| FRN spread | 18 FRNs | quoted spread ("... + Spread" carries no number → folded into OAS today) |
-| Fixed→Floating switch date | 5 | the fixed→floating switch date |
-| perpetual terms | 2 FRN + 3 reset | true perp handling (today: 90y truncation / BT-mark) |
-| reset terms | 2 reset (Variable) | reset date + reset formula |
-| step-up schedule | 1 | the step coupon table |
-| zero structure | 1 | the structured-payoff terms |
-| GBP curve | 1 GBP + any GBP | a usable GBP par curve (non-arb 3y node blocks it) |
+| post-switch/post-call floating margins | 11 (3 exempt US FRNs — all terms; 8 hybrids — margin only) | → Mario/Bloomberg list |
+| fixed-then-float engine | 10 hybrids with terms in `hybrid_switch_terms.csv` | next engine step (all were still FIXED at 2009-03-31) |
+| GBP curve | FT-GBP 7.50% (coupon path seeded) + any GBP | non-arb 3y node blocks it |
+| pass-through data | 16 | ⏳ Mario sourcing on Bloomberg (meeting 2026-07-20) |

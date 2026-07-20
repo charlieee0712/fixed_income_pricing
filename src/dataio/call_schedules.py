@@ -10,9 +10,10 @@ File: ``data/call_schedules.csv`` — columns ``asset_id | call_date | call_pric
 date; MULTIPLE rows per asset express a step-function schedule (e.g. callable @102 in 2011, @101 in
 2012, @100 in 2013+). Today each genuine callable seeds a single row (``call_date`` = master col AB,
 ``call_price`` = 100 = the par-call v1 assumption Mario approved); the schema is already multi-row, so
-the real schedule drops straight in with zero code change. The file holds client asset_ids, so it is
-git-ignored (``data/`` in .gitignore) and lives on the server only. Seed it with
-``scripts/init_call_schedules.py``.
+the real schedule drops straight in with zero code change. Tracked under ``data/`` (client data is
+committed in-repo since 2026-07-08; the repo stays private). Seed it with
+``scripts/init_call_schedules.py``. Documented make-whole-only bonds do NOT belong here — they go in
+``data/make_whole_overrides.csv`` (``dataio.term_overrides``) and route make-whole -> vanilla.
 """
 from __future__ import annotations
 

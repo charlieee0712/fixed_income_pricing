@@ -5,6 +5,57 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-20 — Mario meeting → ISIN lookup of all 35 flagged bonds → term-overrides layer (90 green)
+**Commit:** `8a38bb0` (overrides layer + data + tests) · `[TO FILL]` (docs, this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Meeting decisions (Mario):** ① pass-through 16 — Mario sources the data on Bloomberg, engine work when
+it lands; ② amortizing 1 + na 4 — ignore permanently; ③ the ⚠️-flagged bonds in the finished classes —
+resolve what we can online by ISIN, send him the rest as a Bloomberg request list.
+
+**③ executed same day.** Decoded issuer names/CUSIPs/call+maturity fields for all 35 flagged/data-gap
+bonds from the URS master (PowerShell zip/XML decode, incl. the master `BW` maturities the tab lacks),
+then ran 9 parallel web-research agents (SEC EDGAR full-text by CUSIP, issuer OCs/20-Fs/ARs, oblible/
+gruppotim/unicredit/resona/shinsei archives; strict no-guess rules, every number source-cited). Result:
+**22 FULL(HIGH) / 10 PARTIAL / 3 NONE** — full per-bond evidence in **`docs/isin_lookup_2026-07-20.md`**.
+
+**Five findings overturn our own records (all primary-source):**
+- **Sempra 8.9% 2013 = make-whole-only** (424B2: T+50bp, NO par call; custodian AB=2009-05-15 is the
+  first COUPON date) → off the lattice, make-whole→vanilla @ 509bp ≈ the old straight-OAS 507 — the
+  BT-108.69 "conflict" was the par-call assumption, not the bond.
+- **Comcast "0% 2037" is a custodian coupon ERROR** — really the 6.95% notes due 2037 → OAS −486bp
+  artifact → +431bp normal BBB. (v3 report's "structured payoff" reading corrected.)
+- **TI-2012 7.25% and TI-2033 7.75% are documented PLAIN FIXED** (pricing supplements read page-by-page;
+  20-F step-list excludes both) — the workbook "(VAR)"/"Fixed→Reset" tags are wrong. Same for Anglian
+  5.375% and RBS 6.00% (the RBS call/float hypothesis refuted by 3 years of 20-F call-annotation
+  convention). Sanity: TI-2012 381bp ≈ Sogerim 398bp (same guarantor, now consistent).
+- **AmEx 6.80% & GE 6.375% "floaters" are fixed-to-float hybrids still FIXED until 2016/2017** — in fact
+  at 2009-03-31 EVERY fixed-to-float hybrid in the book sat in its fixed leg (switches 2009-10…2037).
+- **Aquila step-up = flat 11.875%** at VAL (rating-linked steps, max 14.875% 2003-08, all reversed on
+  the Great-Plains IG upgrade; GXP Q1-09 10-Q balance-dated exactly 3/31/09). **BT 2010 = rating-step**
+  with an evidenced path: 8.625% through the Jun-09 coupon, 9.125% after (20-F FY2009/FY2010).
+
+**Code: `src/dataio/term_overrides.py`** — 3 optional data tables (missing file = no overrides), wired
+into `calibrate_risk.py` (+`callable_risk.py`): `make_whole_overrides.csv` (universe override; golden
+no-override counts untouched → production canonical **523 @6-10 / 528 @3-31**, callable 6→**5**,
+make-whole 47); `coupon_schedules.csv` (9 documented paths → vanilla-schedule from ANY class; BT's
+9.125% step effective-dated 2009-07-01 = between the model's 182-day grid dates); `frn_spreads.csv`
+(Bear L+40, PNC L+14, MS L+45 — all corrected to QUARTERLY (`FRN_FREQ_VARIANT` adds 4→Quarterly curve,
+canonical guard untouched) — + IndepComm L+182; margins priced explicitly, OAS no longer absorbs them).
+Plus **`hybrid_switch_terms.csv`** (18 rows, machine-readable park for the NEXT engine step: a
+fixed-then-float pricer; 10 hybrids fully termed incl. SMBC 6mE+225 sw 2009-10-27, BofA 3mE+146 sw
+2014, BNP L+129 sw 2037, UniCredit 3mE+176 sw 2015). Shinsei `frn-no-maturity` pair resolved = dated
+2016-02-23 (margin pending). **Output: 559 rows @6-10 = 548 priced + 11 flagged** (was 558 = 545+13);
+564/553/11 @3-31; all overrides calibrate exact (clean=BT). **Tests 80→90 green on 47**; both drivers
+re-run, outputs mirrored locally.
+
+**→ Mario:** the **11-security Bloomberg request list** (lookup doc, bottom): 3 exempt US FRNs
+(Monumental II/III, NatCity — zero public docs) all-terms; 8 hybrids post-call margin only (Resona-US,
+Chuo, BTMU, Resona-EUR, Resona-perp ×2, Shinsei ×2). Plus the standing pass-through data he's pulling.
+
+---
+
 ## 2026-07-18 — v3 delivered & committed; repo/47 sync overhaul (CRLF unblock, data/ canonical, GFW bypass)
 **Commit:** `07fe2a1` (v3 deliverables) · `737fc42` (data/ canonicalization) · `c81b20c`+`950b4f6` (ops notes) · `[TO FILL]` (this entry)
 **Hours:** `[TO FILL]`

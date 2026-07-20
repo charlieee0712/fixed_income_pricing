@@ -143,6 +143,11 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   of maturity, option value≈0) route to VANILLA — enter canonical, flagged `is_make_whole` (46 bonds) — NOT the
   `callable` exclusion (WORKLOG 2026-07-02); only 5 genuine-gap callables stay excluded → v2 lattice.** [was
   canonical 476/481, callable 51 pre-reclassification.]
+  **2026-07-20 make-whole OVERRIDE layer:** `data/make_whole_overrides.csv` (via `dataio/term_overrides.py`,
+  passed as `build_universe(..., make_whole_overrides=…)`) routes DOCUMENTED make-whole-only bonds whose
+  call/maturity gap fails the 7d heuristic — Sempra 8.9% 2013 (SEC 424B2: T+50bp make-whole, NO par call;
+  custodian AB = first coupon date) ⇒ **production canonical 523 @6-10 / 528 @3-31, callable 6→5,
+  make-whole 47**. No-override golden counts (522/6/46) unchanged in tests — the override is a data layer.
   135 master-only = `terms-unavailable` (MTN; terms in neither sheet — **data gap, not security type**).
   Notch-map (S&P/Moody → 7 buckets) implemented in **`src/credit/ratings.py`**. Red lines: keep IG/HY split
   (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC, **not** default (only D/SD).
@@ -157,8 +162,11 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   `extras["coupon_class_pivot"]`).
 - **Route → engine:** F/zero → vanilla · stepped/step-up → vanilla-schedule (Step 3) · floating +
   fixed-to-reset → floating engine (Step 4, TBD) · defaulted → recovery mark (Step 3) ·
-  **pass-through/amortizing/na → EXCLUDED per Mario** (16/1/4 = 21; prepayment/amortization models or
-  unclassified). Pass-through sheet's Collateral-col loader **kept** for the later MBS phase.
+  pass-through/amortizing/na → out of the output (16/1/4 = 21). **Meeting 2026-07-20:**
+  **pass-through 16 = ⏳ Mario sourcing the data on Bloomberg** (prepayment engine starts when it
+  lands); **amortizing 1 + na 4 = ignore PERMANENTLY** (confirmed). Pass-through sheet's
+  Collateral-col loader **kept** for the MBS phase. A `data/coupon_schedules.csv` entry now
+  OVERRIDES class routing → vanilla-schedule (see term-overrides bullet below).
 - **Funnel @6-10:** canonical stays **522** but now 100% `coupon_class F`/`route vanilla` — the 1
   `Amortizing` bond coupon_type mislabelled "Fixed" left canonical (correctness fix), a formula-`Fixed`
   hybrid replaced it; **callable 5→6** (a formula-`Fixed` bond coupon_type had mislabelled non-fixed = real
@@ -216,8 +224,31 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   spurious (market prices extension, not call) ⇒ continuation is the main column. 2 Variable-coupon
   (TNTG532805U, TNTG701894W) → BT-mark `reset-terms-unavailable`.
 - **Coupon_Formula2 coverage CLOSED → see `COVERAGE.md`** (class→engine→status over the 676 pivot; output
-  558 = 545 priced + 13 flagged/BT-mark + 21 excluded-per-Mario). FRN neg-duration mechanism + spread=0
-  convention documented in `frn.py`. Remaining work = data-gap fills as Mario/Bloomberg terms arrive.
+  now **559 @6-10 = 548 priced + 11 flagged** (564/553/11 @3-31) after the 2026-07-20 overrides [was
+  558 = 545 + 13]). FRN neg-duration mechanism + spread=0 convention documented in `frn.py`.
+- **ISIN lookup + term-overrides layer (2026-07-20, Mario meeting) — `docs/isin_lookup_2026-07-20.md` = the
+  evidence file.** All 35 flagged/data-gap bonds researched by ISIN/CUSIP in public primary sources (SEC
+  EDGAR full-text on CUSIP, issuer OCs/20-F/ARs, oblible/gruppotim/unicredit archives): **22 FULL(HIGH) /
+  10 PARTIAL / 3 NONE** (exempt US paper). New module **`src/dataio/term_overrides.py`** (3 optional
+  tables, missing file = no overrides; wired into `calibrate_risk.py` + `callable_risk.py`):
+  ① `coupon_schedules.csv` — 9 documented coupon paths → route ANY class to vanilla-schedule (beats
+  free-text parse / degenerate-zero / FRN fallback): Aquila flat 11.875 (steps reversed by 2009) ·
+  **Comcast 6.95 (the "zero" was a custodian coupon ERROR — OAS −486→+431bp)** · BT 8.625→9.125 step
+  path · Sogerim 7.50 (rating-step level in force) · **TI-2012 7.25 & TI-2033 7.75 (documented PLAIN
+  FIXED; workbook "(VAR)"/"Fixed→Reset" tags WRONG)** · Anglian 5.375 · RBS 6.00 (call/float hypothesis
+  refuted) · FT-GBP 7.50 floor (seeded; GBP curve still blocks). Sanity: TI-2012 381bp ≈ Sogerim 398bp
+  (same guarantor). ② `frn_spreads.csv` — quoted margins priced explicitly (OAS no longer absorbs them):
+  Bear L+40, PNC L+14, MS L+45 (all corrected to QUARTERLY via `freq` col; `FRN_FREQ_VARIANT` maps 4→
+  Quarterly curve), IndepComm L+182. ③ `make_whole_overrides.csv` — Sempra (see universe bullet).
+  Plus **`hybrid_switch_terms.csv`** (18 rows, no consumer yet) = the future **fixed-then-float engine's**
+  input: at VAL **every** fixed-to-float hybrid was still in its FIXED leg (switches 2009-10…2037) —
+  Allstate 6.125→L+193.5 (2017) · Lincoln 7→L+235.75 (2016) · Liberty 7.8→L+357.6 (2037) · Chubb
+  6.375→L+225 (2017) · **AmEx 6.80→L+222.75 (2016) & GE 6.375→L+228.9 (2017) — both were misrouted as
+  plain FRNs** · SMBC 4.375→6mE+225 (2009-10!) · BofA 4.75→3mE+146 (2014) · BNP 7.195→L+129 (2037) ·
+  UniCredit 4.028→3mE+176 (2015) + margin-gap rows. Shinsei "frn-no-maturity" pair RESOLVED = dated
+  2016-02-23, 3.75% to call 2011-02-23 (margin → Mario). **Remaining gaps = 11-security Bloomberg list
+  for Mario** (3 exempt US FRNs all-terms; 8 hybrids post-call margin only) — table in the lookup doc.
+  Tests **90 green on 47**; drivers re-run @3-31 + @6-10, outputs mirrored locally.
 
 ## Validated so far
 - **Bootstrap ported** (`src/curves/bootstrap.py`, colleague's validated module): A/S exact,
@@ -251,16 +282,24 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   unrunnable w/o Bloomberg). Invariant-validated (`test_lattice` 29 + `test_call_schedules` 4). Only **4 genuine
   fixed callables** (46 make-whole → vanilla); lattice moves ~1 (TNTD04441873 eff-dur 11.56→**10.54 @σ=0.15**);
   custodian AQ ≈ straight dur (misses the call). **Mario v1 (2026-07-03): σ=0.15** (was 0.18); **call schedule
-  DATA-DRIVEN** — `data/call_schedules.csv` (`asset_id|call_date|call_price`, git-ignored) via
+  DATA-DRIVEN** — `data/call_schedules.csv` (`asset_id|call_date|call_price`, tracked in `data/` since 2026-07-18) via
   `dataio.call_schedules`, seeded by `scripts/init_call_schedules.py`; the lattice reads a `[(time,price)]` step
   schedule (**no hard-coded par-call** — a real schedule = CSV-only change). v1 values = par-call@100, call_date ←
-  AB; TNTD03203204 note "par-call conflicts w/ BT 108.69; awaiting actual schedule". **All 3 Mario Qs
+  AB. ~~TNTD03203204 "par-call conflicts w/ BT 108.69"~~ **RESOLVED 2026-07-20: Sempra is make-whole-only (SEC
+  424B2, T+50bp, no par call) → re-routed off the lattice to make-whole-as-vanilla (implied 509bp ≈ the old
+  straight-OAS 507 — conflict was the par-call assumption, not the bond); its wrong CSV row deleted.** Lattice
+  set now 3 priced of the 5-callable bucket (TNTD04923866 awaits a schedule row). **All 3 Mario Qs
   (schedule/vol/BT) RESOLVED — WORKLOG 2026-07-03.**
 
 ## Open questions
-- **⏳ AWAITING Mario (since 2026-07-18): feedback/suggestions on `v3_report_coverage`** — v3 fully
-  delivered (`07fe2a1`: code pkg + READMEs + report; coverage closed per COVERAGE.md). **Next phase gated
-  on his reply**; the COVERAGE.md data-gap list stands ready for his terms/Bloomberg fills.
+- **Mario meeting HELD 2026-07-20** (was: awaiting v3 feedback). Decisions: ① **pass-through 16 — Mario
+  pulls the data from Bloomberg** and sends it (prepayment engine work starts then); ② **amortizing 1 +
+  na 4 — ignore permanently**; ③ flagged bonds → resolve by ISIN online, unresolvable → back to Mario.
+  ③ EXECUTED same day: 35 bonds looked up, term-overrides layer landed (see the 2026-07-20 bullet above +
+  `docs/isin_lookup_2026-07-20.md`). **Now ⏳ AWAITING Mario: (a) the 11-security Bloomberg request list**
+  (in the lookup doc — 3 exempt US FRNs all-terms, 8 hybrids post-call margin), **(b) pass-through
+  Bloomberg data.** Our next engine step (not Mario-gated): **fixed-then-float pricer** consuming
+  `data/hybrid_switch_terms.csv` (10 hybrids fully termed, all still fixed at VAL).
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
   for Mario: (a) calibration date — **3-31 ARRIVED & ADOPTED (2026-07-02)**: Mario's USD 3-31 curve (native schema)
@@ -296,9 +335,12 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread; `from_currency` per-ccy curves).
 - `src/credit/` — ✅ `ratings.py` (notch-map) · ✅ `oas.py` (per-rating OAS from `OAS Credit Curves`).
 - `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
-  MECE funnel → **canonical 522 @ 2009-06-10** (46 make-whole→vanilla)) + ✅ `call_schedules.py` (call/put
+  MECE funnel → **canonical 522 @ 2009-06-10** (46 make-whole→vanilla; **523/47 with the production
+  make-whole override**)) + ✅ `call_schedules.py` (call/put
   exercise table `data/call_schedules.csv` → per-asset `[(date,price)]`; the lattice's only call-terms source)
-  + ✅ `coupon_types.py` (`Coupon_Formula2` → coupon-class + engine route, Mario 2026-07-08);
+  + ✅ `coupon_types.py` (`Coupon_Formula2` → coupon-class + engine route, Mario 2026-07-08)
+  + ✅ `term_overrides.py` (2026-07-20: the three optional override tables — coupon paths / FRN margins /
+  make-whole list — primary-source fills from the ISIN lookup; consumed by both drivers);
   FRED OAS loader next. (Named `dataio`, **not** `io`: `conftest` puts `src/` at `sys.path[0]`, so an `io` package
   would shadow stdlib `io`.)
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
