@@ -6,8 +6,8 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 ---
 
 ## 2026-07-22 — phase-2 build: AGY/GTD/ILB priced + static-CPR MBS skeleton (129 green)
-**Commit:** `db46964` (three-class build + engines + tests) · `[curve-map]` (JPY/AUD/KRW curves) ·
-`[this entry]` (methods doc + docs updates)
+**Commit:** `db46964` (three-class build + engines + tests) · `05f0130` (JPY/AUD/KRW curve map) ·
+`6a33e7b` (methods doc + docs updates)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
 
