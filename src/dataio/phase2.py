@@ -182,13 +182,13 @@ def build_phase2_universe(master):
         if cls == "agency":
             u["group"] = "agency"
             u["route"] = u.apply(_route_agency, axis=1)
-            u["real_coupon"] = pd.NA
-            u["index_ratio0"] = pd.NA
+            u["real_coupon_pct"] = float("nan")
+            u["index_ratio0"] = float("nan")
         elif cls == "guaranteed":
             u["group"] = "TLGP-guaranteed"         # own bucket: the credit is the FDIC guarantee
             u["route"] = "vanilla"
-            u["real_coupon"] = pd.NA
-            u["index_ratio0"] = pd.NA
+            u["real_coupon_pct"] = float("nan")
+            u["index_ratio0"] = float("nan")
         else:                                      # linker
             u["group"] = "linker"
             u["real_coupon_pct"] = [parse_desc_coupon(t, q) for t, q in zip(u["desc_long"], u["desc_short"])]
@@ -198,7 +198,7 @@ def build_phase2_universe(master):
             u.loc[ok, "route"] = "ilb"
             u.loc[u["real_coupon_pct"].notna() & ~u["index_ratio0"].between(*RATIO_SANITY),
                   "route"] = "ilb-ratio-implausible"
-            u["real_coupon"] = u["real_coupon_pct"] / 100.0
+        u["real_coupon"] = pd.to_numeric(u["real_coupon_pct"], errors="coerce") / 100.0
         frames.append(u)
 
     bonds = pd.concat(frames, ignore_index=True)
