@@ -349,15 +349,19 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   ③ EXECUTED same day: 35 bonds looked up, term-overrides layer landed (see the 2026-07-20 bullet above +
   `docs/isin_lookup_2026-07-20.md`). **Now ⏳ AWAITING Mario: (a) the 11-security Bloomberg request list**
   (in the lookup doc — 3 exempt US FRNs all-terms, 8 hybrids post-call margin), **(b) pass-through
-  Bloomberg data, (c) [added 2026-07-22] KTBi indexation terms (KR1035027T36; + KRW curve 3-31 row) and
-  the Govt-MBS 8-field × 882-CUSIP pull (the `pricing/mbs.py` skeleton is built and waiting).** ~~Next engine step: fixed-then-float pricer~~ **DONE same-day** (`pricing/hybrid.py`,
+  Bloomberg data, (c) the Govt-MBS 8-field × 882-CUSIP pull (requested 2026-07-22; `pricing/mbs.py`
+  skeleton built and waiting).** KTBi terms / agency call schedules / rating quirk = intentionally
+  DEFERRED asks (see Comms state below), not yet with Mario. ~~Next engine step: fixed-then-float pricer~~ **DONE same-day** (`pricing/hybrid.py`,
   design拍板 by user — see the hybrid bullet in Validated): the 10 fully-termed hybrids are priced
   (route `hybrid`), the 8 margin-gap names BT-marked `hybrid-margin-unavailable`; **a Mario margin
   fill = one `hybrid_switch_terms.csv` cell → the bond prices with zero code change.**
-  **Comms state:** 11-security list WhatsApp'd to Mario **2026-07-20** (awaiting reply); phase-2
-  Bloomberg request (8 `MTG_*` fields × 882 CUSIPs + KTBi terms + agency call schedules + inflation-
-  assumption preference) DRAFTED, user sends **2026-07-21** with `outputs/govt_mtge_cusips.csv`
-  attached (mirrored on 47). Project folder delivered to Mario via Google Drive as `corporate_bond`
+  **Comms state:** 11-security list WhatsApp'd to Mario **2026-07-20** (awaiting reply); the planned
+  7-21 phase-2 request was **never sent** — a trimmed version (MBS 8-field × 882-CUSIP pull ONLY +
+  progress + inflation-assumption one-liner) goes out **2026-07-22** with `outputs/govt_mtge_cusips.csv`
+  (882 rows, local + 47). **DEFERRED to the next touchpoint (when Mario returns the MBS data), by
+  design — do NOT re-ask before then:** ① KTBi indexation terms + KRW 3-31 curve row (single $1.2M
+  position, BT-marked, no downstream dependency); ② agency call schedules (par-call lattice already
+  matches custodian AQ ⇒ confirmation-only); ③ the TNTD04366584 A/Aa2 rating quirk. Project folder delivered to Mario via Google Drive as `corporate_bond`
   (staging dir at repo root, git-ignored — regenerate via robocopy + re-drag on updates, see WORKLOG
   2026-07-20 afternoon; Drive access = Mario only).
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
