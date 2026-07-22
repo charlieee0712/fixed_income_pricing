@@ -19,11 +19,16 @@ import pandas as pd
 from curves.bootstrap import FREQUENCIES, bootstrap
 
 # Par-curve export file per currency (in the data/ dir). Country-name aliases exist (JAPAN==JPY)
-# but the URS corporates use ISO codes; extend as needed.
+# but the URS holdings use ISO codes; extend as needed. JPY/AUD/KRW added for the phase-2 classes
+# (KfW-JPY + EIB-AUD agencies, JGBi/KTBi linkers); all three files carry the 2009 dates
+# (KRW lacks 2009-03-31 — its bootstrap raises there, which the drivers flag, not mask).
 CURVE_FILE = {
     "USD": "USD_Yield_Curve.txt",
     "EUR": "EUR_Yield_Curve.txt",
     "GBP": "GBP_Yield_Curve.txt",
+    "JPY": "JPY_Yield_Curve.txt",
+    "AUD": "AUD_Yield_Curve.txt",
+    "KRW": "KRW_Yield_Curve.txt",
 }
 
 
