@@ -17,7 +17,7 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 
 ---
 
-> ## ⚠️ Read this first — state as of 2026-07-20
+> ## ⚠️ Read this first — state as of 2026-07-22
 >
 > Sections 2–4 and 7 below describe the project as of the **v1 era** and are kept for the record;
 > the method has since evolved materially. The current picture:
@@ -38,11 +38,23 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 > - **Universe:** canonical **523** @2009-06-10 / **528** @2009-03-31 (documented make-whole
 >   override incl.), callable bucket 5, make-whole-as-vanilla 47. §3's canonical-476 figures are
 >   the pre-reclassification history.
-> - **Coverage:** output **564 bonds = 553 priced end-to-end + 11 flagged** @2009-03-31
->   (559 = 548 + 11 @6-10); **103 tests green**. Live map: `COVERAGE.md`; reports:
+> - **Coverage (corporates):** output **564 bonds = 553 priced end-to-end + 11 flagged**
+>   @2009-03-31 (559 = 548 + 11 @6-10). Live map: `COVERAGE.md`; reports:
 >   `v3_report_coverage` + `v3_report_addendum` (2026-07-20).
+> - **Phase 2 (2026-07-22): the three data-self-sufficient Summary classes are PRICED** —
+>   Agencies 42→39 (median 121bp; 5 callables on the BDT lattice, Bermudan par@100 σ=0.15,
+>   eff-dur ≈ custodian AQ 4/5 = free lattice validation; 2 RefCorp STRIPS; 1 REMIC Z-tranche
+>   BT-marked) · Guaranteed TLGP 11→9 (own `TLGP-guaranteed` bucket, median 86bp) · Index-linked
+>   16→15 (nominal curve + per-bond recovered index ratio; calibrated spread ≈ **−breakeven** @
+>   inflation=0 in its OWN column — the Mar-09 deflation-scare curve, JGBi −2.3%; KTBi BT-marked,
+>   indexation unverified). Govt MBS 888: **static-CPR engine skeleton built** on the exact
+>   8-mnemonic Bloomberg interface, awaiting Mario's pull; BZ factor >1 resolved = REMIC accrual
+>   tranches (correct, kept descriptive). Methods/evidence: `docs/phase2_methods_2026-07-22.md`;
+>   outputs `outputs/phase2_risk_2009-03-31.csv` (+ 06-10 control). **129 tests green.**
 > - **Outstanding:** an 11-security Bloomberg margin list, the pass-through data (Mario sourcing),
->   a usable GBP par curve. Amortizing + N/A excluded permanently (Mario 2026-07-20).
+>   the Govt-MBS 8-field × 882-CUSIP pull (requested 2026-07-22), a usable GBP par curve;
+>   deferred asks (KTBi terms / agency call schedules / one rating quirk) queued for the MBS-data
+>   touchpoint. Amortizing + N/A excluded permanently (Mario 2026-07-20).
 
 ---
 

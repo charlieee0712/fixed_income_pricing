@@ -54,9 +54,18 @@ yield backup absorbed into spread — mirrors the corporate finding; 3-31 stays 
   invariants + interface + solves) · `test_phase2_universe` (goldens 39/9/15, routes, ratios,
   golden-separation; parser tests unskipped).
 
+**Comms (same day):** discovered the planned 7-21 phase-2 WhatsApp request was never sent →
+trimmed to a SINGLE ask and sent 2026-07-22: the Govt-MBS 8-field × 882-CUSIP pull (with
+`outputs/govt_mtge_cusips.csv`) + progress note + inflation-assumption one-liner (0% default =
+spread reads as −breakeven); no pass-through mention (Mario already owns it). **Deliberately
+deferred to the MBS-data touchpoint (do not re-ask before then):** KTBi indexation terms + KRW
+3-31 curve row ($1.2M single position, BT-marked, nothing downstream) · agency call schedules
+(par-call lattice already matches custodian AQ ⇒ confirmation-only) · the TNTD04366584 A/Aa2
+rating quirk.
+
 **Open / next**
-- Mario adds: KTBi indexation terms (+ KRW 3-31 curve row); standing 11-security list +
-  8-field × 882 MBS pull; optional TNTD04366584 rating quirk.
+- ⏳ Mario: the MBS 8-field pull (requested today) · the 11-security list (7-20) · pass-through
+  data; then the deferred trio above at that touchpoint.
 - When MBS data lands: pool routing方案 (incl. the REMIC Z/paid-down rows inside Govt MBS),
   then wire `pricing.mbs` into a driver vs the BS golden.
 

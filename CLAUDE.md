@@ -356,9 +356,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (route `hybrid`), the 8 margin-gap names BT-marked `hybrid-margin-unavailable`; **a Mario margin
   fill = one `hybrid_switch_terms.csv` cell → the bond prices with zero code change.**
   **Comms state:** 11-security list WhatsApp'd to Mario **2026-07-20** (awaiting reply); the planned
-  7-21 phase-2 request was **never sent** — a trimmed version (MBS 8-field × 882-CUSIP pull ONLY +
-  progress + inflation-assumption one-liner) goes out **2026-07-22** with `outputs/govt_mtge_cusips.csv`
-  (882 rows, local + 47). **DEFERRED to the next touchpoint (when Mario returns the MBS data), by
+  7-21 phase-2 request was **never sent** — the trimmed version (MBS 8-field × 882-CUSIP pull ONLY +
+  progress + inflation one-liner; NO pass-through mention) **sent 2026-07-22** with
+  `outputs/govt_mtge_cusips.csv` (882 rows, local + 47). **DEFERRED to the next touchpoint (when Mario returns the MBS data), by
   design — do NOT re-ask before then:** ① KTBi indexation terms + KRW 3-31 curve row (single $1.2M
   position, BT-marked, no downstream dependency); ② agency call schedules (par-call lattice already
   matches custodian AQ ⇒ confirmation-only); ③ the TNTD04366584 A/Aa2 rating quirk. Project folder delivered to Mario via Google Drive as `corporate_bond`
