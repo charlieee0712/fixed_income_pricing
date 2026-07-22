@@ -5,6 +5,63 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-22 — phase-2 build: AGY/GTD/ILB priced + static-CPR MBS skeleton (129 green)
+**Commit:** `db46964` (three-class build + engines + tests) · `[curve-map]` (JPY/AUD/KRW curves) ·
+`[this entry]` (methods doc + docs updates)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+The three data-self-sufficient Summary classes built end-to-end (no waiting on Mario), per the
+user's方案; full methods/evidence in **`docs/phase2_methods_2026-07-22.md`**. New modules:
+`dataio/phase2.py` (master-superset loader + per-class mini-universe; dup legs dedupe with
+par/MV/cost SUMMED → the ILB `BT = BU/par·100` identity exact) · `pricing/ilb.py` ·
+`pricing/mbs.py` · driver `scripts/phase2_risk.py`; `ZeroCurve.CURVE_FILE` + JPY/AUD/KRW
+(the country txt files carry BOTH 2009 dates — the "3-31 absent" gap was USD-file-only; KRW has
+6-10 only). Outputs `outputs/phase2_risk_2009-03-31.csv` (baseline; calibration ≤6.6e-9 over 42
+OAS + ≤1.4e-8 over 14 ILB) & `…_2009-06-10.csv` (control: everything ~110bp tighter = the Mar→Jun
+yield backup absorbed into spread — mirrors the corporate finding; 3-31 stays baseline).
+- **AGY 42→39**: routes vanilla 27 / callable-lattice 5 / call-passed-vanilla 4 (desc
+  "…/2006" one-time calls PASSED unexercised, AB blank, BT prices to maturity → bullets+flag) /
+  zero 2 (RefCorp STRIPS, 107-113bp) / **cmo-tranche 1 BT-marked** (TNTD04733316 "SER 3122 CL
+  ZB" = REMIC Z misfiled as a debenture — Sempra lesson, no force-pricing). Median 121bp; wides
+  = real quasi-sov credit (KDB 607 / KEXIM 594 / PEMEX 620 / FHLB-Chicago SUB 392). **Callables:
+  Bermudan par@100 from AB, σ=0.15 (industry-correct default for agency debentures, unlike
+  corporate make-whole); lie detector never fired; lattice eff-dur matches custodian AQ 4/5
+  within 0.5y (0.99/0.87, 9.66/9.74, 9.12/9.62, 5.33/5.38) — AQ is option-adjusted here, the
+  reverse of the corporate AQ≈straight finding = free lattice validation.**
+- **GTD 11→9**: all FDIC-TLGP → vanilla, own `TLGP-guaranteed` bucket (credit = the guarantee;
+  never in bank buckets — rationale in the doc). Median **86bp** = liquidity/novelty over UST.
+- **ILB 16→15**: `pricing/ilb.py` = nominal own-ccy curve + `ratio(t)=ratio_0·(1+FIP_INFL)^t`
+  (ratio_0 = BG÷desc-coupon, parser `parse_desc_coupon`); calibrated spread in its OWN column
+  `implied_spread_vs_nominal_bp` (≈ **−breakeven** @ FIP_INFL=0 — expected NEGATIVE by
+  arithmetic: π-at-s ≡ 0-at-(s−ln(1+π)), unit-tested). @3-31 the extracted breakeven curve is
+  the March-2009 deflation-panic shape: 2010 −34bp / mid +35…79 / long +85…139; **JGBi +229bp
+  spread = breakeven −2.3% (Japan deflation, sign flips correctly)**; per-bond
+  `z+s ≈ custodian DI real YTM` (2016: 1.44 vs 1.4387). TIPS deflation floor ignored = v1
+  boundary (real value for the 1.008/1.019-ratio vintages; needs inflation vol, v2). **KTBi
+  BT-marked `ilb-indexation-unverified`** (BG==coupon, no desc coupon ⇒ ratio underivable;
+  + KRW curve lacks 3-31) → Mario list.
+- **MBS skeleton** `pricing/mbs.py` against the EXACT 8-mnemonic Bloomberg interface
+  (`PoolTerms.from_bloomberg` — data lands with zero code change): level-pay + CPR→SMM engine,
+  price/implied-spread/implied-CPR/risk+WAL. Invariants green (annuity degeneration, principal
+  conservation any CPR, par-at-WAC-discount, duration↓ in CPR). **BZ>1 RESOLVED**: all 9 are
+  REMIC accrual (Z/VZ/ZC) tranches — accretion makes factor>1 CORRECT; BZ ≡ master CA (849/849);
+  master BX empty for MBS ⇒ keep BZ descriptive, engine never needs it. Negative-par 10 rows =
+  MBS TBA-style hedge shorts; master Y indicator is uniformly 'A' (does NOT discriminate) —
+  loader flags on the sign (`is_short`), none in the three built classes.
+- Tests 103 → **129 green** on 47: `test_ilb` (exact degeneration to `price_bond`, ratio
+  scaling, the −breakeven identity, round-trip, duration=vanilla) · `test_mbs` (the four
+  invariants + interface + solves) · `test_phase2_universe` (goldens 39/9/15, routes, ratios,
+  golden-separation; parser tests unskipped).
+
+**Open / next**
+- Mario adds: KTBi indexation terms (+ KRW 3-31 curve row); standing 11-security list +
+  8-field × 882 MBS pull; optional TNTD04366584 rating quirk.
+- When MBS data lands: pool routing方案 (incl. the REMIC Z/paid-down rows inside Govt MBS),
+  then wire `pricing.mbs` into a driver vs the BS golden.
+
+---
+
 ## 2026-07-20 (evening) — phase-2 inventory: four new asset classes (no code)
 **Commit:** `a679fef` (this entry + docs/phase2_inventory_2026-07-20.md)
 **Hours:** `[TO FILL]`

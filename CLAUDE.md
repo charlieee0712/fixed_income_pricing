@@ -314,23 +314,43 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (schedule/vol/BT) RESOLVED — WORKLOG 2026-07-03.**
 
 ## Open questions
-- **PHASE 2 SET (Mario 2026-07-20 evening): four Summary asset classes — INVENTORIED, methods TBD.**
-  `docs/phase2_inventory_2026-07-20.md` = the findings. Gov Agencies 42 (BG=coupon ✓ complete; ~5-8
-  callable + 2 zero strips) · Guaranteed 11 (all FDIC-TLGP, pure vanilla) · Index-Linked 16 (14 TIPS +
-  JGBi + KTBi; per-bond index ratio = BG÷desc-coupon; BT = inflated price = BU/CV·100; v1 path =
-  nominal curve + inflation assumption) · Govt MBS 888 (`Govt MTGE` tab joins 1:1; **WAC/WARM/WALA/PREP
-  all dead `#NAME?` Bloomberg formulas — 0/888**; recovered mnemonics MTG_WACPN/MTG_WAM/
-  MTG_STATED_WALA/MTG_AOLS/MTG_GEN_CPR_3M/6M/12M/MTG_HIST_COLLAT_CPR_LIFE keyed `CUSIP MTGE` ⇒ exact
-  8-field × 882-CUSIP Bloomberg request for Mario; usable now: BE coupon 888, BV mat 870, BZ factor 849,
-  BS golden 888). Master col discoveries: **BG/BH Income rate = the coupon carrier** (DO/DP empty), CB =
-  Payment frequency, BX = Original face. Static-CPR engine design + per-class方案 = next session.
+- **PHASE 2 BUILT (2026-07-22): AGY/GTD/ILB priced end-to-end; MBS = engine skeleton awaiting data.**
+  `docs/phase2_inventory_2026-07-20.md` (findings) + **`docs/phase2_methods_2026-07-22.md`** (methods/
+  results/decisions). Modules: `dataio/phase2.py` (master-superset loader Q/T/Y/BG/BH/BX/CA/CB/AQ +
+  per-class universe; dup legs SUM par/MV/cost ⇒ ILB `BT=BU/par·100` exact) · `pricing/ilb.py` ·
+  `pricing/mbs.py` · driver `scripts/phase2_risk.py` (env FIP_VAL_DATE/FIP_OUT/FIP_VOL/FIP_INFL);
+  outputs `outputs/phase2_risk_2009-03-31.csv` (baseline, calib ≤6.6e-9) + `…06-10.csv` (control:
+  ~110bp tighter across the board = Mar→Jun yield backup absorbed — mirrors corporate; 3-31 baseline).
+  **AGY 42→39** (routes vanilla 27 / callable-lattice 5 / call-passed-vanilla 4 [desc "…/2006"
+  one-time calls PASSED, AB blank → bullets+flag] / zero 2 [RefCorp STRIPS 107-113bp] / cmo-tranche 1
+  [TNTD04733316 "SER 3122 CL ZB" REMIC Z misfiled → BT mark]); median 121bp, wides = quasi-sov credit
+  (KDB 607/KEXIM 594/PEMEX 620/FHLB-Chi SUB 392); **callables = Bermudan par@100 from AB σ=0.15
+  (industry-correct agency default), lie detector clean, lattice dur ≈ custodian AQ 4/5 (AQ IS
+  option-adjusted here — reverse of corporate, free lattice validation)**. **GTD 11→9** all FDIC-TLGP
+  → own `TLGP-guaranteed` bucket (NEVER bank buckets), median 86bp. **ILB 16→15**: nominal own-ccy
+  curve + `ratio(t)=ratio_0·(1+FIP_INFL)^t` (ratio_0=BG÷desc-coupon, `parse_desc_coupon`); spread in
+  OWN column `implied_spread_vs_nominal_bp` ≈ **−breakeven @ FIP_INFL=0 (EXPECTED NEGATIVE — π-at-s ≡
+  0-at-(s−ln(1+π)), unit-tested; never mix with credit OAS)**; @3-31 extracted breakevens = the
+  deflation-panic curve (2010 −34bp → 2032 +139bp), JGBi +229bp spread = breakeven −2.3% (Japan,
+  sign flips right), per-bond z+s ≈ custodian DI real YTM; TIPS deflation floor ignored = v1 boundary
+  (needs inflation vol, v2); **KTBi BT-marked `ilb-indexation-unverified`** (BG==coupon, no desc
+  coupon ⇒ ratio underivable; KRW curve lacks 3-31) → Mario. **MBS `pricing/mbs.py`** = static-CPR
+  skeleton on the EXACT 8-mnemonic interface (`PoolTerms.from_bloomberg` — data lands, zero code
+  change): level-pay + CPR→SMM, price/implied-spread/implied-CPR/risk+WAL; invariants green (annuity
+  degeneration, principal conservation, par-at-WAC, dur↓ in CPR). **BZ>1 RESOLVED = REMIC accrual
+  (Z/VZ/ZC) tranches, factor>1 CORRECT; BZ ≡ master CA 849/849; BX empty for MBS ⇒ BZ descriptive,
+  engine doesn't need it.** Negative-par 10 = MBS TBA-style shorts; master Y uniformly 'A' (non-
+  discriminating) — loader flags on sign (`is_short`); none in the three built classes. Next: when
+  the 8-field pull lands → pool routing方案 (incl. REMIC Z/paid-down rows inside Govt MBS) + driver
+  vs BS golden.
 - **Mario meeting HELD 2026-07-20** (was: awaiting v3 feedback). Decisions: ① **pass-through 16 — Mario
   pulls the data from Bloomberg** and sends it (prepayment engine work starts then); ② **amortizing 1 +
   na 4 — ignore permanently**; ③ flagged bonds → resolve by ISIN online, unresolvable → back to Mario.
   ③ EXECUTED same day: 35 bonds looked up, term-overrides layer landed (see the 2026-07-20 bullet above +
   `docs/isin_lookup_2026-07-20.md`). **Now ⏳ AWAITING Mario: (a) the 11-security Bloomberg request list**
   (in the lookup doc — 3 exempt US FRNs all-terms, 8 hybrids post-call margin), **(b) pass-through
-  Bloomberg data.** ~~Next engine step: fixed-then-float pricer~~ **DONE same-day** (`pricing/hybrid.py`,
+  Bloomberg data, (c) [added 2026-07-22] KTBi indexation terms (KR1035027T36; + KRW curve 3-31 row) and
+  the Govt-MBS 8-field × 882-CUSIP pull (the `pricing/mbs.py` skeleton is built and waiting).** ~~Next engine step: fixed-then-float pricer~~ **DONE same-day** (`pricing/hybrid.py`,
   design拍板 by user — see the hybrid bullet in Validated): the 10 fully-termed hybrids are priced
   (route `hybrid`), the 8 margin-gap names BT-marked `hybrid-margin-unavailable`; **a Mario margin
   fill = one `hybrid_switch_terms.csv` cell → the bond prices with zero code change.**
@@ -372,7 +392,7 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   (rating `CM`/`CL`, par `CV`; join on Asset ID). ~~build the MECE pipeline~~ **done**.
 
 ## Target architecture (`src/<layer>/`; root `conftest.py` puts `src/` on path)
-- `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread; `from_currency` per-ccy curves).
+- `src/curves/` — ✅ `bootstrap.py` (par→zero, reproduces golden) · ✅ `zero_curve.py` (`ZeroCurve`, linear-interp z/DF + OAS spread; `from_currency` per-ccy curves — `CURVE_FILE` maps USD/EUR/GBP/**JPY/AUD/KRW** since 2026-07-22; the country txt files carry BOTH 2009-03-31 & 06-10 rows — the "3-31 absent" gap was USD-only; KRW = 06-10 only).
 - `src/credit/` — ✅ `ratings.py` (notch-map) · ✅ `oas.py` (per-rating OAS from `OAS Credit Curves`).
 - `src/dataio/` — ✅ `loaders.py` (master + Corporate Bonds tab) + `universe.py` (`build_universe`,
   MECE funnel → **canonical 522 @ 2009-06-10** (46 make-whole→vanilla; **523/47 with the production
@@ -380,7 +400,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   exercise table `data/call_schedules.csv` → per-asset `[(date,price)]`; the lattice's only call-terms source)
   + ✅ `coupon_types.py` (`Coupon_Formula2` → coupon-class + engine route, Mario 2026-07-08)
   + ✅ `term_overrides.py` (2026-07-20: the three optional override tables — coupon paths / FRN margins /
-  make-whole list — primary-source fills from the ISIN lookup; consumed by both drivers);
+  make-whole list — primary-source fills from the ISIN lookup; consumed by both drivers)
+  + ✅ `phase2.py` (2026-07-22: AGY/GTD/ILB master-superset loader + per-class mini-universe + `parse_desc_coupon`;
+  routes per `docs/phase2_methods_2026-07-22.md`; driver `scripts/phase2_risk.py`);
   FRED OAS loader next. (Named `dataio`, **not** `io`: `conftest` puts `src/` at `sys.path[0]`, so an `io` package
   would shadow stdlib `io`.)
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
@@ -396,11 +418,19 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   ✅ `lattice.py` (**v2** callable/putable BDT
   short-rate tree: fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free; implied OAS + eff-dur; NOT a
   `BondOAS` replica — invariant-validated; `call_array`/`put_array` read a `[(time,price)]` schedule from
-  `dataio.call_schedules` — no hard-coded par-call; driver `scripts/callable_risk.py`, σ=0.15).
+  `dataio.call_schedules` — no hard-coded par-call; driver `scripts/callable_risk.py`, σ=0.15; since
+  2026-07-22 also prices the 5 AGY callables — their par-call rows appended to `data/call_schedules.csv`) ·
+  ✅ `ilb.py` (**phase-2** inflation-linked: nominal curve + `ratio_0·(1+FIP_INFL)^t` path; spread-vs-nominal
+  calibration ≈ −breakeven @0 — own column, never credit OAS) ·
+  ✅ `mbs.py` (**phase-2** static-CPR pool skeleton on the exact 8-mnemonic Bloomberg interface;
+  level-pay+SMM, price/implied-spread/implied-CPR/risk+WAL — awaiting Mario's pull).
 - `src/instruments/` (Bond model + cash flows) · `src/risk/` (CreditMetrics, later) · `src/config/`.
 - `tests/` — golden-master (`test_bootstrap`, `test_ratings`, `test_universe`, `test_oas`) + `test_lattice`
   (v2 callable-lattice **invariants**: par-reprice/arb-free, callable≤straight≤putable, σ=0 degeneracy, multi-date
   schedule ordering) + `test_call_schedules` (loader: multi-row grouping, date→time clamp) + `test_universe`
   coupon-class locks (pivot reconciliation, canonical-all-F/vanilla, funnel-bucket split) + `test_coupon_schedule`
   (formula parser + schedule-aware pricing: past-step→flat, future-step, zero) + `test_frn` (FRN
-  invariants: par-under-any-shift, OAS round-trip, near-par dur≈0, dur ≪ same-maturity fixed). **80 total.**
+  invariants: par-under-any-shift, OAS round-trip, near-par dur≈0, dur ≪ same-maturity fixed) + `test_hybrid`
+  (bit-exact limits, margin-0 identity) + `test_ilb` (exact degeneration to `price_bond`, ratio scaling,
+  the −breakeven identity) + `test_mbs` (annuity degeneration, principal conservation, par-at-WAC,
+  dur↓ in CPR, Bloomberg interface) + `test_phase2_universe` (goldens 39/9/15 + routes + ratios). **129 total.**
