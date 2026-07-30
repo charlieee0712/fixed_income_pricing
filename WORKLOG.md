@@ -5,6 +5,44 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-07-30 — missing-data registry (Mario directive) + full Bloomberg request → Liping (2nd channel)
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **All open data gaps compiled and WhatsApp'd to Liping** (colleague; campus Bloomberg access
+  today — second channel while Mario is quiet on the 07-20/07-22 asks): ① MBS 8-field × 882-CUSIP
+  (attachments `outputs/govt_mtge_cusips.csv` + NEW `outputs/govt_mtge_bdp_template.csv` — 882
+  prewired `=BDP(CUSIP&" Mtge", <field>)` rows generated locally by PowerShell from the CUSIP csv,
+  opens straight into add-in Excel; as-of caveat spelled out: prefer historical as-of 2009-03-31,
+  else current values + pull date, WAM rolled back ourselves, paid-off→N/A fine); ② corporate
+  **pass-through = 13 unique securities** (the "16" = tab rows incl. duplicate holdings) — first
+  time enumerated, via a loaders+`classify_coupon_formula` dump on 47: 7 airline EETCs (Delta,
+  Continental ×4, American, United) + CVS ×2 + Glen Meadow + Systems-2001/BAE ×2 + Southern
+  Capital, all scheduled-amortization ⇒ ask = factor@3-31 + amortization schedule + coupon/freq
+  (likely amortizing-vanilla, no true prepayment model needed); ③ the 11-security FRN/hybrid list;
+  ④ **NEW ask: AssuredGty 6.4% 2066 (TNTD04923866 / US04622DAA90) call schedule** — the unpriced
+  5th corporate callable, absent from every earlier request; ⑤ deferred trio + GBP curve + FHR
+  3122 ZB DES as explicitly-optional extras (deferral was a MARIO-side discipline; Liping =
+  different channel at zero marginal cost).
+- **Mario advice received & institutionalised:** web/ChatGPT ISIN lookups OK as interim but "not
+  as precise as bloomberg"; tool = all-purpose ⇒ needs the process automated & working, and the
+  unavailable fields **specified on a table**; when complete data arrives → just re-run. ⇒ new
+  **`docs/missing_data.md`** = the living registry (G1-G5: gap → landing CSV/loader → interim
+  treatment → request status per channel) + a **provisional-values queue**: every 2026-07-20
+  web-sourced override value is flagged PROVISIONAL, and on any Bloomberg return we diff,
+  Bloomberg wins, deltas get logged. Existing architecture already satisfies the
+  automation/table principles (term-overrides data layer, 8-mnemonic MBS interface, generic
+  engines) — recorded as such in CLAUDE.md.
+
+**Open / next**
+- ⏳ Liping pull and/or Mario returns → load per the registry's landing paths; dedupe across the
+  two channels; diff Bloomberg values against the provisional queue.
+- On MBS arrival: pool routing方案 + driver vs BS golden. On pass-through arrival: amortizing
+  schedule table + engine. On margin fills: CSV cells → auto-priced, zero code change.
+
+---
+
 ## 2026-07-22 — phase-2 build: AGY/GTD/ILB priced + static-CPR MBS skeleton (129 green)
 **Commit:** `db46964` (three-class build + engines + tests) · `05f0130` (JPY/AUD/KRW curve map) ·
 `6a33e7b` (methods doc + docs updates)

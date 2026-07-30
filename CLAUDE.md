@@ -364,6 +364,20 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   matches custodian AQ ⇒ confirmation-only); ③ the TNTD04366584 A/Aa2 rating quirk. Project folder delivered to Mario via Google Drive as `corporate_bond`
   (staging dir at repo root, git-ignored — regenerate via robocopy + re-drag on updates, see WORKLOG
   2026-07-20 afternoon; Drive access = Mario only).
+- **Mario design directive (2026-07-30, WhatsApp) → `docs/missing_data.md` registry + Liping channel.**
+  Mario on the ISIN-lookup approach: web/ChatGPT-sourced terms are fine as INTERIM but "not as precise
+  as bloomberg"; we're building an ALL-PURPOSE tool ⇒ what matters is ① the process itself automated &
+  working end-to-end, ② every unavailable field SPECIFIED ON A TABLE, so when complete data arrives
+  "we'll run all what you've built". ⇒ **`docs/missing_data.md`** = the living missing-data registry
+  (every gap → landing CSV/loader → interim treatment → request status; **web-sourced override values =
+  PROVISIONAL — on any Bloomberg return, diff, Bloomberg wins, log deltas**). Architecture already
+  complies (term-overrides data layer, generic engines, zero-code-change landings). **Liping = second
+  Bloomberg channel** (campus access): full gap request WhatsApp'd **2026-07-30** — MBS 8×882 (+ BDP
+  template `outputs/govt_mtge_bdp_template.csv`, regenerable), pass-through **13 uniques** ("16" = tab
+  rows; all EETC/private scheduled-amortization ⇒ likely amortizing-vanilla, no prepayment model), the
+  11-security list, **NEW ask: AssuredGty US04622DAA90 call schedule** (TNTD04923866, the unpriced 5th
+  callable — absent from all earlier lists), + deferred trio/GBP/FHR-3122-ZB as opportunistic extras
+  (Mario-side deferral discipline unchanged). **Dedupe Mario/Liping returns before loading.**
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
   for Mario: (a) calibration date — **3-31 ARRIVED & ADOPTED (2026-07-02)**: Mario's USD 3-31 curve (native schema)
