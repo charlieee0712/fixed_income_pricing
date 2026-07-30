@@ -6,7 +6,7 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 ---
 
 ## 2026-07-30 — missing-data registry (Mario directive) + full Bloomberg request → Liping (2nd channel)
-**Commit:** `[TO FILL]`
+**Commit:** `06e9ae7` (registry + CLAUDE.md directive + this entry)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
 
