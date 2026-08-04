@@ -6,7 +6,7 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 ---
 
 ## 2026-08-04 — clean/dirty calibration audit (Liping code review) → lattice on real coupon times; DIRTY duration denominator retained
-**Commit:** `f7e9e7d` (engine fix + invariance tests) · `[TO FILL]` (docs, this entry)
+**Commit:** `f7e9e7d` (engine fix + invariance tests) · `c3ab2f5` (docs, this entry)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
 
