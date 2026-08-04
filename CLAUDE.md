@@ -86,6 +86,12 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   output monthly to ~374 months × {Annual, Semiannual, Quarterly, Monthly}.
 - Pricing: discount each cash flow at `z(t)+OAS(rating)`, **linear interpolation** of the
   monthly grid; dirty = Σ coupons·DF + face·DF(T); clean = dirty − accrued.
+- **Price-convention law (Liping review 2026-08-04, enforced by `test_price_convention` 16):** model PV =
+  dirty, custodian `BT` = clean ⇒ EVERY calibration solves clean(OAS)==BT ⟺ dirty(OAS)==BT+AI (same root —
+  AI is date-only); AI = ONE formula `bond_price.accrued_interest` (ACT/364, schedule-aware; FRN accrues the
+  current reset, hybrid the fixed leg to the switch, ILB ×ratio_0). **Duration/convexity denominator = DIRTY
+  (full price), RETAINED** after a both-ways test vs custodian AQ @3-31 (n=61: dirty closer 41/61, median
+  |dur−AQ| 0.236 vs 0.331; the callable-only lean to clean = σ/par-call noise ≫ the 1-2% AI/P effect).
 - **OAS — REDEFINED 2026-06-30 (Mario call): a per-bond CALIBRATION factor, NOT a pricing input.** New flow:
   back out each bond's **implied OAS** from the custodian price `BT` (solve OAS s.t. model clean = `BT`,
   `src/pricing/calibrate.py`), then compute **risk metrics** on the calibrated model (`src/pricing/risk.py`).
@@ -302,8 +308,14 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - **v2 callable lattice** (`src/pricing/lattice.py` + `scripts/callable_risk.py`, on 47) — **clean standard BDT**
   short-rate tree (fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free), **NOT a `BondOAS` replica** (legacy
   unrunnable w/o Bloomberg). Invariant-validated (`test_lattice` 29 + `test_call_schedules` 4). Only **4 genuine
-  fixed callables** (46 make-whole → vanilla); lattice moves ~1 (TNTD04441873 eff-dur 11.56→**10.54 @σ=0.15**);
-  custodian AQ ≈ straight dur (misses the call). **Mario v1 (2026-07-03): σ=0.15** (was 0.18); **call schedule
+  fixed callables** (46 make-whole → vanilla); lattice moves ~1 (TNTD04441873 eff-dur 11.43→**10.37 @σ=0.15**);
+  custodian AQ ≈ straight dur (misses the call). **Calibration convention EXACT since 2026-08-04 (Liping
+  code review):** grid = the REAL ACT/364 remaining coupon dates (per-step-dt BDT via
+  `bond_price.lattice_inputs`) ⇒ root PV = TRUE dirty; OAS solves PV − shared `accrued_interest` == BT
+  (clean-vs-clean, the vanilla equation; call times @364d/y). Straight-on-lattice ≡ `price_bond` dirty to
+  machine precision (tested). Was: snapped regular grid, no accrued, T@365.25d (≈clean only near par; a 25y
+  bond lost a whole coupon to `round`) — NOT the dirty-vs-BT bug Liping hypothesized, but fixed exactly.
+  Impact ±35bp mixed-sign (corp: +34.6/−1.5/+12.4; AGY: +29.5…−11.0), dur ≤0.6y. **Mario v1 (2026-07-03): σ=0.15** (was 0.18); **call schedule
   DATA-DRIVEN** — `data/call_schedules.csv` (`asset_id|call_date|call_price`, tracked in `data/` since 2026-07-18) via
   `dataio.call_schedules`, seeded by `scripts/init_call_schedules.py`; the lattice reads a `[(time,price)]` step
   schedule (**no hard-coded par-call** — a real schedule = CSV-only change). v1 values = par-call@100, call_date ←
@@ -326,7 +338,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   [TNTD04733316 "SER 3122 CL ZB" REMIC Z misfiled → BT mark]); median 121bp, wides = quasi-sov credit
   (KDB 607/KEXIM 594/PEMEX 620/FHLB-Chi SUB 392); **callables = Bermudan par@100 from AB σ=0.15
   (industry-correct agency default), lie detector clean, lattice dur ≈ custodian AQ 4/5 (AQ IS
-  option-adjusted here — reverse of corporate, free lattice validation)**. **GTD 11→9** all FDIC-TLGP
+  option-adjusted here — reverse of corporate, free lattice validation; post-2026-08-04
+  clean-calibration: OAS −11…+30bp, dur 4/5 within 0.75y of AQ)**. **GTD 11→9** all FDIC-TLGP
   → own `TLGP-guaranteed` bucket (NEVER bank buckets), median 86bp. **ILB 16→15**: nominal own-ccy
   curve + `ratio(t)=ratio_0·(1+FIP_INFL)^t` (ratio_0=BG÷desc-coupon, `parse_desc_coupon`); spread in
   OWN column `implied_spread_vs_nominal_bp` ≈ **−breakeven @ FIP_INFL=0 (EXPECTED NEGATIVE — π-at-s ≡
@@ -424,7 +437,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   FRED OAS loader next. (Named `dataio`, **not** `io`: `conftest` puts `src/` at `sys.path[0]`, so an `io` package
   would shadow stdlib `io`.)
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
-  **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params) ·
+  **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params;
+  since 2026-08-04 exports `coupon_dates` + `accrued_interest` [THE single AI formula] + `lattice_inputs`) ·
   ✅ `calibrate.py` (`implied_oas`: solve OAS s.t. clean=`BT`) · ✅ `risk.py` (`risk_metrics`: effective
   duration / DV01 / convexity by ±1bp = parallel-shift bump) · ✅ `coupon_schedule.py` (**Step-3** coupon
   time-table for stepped/step-up/zero; threaded through `price_bond`/`implied_oas`/`risk_metrics`) ·
@@ -437,7 +451,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   short-rate tree: fwd-induction Arrow-Debreu calib to `ZeroCurve`, arb-free; implied OAS + eff-dur; NOT a
   `BondOAS` replica — invariant-validated; `call_array`/`put_array` read a `[(time,price)]` schedule from
   `dataio.call_schedules` — no hard-coded par-call; driver `scripts/callable_risk.py`, σ=0.15; since
-  2026-07-22 also prices the 5 AGY callables — their par-call rows appended to `data/call_schedules.csv`) ·
+  2026-07-22 also prices the 5 AGY callables — their par-call rows appended to `data/call_schedules.csv`;
+  since 2026-08-04 `coupon_times=` real-ACT/364-grid mode + `accrued=` on `implied_oas`/`risk_metrics` —
+  clean-vs-clean calibration, dirty-base duration, regular-`T` grid kept for synthetic tests) ·
   ✅ `ilb.py` (**phase-2** inflation-linked: nominal curve + `ratio_0·(1+FIP_INFL)^t` path; spread-vs-nominal
   calibration ≈ −breakeven @0 — own column, never credit OAS) ·
   ✅ `mbs.py` (**phase-2** static-CPR pool skeleton on the exact 8-mnemonic Bloomberg interface;
@@ -451,4 +467,6 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   invariants: par-under-any-shift, OAS round-trip, near-par dur≈0, dur ≪ same-maturity fixed) + `test_hybrid`
   (bit-exact limits, margin-0 identity) + `test_ilb` (exact degeneration to `price_bond`, ratio scaling,
   the −breakeven identity) + `test_mbs` (annuity degeneration, principal conservation, par-at-WAC,
-  dur↓ in CPR, Bloomberg interface) + `test_phase2_universe` (goldens 39/9/15 + routes + ratios). **129 total.**
+  dur↓ in CPR, Bloomberg interface) + `test_phase2_universe` (goldens 39/9/15 + routes + ratios) +
+  `test_price_convention` (16: per-engine clean-form vs dirty-form OAS root invariance <1e-10, shared-AI
+  identity locks, lattice≡price_bond, val-on-coupon-date corner). **145 total.**

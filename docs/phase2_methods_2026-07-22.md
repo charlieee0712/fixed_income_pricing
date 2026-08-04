@@ -159,3 +159,25 @@ in the corporate book.
 2. Standing: the corporate 11-security list (2026-07-20) + the Govt-MBS 8-field × 882-CUSIP pull.
 3. Optional: the master's A/Aa2 rating on TNTD04366584 ("FNMA 6.25 2011", calibrates 231bp) —
    looks like a data quirk, only matters if agency by-name spreads are ever reported.
+
+## 7. Addendum 2026-08-04 — lattice calibration convention made exact (Liping code review)
+
+Liping's v2 code-review question: is each engine's calibration price-convention-consistent
+(model dirty vs custodian clean BT)? Full audit in WORKLOG 2026-08-04. Outcome for this doc's
+engines:
+
+- **AGY callable-lattice**: the tree now runs on the bond's REAL ACT/364 coupon dates
+  (`bond_price.lattice_inputs`; call times converted at 364 d/y), so the root PV is the true
+  DIRTY price; the implied OAS solves PV − shared vanilla accrued == BT — clean-vs-clean,
+  the same equation as every other engine. (Previously: snapped regular grid, no accrued
+  modelled — approximately clean, not exactly; NOT a dirty-vs-BT mixup.) Re-run @3-31:
+  OAS +29.5 / −11.0 / −2.3 / −2.6 / −7.3 bp; durations −0.1…−0.6y; 4/5 within 0.75y of AQ.
+- **Vanilla / call-passed / zero / ILB**: audit confirmed already clean-form calibrated —
+  numbers unchanged to the last bit. ILB accrued = real accrued × ratio_0, consistent with the
+  inflation-adjusted clean BT (unit-tested).
+- **Duration denominator**: dirty vs clean tested against custodian AQ on all n=61 AQ-carrying
+  bonds @3-31 → **DIRTY (full price) retained** (closer on 41/61, median |dur−AQ| 0.236 vs
+  0.331; AQ itself is evidently full-price-based). Both variants are emitted in
+  `outputs/phase2_risk_*.csv` (`eff_dur` = dirty-base, `eff_dur_cleanden`).
+- New invariance suite `tests/test_price_convention.py` (16) pins clean-form == dirty-form OAS
+  per engine at 1e-10 and lattice ≡ `price_bond` — suite total 145 green.

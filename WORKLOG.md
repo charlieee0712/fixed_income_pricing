@@ -5,6 +5,86 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-04 — clean/dirty calibration audit (Liping code review) → lattice on real coupon times; DIRTY duration denominator retained
+**Commit:** `f7e9e7d` (engine fix + invariance tests) · `[TO FILL]` (docs, this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **Issue (raised by Liping in the v2 code review):** is every engine's OAS calibration
+  price-convention-consistent? A model PV of future cash flows is DIRTY; the custodian `BT` is
+  CLEAN (hard evidence: the file carries its own separate 'Accrued income - base/local' columns,
+  and near-maturity high-grade names tie our_clean to BT within 0.02%). The self-consistent
+  equation: solve OAS s.t. ``dirty(OAS) = BT + AI`` ⟺ ``clean(OAS) = BT`` — AI is date-only
+  (independent of curve/OAS/options), so the root is identical under either form. That identity is
+  Liping's "implied OAS does not change with the price": it is invariant to the price's
+  *representation* (clean vs dirty), never to the price level.
+- **Audit result (every engine opened, not reasoned about):** vanilla / vanilla-schedule /
+  zero-STRIPS / FRN / hybrid / ILB / the to-call reference columns were ALREADY clean-form
+  calibrated — each engine's clean = its dirty − its accrued (FRN accrues the fixed-at-last-reset
+  coupon; hybrid accrues the fixed leg on the switch-anchored grid; ILB accrues real coupon ×
+  ratio_0), and every solver targets clean == BT. Risk denominators were already DIRTY
+  (`risk.py`'s documented convention). **The one outlier was the lattice — but NOT the
+  hypothesized dirty-vs-BT mixup:** it modelled no accrued at all (regular grid,
+  ``N = round(T·freq)``, valuation date treated as a coupon date) and compared that snapped PV to
+  BT. Such a PV approximates CLEAN (the classic integer-period fiction), but only near par / near
+  a coupon date; the real defects were grid-timing: first coupon a full period out instead of the
+  true stub, maturity snapped by up to half a period, and ``T`` in 365.25d-years against the
+  ACT/364 stack — TNTD04441873 (25y) had 50 coupons on the tree vs 51 really remaining. A blind
+  "subtract AI from the tree PV" would have double-counted; the audit-before-fix order mattered.
+- **Fix (`f7e9e7d`):** lattice grid = the bond's REAL remaining coupon dates (per-step-dt BDT
+  forward induction) via new `bond_price.lattice_inputs`; the root PV is now the TRUE dirty, and
+  the OAS solves tree-PV − AI == BT with AI from the ONE shared formula —
+  `bond_price.accrued_interest` (legacy ACT/364, 182-day grid), which `price_bond` itself now
+  consumes (no second copy anywhere; the val-on-coupon-date corner folds into the returned AI).
+  Call times now convert at 364 d/y (was 365.25) to match the grid units. New cross-engine lock: a
+  straight bond on the lattice reprices `price_bond` dirty to machine precision, so lattice and
+  vanilla calibrators return the SAME OAS for an option-free bond (tested).
+- **Invariance tests (+16 → `145 green` on 47):** `tests/test_price_convention.py` — per engine,
+  the clean-form and dirty-form calibration roots agree < 1e-10, with the dirty form solved
+  INDEPENDENTLY (raw brentq on the engine's dirty output + the shared AI, never the engine's own
+  accrued); shared-AI identity locks for FRN/hybrid/ILB; lattice ≡ price_bond; zero-coupon AI=0;
+  val-on-coupon-date corner. Any future engine that calibrates a dirty PV against clean BT — or
+  grows a private accrued formula — fails mechanically.
+- **Re-run (lattice-routed bonds only; every vanilla-family number is bit-identical).**
+  Corporate @3-31 (implied OAS bp, then eff-dur): TNTD04115619 1959.0→1993.6 (+34.6),
+  3.417→3.307 · TNTD04441873 412.3→410.8 (−1.5), 10.542→10.374 (straight 11.56→11.433 vs AQ
+  11.731) · TNTG701850W 293.2→305.6 (+12.4), 5.306→4.997. Agency @3-31: TNTD03009115 160.5→190.0
+  (+29.5), 0.987→1.074 · TNTD04551105 223.0→212.0 (−11.0), 4.300→3.719 · TNTD04644594 181.2→178.9
+  (−2.3), 9.664→9.425 · TNTD04719669 194.1→191.4 (−2.6), 9.122→8.879 · TNTD04914207 197.0→189.7
+  (−7.3), 5.328→4.744. @6-10 control: −0.2…−10.9 bp. Signs are MIXED and sizes ≤35 bp —
+  consistent with the audit: the old error was grid timing (sign depends on stub position and
+  premium/discount), not a one-sided +AI bias, so the uniform −10-30 bp predicted under the
+  dirty-vs-clean hypothesis does not appear (the diagnosis direction was right, the mechanism was
+  different). Durations move ≤0.6y. Honest note: the agency callables' AQ fit got slightly LOOSER
+  (before 4/5 within 0.5y, now 4/5 within 0.75y) — the old snapped grid + no-accrued PV base
+  biased durations up in a way that happened to sit nearer AQ; exact conventions + the
+  machine-precision vanilla tie-out outrank an accidental fit to a custodian number whose model
+  (vol, tree, OAS) is unknown. The to-call reference columns are `price_bond`-based (already
+  consistent) — no re-run needed.
+- **Duration denominator decision (Liping Q2) — DIRTY (full price) RETAINED, zero code change.**
+  Both denominators computed for every @3-31 bond carrying custodian AQ (n=61: agency+TLGP
+  vanilla family 42, ILB 14, agency callables 5; plus the 2 usable corporate callables):
+  dirty-denominator closer on 41/61; median |dur − AQ| 0.236 (dirty) vs 0.331 (clean). On the
+  best-fitting names — the informative subset where model ≈ AQ, e.g. the TLGP block (errors
+  0.006-0.028) — dirty wins consistently ⇒ the custodian's AQ is itself full-price-based. The
+  callable subset alone leans clean (agency 4/5, corporate 2/2), but its residuals (0.18-2.2y)
+  are σ=0.15/Bermudan-par-call assumption noise an order of magnitude above the denominator
+  effect (AI/P ≈ 1-2% ⇒ 0.02-0.18y) — small-sample noise; it does not overturn n=61. The choice
+  also matches Bloomberg convention and `risk.py`'s pre-existing documented rationale. The
+  lattice's own duration base moved tree-PV → dirty as part of the fix (uniform with `risk.py`);
+  both denominator variants are now emitted in the two drivers' outputs for the record.
+- **ILB confirmation (Liping Q3, one-liner):** TIPS accrued = REAL accrued × index ratio at VAL
+  (`ilb.py`: ``per_cpn_real * index_ratio * accrued_days/step``) — consistent with BT =
+  inflation-adjusted clean (BT == BU/par·100), locked by `test_ilb_accrued_ratio_treatment`.
+
+**Open / next**
+- TNTD04923866 (AssuredGty 2066) still awaits its call schedule (Liping ask ④) — prices on the
+  fixed lattice the day the CSV row lands, now with exact conventions.
+- When the MBS data lands: run the same convention check (pool accrued / settlement conventions
+  vs the BT-equivalent mark) before the first calibration — same audit-before-fix discipline.
+
+---
+
 ## 2026-07-30 — missing-data registry (Mario directive) + full Bloomberg request → Liping (2nd channel)
 **Commit:** `06e9ae7` (registry + CLAUDE.md directive + this entry)
 **Hours:** `[TO FILL]`
