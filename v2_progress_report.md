@@ -2,6 +2,13 @@
 
 *Corporate-bond reference implementation · valuation basis 2009-03-31 · status: implemented & validated (60 tests green)*
 
+> ⚠️ **Point-in-time report (v2 era) — parts superseded by later work.** (1) The §5 "fourth
+> callable refutes par-call (108.69)" name proved make-whole-only (SEC 424B2) and was re-routed
+> off the lattice on 2026-07-20. (2) The 2026-08-04 clean/dirty-convention fix (Liping code
+> review) refreshed every lattice figure: the §5 duration pair 11.56→10.54 is now
+> **11.43 → 10.37** (implied OAS 410.8 bp); the suite is now 145 tests. For any current citation
+> use `docs/headline_numbers_2026-08-04.md`. Non-lattice results in this report are unaffected.
+
 ---
 
 ## 1. Summary

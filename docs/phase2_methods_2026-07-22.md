@@ -52,6 +52,12 @@ from AB) — a real Bloomberg step schedule drops in as data only.
 option-adjusted, and the σ=15% BDT reproduces them — the exact reverse of the corporate finding
 (there AQ ≈ straight, missing the call). Free external validation of the lattice.
 
+> ⚠️ **Superseded 2026-08-04** (clean/dirty-convention fix, §7): the table above is the pre-fix
+> engine. Current pairs (real-coupon-time grid, dirty-base duration; same row order):
+> **1.07**/0.87 · **3.72**/5.92 · **4.74**/5.38 · **9.43**/9.74 · **8.88**/9.62 — 4/5 within
+> 0.75y; callable OAS now 179-212bp (vs straight 214-306bp). Cite from
+> `docs/headline_numbers_2026-08-04.md`.
+
 **Call-passed evidence (the 4 re-routed bullets).** FNMA 4.625 2010 / FNMA 4.7 2010 / FNMA 4.75
 2010 / FHLMC 4.75 2012 all show "mm-dd-2010/mm-dd-2006"-style pairs — one-time calls in 2006 that
 were NOT exercised; the custodian agrees (AB blank), and their BTs (103.9-108.2) price to

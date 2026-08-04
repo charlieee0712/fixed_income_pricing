@@ -17,7 +17,7 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 
 ---
 
-> ## ⚠️ Read this first — state as of 2026-07-22
+> ## ⚠️ Read this first — state as of 2026-08-04
 >
 > Sections 2–4 and 7 below describe the project as of the **v1 era** and are kept for the record;
 > the method has since evolved materially. The current picture:
@@ -50,7 +50,16 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 >   indexation unverified). Govt MBS 888: **static-CPR engine skeleton built** on the exact
 >   8-mnemonic Bloomberg interface, awaiting Mario's pull; BZ factor >1 resolved = REMIC accrual
 >   tranches (correct, kept descriptive). Methods/evidence: `docs/phase2_methods_2026-07-22.md`;
->   outputs `outputs/phase2_risk_2009-03-31.csv` (+ 06-10 control). **129 tests green.**
+>   outputs `outputs/phase2_risk_2009-03-31.csv` (+ 06-10 control). **145 tests green.**
+> - **Price-convention audit (2026-08-04, Liping code review):** every engine calibrates
+>   clean-vs-clean — model dirty − the ONE shared ACT/364 accrued (`bond_price.accrued_interest`)
+>   == custodian BT; the callable lattice moved to the real coupon-date grid (root PV = true
+>   dirty; was a snapped no-accrued approximation) ⇒ lattice OAS moved ±35bp mixed-sign,
+>   durations −0.1…−0.6y; all other engines bit-identical. **Duration denominator = DIRTY (full
+>   price), retained** — tested both ways vs custodian AQ (n=61: dirty closer 41/61, median
+>   |dur−AQ| 0.236 vs 0.331). Enforced by `test_price_convention` (16). ⚠️ **Current headline
+>   figures live in `docs/headline_numbers_2026-08-04.md`** — lattice numbers quoted in earlier
+>   materials (v2 report §5's 11.56→10.54, phase2 methods §1 table) are superseded.
 > - **Outstanding:** an 11-security Bloomberg margin list, the pass-through data (Mario sourcing),
 >   the Govt-MBS 8-field × 882-CUSIP pull (requested 2026-07-22), a usable GBP par curve;
 >   deferred asks (KTBi terms / agency call schedules / one rating quirk) queued for the MBS-data
