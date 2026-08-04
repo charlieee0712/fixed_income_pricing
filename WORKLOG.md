@@ -76,6 +76,13 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 - **ILB confirmation (Liping Q3, one-liner):** TIPS accrued = REAL accrued × index ratio at VAL
   (`ilb.py`: ``per_cpn_real * index_ratio * accrued_days/step``) — consistent with BT =
   inflation-adjusted clean (BT == BU/par·100), locked by `test_ilb_accrued_ratio_treatment`.
+- **Loop closed with the reviewer:** review-response report (EN; audit table, the actual defect +
+  why the literal PV−AI fix would double-count, impact table, denominator evidence, self-verify
+  steps) written and rendered to PDF (pandoc@47 + Edge headless) —
+  `docs/review_response_liping_2026-08-04.{md,pdf}` — **sent to Liping 2026-08-04**. Headline
+  numbers for future Mario citations frozen in `docs/headline_numbers_2026-08-04.md`
+  (pre-fix figures marked superseded in PROJECT_STATUS / v2 report / phase2 methods); Drive
+  staging `corporate_bond\` refreshed, re-drag pending user.
 
 **Open / next**
 - TNTD04923866 (AssuredGty 2066) still awaits its call schedule (Liping ask ④) — prices on the

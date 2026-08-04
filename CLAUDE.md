@@ -391,6 +391,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   11-security list, **NEW ask: AssuredGty US04622DAA90 call schedule** (TNTD04923866, the unpriced 5th
   callable — absent from all earlier lists), + deferred trio/GBP/FHR-3122-ZB as opportunistic extras
   (Mario-side deferral discipline unchanged). **Dedupe Mario/Liping returns before loading.**
+  **Liping also code-reviews:** her v2 review triggered the 2026-08-04 clean/dirty audit + lattice fix;
+  review-response report (EN PDF, `docs/review_response_liping_2026-08-04.pdf`) **sent to her 2026-08-04**.
+  Her 07-30 data request still pending.
 - **OAS redefined → calibration (2026-06-30; see WORKLOG).** Implied OAS per bond from `BT`, then risk metrics;
   index/sector/distressed OAS no longer external inputs (**WRDS distressed/sector OAS pulls cancelled**). New opens
   for Mario: (a) calibration date — **3-31 ARRIVED & ADOPTED (2026-07-02)**: Mario's USD 3-31 curve (native schema)
