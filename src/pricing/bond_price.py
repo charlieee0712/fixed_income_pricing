@@ -99,6 +99,61 @@ def _as_date(x) -> dt.date:
     return pd.Timestamp(x).date()
 
 
+def coupon_dates(valuation_date, maturity, freq: int = 2):
+    """The VBA coupon grid — the ONE schedule walk every date-based engine shares: backward from
+    ``maturity`` in ``round(364/freq)``-day steps until just before ``valuation_date``.
+
+    Returns ``(dates, last_coupon_date, step_days)``: ``dates`` ASCENDING = every grid date with
+    ``date >= valuation_date`` (the remaining coupon dates, last = maturity); ``last_coupon_date`` =
+    the grid date immediately BEFORE the valuation date (the accrual anchor). If
+    ``valuation_date > maturity`` the walk is empty and ``([], maturity, step_days)`` is returned.
+    """
+    val = _as_date(valuation_date)
+    mat = _as_date(maturity)
+    step_days = max(1, round(YEAR_DAYS / freq))
+    dates, d = [], mat
+    while d >= val:
+        dates.append(d)
+        d = d - dt.timedelta(days=step_days)
+    dates.reverse()
+    return dates, d, step_days
+
+
+def accrued_interest(valuation_date, maturity, coupon_rate, freq: int = 2, face: float = 100.0,
+                     coupon_schedule=None) -> float:
+    """THE accrued-interest formula (legacy ACT/364, 182-day grid) — the single source for every
+    engine, including the callable lattice's calibration (Liping code review, 2026-08-04):
+    ``(rate/freq * face) * days-since-prior-coupon / step_days``, with the ACCRUING period's rate
+    when a ``coupon_schedule`` is given. Accrued depends only on dates — never on the curve, the
+    OAS, or any embedded option — so solving ``dirty(OAS) = target + AI`` and
+    ``clean(OAS) = target`` give the SAME root (the clean/dirty invariance test pins this)."""
+    val = _as_date(valuation_date)
+    dates, last_cpn_date, step_days = coupon_dates(valuation_date, maturity, freq)
+    if not dates:
+        return 0.0
+    rate = coupon_at(coupon_schedule, dates[0]) if coupon_schedule is not None else coupon_rate
+    return rate / freq * face * (val - last_cpn_date).days / step_days
+
+
+def lattice_inputs(valuation_date, maturity, coupon_rate, freq: int = 2, face: float = 100.0):
+    """Real-schedule inputs for the callable lattice, on exactly ``price_bond``'s conventions.
+
+    Returns ``(coupon_times, accrued)``: the ACT/364 year-fractions of the strictly-future coupon
+    dates (the vanilla grid — so a straight bond on the lattice reprices ``price_bond`` to machine
+    precision), and the accrued to subtract from the tree's root PV (= dirty) so that
+    ``tree_PV - accrued`` is the model CLEAN price. A coupon falling exactly ON the valuation date
+    (``price_bond`` puts it in dirty and nets it out with a full period of accrued) is folded into
+    the returned accrued, so the clean identity holds in that corner too."""
+    val = _as_date(valuation_date)
+    dates, _last, _step = coupon_dates(valuation_date, maturity, freq)
+    times = [(d - val).days / YEAR_DAYS for d in dates if (d - val).days > 0]
+    if not times:
+        raise ValueError(f"no future coupon dates between {valuation_date} and {maturity}")
+    ai = accrued_interest(valuation_date, maturity, coupon_rate, freq=freq, face=face)
+    t0_cpn = coupon_rate / freq * face if (dates and dates[0] == val) else 0.0
+    return times, ai - t0_cpn
+
+
 def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
                face: float = 100.0, vba_compat: bool = False, freq: int = 2,
                coupon_schedule=None):
@@ -124,10 +179,10 @@ def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
     if val > mat:                                       # VBA: Tiempo > BondMat And curva = 1 -> 0
         return PriceResult(0.0, 0.0, 0.0, 0, mat, [], vba_compat)
 
-    step_days = max(1, round(YEAR_DAYS / freq))         # 182 for semiannual (the VBA), 364 for annual
-    cfs, dirty, d = [], 0.0, mat
+    dates, last_cpn_date, step_days = coupon_dates(valuation_date, maturity, freq)
+    cfs, dirty = [], 0.0
     period_cpn = coupon_rate / freq * face
-    while d >= val:
+    for d in reversed(dates):                           # maturity first, as the VBA walks it
         days = (d - val).days
         t = days / YEAR_DAYS
         z_cont = float(curve.zero_rate(t))              # continuous, monthly-grid interp
@@ -140,13 +195,12 @@ def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
         pv = amount * df
         dirty += pv
         cfs.append(CashFlow(0, d, days, t, z_cont, z_semi, df, amount, pv))
-        d = d - dt.timedelta(days=step_days)
 
-    # after the loop period_cpn = coupon of the accruing (first >= val) period — correct for a schedule
-    accrued_days = (val - d).days                       # d = coupon date just before valuation
-    accrued = period_cpn * accrued_days / step_days
+    accrued_days = (val - last_cpn_date).days
+    accrued = accrued_interest(valuation_date, maturity, coupon_rate, freq=freq, face=face,
+                               coupon_schedule=coupon_schedule)   # the ONE AI formula (shared)
     clean = dirty - accrued
     cfs.reverse()
     for i, cf in enumerate(cfs, start=1):
         cf.n = i
-    return PriceResult(clean, dirty, accrued, accrued_days, d, cfs, vba_compat)
+    return PriceResult(clean, dirty, accrued, accrued_days, last_cpn_date, cfs, vba_compat)

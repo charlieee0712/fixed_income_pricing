@@ -14,8 +14,16 @@ ASSUMPTIONS (Mario v1, 2026-07-03 — replaceable, NOT market-sourced):
   * volatility = flat sigma = FIP_VOL (default 0.15, Mario v1) — a lognormal short-rate level, NOT a
     market vol. Output is annotated accordingly.
 
+Calibration convention (Liping code review, 2026-08-04): the lattice grid = the bond's REAL
+remaining coupon dates on the vanilla ACT/364 grid (``pricing.bond_price.lattice_inputs``), so the
+tree's root PV is the DIRTY price; the SHARED vanilla accrued is subtracted and the OAS solves
+model CLEAN == custodian BT (clean vs clean — same equation as the vanilla calibrator). Call times
+are converted at 364 d/y to match the grid units.
+
 Cross-check: effective duration vs the custodian 'Duration - effective' (master col AQ) — a free
 external benchmark (the 4th agreed invariant; data-dependent, so it lives here not in pytest).
+Both duration denominators are emitted (dirty = pricing.risk convention/Bloomberg, and clean) for
+the AQ comparison.
 
 Run on 47:  FIP_VAL_DATE=2009-03-31 PYTHONPATH=src python3 scripts/callable_risk.py   (sigma default
 0.15; set FIP_VOL to override). Seed the schedule first with scripts/init_call_schedules.py.
@@ -34,6 +42,7 @@ from dataio.call_schedules import load_call_schedules, to_lattice_schedule
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.term_overrides import load_make_whole_overrides
 from dataio.universe import build_universe
+from pricing.bond_price import lattice_inputs
 from pricing.lattice import ShortRateLattice
 
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
@@ -99,26 +108,30 @@ def main():
 
         if aid not in schedules:                                 # every genuine callable must be in the table
             skip.append((aid, f"no row in {SCHED}")); continue
-        sched = to_lattice_schedule(schedules[aid], VAL)         # [(time_yrs, price), ...] from the data table
+        # exercise times at 364 d/y — the SAME units as the real ACT/364 coupon-time grid below
+        sched = to_lattice_schedule(schedules[aid], VAL, days_per_year=364.0)
 
-        T = (b["maturity"] - pd.Timestamp(VAL)).days / 365.25
+        T = (b["maturity"] - pd.Timestamp(VAL)).days / 365.25    # display ttm only (grid is ACT/364)
         try:
             curve = ZeroCurve.from_currency(DATA_DIR, ccy, VAL, freq=FREQ_VARIANT[fr])
         except Exception as e:                                   # GBP non-arb node, unmapped ccy, ...
             skip.append((aid, f"curve {ccy}: {e}")); continue
 
-        lat = ShortRateLattice(curve, T, freq=fr, sigma=SIGMA)
+        # real coupon dates + the SHARED vanilla accrued (Liping fix 2026-08-04): tree PV = dirty,
+        # OAS solves tree PV - ai == BT (clean vs clean, the vanilla calibrator's equation)
+        times, ai = lattice_inputs(VAL, b["maturity"], float(cpn), freq=fr)
+        lat = ShortRateLattice(curve, freq=fr, sigma=SIGMA, coupon_times=times)
         carr = lat.call_array(sched)                             # exercise schedule driven by the CSV, not hard-coded
-        # option value at OAS=0 (raw), then calibrate OAS to BT for callable AND straight
+        # option value at OAS=0 (raw dirty PVs; the difference is accrual-free), then calibrate
         px_str0 = lat.price_bond(float(cpn), 0.0)
         px_cal0 = lat.price_bond(float(cpn), 0.0, call_price=carr)
         try:
-            oas_cal = lat.implied_oas(float(bt), float(cpn), call_price=carr)
-            oas_str = lat.implied_oas(float(bt), float(cpn))
+            oas_cal = lat.implied_oas(float(bt), float(cpn), call_price=carr, accrued=ai)
+            oas_str = lat.implied_oas(float(bt), float(cpn), accrued=ai)
         except ValueError as e:
             skip.append((aid, f"no-bracket bt={bt:.2f}: {e}")); continue
-        rm_cal = lat.risk_metrics(float(cpn), oas_cal, call_price=carr)
-        rm_str = lat.risk_metrics(float(cpn), oas_str)
+        rm_cal = lat.risk_metrics(float(cpn), oas_cal, call_price=carr, accrued=ai)
+        rm_str = lat.risk_metrics(float(cpn), oas_str, accrued=ai)
         if oas_cal < 0:                       # BT above the scheduled call value -> assumption conflicts w/ the mark
             note = f"par-call assumption conflicts with market price (BT {bt:.2f}); awaiting actual schedule"
         elif abs(oas_cal - oas_str) < 1e-4:   # call never in the money (bond << call price)
@@ -133,7 +146,10 @@ def main():
             opt_val_oas0=round(px_str0 - px_cal0, 3),
             implied_oas_bp_callable=round(oas_cal * 1e4, 1), implied_oas_bp_straight=round(oas_str * 1e4, 1),
             oas_cost_of_call_bp=round((oas_str - oas_cal) * 1e4, 1),
+            accrued=round(ai, 4), dirty=round(float(bt) + ai, 4),
             eff_dur_callable=round(rm_cal["eff_duration"], 3), eff_dur_straight=round(rm_str["eff_duration"], 3),
+            eff_dur_callable_cleanden=round(rm_cal["eff_duration"] * rm_cal["dirty"] / rm_cal["clean"], 3),
+            eff_dur_straight_cleanden=round(rm_str["eff_duration"] * rm_str["dirty"] / rm_str["clean"], 3),
             dv01_callable=round(rm_cal["dv01"], 5), convexity_callable=round(rm_cal["convexity"], 1),
             aq_custodian=aq.get(aid), dur_vs_aq=(round(rm_cal["eff_duration"] - aq[aid], 3)
                                                  if aq.get(aid) not in (None, "") else None),

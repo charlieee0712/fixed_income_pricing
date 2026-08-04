@@ -8,7 +8,9 @@ Routes (built by ``dataio.phase2.build_phase2_universe``; decisions in
     calibrator, per-ccy curves; TLGP reported as its OWN group, never in bank rating buckets).
   * callable-lattice -> BDT lattice (sigma=FIP_VOL, default 0.15), Bermudan par call @100 from the
     master AB date via ``data/call_schedules.csv`` (the industry-standard agency assumption) —
-    callable OAS/duration = MAIN columns + straight-to-maturity as REFERENCE. The Sempra lie
+    callable OAS/duration = MAIN columns + straight-to-maturity as REFERENCE. Lattice grid = the
+    REAL ACT/364 coupon dates (``lattice_inputs``); tree PV (dirty) minus the SHARED vanilla
+    accrued calibrates to BT — clean vs clean (Liping code review, 2026-08-04). The Sempra lie
     detector stays on: an absurd calibrated OAS (e.g. far from the straight one on a
     market-says-no-call name) is annotated, not silently accepted.
   * ilb -> implied spread vs the NOMINAL curve at FIP_INFL (default 0). ⚠️ That spread is
@@ -30,6 +32,7 @@ import pandas as pd
 from curves.zero_curve import ZeroCurve
 from dataio.call_schedules import load_call_schedules, to_lattice_schedule
 from dataio.phase2 import build_phase2_from_path
+from pricing.bond_price import lattice_inputs
 from pricing.calibrate import implied_oas, near_maturity
 from pricing.ilb import ilb_risk_metrics, implied_spread_ilb
 from pricing.lattice import ShortRateLattice
@@ -92,6 +95,7 @@ def main():
             clean=np.nan, implied_bp=np.nan, implied_spread_vs_nominal_bp=np.nan, breakeven_bp=np.nan,
             index_ratio0=np.nan, eff_dur=np.nan, dv01=np.nan, convexity=np.nan, near_maturity=False,
             implied_bp_straight=np.nan, eff_dur_straight=np.nan, call_date=None,
+            accrued=np.nan, eff_dur_cleanden=np.nan,
             aq_custodian=b.get("dur_eff_custodian"), flag="",
         )
         if pd.notna(mat) and pd.Timestamp(mat) < pd.Timestamp(VAL):
@@ -150,19 +154,21 @@ def main():
                 row.update(route="call-schedule-missing", clean=float(bt),
                            flag=f"no row in {SCHED} — seed the AB par-call row")
                 rows.append(row); continue
-            sched = to_lattice_schedule(schedules[aid], VAL)
-            T = (pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25
-            lat = ShortRateLattice(curve, T, freq=fr, sigma=SIGMA)
-            carr = lat.call_array(sched)
+            # exercise times at 364 d/y = the real ACT/364 coupon-grid units; tree PV = dirty and
+            # OAS solves tree PV - ai == BT (clean vs clean) — Liping code-review fix 2026-08-04
+            sched = to_lattice_schedule(schedules[aid], VAL, days_per_year=364.0)
             cpn = float(b["coupon"])
+            times, ai = lattice_inputs(VAL, mat, cpn, freq=fr)
+            lat = ShortRateLattice(curve, freq=fr, sigma=SIGMA, coupon_times=times)
+            carr = lat.call_array(sched)
             try:
-                oas_cal = lat.implied_oas(float(bt), cpn, call_price=carr)
-                oas_str = lat.implied_oas(float(bt), cpn)
+                oas_cal = lat.implied_oas(float(bt), cpn, call_price=carr, accrued=ai)
+                oas_str = lat.implied_oas(float(bt), cpn, accrued=ai)
             except ValueError as e:
                 row.update(route="callable-no-bracket", clean=float(bt), flag=f"no bracket ({e})")
                 rows.append(row); continue
-            rm_cal = lat.risk_metrics(cpn, oas_cal, call_price=carr)
-            rm_str = lat.risk_metrics(cpn, oas_str)
+            rm_cal = lat.risk_metrics(cpn, oas_cal, call_price=carr, accrued=ai)
+            rm_str = lat.risk_metrics(cpn, oas_str, accrued=ai)
             if oas_cal < 0:
                 note = (f"LIE-DETECTOR: negative callable OAS ({oas_cal * 1e4:.0f}bp) — Bermudan "
                         f"par-call from AB conflicts with BT {bt:.2f}; suspect one-time call terms")
@@ -178,6 +184,8 @@ def main():
                        dv01=rm_cal["dv01"], convexity=rm_cal["convexity"],
                        implied_bp_straight=oas_str * 1e4, eff_dur_straight=rm_str["eff_duration"],
                        call_date=schedules[aid][0][0].date(),
+                       accrued=round(ai, 4),
+                       eff_dur_cleanden=rm_cal["eff_duration"] * rm_cal["dirty"] / rm_cal["clean"],
                        flag=f"lattice sigma={SIGMA:.0%}, Bermudan par@100 from AB; {note}")
             rows.append(row); continue
 
@@ -226,8 +234,9 @@ def main():
     cb = df[df["route"].str.startswith("callable")]
     if len(cb):
         print("\n[AGY CALLABLES — lattice main vs straight reference]")
-        print(cb[["asset_id", "coupon", "maturity", "call_date", "bt", "implied_bp",
-                  "implied_bp_straight", "eff_dur", "eff_dur_straight", "aq_custodian", "flag"]]
+        print(cb[["asset_id", "coupon", "maturity", "call_date", "bt", "accrued", "implied_bp",
+                  "implied_bp_straight", "eff_dur", "eff_dur_cleanden", "eff_dur_straight",
+                  "aq_custodian", "flag"]]
               .to_string(index=False))
 
     il = df[df["asset_class"] == "linker"].sort_values("ttm")
