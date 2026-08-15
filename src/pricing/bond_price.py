@@ -1,206 +1,41 @@
-"""Python port of ``BondPrice`` from Pricing File.xlsm / Bootstrapping.bas (``curva = 1``
-spot pricing), producing the CLEAN price of a plain-fixed semiannual bond.
+"""COMPATIBILITY SHIM — the ``BondPrice`` port now lives in the template layout
+(Mario's code-structure directive, 2026-08-15):
 
-This is a **dedicated, corrected pricing module**, not a bit-for-bit copy of the legacy sheet.
-The cash-flow conventions are copied verbatim from the VBA (that is where a port silently
-diverges); the discounting is *corrected* (see the z_semi note), with a ``vba_compat`` switch
-to reproduce the legacy output for reconciliation.
+    price_bond (= price_fixed_rate_bond)  -> pricer/core/pricing/analytical.py
+    bond cash flows + accrued_interest    -> pricer/core/pricing/cashflows.py
+    discount factors + vba-compat rates   -> pricer/core/pricing/discounting.py
+    coupon_dates + ACT/364 calendar       -> pricer/core/utils/dates.py
 
-Conventions copied from the VBA (Bootstrapping.bas, lines 766-818) — kept as-is:
-  * day count        : **ACT/364** — t = (cf_date - valuation).days / 364.            [diasmat/364]
-                       VBA convention; differs from the custodian's ACT/ACT or 30/360 — a known
-                       source of gap vs BT/BU/DI, NOT a bug.
-  * coupon schedule  : **backward from maturity in 182-day steps**.                   [l.782-815]
-                       VBA convention; the dates drift from the true calendar coupon dates
-                       (182d != 6 calendar months) — another known BT-gap source, NOT a bug.
-  * coupon / face    : semiannual coupon = rate/2 * 100; principal 100 at maturity.   [l.808-812]
-  * accrued interest : (rate/2 * 100) * (days since the prior coupon date) / 182.     [l.817]
-  * clean = dirty - accrued.                                                          [l.817-818]
+Everything documented here before the move — the VBA conventions (ACT/364, 182-day
+backward schedule, accrued formula), the CORRECTED discounting vs the legacy
+``exp(-t * z_semi)`` bug (VERIFIED 2026-06-29), and the ONE-accrued-formula law
+(Liping review 2026-08-04) — moved WITH the code into those module docstrings.
 
-Discounting — **CORRECTED** (the one place we deviate, on purpose). VERIFIED 2026-06-29.
-  Legacy has TWO bootstraps — do not conflate: the *auditable* routine our pipeline ports
-  (``curves/bootstrap.py``) stores a CONTINUOUS zero (z = -ln(DF)/t); ``BondPrice`` in
-  Bootstrapping.bas has its OWN embedded bootstrap that stores a SEMIANNUAL zero
-  (z_semi = 2*((1/DF)^(1/2t) - 1)). The bug: ``BondPrice`` discounts that SEMIANNUAL zero with
-  the CONTINUOUS formula ``cf * exp(-t * z_semi)`` (Bootstrapping.bas l.449). A semiannual rate in
-  a continuous discount does NOT recover the curve's own DF (``exp(-t*z_semi) < DF`` for z>0), so it
-  systematically UNDER-prices. Proof: a bootstrapped curve must reprice its own par bonds to 100 —
-  under ``exp(-t*z_semi)`` they come out below par (10y -> 99.67); under the consistent
-  ``(1+z_semi/2)^(-2t)`` -> 100.000000. Node DF too low by -0.11% @5y, -0.43% @10y, -1.31% @20y;
-  clean price ~-0.2% @8y.
-  CEO asked for a correct, extensible module, so by default this module discounts with the
-  bootstrapped factor ``DF = exp(-t * z_cont)`` (continuous zero) = ``(1+z_semi/2)^(-2t)``, i.e.
-  ``cf * DF * exp(-t*oas)`` — reprices par to 100.
-  Pass ``vba_compat=True`` to reproduce the legacy ``exp(-t * z_semi)`` EXACTLY (verified 0.0000%
-  on the sample bond; 0.5y-grid linear interpolation of z_semi, as the VBA does) — reconciliation only.
-
-OAS (the rating spread) is added flat to the discount rate; ``oas = 0`` is risk-free.
+This module re-exports the original public surface so every existing import keeps
+working unchanged. New code should import from ``pricer.*`` directly.
 """
 from __future__ import annotations
 
-import datetime as dt
-import math
-from dataclasses import dataclass
+from pricer.core.pricing.analytical import (          # noqa: F401
+    CashFlow,
+    PriceResult,
+    price_fixed_rate_bond as price_bond,
+)
+from pricer.core.pricing.cashflows import (           # noqa: F401
+    accrued_interest,
+    lattice_inputs,
+)
+from pricer.core.pricing.discounting import (         # noqa: F401
+    _VBA_MAX_TENOR,
+    semiannual_from_continuous as _cont_to_semi,
+    vba_semiannual_rate as _vba_semi_rate,
+)
+from pricer.core.utils.dates import (                 # noqa: F401
+    HALF_DAYS,
+    YEAR_DAYS,
+    as_date as _as_date,
+    coupon_dates,
+)
 
-import pandas as pd
-
-from pricing.coupon_schedule import coupon_at
-
-YEAR_DAYS = 364.0     # VBA: a year is 364 days (diasmat / 364)
-HALF_DAYS = 182       # VBA: coupon period is 182 days (fechamobil - 182)
-_VBA_MAX_TENOR = 25.0  # the VBA's Zerout spans only 0.5..25y
-
-
-def _cont_to_semi(z_cont: float) -> float:
-    """Continuous zero -> semiannual-compounded zero: z_semi = 2*(exp(z_cont/2) - 1)."""
-    return 2.0 * (math.exp(z_cont / 2.0) - 1.0)
-
-
-def _vba_semi_rate(curve, t: float) -> float:
-    """The VBA's discount rate at ``t``: semiannual zero, linearly interpolated on the 0.5y grid
-    (replicates BondPrice anterior/posterior, lines 784-806). Rate lookups are clamped at 25y."""
-    tc = min(t, _VBA_MAX_TENOR)
-    anterior = math.floor(tc / 0.5) * 0.5
-    if anterior <= 0:
-        anterior = 0.5
-    posterior = anterior + 0.5
-    z_ant = _cont_to_semi(float(curve.zero_rate(anterior)))
-    z_post = _cont_to_semi(float(curve.zero_rate(posterior)))
-    if t >= _VBA_MAX_TENOR:
-        return z_ant
-    return (z_ant - z_post) / 0.5 * (posterior - t) + z_post
-
-
-@dataclass
-class CashFlow:
-    n: int
-    date: dt.date
-    days: int
-    t: float
-    zero_cont: float    # continuous zero (decimal), monthly-grid interpolation
-    zero_semi: float    # VBA's semiannual zero used in vba_compat (decimal), 0.5y-grid interp
-    df: float           # discount factor actually applied (depends on vba_compat) incl. oas
-    amount: float       # cash flow per 100 face
-    pv: float           # amount * df
-
-
-@dataclass
-class PriceResult:
-    clean: float
-    dirty: float
-    accrued: float
-    accrued_days: int
-    last_coupon_date: dt.date
-    cashflows: list
-    vba_compat: bool
-
-
-def _as_date(x) -> dt.date:
-    return pd.Timestamp(x).date()
-
-
-def coupon_dates(valuation_date, maturity, freq: int = 2):
-    """The VBA coupon grid — the ONE schedule walk every date-based engine shares: backward from
-    ``maturity`` in ``round(364/freq)``-day steps until just before ``valuation_date``.
-
-    Returns ``(dates, last_coupon_date, step_days)``: ``dates`` ASCENDING = every grid date with
-    ``date >= valuation_date`` (the remaining coupon dates, last = maturity); ``last_coupon_date`` =
-    the grid date immediately BEFORE the valuation date (the accrual anchor). If
-    ``valuation_date > maturity`` the walk is empty and ``([], maturity, step_days)`` is returned.
-    """
-    val = _as_date(valuation_date)
-    mat = _as_date(maturity)
-    step_days = max(1, round(YEAR_DAYS / freq))
-    dates, d = [], mat
-    while d >= val:
-        dates.append(d)
-        d = d - dt.timedelta(days=step_days)
-    dates.reverse()
-    return dates, d, step_days
-
-
-def accrued_interest(valuation_date, maturity, coupon_rate, freq: int = 2, face: float = 100.0,
-                     coupon_schedule=None) -> float:
-    """THE accrued-interest formula (legacy ACT/364, 182-day grid) — the single source for every
-    engine, including the callable lattice's calibration (Liping code review, 2026-08-04):
-    ``(rate/freq * face) * days-since-prior-coupon / step_days``, with the ACCRUING period's rate
-    when a ``coupon_schedule`` is given. Accrued depends only on dates — never on the curve, the
-    OAS, or any embedded option — so solving ``dirty(OAS) = target + AI`` and
-    ``clean(OAS) = target`` give the SAME root (the clean/dirty invariance test pins this)."""
-    val = _as_date(valuation_date)
-    dates, last_cpn_date, step_days = coupon_dates(valuation_date, maturity, freq)
-    if not dates:
-        return 0.0
-    rate = coupon_at(coupon_schedule, dates[0]) if coupon_schedule is not None else coupon_rate
-    return rate / freq * face * (val - last_cpn_date).days / step_days
-
-
-def lattice_inputs(valuation_date, maturity, coupon_rate, freq: int = 2, face: float = 100.0):
-    """Real-schedule inputs for the callable lattice, on exactly ``price_bond``'s conventions.
-
-    Returns ``(coupon_times, accrued)``: the ACT/364 year-fractions of the strictly-future coupon
-    dates (the vanilla grid — so a straight bond on the lattice reprices ``price_bond`` to machine
-    precision), and the accrued to subtract from the tree's root PV (= dirty) so that
-    ``tree_PV - accrued`` is the model CLEAN price. A coupon falling exactly ON the valuation date
-    (``price_bond`` puts it in dirty and nets it out with a full period of accrued) is folded into
-    the returned accrued, so the clean identity holds in that corner too."""
-    val = _as_date(valuation_date)
-    dates, _last, _step = coupon_dates(valuation_date, maturity, freq)
-    times = [(d - val).days / YEAR_DAYS for d in dates if (d - val).days > 0]
-    if not times:
-        raise ValueError(f"no future coupon dates between {valuation_date} and {maturity}")
-    ai = accrued_interest(valuation_date, maturity, coupon_rate, freq=freq, face=face)
-    t0_cpn = coupon_rate / freq * face if (dates and dates[0] == val) else 0.0
-    return times, ai - t0_cpn
-
-
-def price_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
-               face: float = 100.0, vba_compat: bool = False, freq: int = 2,
-               coupon_schedule=None):
-    """Port of BondPrice (curva = 1). Returns a :class:`PriceResult` with the CLEAN price.
-
-    By default discounts with the bootstrapped factor exp(-t*(z_cont+oas)); ``vba_compat=True``
-    reproduces the legacy exp(-t*(z_semi+oas)). Cash-flow schedule, day count and accrual are
-    identical in both modes (the VBA conventions).
-
-    ``freq`` is the coupon frequency. The VBA is hard-wired semiannual (freq=2 -> 182-day steps);
-    other frequencies are the natural generalisation (step = round(364/freq) days, coupon =
-    rate/freq*face) and are only meaningful in the corrected (default) mode — ``vba_compat`` is
-    semiannual-only.
-
-    ``coupon_schedule`` (Step 3): an optional ``[(effective_from|None, rate_decimal), ...]`` table
-    (see :mod:`pricing.coupon_schedule`) for stepped / step-up / segmented-fixed bonds. When given,
-    each period's coupon is looked up by its date instead of the flat ``coupon_rate`` (which is then
-    ignored); the discounting, day count and accrual are unchanged. ``coupon_rate=0`` with no
-    schedule is the zero-coupon degenerate case (single face cash flow).
-    """
-    val = _as_date(valuation_date)
-    mat = _as_date(maturity)
-    if val > mat:                                       # VBA: Tiempo > BondMat And curva = 1 -> 0
-        return PriceResult(0.0, 0.0, 0.0, 0, mat, [], vba_compat)
-
-    dates, last_cpn_date, step_days = coupon_dates(valuation_date, maturity, freq)
-    cfs, dirty = [], 0.0
-    period_cpn = coupon_rate / freq * face
-    for d in reversed(dates):                           # maturity first, as the VBA walks it
-        days = (d - val).days
-        t = days / YEAR_DAYS
-        z_cont = float(curve.zero_rate(t))              # continuous, monthly-grid interp
-        z_semi = _vba_semi_rate(curve, t)               # VBA semiannual, 0.5y-grid interp
-        rate = (z_semi if vba_compat else z_cont) + oas
-        df = math.exp(-t * rate)
-        if coupon_schedule is not None:                 # per-period coupon from the schedule
-            period_cpn = coupon_at(coupon_schedule, d) / freq * face
-        amount = period_cpn + (face if d == mat else 0.0)
-        pv = amount * df
-        dirty += pv
-        cfs.append(CashFlow(0, d, days, t, z_cont, z_semi, df, amount, pv))
-
-    accrued_days = (val - last_cpn_date).days
-    accrued = accrued_interest(valuation_date, maturity, coupon_rate, freq=freq, face=face,
-                               coupon_schedule=coupon_schedule)   # the ONE AI formula (shared)
-    clean = dirty - accrued
-    cfs.reverse()
-    for i, cf in enumerate(cfs, start=1):
-        cf.n = i
-    return PriceResult(clean, dirty, accrued, accrued_days, last_cpn_date, cfs, vba_compat)
+__all__ = ["CashFlow", "PriceResult", "price_bond", "accrued_interest",
+           "lattice_inputs", "coupon_dates", "YEAR_DAYS", "HALF_DAYS"]
