@@ -20,6 +20,34 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   re-syncs the file into the claude.ai Project. Keep it OUT of the `corporate_bond` Drive staging
   copy (internal comms framing — not for Mario).
 
+## Code-structure migration (Mario directive 2026-08-15) — STATUS: sample awaiting Mario
+- **Directive:** code "difficult to follow, a bit nested"; a **Google team takes over for
+  cloud-computing optimisation** ⇒ many SIMPLE functions (not one complicated), **inputs
+  highlighted** per function. Template = `docs/code_structure_template - Ver Aug 5 2026.txt`
+  (core/ 80% engines + assets/ 20% thin wrappers + endpoints/). Reference + future golden =
+  the **Monthly sheet** (`Project Pricing Fixed Income Instruments.xlsm`): rows 47–60 demo =
+  per-metric simple functions (`CorpBondOAS`/`CorpBondDuration`/`CorpBondwidening`…), rows 61–98 =
+  input dictionaries (Input No/Field/Options/Description + used-flags; Daycount "not used" =
+  compatible with our ACT/364), row 99+ = **~2,600-bond legacy golden** (`bondcalc` analysisType
+  1–6 → OAS/Dur/Widen/Tighten/Steep/Flat cols P–U, vol/Vega V/W/Y/Z; mostly VAL 2010-03-01 with
+  that day's 6-ccy Libor+swap par curves on-sheet; also Bloomberg-OAS col AD + diff AG). Mario:
+  our results can be **checked against this sheet** ⇒ reconciliation = proposed next validation
+  milestone (needs swap-grid bootstrap + curve-twist/vol bumps).
+- **Sample DONE (`241e76f`, 2026-08-15) — vanilla chain only (user: sample-first, rest after Mario
+  OKs):** `src/pricer/` = template shape (`core/pricing/{cashflows,discounting,analytical}`,
+  `core/risk/sensitivities`, `core/market/{spreads,curves}`, `core/utils/dates`,
+  `assets/corporate/{bonds_input,vanilla}`); `pricing/{bond_price,calibrate,risk}.py` = thin
+  SHIMS (same objects, all old imports/drivers unchanged); float-op order preserved ⇒
+  bit-identical; assets layer = legacy-unit per-metric functions (percent/bp) mirroring the
+  Monthly demo block + `INPUT_CATALOGUE`. **153 green** (+8 structure locks), 10.3s. Deliverable
+  staging `code_structure_sample/` + zip (git-ignored like `corporate_bond/`): plain-language PDF
+  report (`docs/code_structure_sample_2026-08-15.md`; pandoc@47 + Edge headless) + code + README —
+  user uploads to Drive. Report asks Mario: rollout order (floating→callable→Monthly recon→
+  ILB/AGY→MBS), `bons_input` naming, where dataio lives, endpoints=batch-first.
+- **Rollout rules when approved:** migrate module-by-module, shims keep old surface until retired,
+  full suite green at every step, float-op order preserved (no numeric drift), docstrings carry
+  the numbered Inputs blocks, new code imports `pricer.*` (never the shims).
+
 ## Environment (important)
 - **No usable local Python** on the Windows machine (only a Microsoft Store stub).
   Run code on **server 47** or a real local install. Don't assume `python` works locally.
@@ -449,6 +477,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   routes per `docs/phase2_methods_2026-07-22.md`; driver `scripts/phase2_risk.py`);
   FRED OAS loader next. (Named `dataio`, **not** `io`: `conftest` puts `src/` at `sys.path[0]`, so an `io` package
   would shadow stdlib `io`.)
+- `src/pricer/` — **✅ NEW (2026-08-15, the template-layout target; see Code-structure migration
+  section):** `core/pricing/{analytical,cashflows,discounting}` + `core/risk/sensitivities` +
+  `core/market/{spreads,curves}` + `core/utils/dates` + `assets/corporate/{bonds_input,vanilla}`;
+  `pricing/{bond_price,calibrate,risk}` are now SHIMS over it — edit the `pricer` modules, not the shims.
 - `src/pricing/` — ✅ `bond_price.py` (`BondPrice` port: ACT/364, 182-day schedule, accrued, clean/dirty;
   **default = corrected DF**, `vba_compat` reproduces the legacy `exp(-t·z_semi)` bug; `oas`/`freq` params;
   since 2026-08-04 exports `coupon_dates` + `accrued_interest` [THE single AI formula] + `lattice_inputs`) ·
@@ -482,4 +514,6 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   the −breakeven identity) + `test_mbs` (annuity degeneration, principal conservation, par-at-WAC,
   dur↓ in CPR, Bloomberg interface) + `test_phase2_universe` (goldens 39/9/15 + routes + ratios) +
   `test_price_convention` (16: per-engine clean-form vs dirty-form OAS root invariance <1e-10, shared-AI
-  identity locks, lattice≡price_bond, val-on-coupon-date corner). **145 total.**
+  identity locks, lattice≡price_bond, val-on-coupon-date corner) + `test_pricer_structure` (8:
+  template-layout locks — shim identity, bit-exact wrapper reprice, bp round-trip, flat-curve
+  zero-coupon closed form, sensitivity arithmetic, input validation). **153 total.**

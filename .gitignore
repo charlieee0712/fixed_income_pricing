@@ -12,8 +12,10 @@ scratchpad/
 outputs/
 *.bak
 
-# ---- Google-Drive staging copy (curated duplicate of this tree; never commit) ----
+# ---- Google-Drive staging copies (curated duplicates of this tree; never commit) ----
 corporate_bond/
+code_structure_sample/
+code_structure_sample_*.zip
 
 # ---- OS / editor ----
 .DS_Store

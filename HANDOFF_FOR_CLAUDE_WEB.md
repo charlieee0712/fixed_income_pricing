@@ -1,6 +1,6 @@
 # Handoff for Claude Web — planning-side sync
 
-_Refreshed **2026-08-15** · repo `fixed_income_pricing` @ `c7a7e7a` (main) · 145 tests green ·
+_Refreshed **2026-08-15 (pm)** · repo `fixed_income_pricing` @ `241e76f`+ (main) · 153 tests green ·
 maintained by the Claude Code CLI session (protocol in §6)._
 
 > **How to read this (you = Claude on claude.ai, inside this Project).** You are the
@@ -12,11 +12,19 @@ maintained by the Claude Code CLI session (protocol in §6)._
 > today's date is >3 weeks past the refresh stamp above, ask the user for a refreshed
 > handoff before leaning on §2/§4 details.
 
-## Δ — since previous handoff
+## Δ — since previous handoff (same day, am)
 
-- Initial version (2026-08-15). Baseline = state after the 2026-08-04 code-review fixes
-  (clean/dirty convention audit + lattice calibration fix, response PDF sent to Liping).
-  All four external data requests (§4a) still outstanding.
+- **New Mario directive (2026-08-15): restructure the code** — "a bit difficult to follow,
+  a bit nested"; a **Google team will take over for cloud-computing optimisation** ⇒ many
+  simple functions, inputs highlighted, per his folder template (core 80% / assets 20%).
+- **Sample built & delivered same day** (awaiting Mario's approval before any further
+  migration): the corporate vanilla chain re-expressed in the template layout
+  (`pricer/` core+assets), old APIs kept as shims ⇒ numbers bit-identical; tests 145 → 153
+  green. Deliverable folder (plain-language PDF report + code) ready for Google Drive.
+- **The legacy "Monthly" sheet decoded** — it is the missing legacy GOLDEN: ~2,600 bonds
+  with the old system's OAS/duration/scenario outputs @ 2010-03-01 (+ that day's 6-currency
+  curves on-sheet), plus the per-function input dictionaries our new layout now mirrors.
+  Reconciling our engines against it = proposed next validation milestone.
 
 ## 1 · Project & people
 
@@ -24,7 +32,9 @@ maintained by the Claude Code CLI session (protocol in §6)._
   module. Corporate bonds = the reference implementation; agencies/guaranteed/inflation-linked
   now also built; MBS/ABS/CMO next; a CreditMetrics risk layer later. Mario's framing: this
   is an **all-purpose tool** — an automated end-to-end process plus a complete
-  missing-data table matter more than any single bond's number.
+  missing-data table matter more than any single bond's number. **New (08-15): the codebase
+  will be handed to a Google team for cloud optimisation ⇒ structure/readability is now a
+  first-class requirement** (template + sample under review, see Δ).
 - **Book:** URS, a US engineering-company pension (USD-dominated), custodian holdings as of
   **2009-03-31**. Custodian marks (price/MV/YTM/duration) are the golden master for
   reconciliation only — never pricing inputs. (A Uganda govt-bond demo inside the legacy
@@ -34,7 +44,7 @@ maintained by the Claude Code CLI session (protocol in §6)._
   reviewer (her v2 review drove the 2026-08-04 fix). **Boss/CEO** — approved keeping client
   data in the private repo; EIR (IFRS-9) spec confirmation pending. **The user** — sole
   implementer, runs both this Project and the CLI sessions.
-- Deliverables to Mario go via a Google Drive folder (`corporate_bond`); comms via WhatsApp.
+- Deliverables to Mario go via Google Drive folders; comms via WhatsApp.
 
 ## 2 · Current state — built & validated
 
@@ -51,42 +61,43 @@ golden-exact vs legacy) → per-bond **implied OAS calibrated to the custodian c
 - coupon-schedule (stepped/step-up) · FRN (curve-forward projection, single-curve,
   eff-duration ≈ time-to-next-reset) · fixed-then-float **hybrid** (fixed leg + FRN leg
   glued on one curve+OAS; margin-0 telescoping identity proves the composition);
-- callable/putable **BDT lattice** — Arrow-Debreu-calibrated to the zero curve, σ=0.15,
-  call schedules read from a data CSV; straight-bond-on-lattice ≡ closed form to machine
-  precision. Corporate genuine-callable bucket = 5 bonds: 3 lattice-priced, the AssuredGty
-  one awaits its call schedule (asked of Liping);
-- zero · **ILB** (index-ratio path; calibrated spread ≈ −breakeven, kept in its own column,
-  never mixed with credit OAS) · **MBS static-CPR skeleton** built to the exact 8-mnemonic
-  Bloomberg interface (data lands ⇒ zero code change) · recovery marks for defaulted.
+- callable/putable **BDT lattice** (calibrated to the zero curve, σ=0.15, data-driven call
+  schedules; straight-bond-on-lattice ≡ closed form to machine precision); corporate
+  genuine-callable bucket = 5 bonds: 3 lattice-priced, the AssuredGty one awaits its call
+  schedule (asked of Liping);
+- zero · **ILB** (index-ratio path; calibrated spread ≈ −breakeven, own column, never mixed
+  with credit OAS) · **MBS static-CPR skeleton** (built to the exact 8-mnemonic Bloomberg
+  interface — data lands ⇒ zero code change) · recovery marks for defaulted.
 
-**Convention law (post-review):** model PV = dirty, custodian price = clean, ONE shared
-accrued-interest formula (ACT/364); every calibration is clean-vs-clean; duration
+**Code structure (new 08-15):** the vanilla chain now also exists in the target template
+layout — `pricer/core/` (cashflows, discounting, analytical DCF, sensitivities, spread
+calibration, dates) + `pricer/assets/corporate/` (input catalogue + one simple function per
+output, legacy naming/units) — with the old modules as thin shims. Sample only; rollout
+gated on Mario.
+
+**Convention law (post code review):** model PV = dirty, custodian price = clean, ONE
+shared accrued-interest formula (ACT/364); every calibration clean-vs-clean; duration
 denominator = dirty (tested both ways against custodian durations).
 
-**Results @ 2009-03-31 baseline** (2009-06-10 kept as control, ~110bp tighter across the
-board = the Mar→Jun yield backup, consistent):
+**Results @ 2009-03-31 baseline** (2009-06-10 kept as a ~110bp-tighter control):
 
-- Corporates: **564 rows = 553 priced + 11 flagged** — data-gap bonds are carried at the
-  custodian price with a named flag, never force-priced; each later data fill = one CSV
-  row, zero code change.
-- Phase 2: **AGY 39** (median 121bp; wides = quasi-sovereign credit; the 5 agency lattice
-  callables land within 0.75y of the custodian's option-adjusted duration — independent
-  validation) · **GTD 9** (all FDIC-TLGP paper, own guaranteed bucket, median 86bp) ·
-  **ILB 15** (extracted breakevens show the 2009 deflation-panic shape; JGBi's sign flips
-  correctly; Korean KTBi custodian-marked pending terms).
-- History, for context only: v1 (one index OAS per rating bucket) validated **unbiased**
-  (~0% signed IG error) with ~6.4% name-level dispersion — superseded by per-bond
-  calibration, which reprices the custodian exactly by construction; model quality is now
-  judged on risk metrics and the invariance test suite (**145 green**).
+- Corporates: **564 rows = 553 priced + 11 flagged** (data-gap bonds carried at custodian
+  price with a named flag — never force-priced; each fill = one CSV row, no code change).
+- Phase 2: **AGY 39** (median 121bp; 5 lattice callables land within 0.75y of custodian
+  option-adjusted duration), **GTD 9** (all FDIC-TLGP, own bucket, 86bp), **ILB 15**
+  (breakevens show the 2009 deflation-panic shape; JGBi sign flips correctly).
+- History: v1 (one index OAS per rating) validated **unbiased** with ~6.4% name-level
+  dispersion — superseded by per-bond calibration, which reprices the custodian exactly by
+  construction; model quality is judged on risk metrics and invariance tests (**153 green**).
 
 ## 3 · Locked decisions — do not re-litigate
 
-1. **Valuation & calibration date = 2009-03-31** (holdings date; Mario's curve). The
+1. **Valuation & calibration date = 2009-03-31** (matches holdings; Mario's curve). The
    custodian's tighter-than-index marks are the genuine recovering-market level (Mario,
    07-03) — the "70-day gap / marking-date" question is CLOSED.
-2. **OAS is a per-bond calibration OUTPUT, not a pricing input**; risk metrics are the
-   goal. Index/sector OAS sourcing is dead (FRED's free OAS history was truncated to a
-   3-year window in Apr-2026 anyway; the workbook archive is the only history source).
+2. **OAS is a per-bond calibration OUTPUT, not an input**; risk metrics are the goal.
+   Index/sector OAS sourcing is dead (FRED's free OAS history truncated to 3y in Apr-2026;
+   the workbook archive is the only history source).
 3. **No Bloomberg on our side.** External data arrives only via Mario/Liping pulls into
    tracked CSV landing zones. **Web/ISIN-researched terms are PROVISIONAL** — when
    Bloomberg data arrives: diff, Bloomberg wins, deltas logged (`docs/missing_data.md` is
@@ -102,40 +113,45 @@ board = the Mar→Jun yield backup, consistent):
 9. Repo stays **private**; client data is tracked in-repo (boss-approved 2026-07-08).
 10. Deferred-asks discipline: §4b items wait for the next natural touchpoint (= Mario's MBS
     data return) — do not draft re-asks before then.
+11. **Restructure = sample-first** (user's call): nothing beyond the vanilla chain migrates
+    until Mario approves; every migration step keeps the full test suite green with
+    bit-identical numbers (shims preserve old APIs until retired).
 
 ## 4 · Open items — the planning surface
 
-### 4a · Blocked on external data (all requests sent, all awaiting reply)
+### 4a · Awaiting counterparties (all requests sent)
 
 | Ask | Channel | Sent | Unblocks |
 |---|---|---|---|
-| 11-security list: 3 exempt-US FRNs (full terms) + 8 hybrid post-call margins | Mario | 07-20 | each margin = one CSV cell → bond prices, no code |
-| Govt-MBS pull: 8 fields × 882 CUSIPs (BDP template provided) | Mario | 07-22 | MBS driver + pool routing (engine skeleton ready) |
-| Pass-through terms, 13 uniques (EETC/private amortizers) | Mario (his initiative) | 07-20 meeting | likely amortizing-vanilla; no prepayment model needed |
-| Full gap request: all of the above + AssuredGty call schedule (5th callable) + opportunistic extras (KTBi, GBP curve, FHR-3122-ZB) | Liping | 07-30 | second channel; DEDUPE against Mario's returns on arrival |
+| **Code-structure sample approval** (Drive folder: plain-language report + `pricer/` code) | Mario | 08-15 | full migration rollout + the ~2,600-bond Monthly golden reconciliation |
+| 11-security list: 3 exempt-US FRNs (full terms) + 8 hybrid post-call margins | Mario | 07-20 | 8 hybrids price via one CSV cell each |
+| Govt-MBS pull: 8 fields × 882 CUSIPs (BDP template provided) | Mario | 07-22 | MBS driver + pool routing (skeleton waits) |
+| Pass-through terms, 13 uniques (EETC/private amortizers) | Mario | 07-20 meeting | likely amortizing-vanilla, no prepay model |
+| Full gap request incl. all of the above + AssuredGty call schedule (5th callable) + extras (KTBi, GBP curve, FHR-3122-ZB) | Liping | 07-30 | second channel; dedupe against Mario on arrival |
 
-Also pending: **EIR (IFRS-9)** spec confirmation from the CEO. Agreed approach: effective
-yield = IRR of book cost vs remaining cash flows; no legacy code exists (searched — zero
-hits), so no golden master. Implement only after confirmation.
+Also pending: **EIR (IFRS-9)** spec confirmation from the CEO (agreed approach: effective
+yield = IRR of book cost vs remaining CFs; no legacy code exists — implement after
+confirmation).
 
-### 4b · Deferred by design (trigger = Mario's MBS-data return; do NOT re-raise earlier)
+### 4b · Deferred by design (trigger = Mario's MBS-data return)
 
-KTBi indexation terms + the missing KRW curve date (single $1.2M position, safely
-custodian-marked) · agency call-schedule confirmation (par-call lattice already matches
-custodian durations — confirmation only) · one rating-feed quirk (A vs Aa2).
+KTBi indexation terms + KRW curve row (single $1.2M position, safely custodian-marked) ·
+agency call-schedule confirmation (lattice already matches custodian durations) · one
+rating-feed quirk (A vs Aa2).
 
 ### 4c · Next milestones, in order
 
-1. **Any Bloomberg return** → dedupe the two channels → diff vs provisional overrides
-   (Bloomberg wins, deltas logged) → CSV landings → rerun both drivers (baseline + control)
-   → refreshed outputs + registry. Zero code change by design.
-2. **MBS data lands** → pool-routing design (incl. REMIC Z-tranches / paid-down rows) +
-   driver reconciled against the custodian golden; prepayment sophistication (CPR vector →
-   behavioral model) staged after.
+1. **Mario approves the structure sample** → roll the template layout out:
+   floating/hybrid → callable lattice (`core/pricing/tree.py`) → **Monthly-sheet golden
+   reconciliation** (~2,600 bonds @ 2010-03-01: rebuild the sheet's 6-ccy swap curves, run
+   our engines, compare OAS/duration/scenario columns to the legacy outputs; needs a
+   swap-grid bootstrap variant + curve-twist/vol bumps) → ILB/agency wrappers → MBS.
+2. **Any Bloomberg return** → dedupe channels → diff vs provisional overrides (Bloomberg
+   wins, deltas logged) → CSV landings → rerun both drivers → refreshed outputs + registry.
 3. **Pass-through data lands** → price as scheduled-amortization vanilla.
 4. **EIR** after CEO confirmation.
-5. **CreditMetrics risk layer** — architecture slot reserved, design not started; the next
-   big methodology conversation (good topic for this Project).
+5. **CreditMetrics risk layer** — architecture slot reserved, design not started (a good
+   conversation for this Project).
 6. Boundary backlog (v2, unscheduled): TIPS deflation floor (needs inflation vol), OIS
    dual-curve, GBP curve replacement (a bad 3y node blocks 2 GBP bonds).
 
@@ -153,6 +169,11 @@ custodian durations — confirmation only) · one rating-feed quirk (A vs Aa2).
 - **TLGP** — FDIC-guaranteed bank paper; its own bucket, never bank credit buckets.
 - **overrides layer** — tracked CSVs (coupon paths, FRN margins, make-whole list, hybrid
   switch terms, call schedules) that outrank workbook free-text; the Bloomberg landing zone.
+- **Monthly sheet** — legacy run-sheet in the old risk workbook: per-metric function demos,
+  per-function input dictionaries, and ~2,600 bonds of legacy outputs @ 2010-03-01 — our
+  structure reference (adopted) and reconciliation golden (planned).
+- **pricer/** — the new template-shaped package (core engines + thin asset wrappers); old
+  module paths are compatibility shims over it.
 - **TNTD…/TNTG…** — internal custodian asset IDs (the join key across sheets).
 
 ## 6 · Handoff protocol (for both sides)
@@ -161,8 +182,6 @@ custodian durations — confirmation only) · one rating-feed quirk (A vs Aa2).
   milestone or comms-state change**, and on request ("更新handoff"). Each refresh: update
   facts in place, **replace** Δ (never append), bump the stamp line. Hard cap **250
   lines** — new content must displace old, no history accumulation.
-- After each refresh the user swaps this file into the claude.ai Project knowledge
-  (re-upload, or re-sync if added via the GitHub connector).
-- Deliberately excluded (lives in the repo; ask the CLI session): server/ssh mechanics,
-  file paths, function/test names, per-bond ISIN detail, full history (`WORKLOG.md`),
-  full methodology prose (`PROJECT_STATUS.md`).
+- The user then replaces this file in the Project knowledge (re-upload or GitHub re-sync).
+- Deliberately excluded (lives in the repo, ask the CLI session): server/ssh mechanics,
+  file paths, function/test names, full history, per-bond ISIN detail.

@@ -5,7 +5,58 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
-## 2026-08-04 — clean/dirty calibration audit (Liping code review) → lattice on real coupon times; DIRTY duration denominator retained
+## 2026-08-15 — Mario code-structure directive → template-layout SAMPLE (vanilla chain) + Monthly sheet decoded
+**Commit:** `241e76f` (sample) · `eef7a4d` (Claude-web handoff) · docs = this entry's commit
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **Directive (Mario, WhatsApp):** code "a bit difficult to follow, a bit nested"; a Google team
+  will take over for cloud-computing optimisation ⇒ use **many simple functions rather than one
+  complicated**, **highlight the inputs** of each; template = `docs/code_structure_template - Ver
+  Aug 5 2026.txt` (his file, committed); reference = the **Monthly** sheet of Project Pricing
+  Fixed Income Instruments.xlsm; results can be **checked against that sheet**. Scope now:
+  corporate bonds; sample-first (user: don't migrate everything before Mario approves).
+- **Monthly sheet decoded (openpyxl on 47; 2,896 rows × 81 cols):** ① rows 3–43 = per-ccy curve
+  input block (US0001M–12M Libor + USSA2–30 swap par, USD/DKK/EUR/GBP/JPY/SEK) bootstrapped by
+  `=Zeroyield(range, ccy, "c:\blp\curves\")`; ② rows 47–60 = **demo block**: per-metric simple
+  functions sharing one input list — `CorpBondOAS` / `CorpBondDuration` / `CorpBondwidening(±bp)`
+  / `CorpBondSteepening` (bullets) and `bondoas(analysisType 1–10)` (callable/put/sink/FRN/mtge);
+  ③ rows 61–98 = **input dictionaries** (Input Number | Field Name | Options | Description + si/no
+  used-flags; Daycount: "30/360, but is not used" — matches our ACT/364 internal convention);
+  ④ row 99+ = **golden table ~2,600 bonds** (FIXED 1887 / FLOATING 426 / ZERO ~128 / VARIABLE 74 /
+  STEP 12 / DEFAULTED 21; USD 2475, EUR 94, GBP 21…) priced by `bondcalc(analysisType)`:
+  P=OAS(1), Q=Duration(2), R/S=Widening/Tightening(4,±10bp), T/U=Steepening/Flattening(5/6),
+  V/W=vol-bump prices(3), Y/Z=Vega bp/$; X=mkt price; AD=Bloomberg OAS + AG=|diff| (legacy itself
+  reconciled vs Bloomberg). Valuation dates: **2010-03-01 × 2187** (the top curves = that date),
+  2012-06-01 × 122, 2012-12-12 × 274. ⇒ **the missing legacy golden master**; reconciliation =
+  proposed next validation milestone (needs swap-grid bootstrap variant + curve-twist/vol bumps
+  for T/U/Y).
+- **Sample built (`241e76f`) — real decomposition, not a facade:** new `src/pricer/` package =
+  template shape: `core/pricing/{cashflows,discounting,analytical}` + `core/risk/sensitivities` +
+  `core/market/{spreads,curves}` + `core/utils/dates` + `assets/corporate/{bonds_input,vanilla}`.
+  `pricing/{bond_price,calibrate,risk}.py` → thin shims re-exporting the original surface (same
+  objects). Float-op order preserved everywhere (maturity-first summation, identical expressions)
+  ⇒ **bit-identical numbers**. Assets layer mirrors the Monthly demo block (legacy units: percent
+  / bp): `calculated_price`, `implied_oas`, `duration`, `widening`, `tightening` + `dv01`/
+  `convexity` extensions; steepening/flattening deferred to the curve-twist rollout.
+  `bonds_input.INPUT_CATALOGUE` = the highlighted-inputs table (13 fields incl. unused-by-design
+  day_count). **Tests 145 → 153 green** (8 new locks: shim identity, bit-exact wrapper reprice,
+  bp round-trip, flat-curve zero-coupon closed form, formula arithmetic, validation); full suite
+  10.3s (the one 79s run = transient server load, verified).
+- **Deliverable for Mario:** `code_structure_sample/` (git-ignored staging, + zip): report
+  `code_structure_sample_2026-08-15.pdf` (plain-language, per user: readable without finance
+  background; pandoc@47 + Edge headless) + md + the pricer/ tree + shims + new test file +
+  00_README. User uploads to Google Drive.
+
+**Open / next**
+- ⏳ Mario approval of the sample → rollout order proposed: floating/hybrid → callable lattice
+  (`core/pricing/tree.py`) → **Monthly ~2,600-bond golden reconciliation** → ILB/agency wrappers →
+  MBS (data-gated). Questions asked in the report: `bons_input` naming, where `dataio` lives,
+  `endpoints/` = batch-first.
+- Unchanged: all 2026-07/08 data asks (Mario 11-security + MBS 882 + pass-through; Liping full gap
+  request) still awaiting.
+
+
 **Commit:** `f7e9e7d` (engine fix + invariance tests) · `c3ab2f5` (docs, this entry)
 **Hours:** `[TO FILL]`
 **Author:** charlieee0712
