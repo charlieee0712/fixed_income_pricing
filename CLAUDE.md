@@ -11,14 +11,20 @@ to MBS/CMBS/ABS/CMO/callables and a CreditMetrics risk layer.
 Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — references a client portfolio).
 
 ## Claude-web handoff (planning sync)
-- **`HANDOFF_FOR_CLAUDE_WEB.md`** (root) = distilled decision-state snapshot the user loads into a
-  claude.ai Project so web-Claude (the planning side) stays aligned with progress. **Refresh it in
-  the same commit as any milestone / comms-state change** (or when asked "更新handoff"): update
-  facts in place, REPLACE the Δ section (never append), bump the date+commit stamp. Hard cap
-  **250 lines** — new content displaces old. Content = decision-state + open items ONLY: no
-  ops/env/code detail (that's this file), no history (that's WORKLOG). After a refresh the user
-  re-syncs the file into the claude.ai Project. Keep it OUT of the `corporate_bond` Drive staging
-  copy (internal comms framing — not for Mario).
+- **`docs/handoff_for_claude_web/`** (11 numbered files; structure copied from the user's
+  csi1000 `handoff_2` pattern, 2026-08-15) = the bundle the user uploads into a claude.ai
+  Project so web-Claude (the planning side) tracks progress. Curated (update in place):
+  `00_START_HERE` (role, delta-first reading list — REPLACE the NEW list each refresh, never
+  append), `01_current_state_and_open_items`, `02_locked_decisions_and_conventions`,
+  `10_glossary`. Verbatim copies (re-copy on every refresh): 03←`PROJECT_STATUS.md`,
+  04←`WORKLOG.md`, 05←`COVERAGE.md`, 06←`docs/missing_data.md`,
+  07←`docs/phase2_methods_2026-07-22.md`, 08←the ACTIVE-workstream report (currently
+  `docs/code_structure_sample_2026-08-15.md`), 09←Mario's template txt. **Refresh in the same
+  commit as any milestone / comms-state change** (or on "更新handoff"); re-zip to
+  `handoff_for_claude_web_<date>.zip` (git-ignored) for upload; ≤12 files, new content
+  displaces old; precedence rule inside: 01 wins over the verbatim copies. Supersedes the
+  single root `HANDOFF_FOR_CLAUDE_WEB.md` (removed same day it was born, 2026-08-15). Keep
+  the bundle OUT of Drive staging copies (internal comms framing — not for Mario).
 
 ## Code-structure migration (Mario directive 2026-08-15) — STATUS: sample awaiting Mario
 - **Directive:** code "difficult to follow, a bit nested"; a **Google team takes over for

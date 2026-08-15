@@ -16,6 +16,7 @@ outputs/
 corporate_bond/
 code_structure_sample/
 code_structure_sample_*.zip
+handoff_for_claude_web_*.zip
 
 # ---- OS / editor ----
 .DS_Store
