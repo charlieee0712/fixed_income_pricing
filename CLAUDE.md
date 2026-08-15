@@ -10,6 +10,16 @@ Port a legacy Excel/VBA fixed-income pricing toolkit to a structured, scalable
 to MBS/CMBS/ABS/CMO/callables and a CreditMetrics risk layer.
 Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — references a client portfolio).
 
+## Claude-web handoff (planning sync)
+- **`HANDOFF_FOR_CLAUDE_WEB.md`** (root) = distilled decision-state snapshot the user loads into a
+  claude.ai Project so web-Claude (the planning side) stays aligned with progress. **Refresh it in
+  the same commit as any milestone / comms-state change** (or when asked "更新handoff"): update
+  facts in place, REPLACE the Δ section (never append), bump the date+commit stamp. Hard cap
+  **250 lines** — new content displaces old. Content = decision-state + open items ONLY: no
+  ops/env/code detail (that's this file), no history (that's WORKLOG). After a refresh the user
+  re-syncs the file into the claude.ai Project. Keep it OUT of the `corporate_bond` Drive staging
+  copy (internal comms framing — not for Mario).
+
 ## Environment (important)
 - **No usable local Python** on the Windows machine (only a Microsoft Store stub).
   Run code on **server 47** or a real local install. Don't assume `python` works locally.
