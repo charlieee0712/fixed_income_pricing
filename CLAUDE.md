@@ -11,7 +11,7 @@ to MBS/CMBS/ABS/CMO/callables and a CreditMetrics risk layer.
 Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — references a client portfolio).
 
 ## Claude-web handoff (planning sync)
-- **`docs/handoff_for_claude_web/`** (11 numbered files; structure copied from the user's
+- **`docs/handoff_for_claude_web/`** (12 numbered files; structure copied from the user's
   csi1000 `handoff_2` pattern, 2026-08-15) = the bundle the user uploads into a claude.ai
   Project so web-Claude (the planning side) tracks progress. Curated (update in place):
   `00_START_HERE` (role, delta-first reading list — REPLACE the NEW list each refresh, never
@@ -19,7 +19,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   `10_glossary`. Verbatim copies (re-copy on every refresh): 03←`PROJECT_STATUS.md`,
   04←`WORKLOG.md`, 05←`COVERAGE.md`, 06←`docs/missing_data.md`,
   07←`docs/phase2_methods_2026-07-22.md`, 08←the ACTIVE-workstream report (currently
-  `docs/code_structure_sample_2026-08-15.md`), 09←Mario's template txt. **Refresh in the same
+  `docs/code_structure_sample_2026-08-15.md`), 09←Mario's template txt,
+  11←`docs/monthly_gate0_memo_2026-08-17.md`. **Refresh in the same
   commit as any milestone / comms-state change** (or on "更新handoff"); re-zip to
   `handoff_for_claude_web_<date>.zip` (git-ignored) for upload; ≤12 files, new content
   displaces old; precedence rule inside: 01 wins over the verbatim copies. Supersedes the
@@ -38,7 +39,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   1–6 → OAS/Dur/Widen/Tighten/Steep/Flat cols P–U, vol/Vega V/W/Y/Z; mostly VAL 2010-03-01 with
   that day's 6-ccy Libor+swap par curves on-sheet; also Bloomberg-OAS col AD + diff AG). Mario:
   our results can be **checked against this sheet** ⇒ reconciliation = proposed next validation
-  milestone (needs swap-grid bootstrap + curve-twist/vol bumps).
+  milestone. [08-15 decode partly superseded 2026-08-17 — Gate 0 found the golden rows do NOT
+  price on the on-sheet Libor/swap curves; see the Monthly-recon section below.]
 - **Sample DONE (`241e76f`, 2026-08-15) — vanilla chain only (user: sample-first, rest after Mario
   OKs):** `src/pricer/` = template shape (`core/pricing/{cashflows,discounting,analytical}`,
   `core/risk/sensitivities`, `core/market/{spreads,curves}`, `core/utils/dates`,
@@ -53,6 +55,38 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
 - **Rollout rules when approved:** migrate module-by-module, shims keep old surface until retired,
   full suite green at every step, float-op order preserved (no numeric drift), docstrings carry
   the numbered Inputs blocks, new code imports `pricer.*` (never the shims).
+
+## Monthly-sheet golden reconciliation — plan Rev B, Gate 0 DONE (2026-08-17)
+- **Files:** plan `docs/monthly_reconciliation_plan_2026-08-15.md` (Rev B in place) + evidence
+  memo `docs/monthly_gate0_memo_2026-08-17.md` (all cell/VBA-line citations). Gate 0 = inventory
+  only (no product code); Gates 1+ await Mario's sample approval (lock #15).
+- **F1 curve truth:** every golden row prices via `zeroyield4(ccy, val-date)` = **GOVERNMENT par
+  curves** (USD = H.15/CMT 11 pillars → 41-tenor gap-fill → continuous 374-month ×4-freq
+  bootstrap = our own architecture). BondOAS tree consumes the same build (`IYC` par; Libor only
+  as 1–5M stubs). Top-block Libor/swap + `c:\blp\curves\` files = separate manual chain, OFF the
+  golden path (#NAME?-dead cells; mixed-epoch cached rates). USD pillars = FRED `DGS*` for ALL
+  three val dates (2010-03-01/2012-06-01/2012-12-12; tracked txt files have all three too) ⇒
+  curves are a rebuild, not recovery; 2012 blocks feasible.
+- **F2:** `bondcalc` vanilla chain is convention-consistent (continuous z, `Exp(−(z+OAS)·t)`) —
+  NO BondPrice bug here ⇒ `vba_compat` dropped from this workstream (H2 collapsed).
+- **F3 real hazards:** ① month-grid convention (Δmonth counts, coupon each 12/freq months, face
+  at last step = maturity truncated, NO accrued, 30y cap, freq-matched curve table) ⇒ build a
+  thin **legacy-parity mode** beside production; ② routing by live Bloomberg `mty_typ`/
+  `calc_typ_des` (cached cols AB/AC with gaps; empty ⇒ FRN-tree fallback; MBS by asset class;
+  Govt Bonds → vanilla unconditionally) ⇒ dead-AB rows classified empirically.
+- **Scope:** table = multi-asset (MBS 956/corp 856/CMBS 351/govt 198/AGY 104). Vanilla golden ≈
+  **420 rows** (248 corp/agy AT-MATURITY-FIXED @2010-03-01 + ~174 govt FIXED, Treasuries = OAS≈0
+  anchors) — NOT ~1,900. ZERO(110) legacy P=0 + DEFAULTED(21)=0 ⇒ excluded. FLOATING(426) =
+  BondOAS(8) tree, **spread-duration** convention, heavy tails. VARIABLE ≈ fix-to-float priced
+  as callable-FIXED (URS-overlapping names; divergence vs `hybrid.py` = reportable finding).
+  Calibration input = **col B** (X = base copy); AG = RELATIVE |P−AD|/|AD| (AD n=311); col I =
+  Bloomberg eff-dur n=2,278 ⇒ duration three-way (H4). Table ≈ frozen pasted values (56 live
+  bondcalc formulas; ~60 stale cells/col). Veloz solver floor ~0.1–1bp; |V−B| = per-row legacy
+  solve residual.
+- **SteepFlat Table Monthly.txt LOST** (43% of FIXED rows are zero-twist T=U ⇒ reconcilable
+  without it); ask Mario ONLY when the T/U gate opens (lock #13). No asks opened at Gate 0.
+- **Sequencing note:** the vanilla gates (curve rebuild → pilot → ~420-row bulk) do NOT depend
+  on the tree rollout and directly validate the 08-15 sample's chain.
 
 ## Environment (important)
 - **No usable local Python** on the Windows machine (only a Microsoft Store stub).

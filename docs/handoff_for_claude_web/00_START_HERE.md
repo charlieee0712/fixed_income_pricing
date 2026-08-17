@@ -1,8 +1,9 @@
 # START HERE — handoff bundle for the Claude-web planning side
 
-**Refreshed 2026-08-15 · repo `fixed_income_pricing` @ `b91854f` (main) · 153 tests green.**
-**First bundle in this multi-file structure — it SUPERSEDES the single-file
-`HANDOFF_FOR_CLAUDE_WEB.md` (remove that file from Project knowledge if present).**
+**Refreshed 2026-08-17 · repo `fixed_income_pricing` main (docs-only commit after `241e76f`) ·
+153 tests green (unchanged — Gate 0 touched no code).**
+This multi-file bundle supersedes the old single-file `HANDOFF_FOR_CLAUDE_WEB.md` (remove that
+file from Project knowledge if still present).
 
 Client-confidential: this Project references a private pension portfolio. Keep the Project
 private; don't share its artifacts onward.
@@ -22,26 +23,31 @@ may lag by days on freshly-moving items) > everything else. Numbers in `01` are 
 
 ## What is NEW / read in this order
 
-1. **`01_current_state_and_open_items.md`** — the delta-first summary: what changed
-   2026-08-15 (Mario's code-structure directive, the sample we shipped, the Monthly-sheet
-   golden discovery), the full current state (pipeline, engines, results @ 2009-03-31), who
-   we are waiting on for what, and the milestone order.
-2. **`08_workstream_code_structure_report.md`** — the ACTIVE workstream: the plain-language
-   report sent to Mario with the restructured sample (his template applied to the vanilla
-   chain; per-metric functions; input catalogue; the ~2,600-bond Monthly reconciliation
-   proposal). `09_code_structure_template.txt` is Mario's original template it implements.
-3. **`02_locked_decisions_and_conventions.md`** — the rules your plans must respect:
-   calibration definition, dates, price-convention law, universe rules, data-gap discipline,
-   the restructure ground rules. Do not re-litigate items here.
-4. **`06_missing_data_registry.md`** — every known data gap → its landing file → interim
-   treatment → request status (the living registry; Bloomberg wins over provisional values).
-5. **`03_project_status_full.md`** — the canonical full methodology/architecture doc, verbatim.
-6. **`04_worklog_full.md`** — the complete dated work history, verbatim (reverse-chronological;
-   the 2026-08-15 entry covers today's directive + sample + Monthly decode in depth).
-7. **`05_coverage_matrix.md`** — coupon-class → engine → status over the 676-row pivot.
-8. **`07_phase2_methods.md`** — agencies / guaranteed / inflation-linked methods & results.
-9. **`10_glossary.md`** — custodian columns and project shorthand (BT, 47, canonical, route,
-   Monthly sheet, …). Skim once; return as needed.
+1. **`01_current_state_and_open_items.md`** — delta-first: what changed 2026-08-17 (your
+   Monthly-reconciliation plan was executed at Gate 0 — **its Rev-A §2/§3 premises were
+   refuted by the workbook/VBA evidence**; the plan is now Rev B in the repo), plus the full
+   current state and waiting-on list.
+2. **`11_monthly_gate0_memo.md`** — **NEW: the Gate-0 inventory memo** (all verdicts with
+   cell/VBA-line citations). Read this before any further planning on the Monthly
+   reconciliation: it replaces Rev A's assumptions (government curves, not Libor/swap;
+   `vba_compat` dropped; month-grid parity mode; routing fields; vanilla golden ≈ 420 rows,
+   not ~1,900; duration three-way added). The repo's plan file is already Rev B — your local
+   memory of Rev A is stale.
+3. **`08_workstream_code_structure_report.md`** — the workstream still AWAITING MARIO: the
+   plain-language report + restructured sample (his template on the vanilla chain).
+   `09_code_structure_template.txt` = his original template.
+4. **`02_locked_decisions_and_conventions.md`** — the rules your plans must respect. Do not
+   re-litigate items here.
+5. **`06_missing_data_registry.md`** — every known data gap → landing file → interim
+   treatment → request status. (Gate 0 opened NO new asks; the lost SteepFlat twist file
+   becomes an ask only when the T/U gate opens.)
+6. **`03_project_status_full.md`** — canonical full methodology/architecture doc, verbatim.
+7. **`04_worklog_full.md`** — complete dated history, verbatim (the 2026-08-17 entry = Gate 0
+   in depth; 2026-08-15 = directive + sample + Monthly decode).
+8. **`05_coverage_matrix.md`** — coupon-class → engine → status over the 676-row pivot.
+9. **`07_phase2_methods.md`** — agencies / guaranteed / inflation-linked methods & results.
+10. **`10_glossary.md`** — custodian columns and project shorthand. Skim once; return as
+    needed.
 
 Not included on purpose (ask the CLI session if needed): per-bond ISIN evidence
 (`docs/isin_lookup_2026-07-20.md`), server/ssh mechanics, code files.
@@ -50,6 +56,6 @@ Not included on purpose (ask the CLI session if needed): per-bond ISIN evidence
 
 The CLI session refreshes it at every milestone / comms-state change (or on request,
 "更新handoff"): curated files `00`/`01`/`02`/`10` are updated in place (the NEW list above
-is REPLACED each time, never appended), `03`–`09` are re-copied verbatim from the repo, and
-the bundle is re-zipped. The user then replaces the files in this Project's knowledge.
-File-count discipline: ≤ 12 files; new content displaces old.
+is REPLACED each time, never appended), `03`–`09` and `11` are re-copied verbatim from the
+repo, and the bundle is re-zipped. The user then replaces the files in this Project's
+knowledge. File-count discipline: ≤ 12 files; new content displaces old (now at 12).

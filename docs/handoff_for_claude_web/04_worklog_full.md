@@ -5,6 +5,69 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-17 — Monthly-recon plan (Rev A from planning side) → Gate 0 EXECUTED → plan Rev B
+**Commit:** this entry's commit (docs only — Gate 0 is pure inventory, no product code)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- Planning side delivered `docs/monthly_reconciliation_plan_2026-08-15.md` (gate plan for the
+  Monthly-sheet golden). Gate 0 = inventory, explicitly outside the sample-first freeze →
+  executed: openpyxl inventory on 47 (sheet 2,896×81, golden header = row 99) + targeted
+  `extracted/project_vba.txt` reads + zip/curve-txt checks. Evidence with cell/line citations:
+  **`docs/monthly_gate0_memo_2026-08-17.md`**. Three findings overturned the plan's premises:
+- **F1 — curve regime:** every golden row prices via `zeroyield4(ccy, O-date)` = **GOVERNMENT
+  par curves** (USD = H15T* H.15-CMT 11 pillars → 41-tenor gap-fill → the continuous 374-month
+  × 4-frequency bootstrap — our pipeline's own architecture; 15 other ccys = Bloomberg country
+  govt curves). The BondOAS tree consumes the same build (`IYC` par vector; Libor only as its
+  1–5M deposit stubs). The sheet's top Libor/swap block + `c:\blp\curves\` files = a separate
+  manual chain, **not in the golden path** (its `=Zeroyield` cells are #NAME?-dead; the UDF
+  was a side-effect file-writer returning 0 anyway). USD pillars = FRED `DGS*` for **all three
+  valuation dates** (tracked `*_Yield_Curve.txt` also has all three) ⇒ curves are a rebuild,
+  not data recovery; the 2012 blocks (122+274 rows) become feasible instead of conditional.
+- **F2 — `vba_compat` dropped:** the `bondcalc` vanilla chain is convention-consistent
+  (continuous z, `Exp(−(z+OAS/1e4)·t)`) — the `BondPrice` bug is absent; pre-registered H2
+  collapsed.
+- **F3 — the real hazards:** (a) **month-grid convention** — Δmonth counting, coupons every
+  `12/freq` months from the valuation month, face at the last step (maturity truncated), first
+  coupon a full period out, **no accrued**, 30y cap, curve table chosen by the bond's freq ⇒
+  recon needs a thin **legacy-parity mode** beside production; (b) **routing** by live
+  Bloomberg `mty_typ`/`calc_typ_des` fetched inside `BondCalc` (cached in cols AB/AC with
+  gaps; empty ⇒ FRN-tree fallback; MBS by asset class; Government Bonds → vanilla
+  unconditionally) ⇒ route by AN+AB/AC, dead-AB rows classified empirically.
+- **Scope recount:** the table is multi-asset (Govt MBS 956 / corp 856 / CMBS 351 / govt 198 /
+  AGY 104). True vanilla golden ≈ **420 rows** (248 corp/agy AT-MATURITY-FIXED, all
+  @2010-03-01, P med 191bp + ~174 govt FIXED incl. Treasuries as OAS≈0 anchors, p25 −5bp) —
+  not ~1,900. **ZERO (110): legacy P=0** (Coupon=0 validation reject — no vanilla-zero golden
+  exists) and DEFAULTED (21)=0 ⇒ excluded. FLOATING (426) = `BondOAS(8)` tree with
+  **spread-duration** convention (Q med 3.6 ≠ time-to-reset) and heavy tails (62 neg / 95 at
+  the 1000bp search cap). VARIABLE ≈ fix-to-float priced as **callable-FIXED** on the lattice
+  (row 168 = Allstate 6.125 2037 — URS-overlapping names; divergence vs our `hybrid.py` =
+  reportable finding, not imitated beyond fidelity). Calibration input = **col B** (X = base
+  copy); AG = **relative** |P−AD|/|AD| (AD n=311); bonus leg **col I = Bloomberg eff-duration
+  n=2,278** ⇒ duration three-way (new H4). Golden table is essentially **frozen output**
+  (pasted values; only 56 live `bondcalc` formulas; ~60 stale error cells per column). Legacy
+  solver noise floor measured (Veloz 1e-4 relative ⇒ ~0.1–1bp; V=W=reprice on non-option rows
+  ⇒ |V−B| = per-row legacy solve residual, V=W on 1,225/1,826 FIXED).
+- **SteepFlat Table Monthly.txt is lost** (not in the workbook's 26 sheets nor the data zips);
+  missing-file ⇒ zero-twist, and 43% of FIXED rows show T=U (those reconcile without it); ask
+  Mario **only when the T/U gate opens** (lock-#13 discipline — no asks opened today).
+- **Plan → Rev B in place** (same file): §2/§3 rewritten, Gate 1 = Treasury `zeroyield4`
+  rebuild (hypothesis: `bootstrap.py` already matches modulo solver slop), Gate-2 pilot
+  re-specced (govvie anchors replace the dead zero rows), Gate 3 ≈ 420 rows with new exception
+  reasons (`route-unknown` / `legacy-solver-cap` / `legacy-dead`), Gate-4 table updated, H2
+  removed / H4 added. **The vanilla gates no longer depend on the tree rollout** — they
+  directly validate the chain the 08-15 sample migrated; sequencing decision left with the
+  Mario rollout conversation.
+- Handoff bundle refreshed (00/01 curated updated, 04 re-copied, **new 11 = the Gate-0 memo**
+  ⇒ 12 files, at cap). Also committed: user's touch-up of `docs/whatsapp_liping_2026-07-30.md`
+  (emoji removed from the sent English text).
+
+**Open / next**
+- Unchanged: ⏳ Mario sample approval + the standing data asks. On approval: rollout per the
+  01 §5 order with the Rev-B sequencing note above.
+- Gate-1 prep when green-lit: FRED DGS pulls for 40238/41061/41255 + the gap-fill replica.
+
+
 ## 2026-08-15 — Mario code-structure directive → template-layout SAMPLE (vanilla chain) + Monthly sheet decoded
 **Commit:** `241e76f` (sample) · `eef7a4d` (Claude-web handoff) · docs = this entry's commit
 **Hours:** `[TO FILL]`

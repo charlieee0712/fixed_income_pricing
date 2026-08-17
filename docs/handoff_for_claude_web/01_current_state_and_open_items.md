@@ -1,6 +1,40 @@
-# Current state & open items — 2026-08-15
+# Current state & open items — 2026-08-17
 
-## Δ — what changed today (2026-08-15)
+## Δ — what changed 2026-08-17 (Monthly-recon Gate 0)
+
+- **Your reconciliation plan arrived and Gate 0 was executed the same day** (inventory only —
+  inside the sample-first freeze by design). Full evidence: `11_monthly_gate0_memo.md`.
+  **Three Rev-A premises fell**; the repo's plan file is now **Rev B** (updated in place):
+  1. **Curve regime:** the golden rows do NOT price on the sheet's Libor/swap block. Every row
+     calls `zeroyield4(ccy, valuation)` = **government par curves** (USD = H.15/CMT pillars →
+     the familiar 41-tenor grid → the continuous 374-month ×4-freq bootstrap). Even the
+     option-row tree consumes that build; Libor survives only as its 1–5M deposit stubs. USD
+     pillars = FRED for **all three valuation dates** ⇒ the 2012 blocks became feasible, and
+     Gate 1 is a small rebuild (our `bootstrap.py` is likely already the right algorithm), not
+     a new swap-bootstrap module.
+  2. **Convention:** `bondcalc`'s vanilla chain is internally consistent — the `BondPrice`
+     discounting bug is absent ⇒ `vba_compat` leaves the workstream; H2 collapsed (the
+     pre-registered branch).
+  3. **Real hazards found instead:** the legacy prices on a **month-count grid with no
+     accrued** (coupon every 12/freq months from the valuation month, maturity truncated to
+     the last step, 30y cap) ⇒ we build a thin legacy-parity mode; and per-row **engine
+     routing ran on live Bloomberg fields** (`mty_typ`/`calc_typ_des`, partially cached in
+     the sheet) ⇒ dead-cache rows get classified empirically.
+- **Scope recount:** the table is multi-asset (956 Govt-MBS / 856 corporates / 351 CMBS / 198
+  govt bonds / 104 agencies). The true *vanilla* golden ≈ **420 rows**, not ~1,900; ZERO
+  (110) and DEFAULTED (21) rows carry legacy P=0 (nothing to reconcile); FLOATING used the
+  FRN tree with a **spread-duration** convention; fix-to-float hybrids were priced as
+  callable-fixed (a legacy-vs-us methodology divergence we will *report*, not imitate). Bonus:
+  a Bloomberg **effective-duration column (n=2,278)** was found ⇒ a duration three-way (H4)
+  joins the OAS three-way (n=311).
+- **No new counterparty asks** (Gate-0 discipline held). The one lost input — the SteepFlat
+  twist file — becomes a Mario ask only when the T/U gate opens; 43% of fixed rows are
+  zero-twist and reconcile without it.
+- **Sequencing insight for your planning:** the vanilla gates (curve → pilot → bulk) do NOT
+  depend on the callable-tree rollout, and they directly validate the very chain the 08-15
+  sample migrated — an option to surface when Mario replies.
+
+## Δ — 2026-08-15 (previous refresh)
 
 - **New Mario directive: restructure the code.** His words: "a bit difficult to follow, a
   bit nested"; a **Google team will take over the codebase for cloud-computing
@@ -84,23 +118,23 @@ dirty (tested both ways vs custodian durations).
   custodian exactly by construction; quality is now judged on risk metrics and the
   invariance suite (**153 green**).
 
-## 3 · The Monthly sheet (decoded 2026-08-15) — structure reference + future golden
+## 3 · The Monthly sheet — reconciliation golden (Gate 0 closed 2026-08-17)
 
-In `Project Pricing Fixed Income Instruments.xlsm`: ① rows 3–43 = per-currency curve
-inputs (US Libor 1–12M + USSA swap par 2–30y; USD/DKK/EUR/GBP/JPY/SEK) bootstrapped by the
-`Zeroyield` UDF; ② rows 47–60 = demo block — per-metric simple functions sharing one input
-list (`CorpBondOAS` / `CorpBondDuration` / `CorpBondwidening(±bp)` / `CorpBondSteepening`,
-and `bondoas(analysisType 1–10)` for callable/put/sink/FRN/mortgage); ③ rows 61–98 =
-per-function **input dictionaries** (Input Number | Field Name | Options | Description +
-used-flags; Daycount: "30/360, but is not used" — compatible with our ACT/364 internal
-convention); ④ row 99+ = **~2,600 bonds with the legacy system's outputs** via
-`bondcalc(analysisType 1–6)`: OAS, Duration, Widening/Tightening (±10bp),
-Steepening/Flattening, vol-bump prices and Vega — mostly at valuation **2010-03-01**
-(~2,190 rows; also 2012-06-01 and 2012-12-12 blocks), plus a Bloomberg-OAS column with a
-diff column. Mix ≈ 1,890 fixed / 430 floating / 130 zero / 74 variable + tails.
-⇒ ①–③ are adopted in the sample; ④ = the proposed **large-scale reconciliation golden**
-(rebuild the sheet's curves, run our engines over the rows, compare column-by-column) —
-needs a swap-grid bootstrap variant + curve-twist and vol bumps.
+In `Project Pricing Fixed Income Instruments.xlsm`: ① rows 1–43 = per-currency Libor/swap
+curve block + `=Zeroyield` cells — **a separate manual tool-chain, NOT in the golden data
+path** (Gate-0 finding F1; cells #NAME?-dead, cached rates mixed-epoch); ② rows 47–60 = demo
+block (per-metric simple functions — adopted in the sample); ③ rows 61–98 = per-function
+**input dictionaries** (adopted; Daycount "not used" — compatible with our ACT/364); ④ row
+99 header + **2,642 golden rows priced by `bondcalc(analysisType 1–6)`** on
+**`zeroyield4` GOVERNMENT curves** (USD = H.15/CMT → 41-tenor grid → continuous 374-month
+bootstrap), month-count cash-flow grid, no accrued, calibration input = col B; outputs
+P–U (OAS/duration/±10bp reprices/steep/flat), V/W vol reprices, Y/Z vega; references
+AD = Bloomberg OAS (n=311, AG = relative diff) **and col I = Bloomberg effective duration
+(n=2,278)**. Population: multi-asset (956 MBS / 856 corp / 351 CMBS / 198 govt / 104 AGY);
+**vanilla golden ≈ 420 rows** (corp/agy at-maturity-fixed 248 + govt fixed ~174, Treasuries
+as OAS≈0 anchors); ZERO/DEFAULTED legacy-dead (P=0); FLOATING = FRN-tree, spread-duration
+convention. Gate plan (Rev B) + full verdicts: `11_monthly_gate0_memo.md` and the repo's
+`docs/monthly_reconciliation_plan_2026-08-15.md`.
 
 ## 4 · Awaiting counterparties (all requests sent)
 
@@ -124,6 +158,10 @@ confirmation (lattice already matches custodian durations) · one rating-feed qu
 
 1. **Mario approves the sample** → rollout: floating/hybrid → callable lattice
    (`core/pricing/tree.py`) → **Monthly golden reconciliation** → ILB/agency wrappers → MBS.
+   Gate-0 correction to this order: the reconciliation's *vanilla* gates (curve rebuild →
+   ~25-row pilot → ~420-row bulk) need no tree and validate the sample's own chain — they can
+   run right after (or alongside) floating/hybrid if early evidence is wanted; only the
+   option/FRN/vol columns wait for the tree.
 2. **Any Bloomberg return** → dedupe the two channels → diff vs provisional overrides
    (Bloomberg wins, deltas logged) → CSV landings → rerun both drivers → refreshed outputs.
 3. **Pass-through data lands** → price as scheduled-amortization vanilla.
