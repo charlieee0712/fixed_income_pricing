@@ -62,7 +62,7 @@ MTG_WACPN, MTG_WAM, MTG_STATED_WALA, MTG_AOLS, MTG_GEN_CPR_3M, MTG_GEN_CPR_6M, M
 
 ## English version
 
-Liping, if you have Bloomberg access at school today, could you help me pull a few things? 🙏 In priority order:
+Liping, if you have Bloomberg access at school today, could you help me pull a few things? In priority order:
 
 *① Govt MBS: 882 CUSIPs × 8 fields (top priority — the pricing engine is built and waiting on this)*
 Fields (security key = CUSIP + " Mtge"):
