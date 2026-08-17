@@ -21,8 +21,10 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   07←`docs/phase2_methods_2026-07-22.md`, 08←the ACTIVE-workstream report (currently
   `docs/code_structure_sample_2026-08-15.md`), 09←Mario's template txt,
   11←`docs/monthly_recon_report_2026-08-17.md` (was the Gate-0 memo until later that day —
-  new content displaces old; the memo stays in repo docs/). **Refresh in the same
-  commit as any milestone / comms-state change** (or on "更新handoff"); re-zip to
+  new content displaces old; the memo stays in repo docs/). ⚠️ **Refresh protocol CHANGED
+  (user, 2026-08-17): refresh ONLY when the user explicitly asks ("更新handoff") — do NOT
+  auto-refresh at milestones/comms changes** [was: same-commit refresh at every milestone;
+  at milestones just mention a refresh is available on request]; re-zip to
   `handoff_for_claude_web_<date>.zip` (git-ignored) for upload; ≤12 files, new content
   displaces old; precedence rule inside: 01 wins over the verbatim copies. Supersedes the
   single root `HANDOFF_FOR_CLAUDE_WEB.md` (removed same day it was born, 2026-08-15). Keep
