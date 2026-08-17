@@ -1,12 +1,15 @@
 # Monthly-sheet golden reconciliation — design & gate plan
 
-**Status:** **Rev B, 2026-08-17 — Gate 0 EXECUTED** (evidence + citations in
-`docs/monthly_gate0_memo_2026-08-17.md`; this revision folds its verdicts in). Rev A (planning
-side, 2026-08-15) assumed the sheet priced on its top-block Libor/swap curves and that the
-`BondPrice` discounting bug might carry over — **both premises were refuted by Gate 0**; §2/§3
-are rewritten accordingly. Execution of Gate 1+ remains gated on Mario's sample approval and
-sequenced per `01` §5, with one new observation (§9): the vanilla gates no longer depend on the
-tree rollout.
+**Status:** **Rev B, 2026-08-17 — Gates 0–3 EXECUTED AND CLOSED** (Gate 0 evidence:
+`docs/monthly_gate0_memo_2026-08-17.md`; Gates 1–3 results:
+`docs/monthly_recon_report_2026-08-17.md`). Rev A (planning side, 2026-08-15) assumed the sheet
+priced on its top-block Libor/swap curves and that the `BondPrice` discounting bug might carry
+over — **both premises were refuted by Gate 0**; §2/§3 are rewritten accordingly. Gates 1–3 ran
+same-day on the **user's explicit authorization** (recorded in §9). Headline verdicts: engine
+parity proven exact on current-code-session caches (2012-12 batch: 100% within tolerance,
+ΔOAS ≤0.9bp, Δdur ≤0.0003y); the 2010-03-01 batch = `legacy-stale-session` (older code rev ×
+mixed-vintage data — see the report §4), on which the duration three-way vs Bloomberg goes
+94% our way. Open scope = the tree-gated extensions (§ Gate 4).
 **Respects locks:** `02` #4 (two legacy bootstraps, never conflate), #15 (sample-first),
 #16 (migration ground rules), #17 (Monthly = reference & golden).
 
@@ -99,7 +102,7 @@ concept — raw B matched to an accrued-free PV; 0.6 FRN current-coupon in C, ma
 pulls; VARIABLE ≈ fix-to-float priced as callable-fixed; 0.7 no 2012 curve blocks and none
 needed (FRED); 0.8 month-grid (Hazard A).
 
-### Gate 1 — Curve rebuild (first build item on approval)
+### Gate 1 — Curve rebuild ✅ CLOSED 2026-08-17 (exact; report §2)
 
 Rebuild `zeroyield4`'s USD curve at 2010-03-01 (then the 2012 dates): FRED DGS pillars →
 the exact gap-fill arithmetic → the `zeroyield` bootstrap (374-month, 4 frequencies,
@@ -113,7 +116,7 @@ the legacy solver's noise floor; if not, a thin exact replica joins the parity m
 
 **Artifact:** per-date curve tables + a permanent golden test (`tests/test_monthly_curves.py`).
 
-### Gate 2 — Pilot (~25 rows, the parity verdict)
+### Gate 2 — Pilot ✅ CLOSED 2026-08-17 (verdicts in report §3; tolerances re-baselined: OAS ≤1bp target / >2bp exception, dur ≤0.001y / >0.05y, reprice ≤0.01 / >0.10)
 
 Sample ~20 from the 248-row corp/agy AT-MATURITY-FIXED set (spanning maturity, coupon,
 premium/discount; excluding the 8 solver-capped P≥999 rows) + ~5 Government-Bond rows
@@ -128,7 +131,7 @@ nothing to reconcile; Rev A's pilot zeros are replaced by the govvie anchors).
 
 **Artifact:** pilot memo (residual table + re-baselined tolerances).
 
-### Gate 3 — Bulk vanilla (the reconciliation proper)
+### Gate 3 — Bulk vanilla ✅ CLOSED 2026-08-17 (report §5; NOTE the population verdict: only current-code-session caches [2012-12 batch] are valid numeric goldens — the 2010-03-01 batch is `legacy-stale-session` and reconciles three-way vs Bloomberg columns instead)
 
 **Scope corrected: ~420 rows** (248 corp/agy at-maturity-fixed + ~174 govt-bond fixed), plus
 the 217 dead-AB FIXED corporates run *speculatively* through the parity mode for empirical
@@ -189,6 +192,11 @@ but AD's own curve setting stays unknown ⇒ the robust read remains dispersion,
 7. T/U twist — file-gated for the 57% non-zero-twist rows.
 8. Bloomberg basis (AD, col I) — exploratory register only.
 9. Sheet staleness — bounded and enumerated (~60 stale cells/col + 3 text rows + row 100).
+10. **Session vintage (found at Gates 2–3, the dominant effect):** the 2010-03-01 batch was
+    cached by an older code revision (duration ÷100 scaling, dead T/U cells) on
+    mixed-vintage market data (run-time Libor deposits survive in the top block; no single
+    curve fits the pillar rows) ⇒ reason `legacy-stale-session`; only 2012-12-batch caches
+    are valid numeric goldens.
 
 ## 7. Tolerances (provisional — Gate 2 re-baselines)
 
@@ -216,7 +224,11 @@ production pricing paths.
 
 ## 9. Sequencing vs lock #15 (sample-first)
 
-- **Done before Mario's reply:** Gate 0 only (pure inventory) — completed 2026-08-17.
+- **Done before Mario's reply:** Gate 0 (pure inventory) — completed 2026-08-17. **Gates 1–3
+  followed the same day on the user's explicit authorization** (their call as sequencing
+  owner, 2026-08-17): net-new validation code in `src/recon/`, no migration touched, so the
+  sample-first freeze's purpose — don't build on an unapproved layout — was not violated;
+  the deviation from the default wait-for-Mario order is recorded here.
 - **On approval:** the `01` §5 milestone order stands, with one Gate-0 correction: the vanilla
   gates (1–3) **no longer depend on the tree rollout** (Rev A had tied the reconciliation to
   option-row machinery; the vanilla golden needs none of it). They also validate exactly the

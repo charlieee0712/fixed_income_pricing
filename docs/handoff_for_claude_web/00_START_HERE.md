@@ -23,19 +23,20 @@ may lag by days on freshly-moving items) > everything else. Numbers in `01` are 
 
 ## What is NEW / read in this order
 
-1. **`01_current_state_and_open_items.md`** — delta-first: what changed 2026-08-17 (your
-   Monthly-reconciliation plan was executed at Gate 0 — **its Rev-A §2/§3 premises were
-   refuted by the workbook/VBA evidence**; the plan is now Rev B in the repo), plus the full
-   current state and waiting-on list.
-2. **`11_monthly_gate0_memo.md`** — **NEW: the Gate-0 inventory memo** (all verdicts with
-   cell/VBA-line citations). Read this before any further planning on the Monthly
-   reconciliation: it replaces Rev A's assumptions (government curves, not Libor/swap;
-   `vba_compat` dropped; month-grid parity mode; routing fields; vanilla golden ≈ 420 rows,
-   not ~1,900; duration three-way added). The repo's plan file is already Rev B — your local
-   memory of Rev A is stale.
-3. **`08_workstream_code_structure_report.md`** — the workstream still AWAITING MARIO: the
-   plain-language report + restructured sample (his template on the vanilla chain).
-   `09_code_structure_template.txt` = his original template.
+1. **`01_current_state_and_open_items.md`** — delta-first: what changed 2026-08-17. Your
+   Monthly-reconciliation plan was **executed through Gate 3 the same day** (Gate 0 refuted
+   Rev A's §2/§3 premises → plan is Rev B in the repo; the user then explicitly authorized
+   Gates 1–3). Headlines: engine parity proven exact on current-code-session caches; the
+   2010-03-01 batch = `legacy-stale-session` (not a valid golden); durations three-way vs
+   Bloomberg goes 94% our way. Your memory of Rev A is stale.
+2. **`11_monthly_recon_report.md`** — **NEW: the Gates-1–3 report** (results, evidence
+   chain for the stale-session verdict, re-baselined tolerances, what remains tree-gated).
+   The Gate-0 inventory memo (cell/VBA citations) lives in the repo:
+   `docs/monthly_gate0_memo_2026-08-17.md` — ask the CLI session if needed.
+3. **`08_workstream_code_structure_report.md`** — the workstream AWAITING MARIO (Drive
+   upload + WhatsApp ping 08-17): the plain-language report + restructured sample — its §5
+   now carries the Monthly-reconciliation evidence. `09_code_structure_template.txt` = his
+   original template.
 4. **`02_locked_decisions_and_conventions.md`** — the rules your plans must respect. Do not
    re-litigate items here.
 5. **`06_missing_data_registry.md`** — every known data gap → landing file → interim

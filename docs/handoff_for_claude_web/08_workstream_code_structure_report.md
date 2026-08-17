@@ -13,8 +13,10 @@ pre { background: #f4f4f4; padding: 8px; font-size: 8.5pt; line-height: 1.35; ov
 
 # New Code Structure — First Sample
 
-**To:** Mario · **Date:** 2026-08-15 · **Scope:** corporate bonds (the part already built) ·
-**Result:** restructured sample ready; every number identical to before (all 153 automatic checks pass)
+**To:** Mario · **Date:** 2026-08-15, updated 2026-08-17 · **Scope:** corporate bonds (the part already built) ·
+**Result:** restructured sample ready; every number identical to before (all 166 automatic
+checks pass) — and the restructured engine has now been checked against the legacy sheet's
+own saved answers (see section 5)
 
 ## 1. What we did
 
@@ -110,25 +112,39 @@ We decoded the sheet completely; it gives us three things:
 
 1. **The function shape** (its example block, rows 47–60) — adopted above.
 2. **The input-dictionary style** (rows 61+) — adopted above.
-3. **An answer key.** From row 99 down it holds ~2,600 real bonds — their terms, market
-   prices, and the results the old system computed (spread, duration, scenario prices),
-   mostly as of 2010-03-01, with that day's interest-rate curves for six currencies at the
-   top of the sheet. Once you approve the structure, we will rebuild those curves, run our
-   new code over all ~2,600 bonds, and compare our numbers to the sheet's, column by column
-   — a large-scale check that the rebuilt engine reproduces the old system. (The sheet even
-   carries Bloomberg's own spread next to the legacy one, so we can compare against both.)
+3. **An answer key — and we have now used it.** From row 99 down the sheet holds ~2,600
+   real bonds with the results the old system computed (spread, duration, scenario prices),
+   saved in batches dated 2010-03-01, 2012-06-01 and 2012-12-12. We rebuilt the system's own
+   interest-rate curves (the US Treasury rates it pulled, recovered from public Fed data),
+   replicated its calculation conventions to the letter, and ran the comparison for the
+   plain fixed-coupon bonds. The outcome, in plain words:
+   - **Wherever the sheet's saved numbers come from its most recent runs (the Dec-2012
+     batch), our rebuilt engine reproduces them essentially exactly** — spreads within 1bp
+     (that is the old solver's own precision), durations matching to 4 decimal places,
+     100% of comparable bonds inside tolerance.
+   - The 2010 batch's saved numbers turned out to predate the workbook's current code and
+     to mix market data of different dates (e.g. its saved durations are exactly 100×
+     too small — an old scaling bug fixed in later code — and no single day's curve can
+     explain its prices). That batch therefore cannot serve as an answer key. But the
+     sheet also stores **Bloomberg's own numbers** for those bonds, and there our new
+     engine wins clearly: on ~200 bonds with a Bloomberg duration, ours is closer than
+     the sheet's saved value for **94%** of them (typical gap: ours 0.5yr vs 4.3yr).
+   - Callable / floating / mortgage rows follow the same way once those engines are
+     rolled out in the new structure.
 
 ## 6. Proof that nothing changed
 
 The project keeps a suite of automatic checks (fixed reference numbers and internal
 consistency rules). All **145 existing checks pass unchanged** on the restructured code,
-plus 8 new ones that lock the new layout itself — **153 green**, run time ~10s. The sample
-lives in one isolated commit, so it is trivial to adjust or undo.
+plus 8 that lock the new layout itself and 13 that lock the Monthly-sheet comparison
+machinery — **166 green**, run time ~10s. The sample lives in isolated commits, so it is
+trivial to adjust or undo.
 
 ## 7. Questions for you
 
-1. OK to roll this pattern out to the rest (floating → callable → the ~2,600-bond Monthly
-   comparison → inflation-linked/agency → MBS when the data arrives)?
+1. OK to roll this pattern out to the rest (floating → callable → the Monthly comparison
+   for callable/floating rows → inflation-linked/agency → MBS when the data arrives)?
+   The plain fixed-coupon part of the Monthly comparison is already done — see section 5.
 2. Naming: your template says `bons_input.py`; we wrote `bonds_input.py` — keep?
 3. Where should the data-loading code (reading the holdings workbook, building the bond
    list) live in your template — inside each asset class, or as its own layer?

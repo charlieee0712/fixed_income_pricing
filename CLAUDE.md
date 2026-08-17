@@ -20,7 +20,8 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   04←`WORKLOG.md`, 05←`COVERAGE.md`, 06←`docs/missing_data.md`,
   07←`docs/phase2_methods_2026-07-22.md`, 08←the ACTIVE-workstream report (currently
   `docs/code_structure_sample_2026-08-15.md`), 09←Mario's template txt,
-  11←`docs/monthly_gate0_memo_2026-08-17.md`. **Refresh in the same
+  11←`docs/monthly_recon_report_2026-08-17.md` (was the Gate-0 memo until later that day —
+  new content displaces old; the memo stays in repo docs/). **Refresh in the same
   commit as any milestone / comms-state change** (or on "更新handoff"); re-zip to
   `handoff_for_claude_web_<date>.zip` (git-ignored) for upload; ≤12 files, new content
   displaces old; precedence rule inside: 01 wins over the verbatim copies. Supersedes the
@@ -56,10 +57,29 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   full suite green at every step, float-op order preserved (no numeric drift), docstrings carry
   the numbered Inputs blocks, new code imports `pricer.*` (never the shims).
 
-## Monthly-sheet golden reconciliation — plan Rev B, Gate 0 DONE (2026-08-17)
-- **Files:** plan `docs/monthly_reconciliation_plan_2026-08-15.md` (Rev B in place) + evidence
-  memo `docs/monthly_gate0_memo_2026-08-17.md` (all cell/VBA-line citations). Gate 0 = inventory
-  only (no product code); Gates 1+ await Mario's sample approval (lock #15).
+## Monthly-sheet golden reconciliation — Gates 0–3 DONE (2026-08-17)
+- **Files:** plan `docs/monthly_reconciliation_plan_2026-08-15.md` (Rev B, gate statuses in
+  place) + Gate-0 memo `docs/monthly_gate0_memo_2026-08-17.md` (cell/VBA-line citations) +
+  **Gates-1–3 report `docs/monthly_recon_report_2026-08-17.md`** (the results). Gates 1–3 ran
+  2026-08-17 on the user's EXPLICIT authorization (recorded in plan §9) — net-new `src/recon/`
+  package (zeroyield4 curve replica + legacy-parity month-grid pricer, never imported by
+  production) + `scripts/monthly_{extract_golden,recon_run}.py` + `tests/test_monthly_curves`
+  (+13 ⇒ **166 green**). Frozen: `outputs/monthly_golden_rows.csv` (2,642) +
+  `outputs/monthly_recon_rows.csv` (576).
+- **Headline verdicts:** ① engine parity PROVEN — current-code-session caches (2012-12 batch +
+  sub-annual 2010 rows) reproduce at the legacy solver's noise floor: govt@2012-12 **32/32
+  within tolerance** (ΔOAS ≤0.9bp med 0.51, Δdur ≤0.0003y, ΔPV ≤0.0085); spec dead-AB corp
+  @2012-12 33% ≤2bp = empirically recovered at-maturity routes. ② **The 2010-03-01 batch
+  (bulk of the table) = `legacy-stale-session`** — older code rev (cached Q = duration÷100
+  exactly; dead T/U cells) × mixed-vintage data (run-time Libor deposits survive in the top
+  block, sub-annual rows reprice on them EXACTLY; no single curve fits the pillar rows) ⇒ NOT
+  a valid numeric golden for any engine. ③ Three-way on stale rows: durations vs Bloomberg
+  col I — **ours closer on 94%** (med 0.49y vs cache's 4.30y); OAS vs AD (n=97) not decidable
+  (pull-date unknown + basis) as pre-registered. ④ Tolerances re-baselined: OAS ≤1bp
+  target/2bp exception, dur ≤0.001y, reprice ≤0.01. Only 2012-12-batch caches are numeric
+  goldens for the future tree-gated extensions; 2010-batch rows reconcile three-way instead.
+- **H.15 pillar data** = `data/h15_pillars_monthly_recon.csv` (treasury.gov CMT via 47 —
+  FRED is GFW-blocked from BOTH local and 47; treasury.gov year-CSV endpoint works from 47).
 - **F1 curve truth:** every golden row prices via `zeroyield4(ccy, val-date)` = **GOVERNMENT par
   curves** (USD = H.15/CMT 11 pillars → 41-tenor gap-fill → continuous 374-month ×4-freq
   bootstrap = our own architecture). BondOAS tree consumes the same build (`IYC` par; Libor only
@@ -85,8 +105,9 @@ Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — refe
   solve residual.
 - **SteepFlat Table Monthly.txt LOST** (43% of FIXED rows are zero-twist T=U ⇒ reconcilable
   without it); ask Mario ONLY when the T/U gate opens (lock #13). No asks opened at Gate 0.
-- **Sequencing note:** the vanilla gates (curve rebuild → pilot → ~420-row bulk) do NOT depend
-  on the tree rollout and directly validate the 08-15 sample's chain.
+- **Remaining scope = tree-gated extensions** (callable/NORMAL ~450 · FLOATING 426 · V/W/Y/Z ·
+  T/U [SteepFlat file = deferred Mario ask] · mtge at MBS phase); 2012-06 batch has no vanilla
+  rows. The sample report to Mario now carries the reconciliation evidence (§5).
 
 ## Environment (important)
 - **No usable local Python** on the Windows machine (only a Microsoft Store stub).

@@ -1,6 +1,6 @@
 # Current state & open items — 2026-08-17
 
-## Δ — what changed 2026-08-17 (Monthly-recon Gate 0)
+## Δ — what changed 2026-08-17 (Monthly recon: Gates 0–3 all executed and closed)
 
 - **Your reconciliation plan arrived and Gate 0 was executed the same day** (inventory only —
   inside the sample-first freeze by design). Full evidence: `11_monthly_gate0_memo.md`.
@@ -27,12 +27,30 @@
   callable-fixed (a legacy-vs-us methodology divergence we will *report*, not imitate). Bonus:
   a Bloomberg **effective-duration column (n=2,278)** was found ⇒ a duration three-way (H4)
   joins the OAS three-way (n=311).
-- **No new counterparty asks** (Gate-0 discipline held). The one lost input — the SteepFlat
-  twist file — becomes a Mario ask only when the T/U gate opens; 43% of fixed rows are
-  zero-twist and reconcile without it.
-- **Sequencing insight for your planning:** the vanilla gates (curve → pilot → bulk) do NOT
-  depend on the callable-tree rollout, and they directly validate the very chain the 08-15
-  sample migrated — an option to surface when Mario replies.
+- **Same day, second wave: the user explicitly authorized running Gates 1–3 immediately**
+  (net-new validation code beside production; deviation recorded in the plan §9). Results
+  — full detail in **`11_monthly_recon_report.md`** (this bundle's slot 11; the Gate-0
+  memo stays in the repo):
+  - **Gate 1 exact:** `zeroyield4` curve replica (H.15 pillars from treasury.gov — FRED is
+    GFW-blocked — for all three valuation dates); par-reprice locked at 1e-8; the
+    production bootstrap agrees within 0.02bp.
+  - **Engine parity PROVEN:** wherever the sheet's cache comes from a current-code session
+    (the 2012-12 batch + sub-annual 2010 rows): **ΔOAS ≤0.9bp (med 0.5), durations equal
+    to 4 decimals, 100% of comparable rows inside tolerance** (govt 32/32; a third of the
+    dead-cache corp rows match exactly = recovered at-maturity routes).
+  - **The 2010-03-01 batch (bulk of the table) = `legacy-stale-session`:** older code rev
+    (its cached durations are exactly ÷100 — an extinct scaling) on mixed-vintage market
+    data (run-time Libor deposits survive in the top block; no single curve fits the
+    rest). Not a valid numeric golden — for any engine.
+  - **Three-way on those stale rows: durations vs Bloomberg's own column — ours closer on
+    94%** (median 0.49y vs the cache's 4.30y). OAS vs Bloomberg AD (n=97): not decidable
+    (pull-date unknown + curve basis), as the plan pre-registered.
+  - Tests **166 green**; tolerances re-baselined (OAS ≤1bp target / 2bp exception).
+- **No new counterparty asks** (lock-#13 discipline held). The lost SteepFlat twist file
+  becomes a Mario ask only when the T/U extension gate opens.
+- **The Mario sample report was updated with this evidence** (§5 "an answer key — and we
+  have now used it") + regenerated PDF; upload to Drive happens now (the 08-15 "sent"
+  status below was premature — corrected).
 
 ## Δ — 2026-08-15 (previous refresh)
 
@@ -140,7 +158,7 @@ convention. Gate plan (Rev B) + full verdicts: `11_monthly_gate0_memo.md` and th
 
 | Ask | Channel | Sent | Unblocks |
 |---|---|---|---|
-| **Code-structure sample approval** (Drive folder: report + `pricer/` code) | Mario | 08-15 | full migration rollout + Monthly reconciliation |
+| **Code-structure sample approval** (Drive folder: report incl. Monthly-recon evidence + `pricer/` code) | Mario | 08-17 (staged 08-15; upload + WhatsApp ping 08-17) | full migration rollout + the tree-gated Monthly extensions |
 | 11-security list: 3 exempt-US FRNs (full terms) + 8 hybrid post-call margins | Mario | 07-20 | 8 hybrids price via one CSV cell each |
 | Govt-MBS pull: 8 fields × 882 CUSIPs (BDP template provided) | Mario | 07-22 | MBS driver + pool routing (skeleton waits) |
 | Pass-through terms, 13 uniques (EETC/private amortizers) | Mario | 07-20 meeting | likely amortizing-vanilla, no prepay model |
@@ -157,11 +175,12 @@ confirmation (lattice already matches custodian durations) · one rating-feed qu
 ## 5 · Next milestones, in order
 
 1. **Mario approves the sample** → rollout: floating/hybrid → callable lattice
-   (`core/pricing/tree.py`) → **Monthly golden reconciliation** → ILB/agency wrappers → MBS.
-   Gate-0 correction to this order: the reconciliation's *vanilla* gates (curve rebuild →
-   ~25-row pilot → ~420-row bulk) need no tree and validate the sample's own chain — they can
-   run right after (or alongside) floating/hybrid if early evidence is wanted; only the
-   option/FRN/vol columns wait for the tree.
+   (`core/pricing/tree.py`) → **the Monthly reconciliation's tree-gated extensions**
+   (callable/NORMAL ~450 rows, FLOATING 426, vol columns; T/U needs the SteepFlat file) →
+   ILB/agency wrappers → MBS. The vanilla part of the Monthly reconciliation is DONE
+   (Gates 1–3, 08-17) — the sample Mario reviews now carries that evidence. Proven
+   warning for the extensions: only 2012-12-batch caches are numeric goldens; 2010-batch
+   rows compare three-way vs the Bloomberg columns instead.
 2. **Any Bloomberg return** → dedupe the two channels → diff vs provisional overrides
    (Bloomberg wins, deltas logged) → CSV landings → rerun both drivers → refreshed outputs.
 3. **Pass-through data lands** → price as scheduled-amortization vanilla.

@@ -62,10 +62,46 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
   ⇒ 12 files, at cap). Also committed: user's touch-up of `docs/whatsapp_liping_2026-07-30.md`
   (emoji removed from the sent English text).
 
+**Same day, second wave — Gates 1–3 EXECUTED on the user's explicit authorization**
+(their sequencing call, recorded in plan §9; net-new `src/recon/` validation code, no
+migration touched). Full results: **`docs/monthly_recon_report_2026-08-17.md`**; frozen
+artifacts `outputs/monthly_golden_rows.csv` (2,642) + `outputs/monthly_recon_rows.csv` (576).
+- **Gate 1 (curves) exact:** USD H.15/CMT pillars for all 3 valuation dates fetched from
+  treasury.gov via 47 (FRED GFW-blocked local+47; treasury.gov = the CMT source) →
+  `data/h15_pillars_monthly_recon.csv`; `src/recon/monthly_curve.py` = zeroyield4 replica
+  (41-tenor gap-fill quirks included; par-reprice 1e-8 locked). Lineage locks: txt 20y =
+  (10y+30y)/2 fabricated on all 3 dates; replica vs production `bootstrap.py` ≤0.02bp —
+  the two continuous bootstrap variants are numerically near-identical here.
+- **Gate 2 (pilot 23 rows) split verdict → investigation:** Treasuries (2012-12 batch)
+  EXACT (ΔOAS ≤0.9bp, Δdur 0.0000); corp 2010 rows maturity-shaped misfit. Chased down
+  (back-out fit of the pillar curve from the V column, fit/holdout): **the whole
+  2010-03-01 batch = `legacy-stale-session`** — older code rev (cached Q = duration ÷100
+  EXACTLY, ratio-test med 1.03; dead T/U cells) on mixed-vintage data (run-time Libor
+  deposits survive in the top block — sub-annual rows reprice EXACTLY on them; no single
+  curve fits the pillar rows, residual med 0.24/100 = 100× solver floor). NOT an engine
+  gap; not a valid golden.
+- **Gate 3 (bulk 576 rows):** govt@2012-12 **32/32 = 100% within tolerance** (ΔOAS med
+  0.51bp max 0.9; Δdur ≤0.0003y; ΔPV ≤0.0085); spec (dead-AB corp) @2012-12: **33% ≤2bp =
+  empirically recovered at-maturity routes**, rest = other engines (their gates later);
+  2010 batch excluded per §4 evidence; non-USD 121 deferred. **Three-way (session-
+  independent): durations vs Bloomberg col I — ours closer on 94% of 194 core rows (med
+  0.49y vs the cache's 4.30y), 89% on spec; OAS vs AD (n=97) not decidable (AD pull-date
+  unknown + basis) — as pre-registered.** Tolerances re-baselined (OAS ≤1bp target/2bp
+  exception; dur ≤0.001y; reprice ≤0.01). Tests **166 green**.
+- **Mario-facing sample report updated** (user request; upload was still pending — comms
+  state corrected): §5 now carries the reconciliation result in plain words + 166 checks;
+  PDF regenerated (pandoc@47 + Edge headless), staging folder + zip refreshed. WhatsApp
+  draft handed to the user with the upload.
+- Plan statuses → Gates 0–3 CLOSED; ledger + reason codes extended; handoff refreshed
+  again (11 ← the Gates-1–3 report; Gate-0 memo stays in repo).
+
 **Open / next**
-- Unchanged: ⏳ Mario sample approval + the standing data asks. On approval: rollout per the
-  01 §5 order with the Rev-B sequencing note above.
-- Gate-1 prep when green-lit: FRED DGS pulls for 40238/41061/41255 + the gap-fill replica.
+- ⏳ Mario sample approval (sample now carries the reconciliation evidence) + the standing
+  data asks. On approval: rollout floating/hybrid → tree; then the tree-gated Monthly
+  extensions (callable/NORMAL ~450, FLOATING 426, V/W/Y/Z, T/U [needs the SteepFlat file —
+  deferred ask], mtge at the MBS phase; 2012-06 batch has no vanilla rows).
+- Warning for future gates, now proven: only 2012-12-batch caches are numeric goldens;
+  2010-batch rows reconcile three-way vs Bloomberg columns (I / AD) instead.
 
 
 ## 2026-08-15 — Mario code-structure directive → template-layout SAMPLE (vanilla chain) + Monthly sheet decoded
