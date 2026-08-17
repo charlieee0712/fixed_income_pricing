@@ -112,25 +112,20 @@ We decoded the sheet completely; it gives us three things:
 
 1. **The function shape** (its example block, rows 47–60) — adopted above.
 2. **The input-dictionary style** (rows 61+) — adopted above.
-3. **An answer key — and we have now used it.** From row 99 down the sheet holds ~2,600
-   real bonds with the results the old system computed (spread, duration, scenario prices),
-   saved in batches dated 2010-03-01, 2012-06-01 and 2012-12-12. We rebuilt the system's own
-   interest-rate curves (the US Treasury rates it pulled, recovered from public Fed data),
-   replicated its calculation conventions to the letter, and ran the comparison for the
-   plain fixed-coupon bonds. The outcome, in plain words:
-   - **Wherever the sheet's saved numbers come from its most recent runs (the Dec-2012
-     batch), our rebuilt engine reproduces them essentially exactly** — spreads within 1bp
-     (that is the old solver's own precision), durations matching to 4 decimal places,
-     100% of comparable bonds inside tolerance.
-   - The 2010 batch's saved numbers turned out to predate the workbook's current code and
-     to mix market data of different dates (e.g. its saved durations are exactly 100×
-     too small — an old scaling bug fixed in later code — and no single day's curve can
-     explain its prices). That batch therefore cannot serve as an answer key. But the
-     sheet also stores **Bloomberg's own numbers** for those bonds, and there our new
-     engine wins clearly: on ~200 bonds with a Bloomberg duration, ours is closer than
-     the sheet's saved value for **94%** of them (typical gap: ours 0.5yr vs 4.3yr).
-   - Callable / floating / mortgage rows follow the same way once those engines are
-     rolled out in the new structure.
+3. **Saved results we can check against — first cross-check done.** From row 99 down the
+   sheet stores ~2,600 real bonds with the results the old system saved (spread, duration,
+   scenario prices), in batches dated 2010-03-01 / 2012-06-01 / 2012-12-12, plus
+   Bloomberg's own numbers for many rows. We understood your pointer to the sheet as: use
+   those saved results to verify the rebuilt engine — so we ran that comparison for the
+   plain fixed-coupon bonds (rebuilding the interest-rate curves the system pulled, from
+   public Fed data, and replicating its calculation conventions to the letter). Outcome:
+   **the most recently saved batch (Dec-2012) matches our rebuilt engine essentially
+   exactly** — spreads within 1bp (the old solver's own precision), durations to 4 decimal
+   places. The 2010 batch appears to have been saved by an earlier version of the workbook
+   (its numbers sit on a different scale and no single day's curve reproduces its prices),
+   so for those rows we compared against the sheet's Bloomberg columns instead — our
+   durations track Bloomberg closely there (closer than the saved values for 94% of ~200
+   bonds). Callable / floating / mortgage rows follow once those engines are rolled out.
 
 ## 6. Proof that nothing changed
 
@@ -149,3 +144,8 @@ trivial to adjust or undo.
 3. Where should the data-loading code (reading the holdings workbook, building the bond
    list) live in your template — inside each asset class, or as its own layer?
 4. We read `endpoints/` as "batch runs first, web API later" — correct?
+5. **The Monthly sheet — did we use it the way you intended?** We took it as (a) the
+   template for function shape and input dictionaries, and (b) an answer key: its saved
+   results as a cross-check for the rebuilt engine (section 5). If you had a different or
+   additional use in mind, tell us and we adapt. Related: the saved batches differ in
+   vintage — should we treat the Dec-2012 one as the reference going forward?
