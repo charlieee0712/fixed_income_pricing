@@ -85,7 +85,9 @@ def process(row, tables):
         "freq": None, "months": None, "cpn": None, "B": None, "P": None,
         "our_oas": None, "d_oas": None, "V": None, "pv_P": None, "d_pv": None,
         "Q": None, "q_ours": None, "d_q": None, "d_r": None, "d_s": None,
-        "zero_twist": "", "d_t": None, "reason": "",
+        "zero_twist": "", "d_t": None,
+        "bbg_I": None, "d_i_ours": None, "d_i_legacy": None,
+        "bbg_AD": None, "d_ad_ours": None, "d_ad_legacy": None, "reason": "",
     }
     if out["ccy"].upper() != "USD":
         out["reason"] = "non-usd-deferred"
@@ -150,6 +152,21 @@ def process(row, tables):
     if T is not None and U is not None and abs(T - U) < 5e-3:
         out["zero_twist"] = "y"
         out["d_t"] = pv_P - T
+    # three-way legs (session-independent): Bloomberg eff-dur (col I) and OAS (col AD)
+    bbg_i = fnum(row["bbg_eff_dur"])
+    if bbg_i is not None and bbg_i != 0.0:
+        out["bbg_I"] = bbg_i
+        q_full = duration_legacy(table, freq, C, months, our if our is not None else P)
+        if q_full is not None:
+            out["d_i_ours"] = q_full - bbg_i
+        if Q is not None:
+            out["d_i_legacy"] = Q - bbg_i
+    bbg_ad = fnum(row["AD_bbg_oas"])
+    if bbg_ad is not None and bbg_ad != 0.0:
+        out["bbg_AD"] = bbg_ad
+        if our is not None:
+            out["d_ad_ours"] = our - bbg_ad
+        out["d_ad_legacy"] = P - bbg_ad
     if P >= 999.0:
         out["reason"] = "legacy-solver-cap"
     else:
@@ -204,6 +221,22 @@ def summarize(results):
         if dt:
             print(f"  |d_t| /100   n={len(dt)} (zero-twist rows)  med={fmt(pct(dt,0.5),4)} "
                   f"max={fmt(dt[-1],4)}")
+        both_i = [(abs(r["d_i_ours"]), abs(r["d_i_legacy"])) for r in rs
+                  if r["d_i_ours"] is not None and r["d_i_legacy"] is not None]
+        if both_i:
+            o = sorted(x for x, _ in both_i)
+            l = sorted(x for _, x in both_i)
+            win = sum(1 for x, y in both_i if x <= y) / len(both_i)
+            print(f"  vs Bbg dur I n={len(both_i)}  med|ours-I|={fmt(pct(o,0.5),3)} "
+                  f"med|legacyQ-I|={fmt(pct(l,0.5),3)}  ours-closer {win:.0%}")
+        both_ad = [(abs(r["d_ad_ours"]), abs(r["d_ad_legacy"])) for r in rs
+                   if r["d_ad_ours"] is not None and r["d_ad_legacy"] is not None]
+        if both_ad:
+            o = sorted(x for x, _ in both_ad)
+            l = sorted(x for _, x in both_ad)
+            win = sum(1 for x, y in both_ad if x <= y) / len(both_ad)
+            print(f"  vs Bbg OAS AD n={len(both_ad)}  med|ours-AD|={fmt(pct(o,0.5),1)}bp "
+                  f"med|legacyP-AD|={fmt(pct(l,0.5),1)}bp  ours-closer {win:.0%}")
 
 
 def pilot_pick(results):
@@ -291,7 +324,9 @@ def main():
     else:
         cols = ["sheet_row", "set", "val", "name", "sec_id", "ccy", "freq", "months",
                 "cpn", "B", "P", "our_oas", "d_oas", "V", "pv_P", "d_pv", "Q",
-                "q_ours", "d_q", "d_r", "d_s", "zero_twist", "d_t", "reason"]
+                "q_ours", "d_q", "d_r", "d_s", "zero_twist", "d_t",
+                "bbg_I", "d_i_ours", "d_i_legacy", "bbg_AD", "d_ad_ours",
+                "d_ad_legacy", "reason"]
         with open(OUT_ROWS, "w", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(cols)
