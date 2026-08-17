@@ -1,4 +1,8 @@
-"""Corporate-bond input catalogue (template: ``assets/corporate/bons_input.py``).
+"""Corporate-bond input catalogue.
+
+(Template position: ``assets/corporate/bons_input.py`` — that spelling is the
+template's own; we named the file ``bonds_input.py`` and have asked Mario which
+to keep — report question 2. Not a typo on either side.)
 
 This module documents EVERY input the corporate-bond functions take, in the same
 format the legacy workbook uses on its "Monthly" sheet (Input Number | Field Name |

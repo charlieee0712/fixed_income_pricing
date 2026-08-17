@@ -41,13 +41,13 @@ class CashFlow:
 
 @dataclass
 class PriceResult:
-    clean: float
-    dirty: float
-    accrued: float
-    accrued_days: int
-    last_coupon_date: dt.date
-    cashflows: list
-    vba_compat: bool
+    clean: float                # dirty - accrued (the price convention of custodian marks)
+    dirty: float                # full PV of the remaining cash flows
+    accrued: float              # accrued interest per face (the ONE shared formula)
+    accrued_days: int           # days since the prior grid coupon date
+    last_coupon_date: dt.date   # the accrual anchor (grid date just before valuation)
+    cashflows: list             # per-flow detail rows (CashFlow)
+    vba_compat: bool            # True = legacy-bug discounting was used (reconciliation)
 
 
 def price_fixed_rate_bond(valuation_date, maturity, coupon_rate, curve, oas: float = 0.0,
