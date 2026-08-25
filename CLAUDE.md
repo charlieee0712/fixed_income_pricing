@@ -10,6 +10,22 @@ Port a legacy Excel/VBA fixed-income pricing toolkit to a structured, scalable
 to MBS/CMBS/ABS/CMO/callables and a CreditMetrics risk layer.
 Repo: `github.com/charlieee0712/fixed_income_pricing` (keep **private** — references a client portfolio).
 
+## Fable advisor — consult SPARINGLY (user, 2026-08-25)
+`fable` = a **strategic second opinion** (Agent tool, model `fable`), not a workhorse. Consult it
+only when a call is **hard to reverse**, **sets the direction of a whole workstream**, or **leaves
+this repo as a recommendation** (Mario / Liping / the client) — e.g. locking a convention every
+validated number rests on (ACT/364 grid; dirty-vs-clean duration base), redefining the method
+(index-rating OAS → per-bond calibration, 2026-06-30), choosing a baseline (3-31 vs 6-10), fixing an
+architecture / rollout shape (the `pricer/` template layout), or signing off a headline verdict
+before it ships in a deliverable (the `legacy-stale-session` call on the 2010 batch). Bring the
+question, the genuine options, and the evidence already in hand; the reply is **advice, not
+authority** — verify it against repo code/data, then record the DECISION (+ why) in
+`WORKLOG.md`/here, not merely that we asked, and tell the user in one line what was asked and what
+came back. One consult per decision; if no answer could change what we do, don't ask.
+**NOT for routine work:** implementation, file/sheet inspection, debugging, running or fixing tests,
+funnel counts and other bookkeeping, doc / handoff / PDF updates, or "am I done?" completion
+checks — those are decided here, from the repo.
+
 ## Claude-web handoff (planning sync)
 - **`docs/handoff_for_claude_web/`** (12 numbered files; structure copied from the user's
   csi1000 `handoff_2` pattern, 2026-08-15) = the bundle the user uploads into a claude.ai
