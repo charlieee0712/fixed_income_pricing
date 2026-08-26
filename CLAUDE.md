@@ -46,7 +46,7 @@ checks — those are decided here, from the repo.
   single root `HANDOFF_FOR_CLAUDE_WEB.md` (removed same day it was born, 2026-08-15). Keep
   the bundle OUT of Drive staging copies (internal comms framing — not for Mario).
 
-## Code-structure migration (Mario directive 2026-08-15) — STATUS: sample awaiting Mario
+## Code-structure migration (Mario directive 2026-08-15) — STATUS: sample APPROVED 2026-08-25
 - **Directive:** code "difficult to follow, a bit nested"; a **Google team takes over for
   cloud-computing optimisation** ⇒ many SIMPLE functions (not one complicated), **inputs
   highlighted** per function. Template = `docs/code_structure_template - Ver Aug 5 2026.txt`
@@ -74,6 +74,30 @@ checks — those are decided here, from the repo.
 - **Rollout rules when approved:** migrate module-by-module, shims keep old surface until retired,
   full suite green at every step, float-op order preserved (no numeric drift), docstrings carry
   the numbered Inputs blocks, new code imports `pricer.*` (never the shims).
+- **FOLLOW-UP ROUND DONE (2026-08-25) — JSON/Excel interface v1.** Mario approved the sample with
+  three follow-ups (currency · yield volatility · an Excel↔JSON↔Python process); user's plan =
+  `docs/vanilla_json_excel_followup_final_execution_plan_2026-08-25.md` (its §16 = the execution
+  revision made here after the alignment gate + one Fable consult). Built, all ADDITIVE (no engine,
+  shim or driver touched ⇒ every number unchanged; **166 → 194 green**): `src/pricer/endpoints/`
+  (flat — `main.analyze_vanilla_payload(payload)->response` · `contracts` normalise/validate/
+  envelope · `pricing` 7-step orchestration, zero formulas · `dependencies` = the only
+  environment-aware file) + `core/market/curves.resolve_curve/curve_id/CurveUnavailable` (the
+  reusable routing seam; drivers keep their own FREQ_VARIANT maps this round) + `currency` as
+  input 5 of `bonds_input` + `scripts/price_json.py` (file in/file out, exit 0/1/2) +
+  `integrations/excel_vba/` (bridge .bas · VBA-JSON v2.3.1 MIT vendored · runner_example.cmd ·
+  README · REAL fixtures) + `tests/test_vanilla_json_endpoint.py` (28).
+  **Contract decisions that must not drift:** ① two operations — `calibrate_and_risk` (clean price
+  → implied OAS; still REFUSES a supplied OAS = the methodology lock) and `price_at_oas` (spread →
+  price, the legacy per-metric flow); ② **dates must be ISO STRINGS** — a numeric Excel serial is a
+  hard error because `pd.Timestamp(39903)` = 1970-01-01 (silent wrong-date pricing); ③ `face_value`
+  echoed but NOT applied (everything is quoted per 100); ④ volatility + day_count accepted, echoed,
+  reported unused with **null (never 0)** sensitivities; ⑤ no silent USD fallback — CURVE_NOT_FOUND
+  (no file / no date row) vs CURVE_BUILD_FAILED (GBP 3-31 = not arb-free) are different codes; ⑥ no
+  path, traceback or payload in any error message; ⑦ parity asserted with `==` vs direct calls.
+  Docs: `docs/vanilla_json_excel_interface_v1.md` (reference) +
+  `docs/code_structure_followup_json_excel_2026-08-25.md` (decision record — ⏳ **Mario's three
+  comments still need pasting in VERBATIM**, §1 has the slots). Not yet click-tested from Excel
+  (no Excel on this box or on 47) — stated plainly in the README, not implied done.
 
 ## Monthly-sheet golden reconciliation — Gates 0–3 DONE (2026-08-17)
 - **Files:** plan `docs/monthly_reconciliation_plan_2026-08-15.md` (Rev B, gate statuses in
@@ -556,6 +580,12 @@ checks — those are decided here, from the repo.
   routes per `docs/phase2_methods_2026-07-22.md`; driver `scripts/phase2_risk.py`);
   FRED OAS loader next. (Named `dataio`, **not** `io`: `conftest` puts `src/` at `sys.path[0]`, so an `io` package
   would shadow stdlib `io`.)
+- `src/pricer/endpoints/` — **✅ NEW (2026-08-25):** the external interface (one request in, one
+  complete result out) — `main.py` (public entry, failures are values not exceptions) ·
+  `contracts.py` (the v1 request/response contract, standard library only) · `pricing.py` (vanilla
+  orchestration over the approved wrappers) · `dependencies.py` (FIP_DATA_DIR — swap this file for
+  a cloud deployment). Flat by decision: the template's `endpoints/routes/` arrives with the HTTP
+  service. Driven by `scripts/price_json.py`; consumed by `integrations/excel_vba/`.
 - `src/pricer/` — **✅ NEW (2026-08-15, the template-layout target; see Code-structure migration
   section):** `core/pricing/{analytical,cashflows,discounting}` + `core/risk/sensitivities` +
   `core/market/{spreads,curves}` + `core/utils/dates` + `assets/corporate/{bonds_input,vanilla}`;
@@ -595,4 +625,8 @@ checks — those are decided here, from the repo.
   `test_price_convention` (16: per-engine clean-form vs dirty-form OAS root invariance <1e-10, shared-AI
   identity locks, lattice≡price_bond, val-on-coupon-date corner) + `test_pricer_structure` (8:
   template-layout locks — shim identity, bit-exact wrapper reprice, bp round-trip, flat-curve
-  zero-coupon closed form, sensitivity arithmetic, input validation). **153 total.**
+  zero-coupon closed form, sensitivity arithmetic, input validation) + `test_monthly_curves` (13:
+  the Monthly-recon curve replica) + `test_vanilla_json_endpoint` (28: endpoint↔direct-call parity
+  with `==`, the three live curve failure modes with a no-file-path assertion, the Excel-serial
+  date refusal, the calibrate-mode OAS lock, lenient normalisation/warnings, 2 CLI subprocess
+  runs). **194 total** (~20s of engine tests; the workbook-loading tests dominate wall clock).

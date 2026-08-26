@@ -17,7 +17,7 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 
 ---
 
-> ## ⚠️ Read this first — state as of 2026-08-04
+> ## ⚠️ Read this first — state as of 2026-08-25
 >
 > Sections 2–4 and 7 below describe the project as of the **v1 era** and are kept for the record;
 > the method has since evolved materially. The current picture:
@@ -50,7 +50,7 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 >   indexation unverified). Govt MBS 888: **static-CPR engine skeleton built** on the exact
 >   8-mnemonic Bloomberg interface, awaiting Mario's pull; BZ factor >1 resolved = REMIC accrual
 >   tranches (correct, kept descriptive). Methods/evidence: `docs/phase2_methods_2026-07-22.md`;
->   outputs `outputs/phase2_risk_2009-03-31.csv` (+ 06-10 control). **145 tests green.**
+>   outputs `outputs/phase2_risk_2009-03-31.csv` (+ 06-10 control). **145 tests green at that point.**
 > - **Price-convention audit (2026-08-04, Liping code review):** every engine calibrates
 >   clean-vs-clean — model dirty − the ONE shared ACT/364 accrued (`bond_price.accrued_interest`)
 >   == custodian BT; the callable lattice moved to the real coupon-date grid (root PV = true
@@ -60,6 +60,29 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 >   |dur−AQ| 0.236 vs 0.331). Enforced by `test_price_convention` (16). ⚠️ **Current headline
 >   figures live in `docs/headline_numbers_2026-08-04.md`** — lattice numbers quoted in earlier
 >   materials (v2 report §5's 11.56→10.54, phase2 methods §1 table) are superseded.
+> - **Code structure (Mario directive 2026-08-15; sample APPROVED 2026-08-25):** the vanilla chain
+>   was re-expressed in Mario's template layout — `src/pricer/` = `core/` engines (~80%) +
+>   `assets/` thin per-metric wrappers (~20%), numbered input blocks, legacy units (percent/bp) at
+>   the asset layer; `src/pricing/*` became compatibility shims, so every existing import, driver
+>   and number is unchanged (float-operation order preserved ⇒ bit-identical). Report:
+>   `docs/code_structure_sample_2026-08-15.md`; 10-minute walkthrough:
+>   `docs/code_walkthrough_2026-08-17.md`.
+> - **Monthly-sheet reconciliation (Gates 0–3, 2026-08-17):** engine parity PROVEN against the
+>   legacy workbook's own saved results wherever those results are internally consistent
+>   (government bonds @2012-12: 32/32 within tolerance, ΔOAS ≤0.9bp median 0.51, Δdur ≤0.0003y).
+>   The 2010-03-01 batch — the bulk of the table — is a `legacy-stale-session` (an older code
+>   revision × mixed-vintage cached market data) and is therefore NOT a numeric golden for any
+>   engine; on those rows our durations track Bloomberg's own better than the sheet's saved values
+>   for 94% of bonds. Report: `docs/monthly_recon_report_2026-08-17.md`.
+> - **JSON/Excel interface v1 (2026-08-25, Mario follow-up round):** `src/pricer/endpoints/` now
+>   exposes one request in / one complete result out (`analyze_vanilla_payload`), with `currency`
+>   as an external routing input (own-currency curve; no silent USD fallback), volatility and
+>   day-count accepted-but-reported-unused (`null`, never a fake zero), an ISO-string date rule
+>   that makes an Excel serial a hard error, and a thin Excel/VBA bridge in
+>   `integrations/excel_vba/` whose only configuration is one runner command. Additive only — no
+>   engine, shim or driver touched. **194 tests green.** Reference:
+>   `docs/vanilla_json_excel_interface_v1.md`; decisions:
+>   `docs/code_structure_followup_json_excel_2026-08-25.md`.
 > - **Outstanding:** an 11-security Bloomberg margin list, the pass-through data (Mario sourcing),
 >   the Govt-MBS 8-field × 882-CUSIP pull (requested 2026-07-22), a usable GBP par curve;
 >   deferred asks (KTBi terms / agency call schedules / one rating quirk) queued for the MBS-data
