@@ -131,6 +131,25 @@ PYTHONPATH=src python3 scripts/price_json.py \
     --output response.json
 ```
 
+### 6.1 Automated: drive the VBA against the fixtures
+
+`tests/Run-BridgeTests.ps1` does all of the above for you, in a hidden Excel instance:
+
+```
+powershell -ExecutionPolicy Bypass -File integrations\excel_vba\tests\Run-BridgeTests.ps1
+```
+
+**23 checks**: the modules import and compile; the sheet's cells become a correct
+request (the Excel date serials 42750 and 39903 arrive as `"2017-01-15"` and
+`"2009-03-31"`, and `usd` arrives as `USD`); the runner is invoked and **waited for**;
+every output cell matches the engine's real numbers; and an error response shows its
+message while clearing the stale ones.
+
+It needs Excel and "Trust access to the VBA project object model" — the script enables
+that setting for the run and restores its previous state afterwards, in a `finally`
+block. It needs **no Python**: a small `.cmd` returning the committed fixture stands in
+for the engine, which is also the one link this test does not cover (see §7).
+
 ## 7. Known limitations of this first adapter
 
 - **Windows only.** It uses `WScript.Shell` and `ADODB.Stream`, both Windows-Office
@@ -140,11 +159,13 @@ PYTHONPATH=src python3 scripts/price_json.py \
   service.
 - **No timeout.** `WScript.Shell.Run` waits indefinitely. If a runner can hang, wrap
   it in a script that enforces its own timeout.
-- **Not click-tested end to end here.** The Python side is covered by the automatic
-  suite (28 interface tests, and the fixtures in `examples/` are its real output), and
-  the VBA side is written against those fixtures — but this development environment
-  has no Excel, so the first live click-through happens on a Windows machine with a
-  runner installed. The VBA modules are marked as such until then.
+- **One link still stands in.** The VBA itself is tested on real Excel (§6.1: 23
+  checks), and the Python side by the automatic suite (28 interface tests, whose real
+  output is what `examples/` contains). But the runner used in that test is a `.cmd`
+  returning the committed fixture, because the development machine has no Python — so
+  Excel calling a *live* Python runner is the one step not yet exercised. The dialog
+  paths (`PriceVanillaBond`'s MsgBox, `PopulateFromResponseFile`'s file picker) are
+  also outside the automated test, since a modal dialog cannot be driven headlessly.
 - **Vanilla only.** Floating, hybrid, callable, agency, index-linked and MBS bonds have
   engines in the repo but are not exposed through this interface yet; they arrive in
   their own migration rounds, through the same request shape.

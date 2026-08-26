@@ -176,7 +176,8 @@ Public Sub PopulateVanillaOutputs(ByVal response As Object)
         Exit Sub
     End If
 
-    Set results = Field(response, "results")
+    Set results = FieldObject(response, "results")
+    If results Is Nothing Then Exit Sub
     SetNamedValue OUT_CLEAN, Field(results, "model_clean_price_per_100")
     SetNamedValue OUT_DIRTY, Field(results, "model_dirty_price_per_100")
     SetNamedValue OUT_ACCRUED, Field(results, "accrued_interest_per_100")
@@ -186,16 +187,18 @@ Public Sub PopulateVanillaOutputs(ByVal response As Object)
     SetNamedValue OUT_CONVEXITY, Field(results, "convexity")
     SetNamedValue OUT_TIGHTER, Field(results, "price_spread_tighter_per_100")
     SetNamedValue OUT_WIDER, Field(results, "price_spread_wider_per_100")
-    SetNamedValue OUT_CURVE, Field(Field(response, "market_data"), "curve_id")
+    SetNamedValue OUT_CURVE, Field(FieldObject(response, "market_data"), "curve_id")
 End Sub
 
 Private Function VolatilityNote(ByVal response As Object) As String
     ' The plain-language answer to "did it use my volatility?" — always stated.
     Dim applicability As Object, vol As Object
 
-    Set applicability = Field(response, "applicability")
+    ' FieldObject, not Field: on an error response "applicability" is JSON null, which
+    ' arrives in VBA as Null (a Variant), and `Set x = Null` raises "Object required".
+    Set applicability = FieldObject(response, "applicability")
     If applicability Is Nothing Then Exit Function
-    Set vol = Field(applicability, "yield_volatility")
+    Set vol = FieldObject(applicability, "yield_volatility")
     If vol Is Nothing Then Exit Function
 
     If Field(vol, "used") = True Then
@@ -287,6 +290,16 @@ Private Sub SetNamedValue(ByVal cellName As String, ByVal value As Variant)
     End If
 End Sub
 
+Private Function FieldObject(ByVal container As Object, ByVal key As String) As Object
+    ' Like Field, but for values that should be objects (a nested JSON object). Returns
+    ' Nothing when the container is Nothing, the key is absent, or the value is JSON
+    ' null — the last case being why callers must not use `Set x = Field(...)`.
+    If container Is Nothing Then Exit Function
+    If Not container.Exists(key) Then Exit Function
+    If Not IsObject(container(key)) Then Exit Function
+    Set FieldObject = container(key)
+End Function
+
 Private Function Field(ByVal container As Object, ByVal key As String) As Variant
     ' Dictionary lookup that does NOT create the key when it is missing, and returns
     ' objects with Set. JSON null arrives as VBA Null.
@@ -303,7 +316,9 @@ Private Function JoinMessages(ByVal entries As Variant) As String
     ' Flatten a warnings/errors collection into one readable cell.
     Dim entry As Variant, line As String, joined As String
 
-    If IsEmpty(entries) Then Exit Function
+    ' Test IsObject FIRST: `Is Nothing` on a non-object (Empty, or a JSON null) is
+    ' itself a type error.
+    If Not IsObject(entries) Then Exit Function
     If entries Is Nothing Then Exit Function
 
     For Each entry In entries

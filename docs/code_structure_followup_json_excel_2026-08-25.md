@@ -137,6 +137,8 @@ personal path is baked into the workbook.**
 | Excel bridge, vendored JSON parser, runner example, real fixtures | `integrations/excel_vba/` |
 | Interface reference (the technical handoff) | `docs/vanilla_json_excel_interface_v1.md` |
 | 28 interface tests (parity, firm rules, lenient rules, CLI) | `tests/test_vanilla_json_endpoint.py` |
+| 23 VBA checks, driven through a hidden Excel instance | `integrations/excel_vba/tests/` |
+
 
 **Nothing else moved.** No engine, no shim, no driver, no `dataio`/`curves`/`recon`
 module was touched, so every existing number is unchanged and the suite went from
@@ -174,11 +176,21 @@ place where the contract would have rejected a field a user could reasonably sen
 
 ## 5. Honest limits of v1
 
-* **Not yet click-tested end to end.** The Python side is covered by the suite, and
-  the committed examples are its real output; the VBA is written against those
-  fixtures. This machine has no Excel and server 47 has no Excel, so the first live
-  click-through happens on a Windows desk with a runner installed. Said plainly in
-  the README rather than implied to be done.
+* **Tested on real Excel; one link still stands in.** `integrations/excel_vba/tests/`
+  runs the VBA in a hidden Excel instance — 23 checks covering module import, the cells
+  → request JSON conversion (including Excel date serials becoming ISO strings), the
+  runner being invoked and waited for, every output cell mapping to the engine's real
+  numbers, and an error response clearing the stale ones. What is still stood in for:
+  the runner itself is a `.cmd` that returns the committed fixture, because this Windows
+  machine has no Python; and the dialog-reporting paths (`PriceVanillaBond`'s MsgBox,
+  `PopulateFromResponseFile`'s file picker) are deliberately not driven from automation,
+  where a modal dialog would hang. So the remaining untested link is exactly one: Excel
+  invoking a *live Python* runner.
+  That test earned its place immediately — it found a real defect. JSON `null` reaches
+  VBA as `Null`, not `Nothing`, so `Set x = Field(response, "applicability")` raised
+  "Object required" on **every error response**: the sheet would have shown a VBA error
+  instead of the reason the bond could not be priced. Fixed (`FieldObject`), and the
+  error path is now a regression check.
 * **Vanilla only.** Floating, hybrid, callable, agency, index-linked and MBS engines
   exist and are validated in the repo, but are not exposed through this interface
   yet. They arrive in their own rounds, through the same request shape.

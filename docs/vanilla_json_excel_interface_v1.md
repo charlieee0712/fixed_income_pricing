@@ -316,9 +316,12 @@ Known limits of v1, stated rather than hidden: one bond per request (batch is
 refused, not half-supported); vanilla only (the floating, hybrid, callable,
 agency, index-linked and MBS engines exist in the repo but are not exposed here yet);
 each request rebuilds its curve, which is irrelevant at one bond and is the first
-thing to cache when batch arrives; and the Excel side has not yet been click-tested
-end to end, because this development environment has no Excel — the Python side is
-covered by the automatic suite and the VBA side is written against its real output.
+thing to cache when batch arrives; and one link of the Excel path is still stood in
+for — `integrations/excel_vba/tests/Run-BridgeTests.ps1` drives the real VBA in a
+hidden Excel instance (23 checks: cells → JSON → a waited-for command → cells, plus
+the error path), but the runner it calls is a `.cmd` returning the committed fixture,
+because the Windows machine here has no Python. Excel invoking a *live* Python runner
+is the one step not yet exercised.
 
 ## 13. Where the code is
 
@@ -332,4 +335,6 @@ src/pricer/assets/corporate/          the approved vanilla functions + input cat
 scripts/price_json.py                 request file -> response file
 integrations/excel_vba/               the bridge, the parser, the fixtures
 tests/test_vanilla_json_endpoint.py   28 interface checks (parity, firm, lenient, CLI)
+integrations/excel_vba/tests/         23 VBA checks, driven through a hidden Excel
+
 ```

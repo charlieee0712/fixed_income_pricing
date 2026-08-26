@@ -94,7 +94,18 @@ checks — those are decided here, from the repo.
   reported unused with **null (never 0)** sensitivities; ⑤ no silent USD fallback — CURVE_NOT_FOUND
   (no file / no date row) vs CURVE_BUILD_FAILED (GBP 3-31 = not arb-free) are different codes; ⑥ no
   path, traceback or payload in any error message; ⑦ parity asserted with `==` vs direct calls.
+  **Excel side TESTED on real Excel (2026-08-25):** `integrations/excel_vba/tests/Run-BridgeTests.ps1`
+  + `TestHarness.bas` drive the VBA in a hidden Excel instance — **23/23**: import + Scripting
+  Runtime ref · cells→request JSON with Excel serials 42750/39903 → "2017-01-15"/"2009-03-31" ·
+  runner invoked AND waited for · every output cell == the engine's real numbers · error response
+  shows its message and clears stale numbers. The script temporarily enables "Trust access to the
+  VBA project object model" and restores it in a finally block; needs NO Python (a `.cmd` returning
+  the committed fixture stands in). **It found a real bug on first run:** JSON `null` reaches VBA as
+  `Null`, not `Nothing`, so `Set x = Field(response, "applicability")` raised "Object required" on
+  EVERY error response ⇒ fixed with a `FieldObject` accessor (now a regression check). Untested link
+  remaining: Excel calling a LIVE Python runner + the MsgBox/file-picker paths (not drivable headlessly).
   Docs: `docs/vanilla_json_excel_interface_v1.md` (reference) +
+
   `docs/code_structure_followup_json_excel_2026-08-25.md` (decision record). **Mario's three
   comments are recorded in §1 as the user RECALLED them (paraphrase, not a transcript — treat the
   wording as approximate):** ① "what happens if the volatility of yield changes — for OAS and for

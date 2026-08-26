@@ -72,8 +72,19 @@ calibration residual −5.9e-09.
   it directly (vanilla: exactly none, because there is no option for volatility to be worth
   anything on — hence `null`, not `0.0`; callable: lower price at a fixed spread, higher implied
   OAS at a fixed price). His "for each bond" phrasing also confirms the single-bond canonical unit.
-- Excel side is **not yet click-tested end to end** (no Excel on this box or on 47); the fixtures
-  make the VBA testable without Python, and the README says so plainly rather than implying done.
+- ✅ **Excel side tested on real Excel** — `integrations/excel_vba/tests/Run-BridgeTests.ps1`
+  (+ `TestHarness.bas`) drives the VBA in a hidden Excel instance: **23/23 checks**, covering
+  module import + the Scripting Runtime reference, cells → request JSON (Excel serials 42750 /
+  39903 becoming "2017-01-15" / "2009-03-31"), the runner invoked and WAITED for, every output
+  cell matching the engine's real numbers, and an error response clearing the stale ones. It
+  temporarily enables "Trust access to the VBA project object model" and restores the previous
+  state in a finally block. **It found a real defect on first run:** JSON `null` reaches VBA as
+  `Null`, not `Nothing`, so `Set x = Field(response, "applicability")` raised "Object required"
+  on EVERY error response — the sheet would have shown a VBA error instead of the reason the bond
+  could not be priced. Fixed with a `FieldObject` accessor; the error path is now a regression
+  check. Remaining untested link: Excel invoking a LIVE Python runner (the test uses a `.cmd`
+  that returns the committed fixture, since this Windows box has no Python), plus the MsgBox /
+  file-picker paths, which cannot be driven headlessly.
 - Next engines through the same door in the approved rollout order, callable first — where
   volatility stops being "accepted but unused" and becomes a real input.
 
