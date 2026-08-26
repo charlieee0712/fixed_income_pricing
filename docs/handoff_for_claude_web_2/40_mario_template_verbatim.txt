@@ -1,0 +1,123 @@
+pricer/
+├── core/                                    # 80% of code – reusable engines & models
+│   ├── __init__.py
+│   │
+│   ├── pricing/                             # Pricing engines (generic algorithms)
+│   │   ├── __init__.py
+│   │   ├── base.py                          # BaseEngine (abstract)
+│   │   ├── analytical.py                    # DCF for vanilla bonds, swaps
+│   │   ├── tree.py                          # Binomial tree for callable/putable/options
+│   │   ├── monte_carlo.py                   # Simulation for MBS, ABS, path‑dependent
+│   │   ├── cashflows.py                     # Cashflow generation (all instruments)
+│   │   ├── discounting.py                   # Discount factors, PV
+│   │   ├── prepayment.py                    # Prepayment models (PSA, CPR, SMM)
+│   │   └── default.py                       # Default models (ABS, corporate)
+│   ├── risk/                                # Risk calculations
+│   │   ├── __init__.py
+│   │   ├── sensitivities.py                 # DV01, duration, convexity
+│   │   └── credit.py                        # Credit spreads, ratings
+│   ├── market/                              # Market data interfaces
+│   │   ├── __init__.py
+│   │   ├── curves.py                        # Yield curve operations
+│   │   ├── currencies.py                    # Currency mappings
+│   │   ├── volatility.py                    # Volatility surfaces
+│   │   └── spreads.py                       # Credit spreads, OAS
+│   └── utils/                               # Utilities
+│       ├── __init__.py
+│       ├── dates.py                         # Date operations, calendars
+│       └── math.py                          # Interpolation, numerical methods
+│
+├── assets/                                  # 20% of code – thin, asset‑specific wrappers
+│   ├── __init__.py
+│   ├── base.py                              # BaseAsset (abstract wrapper)
+│   │
+│   ├── government/                          # Government bonds
+│   │   ├── __init__.py
+│   │   ├── nominal.py                       # Reuses core.instruments.bond.BondInstrument
+│   │   ├── bills.py                         # Zero‑coupon, reuses BondInstrument(rate=0)
+│   │   └── pricing.py                       # Uses core.pricing.analytical; for linkers uses custom discounting
+│   │
+│   ├── corporate/                           # Corporate bonds
+│   │   ├── __init__.py
+│   │   ├── bons_input.py                    # Possible input Types, 1- Yield, Maturity, Coupon, Freq, 2- Yield, Maturity, Coupon Vector, 3- Yield Vector, Maturity, Coupon, Freq
+│   │   ├── vanilla.py                       # Reuses BondInstrument + core.pricing.analytical
+│   │   ├── callable.py                      # Reuses CallableInstrument + core.pricing.tree
+│   │   ├── putable.py                       # Reuses CallableInstrument (with put) + tree
+│   │   ├── models.py                        # Adds credit rating, industry, etc.
+│   │   └── pricing.py                       # May add credit spread adjustments using core.risk.credit
+│   │
+│   ├── securitized/                         # MBS, ABS, CMBS
+│   │   ├── mbs/
+│   │   │   ├── __init__.py
+│   │   │   ├── agency.py                    # Reuses MBSInstrument, uses core.pricing.monte_carlo with PSA
+│   │   │   ├── non_agency.py                # Adds default, uses core.pricing.default
+│   │   │   ├── cmo.py                       # Reuses MBSInstrument with tranche logic
+│   │   │   ├── models.py                    # Adds prepayment assumptions, WAC, WAM
+│   │   │   └── pricing.py                   # Calls core.pricing.monte_carlo with prepayment model
+│   │   ├── abs/
+│   │   │   ├── __init__.py
+│   │   │   ├── auto.py                      # Reuses ABSInstrument + core.pricing.monte_carlo + default
+│   │   │   ├── credit_card.py               # Same, with different default/curtailment
+│   │   │   ├── models.py                    # Collateral details
+│   │   │   └── pricing.py                   # Uses core.pricing.default and monte_carlo
+│   │   └── cmbs/
+│   │       ├── __init__.py
+│   │       ├── retail.py                    # Reuses ABSInstrument with commercial real estate specifics
+│   │       ├── multifamily.py
+│   │       ├── models.py
+│   │       └── pricing.py                   # Similar, uses core engines
+│   │
+│   ├── derivatives/                         # Swaps, options, futures
+│   │   ├── swaps/
+│   │   │   ├── __init__.py
+│   │   │   ├── fixed_float.py               # Reuses SwapInstrument + core.pricing.analytical
+│   │   │   ├── basis.py                     # Reuses SwapInstrument with two floating legs
+│   │   │   ├── inflation.py                 # Reuses SwapInstrument with inflation index
+│   │   │   ├── models.py                    # Adds index details
+│   │   │   └── pricing.py                   # Uses analytical, possibly with convexity adjustments
+│   │   ├── options/
+│   │   │   ├── __init__.py
+│   │   │   ├── options_input.py             # Black Scholes Input
+│   │   │   ├── caps_floors.py               # Reuses OptionInstrument (on rates) + core.pricing.tree/Black
+│   │   │   ├── swaptions.py                 # Option on swap, uses tree or Black
+│   │   │   ├── bond_options.py              # Option on bond, uses tree
+│   │   │   ├── models.py                    # Strike, expiry, underlying
+│   │   │   └── pricing.py                   # Calls core.pricing.tree
+│   │   └── futures/
+│   │       ├── __init__.py
+│   │       ├── futures_input.py             # Maturity, Volatility, Yield, Rating, Spreads
+│   │       ├── treasury.py                  # Reuses Future-like instrument (core may have no base, but can use BondInstrument + pricing)
+│   │       ├── eurodollar.py                # Similar
+│   │       ├── models.py
+│   │       └── pricing.py                   # Uses core.pricing.analytical with convexity
+│   │
+│   └── municipal/                           # Municipal bonds (tax‑aware)
+│       ├── __init__.py
+│       ├── mini_input.py                    # Possible input Types, 1- Yield, Maturity, Coupon, Freq, 2- Yield, Maturity, Coupon Vector, 3- Yield Vector, Maturity, Coupon, Freq
+│       ├── general_obligation.py            # Reuses BondInstrument + core.pricing.analytical
+│       ├── revenue.py                       # Same
+│       ├── pre_refunded.py                  # Same, with escrow logic
+│       ├── taxable.py                       # Same but with tax adjustments
+│       ├── models.py                        # Adds tax status, state
+│       └── pricing.py                       # Calls core.pricing.analytical and applies tax treatment
+│
+├── endpoints/                               # API Layer
+│   ├── __init__.py
+│   ├── main.py
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── pricing.py                       # Single /price endpoint – uses AssetFactory
+│   │   └── curves.py                        # Yield curve endpoints
+│   └── dependencies.py
+│
+├── data/                                    # Data files
+│   └── yield_curves/
+│       ├── France_Yield_Curve.txt
+│       ├── USD_Yield_Curve.txt
+│       └── ...
+│
+└── tests/                                   # Tests
+    ├── test_instruments/
+    ├── test_pricing/
+    ├── test_assets/
+    └── ...

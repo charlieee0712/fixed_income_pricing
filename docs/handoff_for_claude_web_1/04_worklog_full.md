@@ -5,6 +5,179 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-25 (second wave) — Round 2a: one shared tree for callable / puttable / sinking
+**Commit:** `d4ffee6` (plan revision) · `feaa164` (Gates 1-2) · `e59e56e` (Gate 3) ·
+this entry's commit (docs + records)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Scope decision (the user left this one to me).** The plan covered callable, puttable,
+sinking AND floating, and offered FRN as the movable piece if the week was too full. It is:
+**FRN moved to Round 2b.** Reasons: this week's headline — the volatility answer Mario asked
+for — is entirely a tree story (an FRN's answer is "not applicable"); the tree cluster shares
+one 225-line migration across three wrappers while FRN is a separable 188-line engine with
+its own wrapper, inputs and endpoint contract; and the round's only genuinely new modelling
+(sinking) deserved the budget rather than the remainder. Gate 0's freeze was taken
+**full-width including FRN and hybrids** so 2b starts from a known-good state.
+
+**Gate 0.** Baseline `c8d0a83`, 194 green. All three production drivers run LOCALLY now
+(6s / 4s / 7s) and their CSVs are the freeze. Verified in the workbook that the plan's cell
+correction is right AND sharper than stated: `Q61` is the header, rows 62-71 carry the
+analysisType NUMBER in column **P** and the label in column Q, and row 67 shows this is
+input #1 `AnalysisType`.
+
+**Gate 1 — migration, not rewrite.** `pricing/lattice.py` copied VERBATIM to
+`pricer/core/pricing/tree.py`; the old path is a shim re-exporting the same object (asserted
+by identity). Added `schedule_times()` and `bond_tree()`. The first exists for a specific
+reason: `dataio.call_schedules.to_lattice_schedule` still DEFAULTS to 365.25 days/year while
+the coupon grid is ACT/364 — both drivers pass 364.0 explicitly so production was always
+consistent, but a new caller taking the default would silently put exercise dates on a
+different axis than coupons. New code goes through core; a test pins the two together. The
+stale default is left alone (changing a validated data module for no production benefit is
+what a migration round must not do) and recorded as a follow-up.
+
+**Gate 2 — callable + puttable.** `assets/corporate/embedded_option.py` holds one shared
+surface; `callable.py` and `puttable.py` name the right and pass a schedule. Wrapper output
+equals the production driver path with `==`. **Found and fixed a real gap the plan predicted
+but the code did not have:** the core applies `min(call)` then `max(put)`, so a put priced
+above a call on the same date silently resolved in the holder's favour. Now refused at the
+wrapper with both prices named; the core float path is untouched.
+
+**Gate 3 — sinking fund, the new capability.** Issuer optional redemption of a fraction of
+the amount OUTSTANDING, one node rule where the call cap already fires:
+`cont <- (1-f)*cont + f*min(cont,P)`. The plan left the fraction basis to "the caller"; the
+code cannot, so v1 fixes it and REFUSES an original-face basis with a message naming the
+strip decomposition it would need. The reason is structural: on an outstanding basis every
+remaining flow scales with the amount outstanding, so value per unit is level-free and the
+node stays path-independent on a recombining tree; on an original-face basis it does not.
+Anchor invariant holds bit-for-bit (f=1 IS the call cap — compared at the node, because a
+one-off redemption is not the same as a Bermudan call array that stays live to maturity).
+
+**Gate 6 — and the finding that shapes the report.** Route census from the frozen extract:
+callable 464 / puttable 7 / sinking 18, and **all 474 sit in the stale 2010-03-01 batch with
+ZERO in the sound 2012-12-12 cohort**. There is therefore no numeric golden for any of this
+round's families, which is stated plainly rather than worked around. Also corrected: the
+plan's "FLOATING = 426 rows" is not in this extract (`mty_typ` has none, `calc_typ_des` has
+29) — 426 is the URS production count, a different population; Round 2b must re-derive it.
+Memo: `docs/monthly_q62_q71_non_mortgage_mapping_2026-08-25.md`.
+
+**Gate 5 DEFERRED to 2b** under the plan's own §11.2 escape hatch: the engine work is
+complete and clean, and doing the endpoint contract once next week covers callable, puttable
+AND floating in a single schedule-normalising change instead of two.
+
+**Tests 194 → 223** (`test_pricer_tree_structure.py`, 29). Production CSVs verified
+SHA256-identical after every code-bearing commit. Mario report:
+`docs/code_structure_round2_embedded_options_2026-08-25.md` — including the volatility table
+on the one genuinely call-active holding (6.45% of 2034, BT 90.04): price 90.4229 / 90.0426 /
+89.5161 and OAS 414.52 / 410.77 / 404.84 bp at vol 10/15/20%, i.e. about 10 cents of price
+or 1 bp of spread per volatility point. The other two callables are far from their call
+price and move by under a tenth of a basis point — which is why a single portfolio-level
+vega would be misleading.
+
+**Open / next (Round 2b)**
+- FRN migration into `core/pricing/floating.py` + the floating wrapper. ⚠️ `hybrid.py`
+  imports FRN **privates** (`_as_date`, `_df`, `YEAR_DAYS`, `simple_forward`) — the shim must
+  re-export them or the hybrid engine breaks on import.
+- Endpoint dispatch (`instrument_type`) for callable / puttable / floating in one change.
+- Re-derive the FRN cohort from the Monthly extract rather than reusing 426.
+
+---
+
+## 2026-08-25 — Mario approves the sample → JSON/Excel interface v1 (currency, volatility, bridge)
+**Commit:** `3681e3a` (plan revision) · `b6d5b2a` (endpoint + seam + CLI + tests) ·
+`66ca4f0` (Excel bridge + real fixtures) · this entry's commit (docs)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Context.** Mario approved the 2026-08-15 code-structure sample with three follow-up points —
+currency, yield volatility, and an Excel ↔ JSON ↔ Python process. The user wrote the round's plan
+(`docs/vanilla_json_excel_followup_final_execution_plan_2026-08-25.md`) and asked for it to be
+adjusted where needed before execution, with a deliberately lenient design.
+
+**Alignment gate first (plan §2).** 47 at `6b74e25`, **166 green**, clean tree, no `endpoints/`
+and no `integrations/` — so the plan's preferred delta applied as written.
+
+**Plan revised before any code (§16, nine adjustments).** One Fable-advisor consult (the round
+fixes an external contract that Excel and the cloud team build against — the case the advisor
+policy covers). Adjustments, each verified against the repo first:
+- **`price_at_oas` added as a second v1 operation.** The legacy per-metric functions take a spread
+  as an INPUT; rejecting `oas_bp` with no named alternative was the plan's one piece of needless
+  strictness. `calibrate_and_risk` still refuses a supplied OAS, so the methodology lock stands.
+- **Dates must be ISO strings.** Verified: `pd.Timestamp(39903)` → **1970-01-01** (nanoseconds
+  since the epoch). An Excel serial would have priced the bond on the wrong date, on the wrong
+  curve, with nothing looking broken. Numeric dates are now a hard error — the one place the
+  contract is deliberately unforgiving.
+- **`face_value` echoed but NOT applied.** Field names are the contract ("per 100"); honouring a
+  face of 1000 while the caller sends a per-100 mark would calibrate to the wrong quantity.
+- **`CURVE_BUILD_FAILED` added.** Verified on 47 that the three curve failures are genuinely
+  different: CHF = no file mapped, KRW @3-31 = file exists but not that date (both
+  CURVE_NOT_FOUND), **GBP @3-31 = file and date exist but the par curve is not arbitrage-free**.
+  Reporting the last as "not found" would send someone hunting for a present file.
+- **Error sanitisation made a requirement**, because `load_par_curve`'s own message embeds
+  `data/KRW_Yield_Curve.txt`; plus `inputs_used` echo + `day_count` applicability in the response,
+  the flat `endpoints/` layout with `resolve_curve` living in `core/market/curves.py`, vendoring
+  the VBA JSON parser, and commit order (code first, the Mario-verbatim addendum last).
+
+**Built (all additive — no engine, shim or driver touched).**
+- `src/pricer/endpoints/`: `main.analyze_vanilla_payload(payload) -> response` (failures are
+  values, never exceptions), `contracts` (normalise / validate / envelopes, standard library
+  only), `pricing` (the seven-step orchestration, zero formulas), `dependencies` (the only
+  environment-aware file).
+- `core/market/curves.py`: `resolve_curve(currency, valuation_date, coupon_frequency)` +
+  `curve_id()` + `CurveUnavailable(reason)` — the reusable routing seam. The three driver scripts
+  keep their duplicated `FREQ_VARIANT` maps this round (plan §3.4 no-touch list).
+- `bonds_input.py`: `currency` as input 5 (external routing input, never an FX instruction), an
+  `external` JSON-path column on every row, and the applicability wording the response echoes.
+- `scripts/price_json.py`: request file → response file, atomic write, exit 0/1/2, one status line
+  and never the payload; reads `utf-8-sig` because Excel writes a BOM.
+- `integrations/excel_vba/`: bridge module (adapter only — reads named cells, converts Excel dates
+  to ISO, runs one configured command and waits, maps the response back), VBA-JSON v2.3.1 (MIT)
+  vendored with provenance, `runner_example.cmd`, README, and **real** request/response fixtures
+  generated by running the CLI on 47 — not typed by hand.
+
+**Tests: 166 → 194 green** (`tests/test_vanilla_json_endpoint.py`, 28). The parity group asserts
+with `==` that every endpoint number equals the direct call to the approved vanilla function, so
+the interface cannot drift into a second implementation. The rest cover the three curve failure
+modes (with a no-file-path assertion), the serial-date refusal, the calibration lock, the lenient
+normalisations, and two CLI subprocess runs. Worked example (real output): 6.5% USD 2017-01-15 at
+94.25 clean on 2009-03-31 → **OAS 523.298 bp, eff-dur 6.0907 y, DV01 0.058112, convexity 43.437**,
+calibration residual −5.9e-09.
+
+**Open / next**
+- ✅ **Mario's three comments recorded** (`…followup_json_excel_2026-08-25.md` §1) from the user's
+  recollection — marked as a paraphrase, not a transcript. They confirmed the three readings, and
+  sharpened one: his volatility question asked for the EFFECT on OAS and price, so §2.2 now answers
+  it directly (vanilla: exactly none, because there is no option for volatility to be worth
+  anything on — hence `null`, not `0.0`; callable: lower price at a fixed spread, higher implied
+  OAS at a fixed price). His "for each bond" phrasing also confirms the single-bond canonical unit.
+- ✅ **Excel side tested on real Excel** — `integrations/excel_vba/tests/Run-BridgeTests.ps1`
+  (+ `TestHarness.bas`) drives the VBA in a hidden Excel instance: **23/23 checks**, covering
+  module import + the Scripting Runtime reference, cells → request JSON (Excel serials 42750 /
+  39903 becoming "2017-01-15" / "2009-03-31"), the runner invoked and WAITED for, every output
+  cell matching the engine's real numbers, and an error response clearing the stale ones. It
+  temporarily enables "Trust access to the VBA project object model" and restores the previous
+  state in a finally block. **It found a real defect on first run:** JSON `null` reaches VBA as
+  `Null`, not `Nothing`, so `Set x = Field(response, "applicability")` raised "Object required"
+  on EVERY error response — the sheet would have shown a VBA error instead of the reason the bond
+  could not be priced. Fixed with a `FieldObject` accessor; the error path is now a regression
+  check.
+- ✅ **End to end, with Excel calling Python for real.** The "no local Python" note in CLAUDE.md
+  was simply WRONG: the PATH holds only the Store stub, but the registry lists two full installs,
+  and `C:\Users\cnc\anaconda3\anaconda2025\python.exe` (3.13.5) has numpy/pandas/scipy/pytest. So
+  the last stood-in link was closed the same day: `Run-BridgeTests.ps1 -PythonExe <exe>` generates
+  a real runner and Excel prices the bond live — **23/23 in both modes**. Only the modal-dialog
+  paths stay outside the automated test. Two more findings from running locally: the whole suite
+  passes on Windows too (**194 in 18.8s**, and the endpoint's JSON is byte-identical to 47's — a
+  free cross-platform determinism check), but only after adding **`pytest.ini`**, because a bare
+  root-level `pytest` was collecting the git-ignored Drive staging copies' duplicate test files
+  ("import file mismatch", zero tests run). That file must stay ASCII — pytest reads it with the
+  system codec (GBK) and one em dash aborted the run.
+
+- Next engines through the same door in the approved rollout order, callable first — where
+  volatility stops being "accepted but unused" and becomes a real input.
+
+---
+
 ## 2026-08-17 — Monthly-recon plan (Rev A from planning side) → Gate 0 EXECUTED → plan Rev B
 **Commit:** this entry's commit (docs only — Gate 0 is pure inventory, no product code)
 **Hours:** `[TO FILL]`

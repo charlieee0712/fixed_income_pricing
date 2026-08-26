@@ -49,3 +49,25 @@
   awaiting CEO confirmation; no legacy code exists.
 - **Two clients** — URS (the US pension book, the target) vs Uganda (a UGX demo inside the
   legacy pricing workbook). Never merged.
+
+## Added 2026-08-25
+
+- **`pricer/endpoints/`** — the external interface: one payload dict in, one response dict
+  out (`analyze_vanilla_payload`). Failures are values, never exceptions. No arithmetic.
+- **operation** — `calibrate_and_risk` (price in → OAS out; refuses a supplied OAS) or
+  `price_at_oas` (spread in → price out).
+- **the tree** — `core/pricing/tree.py`, the migrated BDT lattice. Serves callable, puttable
+  and sinking-fund bonds; `pricing/lattice.py` is now a shim over it.
+- **sinking fund (as modelled)** — *issuer optional redemption*: on scheduled dates the
+  issuer may retire a fraction of the amount **outstanding** at a contractual price. Not
+  amortisation, which is deterministic and has no option.
+- **fraction_basis** — must be `"outstanding"`. `"original"` is refused with a pointer to the
+  strip decomposition it would require.
+- **the two volatility experiments** — price at a fixed spread vs spread at a fixed price.
+  Different questions; never conflated.
+- **Round 2a / 2b** — this week's embedded-option work; next week's floating + endpoint
+  dispatch.
+- **`legacy-stale-session`** — the 2010-03-01 Monthly batch: an older code revision run on
+  mixed-vintage cached data. Diagnostic only, never a numeric target.
+- **the bridge** — `RysePricingBridge.bas`, the Excel adapter. Reads named cells, writes one
+  request, runs one configured command and waits, maps the answer back. No pricing in VBA.

@@ -74,3 +74,51 @@ Settled by directive, test, or evidence. Reopen only if the user explicitly asks
     dictionaries (adopted), and its ~2,600-bond results table is the reconciliation golden
     (planned milestone — treat its numbers as the target, mindful that the legacy engine
     carries the known discounting bug, so reconciliation may need `vba_compat`).
+
+---
+
+## Added 2026-08-25 (the JSON/Excel and embedded-option rounds)
+
+**Interface**
+
+- **Two named operations.** `calibrate_and_risk` takes the clean market price and **refuses**
+  a supplied OAS; `price_at_oas` is the separately named operation for pricing at a spread the
+  caller chooses. A mark and a typed spread can disagree and there is no principled tiebreak.
+- **Dates crossing the JSON boundary are ISO STRINGS.** A numeric date is a hard error:
+  `pandas.Timestamp(39903)` is 1970-01-01, so an Excel serial would price the bond on the
+  wrong day with nothing looking broken. Converting it is the VBA bridge's job.
+- **Everything is quoted per 100 face.** A supplied `face_value` is echoed and **not
+  applied** — applying it against a per-100 mark calibrates the wrong quantity.
+- **Currency routes a curve and nothing else.** No silent USD fallback; `CURVE_NOT_FOUND`
+  (no file, or no row for that date) and `CURVE_BUILD_FAILED` (the curve exists but is not
+  arbitrage-free — GBP at 3-31) are different codes because they mean different things.
+- **Exact parity is the contract**: every interface number equals the direct function call
+  with `==`, not a tolerance. That is what prevents a second, drifting implementation.
+- **Leniency is for presentation only.** Lower-case currency, numbers as text, unsorted
+  schedules, unknown fields, an unused volatility — all absorbed with a warning. Economics
+  are never inferred.
+
+**Embedded options**
+
+- **One shared tree** serves callable, puttable and sinking-fund bonds. Fourteen workbook
+  rows carry two rights at once, so separate engines would have to copy each other.
+- **Sinking fund = issuer optional redemption on fractions of the OUTSTANDING amount.** Only
+  that basis keeps value-per-unit level-free and the node path-independent on a recombining
+  tree; an original-face schedule needs a strip decomposition and is **refused**, not
+  approximated.
+- **A pass-through or amortising bond is not a sinking-fund bond.** No holding is rerouted on
+  the strength of a `Sinking = Yes` flag.
+- **Contradictory terms are refused**, not resolved silently: a put priced above a call on the
+  same date, a sinking date colliding with a call or put date, two redemptions inside one
+  coupon period.
+
+**Validation**
+
+- With **no golden available** (all 474 tree-family Monthly rows are stale), the accepted
+  evidence is production parity by hash + `==` direct-call parity + invariants with at least
+  one exact anchor + the Bloomberg three-way.
+
+**Process**
+
+- **Reports serve two audiences**: Mario and the Google team, who now attend the briefing in
+  person. Plain language throughout, plus one labelled engineering section.

@@ -1,0 +1,1633 @@
+# Work Log
+
+Reverse-chronological. Each entry is **anchored to the commit** that delivered the
+work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
+
+---
+
+## 2026-08-25 (second wave) — Round 2a: one shared tree for callable / puttable / sinking
+**Commit:** `d4ffee6` (plan revision) · `feaa164` (Gates 1-2) · `e59e56e` (Gate 3) ·
+this entry's commit (docs + records)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Scope decision (the user left this one to me).** The plan covered callable, puttable,
+sinking AND floating, and offered FRN as the movable piece if the week was too full. It is:
+**FRN moved to Round 2b.** Reasons: this week's headline — the volatility answer Mario asked
+for — is entirely a tree story (an FRN's answer is "not applicable"); the tree cluster shares
+one 225-line migration across three wrappers while FRN is a separable 188-line engine with
+its own wrapper, inputs and endpoint contract; and the round's only genuinely new modelling
+(sinking) deserved the budget rather than the remainder. Gate 0's freeze was taken
+**full-width including FRN and hybrids** so 2b starts from a known-good state.
+
+**Gate 0.** Baseline `c8d0a83`, 194 green. All three production drivers run LOCALLY now
+(6s / 4s / 7s) and their CSVs are the freeze. Verified in the workbook that the plan's cell
+correction is right AND sharper than stated: `Q61` is the header, rows 62-71 carry the
+analysisType NUMBER in column **P** and the label in column Q, and row 67 shows this is
+input #1 `AnalysisType`.
+
+**Gate 1 — migration, not rewrite.** `pricing/lattice.py` copied VERBATIM to
+`pricer/core/pricing/tree.py`; the old path is a shim re-exporting the same object (asserted
+by identity). Added `schedule_times()` and `bond_tree()`. The first exists for a specific
+reason: `dataio.call_schedules.to_lattice_schedule` still DEFAULTS to 365.25 days/year while
+the coupon grid is ACT/364 — both drivers pass 364.0 explicitly so production was always
+consistent, but a new caller taking the default would silently put exercise dates on a
+different axis than coupons. New code goes through core; a test pins the two together. The
+stale default is left alone (changing a validated data module for no production benefit is
+what a migration round must not do) and recorded as a follow-up.
+
+**Gate 2 — callable + puttable.** `assets/corporate/embedded_option.py` holds one shared
+surface; `callable.py` and `puttable.py` name the right and pass a schedule. Wrapper output
+equals the production driver path with `==`. **Found and fixed a real gap the plan predicted
+but the code did not have:** the core applies `min(call)` then `max(put)`, so a put priced
+above a call on the same date silently resolved in the holder's favour. Now refused at the
+wrapper with both prices named; the core float path is untouched.
+
+**Gate 3 — sinking fund, the new capability.** Issuer optional redemption of a fraction of
+the amount OUTSTANDING, one node rule where the call cap already fires:
+`cont <- (1-f)*cont + f*min(cont,P)`. The plan left the fraction basis to "the caller"; the
+code cannot, so v1 fixes it and REFUSES an original-face basis with a message naming the
+strip decomposition it would need. The reason is structural: on an outstanding basis every
+remaining flow scales with the amount outstanding, so value per unit is level-free and the
+node stays path-independent on a recombining tree; on an original-face basis it does not.
+Anchor invariant holds bit-for-bit (f=1 IS the call cap — compared at the node, because a
+one-off redemption is not the same as a Bermudan call array that stays live to maturity).
+
+**Gate 6 — and the finding that shapes the report.** Route census from the frozen extract:
+callable 464 / puttable 7 / sinking 18, and **all 474 sit in the stale 2010-03-01 batch with
+ZERO in the sound 2012-12-12 cohort**. There is therefore no numeric golden for any of this
+round's families, which is stated plainly rather than worked around. Also corrected: the
+plan's "FLOATING = 426 rows" is not in this extract (`mty_typ` has none, `calc_typ_des` has
+29) — 426 is the URS production count, a different population; Round 2b must re-derive it.
+Memo: `docs/monthly_q62_q71_non_mortgage_mapping_2026-08-25.md`.
+
+**Gate 5 DEFERRED to 2b** under the plan's own §11.2 escape hatch: the engine work is
+complete and clean, and doing the endpoint contract once next week covers callable, puttable
+AND floating in a single schedule-normalising change instead of two.
+
+**Tests 194 → 223** (`test_pricer_tree_structure.py`, 29). Production CSVs verified
+SHA256-identical after every code-bearing commit. Mario report:
+`docs/code_structure_round2_embedded_options_2026-08-25.md` — including the volatility table
+on the one genuinely call-active holding (6.45% of 2034, BT 90.04): price 90.4229 / 90.0426 /
+89.5161 and OAS 414.52 / 410.77 / 404.84 bp at vol 10/15/20%, i.e. about 10 cents of price
+or 1 bp of spread per volatility point. The other two callables are far from their call
+price and move by under a tenth of a basis point — which is why a single portfolio-level
+vega would be misleading.
+
+**Open / next (Round 2b)**
+- FRN migration into `core/pricing/floating.py` + the floating wrapper. ⚠️ `hybrid.py`
+  imports FRN **privates** (`_as_date`, `_df`, `YEAR_DAYS`, `simple_forward`) — the shim must
+  re-export them or the hybrid engine breaks on import.
+- Endpoint dispatch (`instrument_type`) for callable / puttable / floating in one change.
+- Re-derive the FRN cohort from the Monthly extract rather than reusing 426.
+
+---
+
+## 2026-08-25 — Mario approves the sample → JSON/Excel interface v1 (currency, volatility, bridge)
+**Commit:** `3681e3a` (plan revision) · `b6d5b2a` (endpoint + seam + CLI + tests) ·
+`66ca4f0` (Excel bridge + real fixtures) · this entry's commit (docs)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Context.** Mario approved the 2026-08-15 code-structure sample with three follow-up points —
+currency, yield volatility, and an Excel ↔ JSON ↔ Python process. The user wrote the round's plan
+(`docs/vanilla_json_excel_followup_final_execution_plan_2026-08-25.md`) and asked for it to be
+adjusted where needed before execution, with a deliberately lenient design.
+
+**Alignment gate first (plan §2).** 47 at `6b74e25`, **166 green**, clean tree, no `endpoints/`
+and no `integrations/` — so the plan's preferred delta applied as written.
+
+**Plan revised before any code (§16, nine adjustments).** One Fable-advisor consult (the round
+fixes an external contract that Excel and the cloud team build against — the case the advisor
+policy covers). Adjustments, each verified against the repo first:
+- **`price_at_oas` added as a second v1 operation.** The legacy per-metric functions take a spread
+  as an INPUT; rejecting `oas_bp` with no named alternative was the plan's one piece of needless
+  strictness. `calibrate_and_risk` still refuses a supplied OAS, so the methodology lock stands.
+- **Dates must be ISO strings.** Verified: `pd.Timestamp(39903)` → **1970-01-01** (nanoseconds
+  since the epoch). An Excel serial would have priced the bond on the wrong date, on the wrong
+  curve, with nothing looking broken. Numeric dates are now a hard error — the one place the
+  contract is deliberately unforgiving.
+- **`face_value` echoed but NOT applied.** Field names are the contract ("per 100"); honouring a
+  face of 1000 while the caller sends a per-100 mark would calibrate to the wrong quantity.
+- **`CURVE_BUILD_FAILED` added.** Verified on 47 that the three curve failures are genuinely
+  different: CHF = no file mapped, KRW @3-31 = file exists but not that date (both
+  CURVE_NOT_FOUND), **GBP @3-31 = file and date exist but the par curve is not arbitrage-free**.
+  Reporting the last as "not found" would send someone hunting for a present file.
+- **Error sanitisation made a requirement**, because `load_par_curve`'s own message embeds
+  `data/KRW_Yield_Curve.txt`; plus `inputs_used` echo + `day_count` applicability in the response,
+  the flat `endpoints/` layout with `resolve_curve` living in `core/market/curves.py`, vendoring
+  the VBA JSON parser, and commit order (code first, the Mario-verbatim addendum last).
+
+**Built (all additive — no engine, shim or driver touched).**
+- `src/pricer/endpoints/`: `main.analyze_vanilla_payload(payload) -> response` (failures are
+  values, never exceptions), `contracts` (normalise / validate / envelopes, standard library
+  only), `pricing` (the seven-step orchestration, zero formulas), `dependencies` (the only
+  environment-aware file).
+- `core/market/curves.py`: `resolve_curve(currency, valuation_date, coupon_frequency)` +
+  `curve_id()` + `CurveUnavailable(reason)` — the reusable routing seam. The three driver scripts
+  keep their duplicated `FREQ_VARIANT` maps this round (plan §3.4 no-touch list).
+- `bonds_input.py`: `currency` as input 5 (external routing input, never an FX instruction), an
+  `external` JSON-path column on every row, and the applicability wording the response echoes.
+- `scripts/price_json.py`: request file → response file, atomic write, exit 0/1/2, one status line
+  and never the payload; reads `utf-8-sig` because Excel writes a BOM.
+- `integrations/excel_vba/`: bridge module (adapter only — reads named cells, converts Excel dates
+  to ISO, runs one configured command and waits, maps the response back), VBA-JSON v2.3.1 (MIT)
+  vendored with provenance, `runner_example.cmd`, README, and **real** request/response fixtures
+  generated by running the CLI on 47 — not typed by hand.
+
+**Tests: 166 → 194 green** (`tests/test_vanilla_json_endpoint.py`, 28). The parity group asserts
+with `==` that every endpoint number equals the direct call to the approved vanilla function, so
+the interface cannot drift into a second implementation. The rest cover the three curve failure
+modes (with a no-file-path assertion), the serial-date refusal, the calibration lock, the lenient
+normalisations, and two CLI subprocess runs. Worked example (real output): 6.5% USD 2017-01-15 at
+94.25 clean on 2009-03-31 → **OAS 523.298 bp, eff-dur 6.0907 y, DV01 0.058112, convexity 43.437**,
+calibration residual −5.9e-09.
+
+**Open / next**
+- ✅ **Mario's three comments recorded** (`…followup_json_excel_2026-08-25.md` §1) from the user's
+  recollection — marked as a paraphrase, not a transcript. They confirmed the three readings, and
+  sharpened one: his volatility question asked for the EFFECT on OAS and price, so §2.2 now answers
+  it directly (vanilla: exactly none, because there is no option for volatility to be worth
+  anything on — hence `null`, not `0.0`; callable: lower price at a fixed spread, higher implied
+  OAS at a fixed price). His "for each bond" phrasing also confirms the single-bond canonical unit.
+- ✅ **Excel side tested on real Excel** — `integrations/excel_vba/tests/Run-BridgeTests.ps1`
+  (+ `TestHarness.bas`) drives the VBA in a hidden Excel instance: **23/23 checks**, covering
+  module import + the Scripting Runtime reference, cells → request JSON (Excel serials 42750 /
+  39903 becoming "2017-01-15" / "2009-03-31"), the runner invoked and WAITED for, every output
+  cell matching the engine's real numbers, and an error response clearing the stale ones. It
+  temporarily enables "Trust access to the VBA project object model" and restores the previous
+  state in a finally block. **It found a real defect on first run:** JSON `null` reaches VBA as
+  `Null`, not `Nothing`, so `Set x = Field(response, "applicability")` raised "Object required"
+  on EVERY error response — the sheet would have shown a VBA error instead of the reason the bond
+  could not be priced. Fixed with a `FieldObject` accessor; the error path is now a regression
+  check.
+- ✅ **End to end, with Excel calling Python for real.** The "no local Python" note in CLAUDE.md
+  was simply WRONG: the PATH holds only the Store stub, but the registry lists two full installs,
+  and `C:\Users\cnc\anaconda3\anaconda2025\python.exe` (3.13.5) has numpy/pandas/scipy/pytest. So
+  the last stood-in link was closed the same day: `Run-BridgeTests.ps1 -PythonExe <exe>` generates
+  a real runner and Excel prices the bond live — **23/23 in both modes**. Only the modal-dialog
+  paths stay outside the automated test. Two more findings from running locally: the whole suite
+  passes on Windows too (**194 in 18.8s**, and the endpoint's JSON is byte-identical to 47's — a
+  free cross-platform determinism check), but only after adding **`pytest.ini`**, because a bare
+  root-level `pytest` was collecting the git-ignored Drive staging copies' duplicate test files
+  ("import file mismatch", zero tests run). That file must stay ASCII — pytest reads it with the
+  system codec (GBK) and one em dash aborted the run.
+
+- Next engines through the same door in the approved rollout order, callable first — where
+  volatility stops being "accepted but unused" and becomes a real input.
+
+---
+
+## 2026-08-17 — Monthly-recon plan (Rev A from planning side) → Gate 0 EXECUTED → plan Rev B
+**Commit:** this entry's commit (docs only — Gate 0 is pure inventory, no product code)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- Planning side delivered `docs/monthly_reconciliation_plan_2026-08-15.md` (gate plan for the
+  Monthly-sheet golden). Gate 0 = inventory, explicitly outside the sample-first freeze →
+  executed: openpyxl inventory on 47 (sheet 2,896×81, golden header = row 99) + targeted
+  `extracted/project_vba.txt` reads + zip/curve-txt checks. Evidence with cell/line citations:
+  **`docs/monthly_gate0_memo_2026-08-17.md`**. Three findings overturned the plan's premises:
+- **F1 — curve regime:** every golden row prices via `zeroyield4(ccy, O-date)` = **GOVERNMENT
+  par curves** (USD = H15T* H.15-CMT 11 pillars → 41-tenor gap-fill → the continuous 374-month
+  × 4-frequency bootstrap — our pipeline's own architecture; 15 other ccys = Bloomberg country
+  govt curves). The BondOAS tree consumes the same build (`IYC` par vector; Libor only as its
+  1–5M deposit stubs). The sheet's top Libor/swap block + `c:\blp\curves\` files = a separate
+  manual chain, **not in the golden path** (its `=Zeroyield` cells are #NAME?-dead; the UDF
+  was a side-effect file-writer returning 0 anyway). USD pillars = FRED `DGS*` for **all three
+  valuation dates** (tracked `*_Yield_Curve.txt` also has all three) ⇒ curves are a rebuild,
+  not data recovery; the 2012 blocks (122+274 rows) become feasible instead of conditional.
+- **F2 — `vba_compat` dropped:** the `bondcalc` vanilla chain is convention-consistent
+  (continuous z, `Exp(−(z+OAS/1e4)·t)`) — the `BondPrice` bug is absent; pre-registered H2
+  collapsed.
+- **F3 — the real hazards:** (a) **month-grid convention** — Δmonth counting, coupons every
+  `12/freq` months from the valuation month, face at the last step (maturity truncated), first
+  coupon a full period out, **no accrued**, 30y cap, curve table chosen by the bond's freq ⇒
+  recon needs a thin **legacy-parity mode** beside production; (b) **routing** by live
+  Bloomberg `mty_typ`/`calc_typ_des` fetched inside `BondCalc` (cached in cols AB/AC with
+  gaps; empty ⇒ FRN-tree fallback; MBS by asset class; Government Bonds → vanilla
+  unconditionally) ⇒ route by AN+AB/AC, dead-AB rows classified empirically.
+- **Scope recount:** the table is multi-asset (Govt MBS 956 / corp 856 / CMBS 351 / govt 198 /
+  AGY 104). True vanilla golden ≈ **420 rows** (248 corp/agy AT-MATURITY-FIXED, all
+  @2010-03-01, P med 191bp + ~174 govt FIXED incl. Treasuries as OAS≈0 anchors, p25 −5bp) —
+  not ~1,900. **ZERO (110): legacy P=0** (Coupon=0 validation reject — no vanilla-zero golden
+  exists) and DEFAULTED (21)=0 ⇒ excluded. FLOATING (426) = `BondOAS(8)` tree with
+  **spread-duration** convention (Q med 3.6 ≠ time-to-reset) and heavy tails (62 neg / 95 at
+  the 1000bp search cap). VARIABLE ≈ fix-to-float priced as **callable-FIXED** on the lattice
+  (row 168 = Allstate 6.125 2037 — URS-overlapping names; divergence vs our `hybrid.py` =
+  reportable finding, not imitated beyond fidelity). Calibration input = **col B** (X = base
+  copy); AG = **relative** |P−AD|/|AD| (AD n=311); bonus leg **col I = Bloomberg eff-duration
+  n=2,278** ⇒ duration three-way (new H4). Golden table is essentially **frozen output**
+  (pasted values; only 56 live `bondcalc` formulas; ~60 stale error cells per column). Legacy
+  solver noise floor measured (Veloz 1e-4 relative ⇒ ~0.1–1bp; V=W=reprice on non-option rows
+  ⇒ |V−B| = per-row legacy solve residual, V=W on 1,225/1,826 FIXED).
+- **SteepFlat Table Monthly.txt is lost** (not in the workbook's 26 sheets nor the data zips);
+  missing-file ⇒ zero-twist, and 43% of FIXED rows show T=U (those reconcile without it); ask
+  Mario **only when the T/U gate opens** (lock-#13 discipline — no asks opened today).
+- **Plan → Rev B in place** (same file): §2/§3 rewritten, Gate 1 = Treasury `zeroyield4`
+  rebuild (hypothesis: `bootstrap.py` already matches modulo solver slop), Gate-2 pilot
+  re-specced (govvie anchors replace the dead zero rows), Gate 3 ≈ 420 rows with new exception
+  reasons (`route-unknown` / `legacy-solver-cap` / `legacy-dead`), Gate-4 table updated, H2
+  removed / H4 added. **The vanilla gates no longer depend on the tree rollout** — they
+  directly validate the chain the 08-15 sample migrated; sequencing decision left with the
+  Mario rollout conversation.
+- Handoff bundle refreshed (00/01 curated updated, 04 re-copied, **new 11 = the Gate-0 memo**
+  ⇒ 12 files, at cap). Also committed: user's touch-up of `docs/whatsapp_liping_2026-07-30.md`
+  (emoji removed from the sent English text).
+
+**Same day, second wave — Gates 1–3 EXECUTED on the user's explicit authorization**
+(their sequencing call, recorded in plan §9; net-new `src/recon/` validation code, no
+migration touched). Full results: **`docs/monthly_recon_report_2026-08-17.md`**; frozen
+artifacts `outputs/monthly_golden_rows.csv` (2,642) + `outputs/monthly_recon_rows.csv` (576).
+- **Gate 1 (curves) exact:** USD H.15/CMT pillars for all 3 valuation dates fetched from
+  treasury.gov via 47 (FRED GFW-blocked local+47; treasury.gov = the CMT source) →
+  `data/h15_pillars_monthly_recon.csv`; `src/recon/monthly_curve.py` = zeroyield4 replica
+  (41-tenor gap-fill quirks included; par-reprice 1e-8 locked). Lineage locks: txt 20y =
+  (10y+30y)/2 fabricated on all 3 dates; replica vs production `bootstrap.py` ≤0.02bp —
+  the two continuous bootstrap variants are numerically near-identical here.
+- **Gate 2 (pilot 23 rows) split verdict → investigation:** Treasuries (2012-12 batch)
+  EXACT (ΔOAS ≤0.9bp, Δdur 0.0000); corp 2010 rows maturity-shaped misfit. Chased down
+  (back-out fit of the pillar curve from the V column, fit/holdout): **the whole
+  2010-03-01 batch = `legacy-stale-session`** — older code rev (cached Q = duration ÷100
+  EXACTLY, ratio-test med 1.03; dead T/U cells) on mixed-vintage data (run-time Libor
+  deposits survive in the top block — sub-annual rows reprice EXACTLY on them; no single
+  curve fits the pillar rows, residual med 0.24/100 = 100× solver floor). NOT an engine
+  gap; not a valid golden.
+- **Gate 3 (bulk 576 rows):** govt@2012-12 **32/32 = 100% within tolerance** (ΔOAS med
+  0.51bp max 0.9; Δdur ≤0.0003y; ΔPV ≤0.0085); spec (dead-AB corp) @2012-12: **33% ≤2bp =
+  empirically recovered at-maturity routes**, rest = other engines (their gates later);
+  2010 batch excluded per §4 evidence; non-USD 121 deferred. **Three-way (session-
+  independent): durations vs Bloomberg col I — ours closer on 94% of 194 core rows (med
+  0.49y vs the cache's 4.30y), 89% on spec; OAS vs AD (n=97) not decidable (AD pull-date
+  unknown + basis) — as pre-registered.** Tolerances re-baselined (OAS ≤1bp target/2bp
+  exception; dur ≤0.001y; reprice ≤0.01). Tests **166 green**.
+- **Mario-facing sample report updated** (user request; upload was still pending — comms
+  state corrected): §5 now carries the reconciliation result in plain words + 166 checks;
+  PDF regenerated (pandoc@47 + Edge headless), staging folder + zip refreshed. WhatsApp
+  draft handed to the user with the upload.
+- Plan statuses → Gates 0–3 CLOSED; ledger + reason codes extended; handoff refreshed
+  again (11 ← the Gates-1–3 report; Gate-0 memo stays in repo).
+
+**Open / next**
+- ⏳ Mario sample approval (sample now carries the reconciliation evidence) + the standing
+  data asks. On approval: rollout floating/hybrid → tree; then the tree-gated Monthly
+  extensions (callable/NORMAL ~450, FLOATING 426, V/W/Y/Z, T/U [needs the SteepFlat file —
+  deferred ask], mtge at the MBS phase; 2012-06 batch has no vanilla rows).
+- Warning for future gates, now proven: only 2012-12-batch caches are numeric goldens;
+  2010-batch rows reconcile three-way vs Bloomberg columns (I / AD) instead.
+
+
+## 2026-08-15 — Mario code-structure directive → template-layout SAMPLE (vanilla chain) + Monthly sheet decoded
+**Commit:** `241e76f` (sample) · `eef7a4d` (Claude-web handoff) · docs = this entry's commit
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **Directive (Mario, WhatsApp):** code "a bit difficult to follow, a bit nested"; a Google team
+  will take over for cloud-computing optimisation ⇒ use **many simple functions rather than one
+  complicated**, **highlight the inputs** of each; template = `docs/code_structure_template - Ver
+  Aug 5 2026.txt` (his file, committed); reference = the **Monthly** sheet of Project Pricing
+  Fixed Income Instruments.xlsm; results can be **checked against that sheet**. Scope now:
+  corporate bonds; sample-first (user: don't migrate everything before Mario approves).
+- **Monthly sheet decoded (openpyxl on 47; 2,896 rows × 81 cols):** ① rows 3–43 = per-ccy curve
+  input block (US0001M–12M Libor + USSA2–30 swap par, USD/DKK/EUR/GBP/JPY/SEK) bootstrapped by
+  `=Zeroyield(range, ccy, "c:\blp\curves\")`; ② rows 47–60 = **demo block**: per-metric simple
+  functions sharing one input list — `CorpBondOAS` / `CorpBondDuration` / `CorpBondwidening(±bp)`
+  / `CorpBondSteepening` (bullets) and `bondoas(analysisType 1–10)` (callable/put/sink/FRN/mtge);
+  ③ rows 61–98 = **input dictionaries** (Input Number | Field Name | Options | Description + si/no
+  used-flags; Daycount: "30/360, but is not used" — matches our ACT/364 internal convention);
+  ④ row 99+ = **golden table ~2,600 bonds** (FIXED 1887 / FLOATING 426 / ZERO ~128 / VARIABLE 74 /
+  STEP 12 / DEFAULTED 21; USD 2475, EUR 94, GBP 21…) priced by `bondcalc(analysisType)`:
+  P=OAS(1), Q=Duration(2), R/S=Widening/Tightening(4,±10bp), T/U=Steepening/Flattening(5/6),
+  V/W=vol-bump prices(3), Y/Z=Vega bp/$; X=mkt price; AD=Bloomberg OAS + AG=|diff| (legacy itself
+  reconciled vs Bloomberg). Valuation dates: **2010-03-01 × 2187** (the top curves = that date),
+  2012-06-01 × 122, 2012-12-12 × 274. ⇒ **the missing legacy golden master**; reconciliation =
+  proposed next validation milestone (needs swap-grid bootstrap variant + curve-twist/vol bumps
+  for T/U/Y).
+- **Sample built (`241e76f`) — real decomposition, not a facade:** new `src/pricer/` package =
+  template shape: `core/pricing/{cashflows,discounting,analytical}` + `core/risk/sensitivities` +
+  `core/market/{spreads,curves}` + `core/utils/dates` + `assets/corporate/{bonds_input,vanilla}`.
+  `pricing/{bond_price,calibrate,risk}.py` → thin shims re-exporting the original surface (same
+  objects). Float-op order preserved everywhere (maturity-first summation, identical expressions)
+  ⇒ **bit-identical numbers**. Assets layer mirrors the Monthly demo block (legacy units: percent
+  / bp): `calculated_price`, `implied_oas`, `duration`, `widening`, `tightening` + `dv01`/
+  `convexity` extensions; steepening/flattening deferred to the curve-twist rollout.
+  `bonds_input.INPUT_CATALOGUE` = the highlighted-inputs table (13 fields incl. unused-by-design
+  day_count). **Tests 145 → 153 green** (8 new locks: shim identity, bit-exact wrapper reprice,
+  bp round-trip, flat-curve zero-coupon closed form, formula arithmetic, validation); full suite
+  10.3s (the one 79s run = transient server load, verified).
+- **Deliverable for Mario:** `code_structure_sample/` (git-ignored staging, + zip): report
+  `code_structure_sample_2026-08-15.pdf` (plain-language, per user: readable without finance
+  background; pandoc@47 + Edge headless) + md + the pricer/ tree + shims + new test file +
+  00_README. User uploads to Google Drive.
+- **Claude-web handoff → multi-file bundle** `docs/handoff_for_claude_web/` (user's csi1000
+  `handoff_2` pattern): 00 START_HERE (delta-first reading list) · 01 current state & open
+  items · 02 locked decisions & conventions · 03–09 verbatim copies (PROJECT_STATUS, WORKLOG,
+  COVERAGE, missing_data, phase2_methods, the active-workstream report, Mario's template) ·
+  10 glossary; zipped for upload. The same-day single-file `HANDOFF_FOR_CLAUDE_WEB.md`
+  retired (content split into 00/01/02). Maintenance protocol in CLAUDE.md.
+
+**Open / next**
+- ⏳ Mario approval of the sample → rollout order proposed: floating/hybrid → callable lattice
+  (`core/pricing/tree.py`) → **Monthly ~2,600-bond golden reconciliation** → ILB/agency wrappers →
+  MBS (data-gated). Questions asked in the report: `bons_input` naming, where `dataio` lives,
+  `endpoints/` = batch-first.
+- Unchanged: all 2026-07/08 data asks (Mario 11-security + MBS 882 + pass-through; Liping full gap
+  request) still awaiting.
+
+
+**Commit:** `f7e9e7d` (engine fix + invariance tests) · `c3ab2f5` (docs, this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **Issue (raised by Liping in the v2 code review):** is every engine's OAS calibration
+  price-convention-consistent? A model PV of future cash flows is DIRTY; the custodian `BT` is
+  CLEAN (hard evidence: the file carries its own separate 'Accrued income - base/local' columns,
+  and near-maturity high-grade names tie our_clean to BT within 0.02%). The self-consistent
+  equation: solve OAS s.t. ``dirty(OAS) = BT + AI`` ⟺ ``clean(OAS) = BT`` — AI is date-only
+  (independent of curve/OAS/options), so the root is identical under either form. That identity is
+  Liping's "implied OAS does not change with the price": it is invariant to the price's
+  *representation* (clean vs dirty), never to the price level.
+- **Audit result (every engine opened, not reasoned about):** vanilla / vanilla-schedule /
+  zero-STRIPS / FRN / hybrid / ILB / the to-call reference columns were ALREADY clean-form
+  calibrated — each engine's clean = its dirty − its accrued (FRN accrues the fixed-at-last-reset
+  coupon; hybrid accrues the fixed leg on the switch-anchored grid; ILB accrues real coupon ×
+  ratio_0), and every solver targets clean == BT. Risk denominators were already DIRTY
+  (`risk.py`'s documented convention). **The one outlier was the lattice — but NOT the
+  hypothesized dirty-vs-BT mixup:** it modelled no accrued at all (regular grid,
+  ``N = round(T·freq)``, valuation date treated as a coupon date) and compared that snapped PV to
+  BT. Such a PV approximates CLEAN (the classic integer-period fiction), but only near par / near
+  a coupon date; the real defects were grid-timing: first coupon a full period out instead of the
+  true stub, maturity snapped by up to half a period, and ``T`` in 365.25d-years against the
+  ACT/364 stack — TNTD04441873 (25y) had 50 coupons on the tree vs 51 really remaining. A blind
+  "subtract AI from the tree PV" would have double-counted; the audit-before-fix order mattered.
+- **Fix (`f7e9e7d`):** lattice grid = the bond's REAL remaining coupon dates (per-step-dt BDT
+  forward induction) via new `bond_price.lattice_inputs`; the root PV is now the TRUE dirty, and
+  the OAS solves tree-PV − AI == BT with AI from the ONE shared formula —
+  `bond_price.accrued_interest` (legacy ACT/364, 182-day grid), which `price_bond` itself now
+  consumes (no second copy anywhere; the val-on-coupon-date corner folds into the returned AI).
+  Call times now convert at 364 d/y (was 365.25) to match the grid units. New cross-engine lock: a
+  straight bond on the lattice reprices `price_bond` dirty to machine precision, so lattice and
+  vanilla calibrators return the SAME OAS for an option-free bond (tested).
+- **Invariance tests (+16 → `145 green` on 47):** `tests/test_price_convention.py` — per engine,
+  the clean-form and dirty-form calibration roots agree < 1e-10, with the dirty form solved
+  INDEPENDENTLY (raw brentq on the engine's dirty output + the shared AI, never the engine's own
+  accrued); shared-AI identity locks for FRN/hybrid/ILB; lattice ≡ price_bond; zero-coupon AI=0;
+  val-on-coupon-date corner. Any future engine that calibrates a dirty PV against clean BT — or
+  grows a private accrued formula — fails mechanically.
+- **Re-run (lattice-routed bonds only; every vanilla-family number is bit-identical).**
+  Corporate @3-31 (implied OAS bp, then eff-dur): TNTD04115619 1959.0→1993.6 (+34.6),
+  3.417→3.307 · TNTD04441873 412.3→410.8 (−1.5), 10.542→10.374 (straight 11.56→11.433 vs AQ
+  11.731) · TNTG701850W 293.2→305.6 (+12.4), 5.306→4.997. Agency @3-31: TNTD03009115 160.5→190.0
+  (+29.5), 0.987→1.074 · TNTD04551105 223.0→212.0 (−11.0), 4.300→3.719 · TNTD04644594 181.2→178.9
+  (−2.3), 9.664→9.425 · TNTD04719669 194.1→191.4 (−2.6), 9.122→8.879 · TNTD04914207 197.0→189.7
+  (−7.3), 5.328→4.744. @6-10 control: −0.2…−10.9 bp. Signs are MIXED and sizes ≤35 bp —
+  consistent with the audit: the old error was grid timing (sign depends on stub position and
+  premium/discount), not a one-sided +AI bias, so the uniform −10-30 bp predicted under the
+  dirty-vs-clean hypothesis does not appear (the diagnosis direction was right, the mechanism was
+  different). Durations move ≤0.6y. Honest note: the agency callables' AQ fit got slightly LOOSER
+  (before 4/5 within 0.5y, now 4/5 within 0.75y) — the old snapped grid + no-accrued PV base
+  biased durations up in a way that happened to sit nearer AQ; exact conventions + the
+  machine-precision vanilla tie-out outrank an accidental fit to a custodian number whose model
+  (vol, tree, OAS) is unknown. The to-call reference columns are `price_bond`-based (already
+  consistent) — no re-run needed.
+- **Duration denominator decision (Liping Q2) — DIRTY (full price) RETAINED, zero code change.**
+  Both denominators computed for every @3-31 bond carrying custodian AQ (n=61: agency+TLGP
+  vanilla family 42, ILB 14, agency callables 5; plus the 2 usable corporate callables):
+  dirty-denominator closer on 41/61; median |dur − AQ| 0.236 (dirty) vs 0.331 (clean). On the
+  best-fitting names — the informative subset where model ≈ AQ, e.g. the TLGP block (errors
+  0.006-0.028) — dirty wins consistently ⇒ the custodian's AQ is itself full-price-based. The
+  callable subset alone leans clean (agency 4/5, corporate 2/2), but its residuals (0.18-2.2y)
+  are σ=0.15/Bermudan-par-call assumption noise an order of magnitude above the denominator
+  effect (AI/P ≈ 1-2% ⇒ 0.02-0.18y) — small-sample noise; it does not overturn n=61. The choice
+  also matches Bloomberg convention and `risk.py`'s pre-existing documented rationale. The
+  lattice's own duration base moved tree-PV → dirty as part of the fix (uniform with `risk.py`);
+  both denominator variants are now emitted in the two drivers' outputs for the record.
+- **ILB confirmation (Liping Q3, one-liner):** TIPS accrued = REAL accrued × index ratio at VAL
+  (`ilb.py`: ``per_cpn_real * index_ratio * accrued_days/step``) — consistent with BT =
+  inflation-adjusted clean (BT == BU/par·100), locked by `test_ilb_accrued_ratio_treatment`.
+- **Loop closed with the reviewer:** review-response report (EN; audit table, the actual defect +
+  why the literal PV−AI fix would double-count, impact table, denominator evidence, self-verify
+  steps) written and rendered to PDF (pandoc@47 + Edge headless) —
+  `docs/review_response_liping_2026-08-04.{md,pdf}` — **sent to Liping 2026-08-04**. Headline
+  numbers for future Mario citations frozen in `docs/headline_numbers_2026-08-04.md`
+  (pre-fix figures marked superseded in PROJECT_STATUS / v2 report / phase2 methods); Drive
+  staging `corporate_bond\` refreshed, re-drag pending user.
+
+**Open / next**
+- TNTD04923866 (AssuredGty 2066) still awaits its call schedule (Liping ask ④) — prices on the
+  fixed lattice the day the CSV row lands, now with exact conventions.
+- When the MBS data lands: run the same convention check (pool accrued / settlement conventions
+  vs the BT-equivalent mark) before the first calibration — same audit-before-fix discipline.
+
+---
+
+## 2026-07-30 — missing-data registry (Mario directive) + full Bloomberg request → Liping (2nd channel)
+**Commit:** `06e9ae7` (registry + CLAUDE.md directive + this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **All open data gaps compiled and WhatsApp'd to Liping** (colleague; campus Bloomberg access
+  today — second channel while Mario is quiet on the 07-20/07-22 asks): ① MBS 8-field × 882-CUSIP
+  (attachments `outputs/govt_mtge_cusips.csv` + NEW `outputs/govt_mtge_bdp_template.csv` — 882
+  prewired `=BDP(CUSIP&" Mtge", <field>)` rows generated locally by PowerShell from the CUSIP csv,
+  opens straight into add-in Excel; as-of caveat spelled out: prefer historical as-of 2009-03-31,
+  else current values + pull date, WAM rolled back ourselves, paid-off→N/A fine); ② corporate
+  **pass-through = 13 unique securities** (the "16" = tab rows incl. duplicate holdings) — first
+  time enumerated, via a loaders+`classify_coupon_formula` dump on 47: 7 airline EETCs (Delta,
+  Continental ×4, American, United) + CVS ×2 + Glen Meadow + Systems-2001/BAE ×2 + Southern
+  Capital, all scheduled-amortization ⇒ ask = factor@3-31 + amortization schedule + coupon/freq
+  (likely amortizing-vanilla, no true prepayment model needed); ③ the 11-security FRN/hybrid list;
+  ④ **NEW ask: AssuredGty 6.4% 2066 (TNTD04923866 / US04622DAA90) call schedule** — the unpriced
+  5th corporate callable, absent from every earlier request; ⑤ deferred trio + GBP curve + FHR
+  3122 ZB DES as explicitly-optional extras (deferral was a MARIO-side discipline; Liping =
+  different channel at zero marginal cost).
+- **Mario advice received & institutionalised:** web/ChatGPT ISIN lookups OK as interim but "not
+  as precise as bloomberg"; tool = all-purpose ⇒ needs the process automated & working, and the
+  unavailable fields **specified on a table**; when complete data arrives → just re-run. ⇒ new
+  **`docs/missing_data.md`** = the living registry (G1-G5: gap → landing CSV/loader → interim
+  treatment → request status per channel) + a **provisional-values queue**: every 2026-07-20
+  web-sourced override value is flagged PROVISIONAL, and on any Bloomberg return we diff,
+  Bloomberg wins, deltas get logged. Existing architecture already satisfies the
+  automation/table principles (term-overrides data layer, 8-mnemonic MBS interface, generic
+  engines) — recorded as such in CLAUDE.md.
+
+**Open / next**
+- ⏳ Liping pull and/or Mario returns → load per the registry's landing paths; dedupe across the
+  two channels; diff Bloomberg values against the provisional queue.
+- On MBS arrival: pool routing方案 + driver vs BS golden. On pass-through arrival: amortizing
+  schedule table + engine. On margin fills: CSV cells → auto-priced, zero code change.
+
+---
+
+## 2026-07-22 — phase-2 build: AGY/GTD/ILB priced + static-CPR MBS skeleton (129 green)
+**Commit:** `db46964` (three-class build + engines + tests) · `05f0130` (JPY/AUD/KRW curve map) ·
+`6a33e7b` (methods doc + docs updates)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+The three data-self-sufficient Summary classes built end-to-end (no waiting on Mario), per the
+user's方案; full methods/evidence in **`docs/phase2_methods_2026-07-22.md`**. New modules:
+`dataio/phase2.py` (master-superset loader + per-class mini-universe; dup legs dedupe with
+par/MV/cost SUMMED → the ILB `BT = BU/par·100` identity exact) · `pricing/ilb.py` ·
+`pricing/mbs.py` · driver `scripts/phase2_risk.py`; `ZeroCurve.CURVE_FILE` + JPY/AUD/KRW
+(the country txt files carry BOTH 2009 dates — the "3-31 absent" gap was USD-file-only; KRW has
+6-10 only). Outputs `outputs/phase2_risk_2009-03-31.csv` (baseline; calibration ≤6.6e-9 over 42
+OAS + ≤1.4e-8 over 14 ILB) & `…_2009-06-10.csv` (control: everything ~110bp tighter = the Mar→Jun
+yield backup absorbed into spread — mirrors the corporate finding; 3-31 stays baseline).
+- **AGY 42→39**: routes vanilla 27 / callable-lattice 5 / call-passed-vanilla 4 (desc
+  "…/2006" one-time calls PASSED unexercised, AB blank, BT prices to maturity → bullets+flag) /
+  zero 2 (RefCorp STRIPS, 107-113bp) / **cmo-tranche 1 BT-marked** (TNTD04733316 "SER 3122 CL
+  ZB" = REMIC Z misfiled as a debenture — Sempra lesson, no force-pricing). Median 121bp; wides
+  = real quasi-sov credit (KDB 607 / KEXIM 594 / PEMEX 620 / FHLB-Chicago SUB 392). **Callables:
+  Bermudan par@100 from AB, σ=0.15 (industry-correct default for agency debentures, unlike
+  corporate make-whole); lie detector never fired; lattice eff-dur matches custodian AQ 4/5
+  within 0.5y (0.99/0.87, 9.66/9.74, 9.12/9.62, 5.33/5.38) — AQ is option-adjusted here, the
+  reverse of the corporate AQ≈straight finding = free lattice validation.**
+- **GTD 11→9**: all FDIC-TLGP → vanilla, own `TLGP-guaranteed` bucket (credit = the guarantee;
+  never in bank buckets — rationale in the doc). Median **86bp** = liquidity/novelty over UST.
+- **ILB 16→15**: `pricing/ilb.py` = nominal own-ccy curve + `ratio(t)=ratio_0·(1+FIP_INFL)^t`
+  (ratio_0 = BG÷desc-coupon, parser `parse_desc_coupon`); calibrated spread in its OWN column
+  `implied_spread_vs_nominal_bp` (≈ **−breakeven** @ FIP_INFL=0 — expected NEGATIVE by
+  arithmetic: π-at-s ≡ 0-at-(s−ln(1+π)), unit-tested). @3-31 the extracted breakeven curve is
+  the March-2009 deflation-panic shape: 2010 −34bp / mid +35…79 / long +85…139; **JGBi +229bp
+  spread = breakeven −2.3% (Japan deflation, sign flips correctly)**; per-bond
+  `z+s ≈ custodian DI real YTM` (2016: 1.44 vs 1.4387). TIPS deflation floor ignored = v1
+  boundary (real value for the 1.008/1.019-ratio vintages; needs inflation vol, v2). **KTBi
+  BT-marked `ilb-indexation-unverified`** (BG==coupon, no desc coupon ⇒ ratio underivable;
+  + KRW curve lacks 3-31) → Mario list.
+- **MBS skeleton** `pricing/mbs.py` against the EXACT 8-mnemonic Bloomberg interface
+  (`PoolTerms.from_bloomberg` — data lands with zero code change): level-pay + CPR→SMM engine,
+  price/implied-spread/implied-CPR/risk+WAL. Invariants green (annuity degeneration, principal
+  conservation any CPR, par-at-WAC-discount, duration↓ in CPR). **BZ>1 RESOLVED**: all 9 are
+  REMIC accrual (Z/VZ/ZC) tranches — accretion makes factor>1 CORRECT; BZ ≡ master CA (849/849);
+  master BX empty for MBS ⇒ keep BZ descriptive, engine never needs it. Negative-par 10 rows =
+  MBS TBA-style hedge shorts; master Y indicator is uniformly 'A' (does NOT discriminate) —
+  loader flags on the sign (`is_short`), none in the three built classes.
+- Tests 103 → **129 green** on 47: `test_ilb` (exact degeneration to `price_bond`, ratio
+  scaling, the −breakeven identity, round-trip, duration=vanilla) · `test_mbs` (the four
+  invariants + interface + solves) · `test_phase2_universe` (goldens 39/9/15, routes, ratios,
+  golden-separation; parser tests unskipped).
+
+**Comms (same day):** discovered the planned 7-21 phase-2 WhatsApp request was never sent →
+trimmed to a SINGLE ask and sent 2026-07-22: the Govt-MBS 8-field × 882-CUSIP pull (with
+`outputs/govt_mtge_cusips.csv`) + progress note + inflation-assumption one-liner (0% default =
+spread reads as −breakeven); no pass-through mention (Mario already owns it). **Deliberately
+deferred to the MBS-data touchpoint (do not re-ask before then):** KTBi indexation terms + KRW
+3-31 curve row ($1.2M single position, BT-marked, nothing downstream) · agency call schedules
+(par-call lattice already matches custodian AQ ⇒ confirmation-only) · the TNTD04366584 A/Aa2
+rating quirk.
+
+**Open / next**
+- ⏳ Mario: the MBS 8-field pull (requested today) · the 11-security list (7-20) · pass-through
+  data; then the deferred trio above at that touchpoint.
+- When MBS data lands: pool routing方案 (incl. the REMIC Z/paid-down rows inside Govt MBS),
+  then wire `pricing.mbs` into a driver vs the BS golden.
+
+---
+
+## 2026-07-20 (evening) — phase-2 inventory: four new asset classes (no code)
+**Commit:** `a679fef` (this entry + docs/phase2_inventory_2026-07-20.md)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario set the next phase: Government Agencies (42) / Guaranteed Fixed Income (11) / Index Linked
+Government Bonds (16) / Government Mortgage Backed Securities (888, terms on the `Govt MTGE` tab).
+Inventory only (scratch scripts on 47, nothing committed to src/) — full findings in
+**`docs/phase2_inventory_2026-07-20.md`**. Headlines: ① master **BG "Income rate" IS the coupon**
+(validated vs description-embedded rates) and CB the payment frequency — the three small classes
+are data-complete (AGY has ~5-8 CALLABLE agency debentures + 2 zero strips; GTD = 11 FDIC-TLGP
+crisis notes, pure vanilla; both ≈ vanilla reuse). ② Linkers: 14 TIPS + JGBi + KTBi, and the file
+itself yields the 2009-03-31 **index ratio per bond** (BG ÷ desc-coupon) plus the BT convention
+(BT = inflated price = BU/CV×100 exactly) — v1 path = nominal curve + inflation assumption.
+③ **Govt MTGE static-CPR inputs are 0/888**: WAC/WARM/WALA/PREP are cached `#NAME?` — dead
+Bloomberg `=blp(CUSIP&" MTGE", …)` formulas; recovered the intended mnemonics from FB2:FI2
+(MTG_WACPN / MTG_WAM / MTG_STATED_WALA / MTG_AOLS / MTG_GEN_CPR_3M/6M/12M /
+MTG_HIST_COLLAT_CPR_LIFE) ⇒ an EXACT 8-field × 882-CUSIP Bloomberg request for Mario. Usable
+today: BE coupon 888/888, BV maturity 870/888, BZ factor 849/888 (⚠️ max>1), BS golden 888/888;
+anomalies logged (10 negative-par short rows, 3 near-zero prices, income-rate max 30%). Master↔tab
+join is 1:1 (882↔882). ④ Golden BT = 100% in all four classes. Methods per class to be decided
+next round; no engine work started.
+
+---
+
+## 2026-07-20 (afternoon) — v3 addendum + Google-Drive `corporate_bond` staging
+**Commit:** `a42c466` (addendum md + v3-report banner) · `b9bc440` (addendum PDF) · `415a88e`
+(PROJECT_STATUS current-state front-section; wrds plan → CANCELLED; README_v3 banner) · `0c62f02`
+(v3.1 code snapshot) · `e64a9a1` (.gitignore staging dir)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario asked for the project folder on Google Drive, named `corporate_bond`. Versioned deliverables
+stay frozen (v3 report/README/zip untouched); instead: **`v3_report_addendum.md/.pdf`** — the ISIN
+lookup + hybrid engine + corrected coverage, led by the two v3 §3 "alarms" the lookup resolved
+(Sempra make-whole; Comcast custodian coupon error) — plus pointer banners on the v3 report and
+README_v3, and **`fixed_income_code_v3.1.zip`** (38 files; built on 47 so zip paths use forward
+slashes). Staleness sweep: PROJECT_STATUS.md had drifted to the v1 era (canonical 476,
+index-rating-OAS as current) → fronted with an as-of-2026-07-20 state section, §2-4/§7 marked
+historical; `docs/wrds_data_plan.md` status corrected to CANCELLED. Staging copy
+**`corporate_bond/`** at repo root (git-ignored): repo-layout mirror, 127 files / 38MB, +
+`00_README_START_HERE.md` reading-order index; EXCLUDES `.git` and the internal CLAUDE.md/WORKLOG.md
+memos. Regenerate via robocopy and re-drag on future updates; Drive access = Mario only (client
+data). PDF toolchain (no pdflatex on 47): pandoc→HTML on 47, Edge-headless print locally.
+
+---
+
+## 2026-07-20 (later) — fixed-then-float hybrid engine (design拍板 by user; 103 green)
+**Commit:** `27985ff` (engine + driver + tests) · `1c092ea` (docs, this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Engine (`src/pricing/hybrid.py`) = the two validated engines glued at the switch date,** per the
+user's locked design: fixed leg val→switch on `price_bond`'s exact conventions (grid anchored at the
+SWITCH date, accrued off that grid, no face) + floating leg switch→maturity on `price_frn`'s exact
+conventions (grid anchored at MATURITY truncated at the switch, first period starts AT the switch,
+simple forward × actual tau + the bond's documented quoted margin, face at maturity); one curve + one
+flat implied OAS discount both legs; risk metrics bump the CURVE (floating leg reprojects).
+
+**Invariants (pytest, `test_hybrid` — all green first run):** ① switch=maturity ⇒ ==`price_bond`
+bit-for-bit and ② switch=valuation ⇒ ==`price_frn` bit-for-bit (the limits DELEGATE, guarded by
+near-limit continuity tests just inside each boundary); ③ the margin-0 identity — spread=0 & oas=0
+makes the floating leg telescope EXACTLY to `face·DF(t_switch)` on ANY curve (not just flat), so the
+hybrid equals the fixed-to-switch bullet = the composition test; ④ duration ≪ same-maturity fixed and
+~bounded by the switch time, `next_switch_t` output per bond; ⑤ perp = 90y truncation main column +
+price-to-call REFERENCE column (reset-6 dual-column rule), deep-discount to-call OAS = spurious
+(extension priced). Plus OAS round-trip + spread/OAS monotonicity + loader/repo-lock tests. **80→103.**
+
+**Driver:** `hyb_terms` intercepts in the floating + resets loops. Margin known → route **`hybrid`**
+(10 bonds: Allstate 789bp/dur 2.26/sw 8.15y · GE 967 · Lincoln 2616 (BT 23) · AmEx 1069 · Liberty
+1724/sw 28.1y · Chubb 806 · SMBC 415/dur 0.44/sw 0.58y · BofA 1058 · BNP 1209/sw 28.3y perp ·
+UniCredit 979 perp; to-call reference shows the expected spuriousness on deep discounts, e.g. SMBC
+1869bp to-call vs 415 hybrid, and near-equality where switch≈2037 ⇒ hybrid≈bullet: Liberty 1733 vs
+1724). Margin missing → **`hybrid-margin-unavailable`** BT-mark (8: Resona-US, BTMU, Resona-EUR,
+Chuo, Resona-perp ×2, Shinsei ×2 — per instruction the previously FRN-priced BTMU/Resona-EUR and
+continuation-priced Chuo/Resona-4.125 now wait for Mario's margins rather than staying half-modelled;
+one CSV cell fill re-prices them with zero code change). **reset-continuation RETIRED.** Hybrid OAS
+stays OUT of the by-rating medians (jr-sub/T1 capital spreads; same policy as the floating route).
+BNP 1209bp vs old continuation 1089bp = the par-floater tail out-valuing a deep-discounted 7.195%
+annuity tail — direction correct. Totals unchanged (**553 priced / 11 flagged @3-31; 548/11 @6-10**),
+composition improved. Both drivers re-run on 47; outputs mirrored locally.
+
+---
+
+## 2026-07-20 — Mario meeting → ISIN lookup of all 35 flagged bonds → term-overrides layer (90 green)
+**Commit:** `8a38bb0` (overrides layer + data + tests) · `b52c3fa` (docs, this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Meeting decisions (Mario):** ① pass-through 16 — Mario sources the data on Bloomberg, engine work when
+it lands; ② amortizing 1 + na 4 — ignore permanently; ③ the ⚠️-flagged bonds in the finished classes —
+resolve what we can online by ISIN, send him the rest as a Bloomberg request list.
+
+**③ executed same day.** Decoded issuer names/CUSIPs/call+maturity fields for all 35 flagged/data-gap
+bonds from the URS master (PowerShell zip/XML decode, incl. the master `BW` maturities the tab lacks),
+then ran 9 parallel web-research agents (SEC EDGAR full-text by CUSIP, issuer OCs/20-Fs/ARs, oblible/
+gruppotim/unicredit/resona/shinsei archives; strict no-guess rules, every number source-cited). Result:
+**22 FULL(HIGH) / 10 PARTIAL / 3 NONE** — full per-bond evidence in **`docs/isin_lookup_2026-07-20.md`**.
+
+**Five findings overturn our own records (all primary-source):**
+- **Sempra 8.9% 2013 = make-whole-only** (424B2: T+50bp, NO par call; custodian AB=2009-05-15 is the
+  first COUPON date) → off the lattice, make-whole→vanilla @ 509bp ≈ the old straight-OAS 507 — the
+  BT-108.69 "conflict" was the par-call assumption, not the bond.
+- **Comcast "0% 2037" is a custodian coupon ERROR** — really the 6.95% notes due 2037 → OAS −486bp
+  artifact → +431bp normal BBB. (v3 report's "structured payoff" reading corrected.)
+- **TI-2012 7.25% and TI-2033 7.75% are documented PLAIN FIXED** (pricing supplements read page-by-page;
+  20-F step-list excludes both) — the workbook "(VAR)"/"Fixed→Reset" tags are wrong. Same for Anglian
+  5.375% and RBS 6.00% (the RBS call/float hypothesis refuted by 3 years of 20-F call-annotation
+  convention). Sanity: TI-2012 381bp ≈ Sogerim 398bp (same guarantor, now consistent).
+- **AmEx 6.80% & GE 6.375% "floaters" are fixed-to-float hybrids still FIXED until 2016/2017** — in fact
+  at 2009-03-31 EVERY fixed-to-float hybrid in the book sat in its fixed leg (switches 2009-10…2037).
+- **Aquila step-up = flat 11.875%** at VAL (rating-linked steps, max 14.875% 2003-08, all reversed on
+  the Great-Plains IG upgrade; GXP Q1-09 10-Q balance-dated exactly 3/31/09). **BT 2010 = rating-step**
+  with an evidenced path: 8.625% through the Jun-09 coupon, 9.125% after (20-F FY2009/FY2010).
+
+**Code: `src/dataio/term_overrides.py`** — 3 optional data tables (missing file = no overrides), wired
+into `calibrate_risk.py` (+`callable_risk.py`): `make_whole_overrides.csv` (universe override; golden
+no-override counts untouched → production canonical **523 @6-10 / 528 @3-31**, callable 6→**5**,
+make-whole 47); `coupon_schedules.csv` (9 documented paths → vanilla-schedule from ANY class; BT's
+9.125% step effective-dated 2009-07-01 = between the model's 182-day grid dates); `frn_spreads.csv`
+(Bear L+40, PNC L+14, MS L+45 — all corrected to QUARTERLY (`FRN_FREQ_VARIANT` adds 4→Quarterly curve,
+canonical guard untouched) — + IndepComm L+182; margins priced explicitly, OAS no longer absorbs them).
+Plus **`hybrid_switch_terms.csv`** (18 rows, machine-readable park for the NEXT engine step: a
+fixed-then-float pricer; 10 hybrids fully termed incl. SMBC 6mE+225 sw 2009-10-27, BofA 3mE+146 sw
+2014, BNP L+129 sw 2037, UniCredit 3mE+176 sw 2015). Shinsei `frn-no-maturity` pair resolved = dated
+2016-02-23 (margin pending). **Output: 559 rows @6-10 = 548 priced + 11 flagged** (was 558 = 545+13);
+564/553/11 @3-31; all overrides calibrate exact (clean=BT). **Tests 80→90 green on 47**; both drivers
+re-run, outputs mirrored locally.
+
+**→ Mario:** the **11-security Bloomberg request list** (lookup doc, bottom): 3 exempt US FRNs
+(Monumental II/III, NatCity — zero public docs) all-terms; 8 hybrids post-call margin only (Resona-US,
+Chuo, BTMU, Resona-EUR, Resona-perp ×2, Shinsei ×2). Plus the standing pass-through data he's pulling.
+
+---
+
+## 2026-07-18 — v3 delivered & committed; repo/47 sync overhaul (CRLF unblock, data/ canonical, GFW bypass)
+**Commit:** `07fe2a1` (v3 deliverables) · `737fc42` (data/ canonicalization) · `c81b20c`+`950b4f6` (ops notes) · `[TO FILL]` (this entry)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Packaging/infra day — no pricing-logic changes; suite **80 green on 47 twice** (post-unblock, post-data-move).
+
+**v3 deliverables verified + committed (`07fe2a1`).** The prior session stalled right after writing them;
+verified before committing: `README_v3.md` complete (all sections, numbers reconcile exactly to
+`COVERAGE.md`: 676 pivot / 558 out = 545 priced + 13 flagged / 21 excluded / 80 tests / snapshot
+`b7caa65`); `fixed_income_code_v3.zip` 40 entries — SHA256 vs working tree = **0 content diffs** (19
+files CRLF-only), vs the v2 zip = exactly the 7 expected new files, no repo code file missing. Also
+committed README_v1/v2 + `v3_report_coverage.md/.pdf`.
+
+**47 unblocked (was 5 commits behind).** 47 sat at `24689a7`: the 7-08 scp quick-iter left **CRLF**
+working copies of 6 tracked + 5 new files → every `git pull` refused ("would be overwritten … Aborting").
+Verified **0 real diffs** vs origin/main (`git diff --ignore-cr-at-eol`; the untracked 5 byte-identical)
+→ discarded, fast-forwarded, 80 green. Trap + fix documented in CLAUDE.md.
+
+**Data layout canonicalized (`737fc42`).** First mirrored 47→local (68 files: `data/` 59, `extracted/` 2,
+`outputs/` 7; sizes verified). Then: the 6 root workbook/curve copies SHA256-matched their `data/` twins
+→ `git rm` root (git records them as renames), **`data/` tracked in full (59 files)** = the code's
+default `FIP_DATA_DIR="data"` layout; `.gitattributes` `data/** -text` freezes bytes (no EOL conversion
+ever). 47 re-synced (bundle; untracked-collision resolved by rm + checkout-restore) → clean tree, 80 green.
+
+**47→GitHub = GFW-blocked (diagnosed); direct-push channel built (`950b4f6`).** Evidence: from 47, TCP to
+github.com connects (0.25s) but the TLS stream is blackholed (0 bytes / 15s; earlier same-day: SSL_read
+unexpected-EOF mid-transfer, one 127s connect-fail), while baidu = 200 / 1.3s and local→GitHub +
+local↔47 stayed fast ⇒ targeted interference, not egress/GitHub/repo. Fix: local remote **`47`**
+(`ssh://47/home/PengSX/fixed_income_pricing`), 47 repo `receive.denyCurrentBranch=updateInstead` ⇒
+**`git push 47 main` deploys straight to 47's checked-out tree** (a dirty tree on 47 refuses the push =
+quick-iter guard). Live-tested; `git bundle` + scp = last-ditch fallback (used 2× today). End state:
+**local = GitHub = 47 = `950b4f6`, all working trees clean.**
+
+**Next:** ⏳ **awaiting Mario's feedback/suggestions on `v3_report_coverage`** — next phase gated on his
+reply. Standing data-gap fills (COVERAGE.md table: FRN spreads, switch dates, perp/reset terms, step-up
+table, zero structure, GBP curve) unchanged.
+
+## 2026-07-08 (cont. 3) — Reset-6 priced (coupon-continuation); Coupon_Formula2 coverage closed
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario's reset-6 decision (improved plan a): known-coupon reset bonds price by coupon-continuation,
+Variable-coupon ones BT-mark. Plus his two doc asks (FRN negative-duration mechanism; spread=0
+annotation) and closing the Coupon_Formula2 coverage (`COVERAGE.md`).
+
+**Reset-6 (fixed-to-reset), `calibrate_risk.py`:**
+- **4 priced by coupon-continuation** (current fixed coupon continued; perpetual → 90y truncation with
+  face PV ~0.00 noted; finite → to maturity): TNTD03020850 (A, 7.195%, perp) **1089bp / eff-dur 6.37**;
+  TNTD04509751 (A, 5.506%, perp) 876bp / 7.29; TNTG532803U (BBB, 4.125%, 2049) 564bp / 9.95; TNTG533596W
+  (BBB, 4.028%, perp) 627bp / 8.75. Route `reset-continuation`. Durations are LONG (fixed-coupon) — correct,
+  unlike the floaters. Kept OUT of the by-rating medians (distressed calibration plugs).
+- **price-to-call = secondary/reference** for the 2 with call dates. **TNTG533596W (BT 36.3, call 2015):
+  continuation 627bp vs price-to-call 1884bp** — a deep-discount hybrid is priced by the market for
+  EXTENSION, not the call, so the to-call OAS is spurious ⇒ continuation is the main column, price-to-call
+  reference only. TNTD03020850 (call 2037, far out): 1089 vs 1109bp — close.
+- **2 Variable-coupon → BT-mark** (route `reset-terms-unavailable`): TNTG532805U (2049), TNTG701894W (2033).
+
+**FRN negative-duration mechanism documented** (Mario ask) in `frn.py` docstring + here: a deep-discount
+floater = par − OAS·annuity_PV; a rate rise discounts that annuity harder → the below-par gap shrinks →
+price RISES → a negative (credit-spread-annuity) duration ~ OAS·annuity-dur (BT~50 57y: 50×~10/50 ≈ −10,
+matches −10.6). Near par ≈ time-to-reset; universally |dur| ≪ same-maturity fixed. **Not a bug.**
+
+**Spread=0 confirmed + annotated:** all 27 `coupon_formula` are generic "... + Spread" (0/27 numeric) → the
+18 FRNs use spread=0 and the implied OAS absorbs the unknown quoted spread (price exact for BT calibration,
+duration ~spread-independent, separable when a real spread arrives). Flag text + docstring updated.
+
+**Coupon_Formula2 coverage CLOSED — new `COVERAGE.md`.** Full class→engine→status map over the 676 pivot;
+output universe 558 rows = **545 priced end-to-end + 13 flagged/BT-mark + 21 excluded-per-Mario**. Data-gap
+table (spreads, switch dates, perp/reset terms, step-up, zero, GBP curve) → empty `data/coupon_schedules.csv`
+seeded. **Suite 80 green.**
+
+**Next:** fill the data gaps as Mario/Bloomberg terms arrive; otherwise the corporate Coupon_Formula2 pass
+is complete.
+
+## 2026-07-08 (cont. 2) — Step 4 pure-floating FRN engine (18 priced); reset-6 recon
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario green-lit Step 4 (pure-floating 27) on the locked plan. Built the FRN engine, priced the true
+floaters, flagged the data-gap ones, and did the reset-6 terms recon for the next decision.
+
+**FRN engine (new `src/pricing/frn.py`).** Ports the Step-1 `BondOAS` 7/8/9 idea with our data:
+- **Projection:** each future coupon = `simple_forward(t0,t1) = (DF(t0)/DF(t1)-1)/(t1-t0)` off our
+  bootstrapped `ZeroCurve` + spread. **Discount:** same curve + flat implied OAS (single-curve; OIS
+  dual-curve documented as a future enhancement). Conventions mirror `bond_price` (ACT/364, 364/freq-day
+  schedule, accrued) so FRN/vanilla numbers are comparable; for freq 1,2 the period = 1/freq exactly so the
+  par identity is exact.
+- **Effective duration bumps the CURVE (reprojects the forwards AND rediscounts), NOT the OAS** — the whole
+  point. Under a curve bump the floating coupons rise with the discount and offset it → duration ~ time to
+  next reset. Bumping only the OAS would (wrongly) make an FRN look like a fixed bond.
+- **Bug caught + fixed via the invariant test:** first attempt clamped the stub (current) period's forward
+  start to `val` (`max(t_prev,0)`), breaking the par-floater telescoping → a "pure floater" didn't hold par
+  under shifts and threw a spurious duration. Fix: use the ACTUAL last-reset start (t_prev<0). After the fix
+  a pure floater holds par to <0.01 across ±5% shifts and near-par duration ≈ 0.
+- `parse_frn_spread` ("EURIBOR + 45bp"→0.0045, "EURIBOR + Spread"→None — the None principle). `test_frn`
+  (+7): par-under-any-shift, OAS round-trip, near-par dur≈0, **dur ≪ same-maturity fixed even at 78y**.
+  **Full suite 80 green.**
+
+**Data reality (inspected first, as in Step 3):** all 27 `coupon_formula` are generic ("... + Spread",
+**0/27 contain a digit**) → no spread in the book → folded into the calibrated OAS (⇒ a discount-margin
+-type spread; the *risk metrics* are robust to this). Current reset coupon ← master `Coupon` (D) when
+numeric (~8 bonds), else the forward.
+
+**Driver (`calibrate_risk.py`) — 27 floaters routed:**
+- **18 priced FRNs** (route `floating`): eff-dur SHORT across maturities to 58y — near-par names (BT ~98–104)
+  ≈ 0; the 2066/2067 floaters (BT ~48–50) eff-dur **~−10.7** (vs a same-maturity fixed ~+20y) — the credit
+  -spread-annuity duration of a deep-discount ultra-long floater (negative: rates up → credit discount
+  shrinks → price up). The headline holds: |eff-dur| ≪ fixed for every one. USD short-end used pure
+  ZeroCurve forwards (no external fixing needed); EUR own-ccy curves.
+- **Flagged, not force-priced:** 5 `frn-switch-unavailable` (Fixed→Floating, need switch date — 2 still
+  show a fixed coupon 6.375/7.8%); 2 `frn-no-maturity` (EUR perpetual); 1 `frn-curve-blocked` (GBP non-arb
+  3y node — the known GBP block, skipped per Mario); 1 `recovery` (defaulted floater BT 0.01).
+- `next_reset_t` added to the output; floaters kept OUT of the fixed by-rating medians (different spread
+  type). Empty `data/coupon_schedules.csv` seeded for the Step-3 gaps.
+
+**Reset-6 (fixed-to-reset) recon — for the approach decision (Mario asked to list before acting):**
+| asset | cpn | freq | maturity | call(reset?) | formula2 | rtg | BT | ccy |
+|---|---|---|---|---|---|---|---|---|
+| TNTD03020850 | 7.195% | 2 | **perp** | 2037-06-25 | per prospectus | A | 47.3 | USD |
+| TNTD04509751 | 5.506% | 2 | **perp** | — | perpetual structure | A | 42.0 | USD |
+| TNTG532803U | 4.125% | 1 | 2049 | — | long-dated hybrid | BBB | 40.5 | EUR |
+| TNTG532805U | Variable | 1 | 2049 | — | 144A hybrid | BBB | 39.5 | EUR |
+| TNTG533596W | 4.028% | 1 | **perp** | 2015-10-27 | perpetual | BBB | 36.3 | EUR |
+| TNTG701894W | Variable | 1 | 2033 | — | step/var | BBB | 92.7 | EUR |
+
+Half are perpetual (no maturity → need CF truncation / perp formula); reset date ≈ the call date where
+present; all deep-discount except TNTG701894W. Share the FRN forward projection but need per-bond reset
+terms. **Approach TBD with Mario.**
+
+**Next:** decide the reset-6 approach (perp handling + per-bond reset terms), then the remaining data-gap
+fills (spreads, switch dates) when Mario/Bloomberg data arrives.
+
+## 2026-07-08 (cont.) — Step 3: simple special coupon types priced; Step 4 plan locked
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario accepted Steps 1–2 and green-lit Step 3 (do now) + locked the Step 4 floating-engine method.
+This entry = **Step 3** (Step 4 recorded in CLAUDE.md, executed next).
+
+**Coupon-schedule engine + parser (new `src/pricing/coupon_schedule.py`).** `parse_coupon_schedule`
+reads the free-text `Coupon_Formula`/`Formula2` cell into `[(effective_from|None, rate_decimal), ...]`,
+or **returns None (never guesses)** when there are no numeric coupons. `coupon_at(schedule, date)`
+gives the in-force rate. `price_bond` / `implied_oas` / `risk_metrics` gained an optional
+`coupon_schedule` kwarg (per-period coupon looked up by date; discounting/day-count/accrual unchanged).
+`tests/test_coupon_schedule.py` (+10, no workbook needed): parser formats (`t< / t≥`, `until/then`,
+single-fixed, no-numbers→None, ambiguous→None, multi-arg fallback), `coupon_at` boundaries, and
+schedule pricing (past-step reduces to flat, future-step prices between the two flats, zero = single
+discounted face).
+
+**Driver routes the 4 held special bonds** (`calibrate_risk.py`, from the excluded frame):
+- **stepped** TNTD04283895 (A, 2011-03): schedule "7.00% t<2006 / 7.50% t≥2006"; switch is **before**
+  valuation ⇒ flat 7.50% forward → priced via the schedule path → implied **210bp**, eff-dur **1.63**,
+  route `vanilla-schedule`; **joins the A median**.
+- **zero** TNTD03037132 (BBB, **2037**): priced as degenerate vanilla (single face CF), but BT **93.12**
+  on a 28y pure zero ⇒ implied OAS **−486bp** — proof the mark is a *structured payoff*, not a discount
+  zero. Route `zero-structured`, **kept in the table but excluded from medians** (flagged).
+- **step-up** TNTD04150829 (BBB, 2012): `coupon_formula`="Step-up schedule" carries **no numbers** —
+  parser returns None → route `schedule-unavailable`, **BT mark**, flagged (needs a terms source, like a
+  call schedule). 2nd stepped/step-up row in the pivot is **tab-only (not held)** → not priced.
+- **defaulted** TNTD03037967 (BT **12**): route `recovery`, **BT used as the mark, no implied OAS**
+  (solving an OAS for a defaulted bond is meaningless — Mario's instruction).
+
+`PRICED_ROUTES` = {vanilla, make-whole-as-vanilla, vanilla-schedule} — only these feed the by-rating
+medians (recovery / schedule-unavailable / zero-structured are BT marks or anomalous). By-rating table
+regenerated (A picks up the stepped bond; medians essentially unchanged). **Full suite 73 passed on 47.**
+
+**Next:** Step 4 pure-floating 27 (plan locked in CLAUDE.md — implied forward off ZeroCurve, single-curve
+discount + OIS-as-future-enhancement note, spread parsed from `coupon_formula`, invariant tests incl.
+FRN-dur≈time-to-reset), then reset-6 after per-bond terms recon.
+
+## 2026-07-08 — Coupon_Formula2 classification + routing (Mario new task, Steps 1–2 of 4)
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario: the module defaulted **every** bond to `F` (plain fixed), but the `Corporate Bonds` tab's
+`Coupon_Formula2` column carries the real coupon structure (some bonds fixed→reset / fixed→floating).
+Task = read `Coupon_Formula2`, classify, route to the right engine. Four steps, report after each; this
+round did **Step 1 (FRN recon, read-only)** + **Step 2 (classifier + routing framework)**. Steps 3
+(simple types) and 4 (floating engine) held pending my confirmation.
+
+**Step 1 — FRN legacy recon (`BondOAS` analysisType 7/8/9, `47:extracted/project_vba.txt`).** Located
+the FRN branches at **l.5693–5829** (sibling of the callable 1/5/6 block in the same `BondOAS`):
+- **7 = FRN price** (`ans7 = FRN(inicio,1)`), **8 = implied OAS** (`Veloz` root-solve to `givenprice`,
+  `ans8 = impliedOAS*100`), **9 = eff-duration** (±10bp bump, `ans9 = FRNDuration`) — the SAME
+  price/OAS/duration triple our vanilla + callable engines already emit.
+- **Mechanism = curve-forward FRN recombining tree.** Floating coupon at each node = `Forward =
+  Discount·sloperow` (a forward rate off the discount curve); node discounts at `(OAS+Forward)/Freq` on
+  the **same** curve (single-curve, pre-crisis convention), periodic-simple compounding, up to 30 steps
+  (`cols` by maturity bucket, l.4498–4569). `coupon_rate(k)` = per-period spread/step coupon.
+- **Bloomberg data (exactly the callable-call-schedule situation — algo portable, data substitutable):**
+  `swapcurve` short-end index pulled per-ccy from money-market tickers (l.4655–4697: EURIBOR `EU000nM`,
+  GBP-LIBOR `BP000nM`, USD-LIBOR `US000nM`, CIBOR/STIBOR/TIBOR, **and a Fed H.15 `h15tnM` USD fallback =
+  FRED-replaceable**); `multi_cpn_schedule` (l.4783, step coupons); `flt_cpn_hist` (l.4798, spread +
+  resets). Substitutes: our bootstrapped `ZeroCurve` forwards + spread/schedule parsed from
+  `coupon_formula`/`Coupon` (or a `call_schedules.csv`-style CSV). **Conventions:** Forward/OAS/coupon in
+  **percent**; discount `(1+(OAS+Fwd)/100/Freq)` = periodic simple (matches our corrected DF family, not
+  the `exp(−t·z_semi)` bug). No code written (recon only, per instruction).
+
+**Step 2 — classifier + routing framework (implemented, validated).**
+- **Column trap resolved:** `Coupon_Formula2` = Excel col **M** (header confirms; N is empty). Mario's
+  brief said "N列" — off by one; the loader's `M→coupon_formula2` mapping was already right.
+- New module **`src/dataio/coupon_types.py`**: `classify_coupon_formula` (18 raw values → 1 of
+  F/floating/fixed-to-reset/stepped/step-up/zero/defaulted/pass-through/amortizing/na/unknown) +
+  `ROUTE` (class → vanilla / vanilla-schedule / floating / recovery / excluded) + `EXCLUDED_REASON`
+  controlled vocab. Wired into `universe.py` (adds `coupon_class`+`route` columns; splits the old blanket
+  `structured/floating` funnel bucket into `excluded-structured` / `floating` / `special-fixed`).
+- **Pivot reconciles to Mario EXACTLY** (676 tab rows): F 617 · floating 27 (Ref-Rate 12 + EURIBOR 9 +
+  Fixed→Floating 5 + GBP-LIBOR 1) · fixed-to-reset 6 · stepped 2 · step-up 1 · zero 1 · defaulted 1 ·
+  excluded 21 (pass-through 16 + amortizing 1 + na 4) · unknown 0. Stashed in `extras["coupon_class_pivot"]`.
+- **IGNORE per Mario (~21):** pass-through 16 / amortizing 1 / na 4 → `route=excluded`. (Pass-through
+  sheet keeps its Collateral-col loader for the future MBS phase — not deleted.)
+- **Funnel impact @2009-06-10 (correctness improvements surfaced):** canonical **stays 522** but is now
+  100% `coupon_class F` / `route vanilla` — the **1 `Amortizing (mortgage-backed)` bond that coupon_type
+  mislabelled "Fixed"** dropped out of canonical (Mario-excluded), and a genuinely-`Fixed`-by-formula
+  hybrid took its slot (net 0). **Genuine callables 5→6:** a formula-`Fixed` bond that coupon_type had
+  mislabelled non-fixed is now correctly a fixed callable → v2 lattice. Old `structured/floating` 51 →
+  `excluded-structured 15 + floating 32 + special-fixed 3` (=50) + the +1 callable. MECE holds (732).
+- **Tests:** golden `test_universe` +3 (pivot lock, canonical-all-F/vanilla, funnel-bucket split);
+  updated callable 5→6 + the MECE reason list. **Full suite 63 passed on 47** (was 60).
+
+**Open / next (await my confirm before coding):**
+- **Step 3 (simple types, no floating engine):** zero (1, degenerate vanilla) → step-up (1) + segmented
+  7.00%/7.50% (2) via a coupon-schedule cash-flow generator → defaulted (1) recovery mark; then run
+  implied-OAS + risk on them, merge into the main output with a `route` column.
+- **Step 4 (floating engine, 27 + reset 6):** port the curve-forward FRN tree (Step-1 algo) with our
+  ZeroCurve forwards + parsed spread/schedule replacing Bloomberg; method to be confirmed with Mario.
+
+## 2026-07-03 — Mario's 3 answers landed: schedule-driven calls, σ=0.15, BT-marking closed
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario answered the three open v2-callable questions (prior entry's Qs a/b/c); all three are now landed in
+code + docs. Order: schedule architecture → σ=0.15 rerun → doc closure.
+
+**(1) Call schedule — par-call APPROVED for v1, but the exercise schedule is now DATA-DRIVEN.** Mario's
+architecture requirement: the lattice must read its call terms from a standalone table, even while that table
+holds only a single par-call row per bond, so a future Bloomberg/FISD schedule drops in with **zero code change**
+(data/logic separation). Implemented:
+- **New `data/call_schedules.csv`** (`asset_id | call_date | call_price`) = the ONLY source of call terms. Seeded
+  by **`scripts/init_call_schedules.py`** for the 4 genuine callables: `call_date` = master col **AB** (via the
+  universe pipeline), `call_price` = **100** (v1 par). **Git-ignored** (client asset_ids; `data/` already blocked
+  — verified); lives on 47. The seed refuses to overwrite an existing file, so a real schedule is never clobbered.
+- **New `src/dataio/call_schedules.py`** — `load_call_schedules` → `{asset_id: [(call_date, price), …]}` (multiple
+  rows per asset = a step-function schedule); `to_lattice_schedule` converts dates → years-from-VAL (centralised
+  day-count, clamp at 0). Malformed table (missing column) raises loudly.
+- **`lattice.py`**: removed the hard-coded `par_call_array` / `par_put_array`; added `call_array(schedule)` /
+  `put_array(schedule)` on a general `_schedule_array` (step function — the latest entry effective at each node;
+  a single entry reproduces the old par-call exactly). **No par-call baked into the engine.**
+- **`callable_risk.py`**: reads the CSV, passes each bond's schedule to `call_array`. A genuine callable missing
+  from the table is **skipped loudly**, not silently par-called.
+- **TNTD03203204** (BT 108.69 ≫ par-call): official line adopted — the note now reads *"par-call assumption
+  conflicts with market price (BT 108.69); awaiting actual schedule"*. No longer a puzzle.
+
+**(2) Volatility = 15%** (Mario's v1 assumption; 0.18 was a placeholder). `FIP_VOL` default 0.18→**0.15** (and the
+`ShortRateLattice` class default), reran. Effect as expected — lower σ → less option value → callable closer to
+straight:
+
+| bond | rating | BT | eff-dur straight→callable @σ=0.15 | (was @σ=0.18) | impl OAS callable | note |
+|---|---|---:|---|---|---:|---|
+| TNTD04441873 | A | 90.04 | 11.56 → **10.54** | 10.03 | 412 bp | **call-active** (only bond the call moves) |
+| TNTD04115619 | BBB | 60.65 | 3.42 → 3.42 | 3.42 | 1959 bp | call-not-binding (distressed) |
+| TNTG701850W | EUR/A | 94.54 | 5.31 → 5.31 | 5.28 | 293 bp | call-not-binding (option value ~0 at σ=0.15) |
+| TNTD03203204 | BBB | 108.69 | 3.83 → 0.50 | 0.50 | −838 bp | par-call conflicts w/ BT 108.69 (see above) |
+
+The lattice still materially moves **exactly one** name (TNTD04441873): at σ=0.15 its option-adjusted duration is
+**10.54y** (vs 10.03 @0.18, vs 11.56 straight). **AQ cross-check** conclusion unchanged: custodian 'Duration -
+effective' 11.73 ≈ our STRAIGHT dur 11.56, NOT the callable 10.54 → the custodian mark does not capture the call;
+our lattice does.
+
+**(3) BT marking-date — CLOSED.** Mario confirmed: by 2009-03-31 the crisis was near its end and market spreads had
+already retreated from the peak. So the tighter credit level embedded in `BT` is the **real market state at the
+custodian's marking (a recovering market), not a date mismatch**. Our two-date evidence (implied OAS 143–206bp
+*below* the 3-31 crisis-peak index) IS that recovery, not an error. The **3-31 curve stays the calibration
+baseline**. This closes the last open v2 question and the BT-marking open question tracked since 2026-06-30
+(CLAUDE.md Open-questions + Critical-corrections updated).
+
+**Tests.** `test_lattice.py` +3 (single-entry array contents; multi-date step-schedule ordering invariant
+flat-@100 ≤ step ≤ flat-@102; put-array symmetry) = **29**; new **`test_call_schedules.py`** (4: multi-row
+grouping, string asset-id, missing-column raise, date→time clamp). **Full suite 60/60 green on 47.**
+
+**Run (47):** `FIP_VAL_DATE=2009-03-31 PYTHONPATH=src python3 scripts/init_call_schedules.py` (seed, once) then
+`… scripts/callable_risk.py` (σ default 0.15; `FIP_VOL` overrides).
+
+**Open / next**
+- 1 short-gap callable (32–180d) still unpriced (neither make-whole nor the >1y lattice threshold) — minor loose end.
+- Real Bloomberg/FISD call schedules, when available, replace `data/call_schedules.csv` rows — **zero code change**.
+
+---
+
+## 2026-07-02 — make-whole callables re-routed to vanilla (universe reclassification)
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+Follow-through on the v2-callable finding: of the `callable` exclusion bucket the large majority are **make-whole**
+(call date ~ maturity, option value ≈ 0) and were **unpriced**. Now routed to the vanilla calibrator.
+
+- **`universe.py`:** new `MAKE_WHOLE_MAX_GAP_DAYS = 7`; `is_make_whole = is_callable & (maturity − call_date ≤ 7d)`;
+  `_reason` returns `callable` only when `is_callable AND NOT is_make_whole` → make-whole falls through to canonical,
+  flagged `is_make_whole` (extras `make_whole_total`=47, `make_whole_as_vanilla`=46). Single-primary-reason priority
+  unchanged; MECE intact (732).
+- **Funnel shift:** **@6-10 canonical 476→522, callable 51→5**; **@3-31 canonical 481→527, callable 51→5**. The 5
+  remaining `callable` = 4 genuine-gap (>1y → v2 lattice) + 1 short-gap (32–180d, currently unpriced). `test_universe`
+  golden updated (canonical 522 @6-10 + a make-whole assertion); **53/53 green**.
+- **`calibrate_risk.py`:** added a `route` column (`make-whole-as-vanilla` | `vanilla`) — transparent tagging + a
+  make-whole-subset by-rating print.
+- **By-rating @3-31 (now 527 canonical) — NO anomaly.** Adding 46 make-whole (all A/BBB) barely moves the medians:
+  A 406→402 (n 218→240), BBB 525→521 (n 155→175); AAA/AA/BB/B/CCC unchanged. Make-whole subset medians A 328bp /
+  BBB 505bp sit inside the normal rating range. Near-maturity 17→21 (4 make-whole names <1y, correctly excluded).
+
+Make-whole bonds are now first-class priced (implied OAS + duration/DV01/convexity) via the vanilla calibrator; the
+4 genuine callables stay on the lattice (pending Mario: call schedule/price + vol — see prior entry).
+
+**Open / next**
+- 1 short-gap callable (32–180d) not yet priced (neither make-whole nor the >1y lattice threshold) — minor loose end.
+- Await Mario on call schedule/price + vol to upgrade the 4 genuine names from assumption to sourced.
+
+---
+
+## 2026-07-02 — v2 callables: BondOAS recon + clean BDT lattice engine (invariant-validated) + genuine-callable run
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Recon of legacy `BondOAS`** (Project Pricing xlsm / Module1 l.4397-5861; VBA at `47:extracted/project_vba.txt`):
+a constant-vol **lognormal recombining binomial short-rate lattice** (u/d = exp(±σ√Δt), p=0.5), curve-fit by a
+bespoke per-step "sloperow" hack (Veloz Newton search), Bermudan exercise = min(cont, callprice) / max(cont,
+putprice) per step, implied OAS by brute-force increment (OAS a flat spread on the lattice), effective duration
+via ±10bp OAS bump (`analysisType` 5=OAS, 6=eff-dur). **Inputs come from Bloomberg** (short-end fixings, call/put/
+sink SCHEDULES via `c_s`/`c_t`) + bespoke "SteepFlat" ASCII tables → **unrunnable / unreconcilable here.**
+
+**5 decisions (Mario-track, LOCKED this session):**
+1. **Validation = INVARIANTS, not a legacy golden** (BondOAS can't run without Bloomberg). Hermetic pytest
+   `tests/test_lattice.py` (26): (i) lattice reprices the curve's zeros to curve DFs + par bond→100 + straight
+   price σ-invariant; (ii) callable ≤ straight ≤ putable; (iii) σ=0 ⇒ straight==curve-discounted & callable==
+   straight(OTM) & option value ↑ in σ; + implied-OAS round-trip + callable dur < straight dur.
+2. **Clean standard BDT, not the bespoke sloperow.** `src/pricing/lattice.py`: lognormal short-rate tree,
+   FORWARD-INDUCTION Arrow-Debreu calibration to our validated `ZeroCurve` (arb-free by construction), continuous
+   per-step discount so OAS adds flat (= parallel shift, matches vanilla). Same philosophy as the BondPrice z_semi
+   fix — correct engine over a faithful replica of a flaw; here replication is impossible anyway.
+3. **Call price/schedule assumption:** make-whole (gap≤7d)→vanilla; genuine-gap fixed→**par call (100) American**
+   from call_date; structured/floating callables stay excluded. `call_price` is a replaceable input.
+4. **Vol assumption:** flat σ = `FIP_VOL` (default **0.18**); output annotated "σ=assumed, not market".
+5. **Scope:** build the engine (reusable for MBS/CMO), apply to genuine fixed callables; make-whole→vanilla.
+
+**Results (`scripts/callable_risk.py` @ 2009-03-31, σ=0.18, par-call; 52/52 tests green).** Of the 51-bond
+callable bucket, **only 4 are genuine fixed callables**; 46 are make-whole (→vanilla).
+
+| bond | rating | BT | eff-dur straight→callable | impl OAS callable | note |
+|---|---|---:|---|---:|---|
+| TNTD04441873 | A | 90.04 | 11.56 → **10.03** | 409 bp | **call-active** (call shortens duration −1.5y) |
+| TNTD04115619 | BBB | 60.65 | 3.42 → 3.42 | 1959 bp | call-not-binding (distressed ⇒ option worthless) |
+| TNTG701850W | EUR/A | 94.54 | 5.31 → 5.28 | 293 bp | call-not-binding |
+| TNTD03203204 | BBB | 108.69 | 3.83 → 0.50 | **−838 bp** | **par-call-refuted** (BT≫par-call ⇒ real call premium/make-whole) |
+
+- **Lattice materially moves numbers on exactly 1 bond** (TNTD04441873: call shortens eff-dur 11.56→10.03y).
+- **AQ cross-check (invariant iv):** custodian 'Duration - effective' (11.73) ≈ our STRAIGHT dur (11.56), NOT the
+  option-adjusted callable dur (10.03) ⇒ **the custodian AQ does not capture the call; our lattice does.**
+- **par-call@100 refuted for TNTD03203204** (BT 108.69 ⇒ negative OAS): the assumption self-flags; real call terms
+  are premium/make-whole. ⇒ without call PRICES we can't even reliably classify genuine vs make-whole.
+
+**Positioning for Mario:** engine built + correct (invariants); numerical impact on THIS book confined to ~1 name;
+call schedule/price + vol are ASSUMPTIONS (data gaps), not market-sourced.
+
+**QUESTIONS FOR MARIO (package for the next call):**
+  (a) **Call schedule/price** — is there a source (Bloomberg / FISD terms pull), or is the par-call assumption
+      acceptable? (par-call@100 already refuted for TNTD03203204 ⇒ we likely need real terms.)
+  (b) **Volatility** — what assumed level, or does Liping pull swaption vol from Bloomberg? (σ=0.18 is a placeholder.)
+  (c) **BT marking-date** convention — the 2026-07-02 two-date evidence (implied@6-10 ≈ 6-10 index; @3-31 sits
+      143-206bp *below* the 3-31 crisis index ⇒ BT embeds ~June credit).
+
+**Open / next**
+- Make-whole callables (46) → route through the vanilla calibrator (universe reclassification: move gap≤7d callables
+  from the `callable` exclusion into canonical). Currently unpriced.
+- Real call schedules (FISD) + a vol decision would upgrade the 4 genuine names from assumption to sourced.
+- Lattice extensibility: sinking-fund node logic (present in legacy) + MBS/CMO reuse.
+
+---
+
+## 2026-07-02 — 3-31 calibration ADOPTED as baseline (Mario's USD curve) + date-matched index fix
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Mario's 2009-03-31 USD curve arrived** (`USD_Yield_Curve.txt`, dropped at the repo root). Format = the
+**native `*_Yield_Curve.txt` schema** — `Date`(Excel serial)`,0.25,0.5,1,2,3,5,10,20,30`, values **decimal**,
+**USD-only** (no EUR/GBP inside). ⇒ **no adapter needed**: `bootstrap.load_par_curve` reads it directly;
+integration = drop the file in + swap `VAL`. It is a **superset of the old USD file** (14,794 rows ~1962→2026):
+fills the 2008-11-10→2009-06-10 gap (**3-31 = serial 39903 present**), and its 2024-01-16 row is **byte-identical**
+to the old file (only diffs at overlapping dates = higher precision + a corrected 6-10 20y: old 4.75% → 4.3555%).
+Swapped in on 47 (`data/USD_Yield_Curve.txt`; old kept as `…_pre_mario.txt`); **26/26 tests still green**.
+
+**Curve self-check (bootstrap @ 3-31, Semiannual).** Short end ~ZIRP (0.5y 0.42%, 1y 0.55%); belly/long
+**~100–137bp below 6-10** (2y 0.80 vs 1.36; 10y 2.75 vs 4.09; 30y 3.88 vs 5.26) — the March-lows→June sell-off.
+**Par bonds reprice to 100.0000** at 2/5/10/30y, DFs monotone → arb-free & self-consistent. 3-31 levels tie to
+actual end-Mar-2009 UST (5y≈1.66, 10y≈2.67, 30y≈3.54).
+
+**DECISION — 3-31 ADOPTED as the calibration baseline; 6-10 retained as control.** Reasons: matches the
+**holdings date**; **more correct universe** (481 vs 476 — 5 bonds alive @3-31 that 6-10 wrongly dropped as
+matured); **fixes near-maturity distortion**; risk metrics barely move; and it is Mario's instruction. Calibration
+exact both dates (`|clean−BT|`≈2e-8; 479/481 priced @3-31).
+
+**Near-maturity distortion CLEARED (the caveat-1 fix, confirmed).** Date-matching the curve to the holdings date
+removes the 70-day annualisation artefact:
+- `TNTD04216534` (AA, matures 2009-06-15): **1371bp → 464bp**.
+- `TNTD04598394` (A, matures 2009-07-15): **−177bp → +199bp** (the negative OAS).
+- `TNTD04215797` (BBB, matures 2009-08-15): 12bp (implausibly tight) → 375bp.
+- Aggregate over the near-mat set: `|bp|>1000-or-neg` **3→1**, negatives **1→0**, median|bp| 602→485, max 3182→2486.
+  4 bonds cross >1y and **rejoin the by-rating medians**. The lone survivor (2486bp) is a genuine discount bond
+  (BT 84), not a date artefact.
+
+**By-rating implied OAS (excl. near-mat) + BT-MARKING-DATE EVIDENCE.** The ~100bp-lower 3-31 curve lifts every IG
+median by ~+100bp. Paired with the **date-matched** ICE index (fix below), the two-date table is the evidence that
+**BT embeds a ~June (post-rally, tighter) credit level, not a March crisis-peak level** (bp):
+
+| rating | implied 6-10 | index 6-10 | implied 3-31 | index 3-31 |
+|--------|-------------:|-----------:|-------------:|-----------:|
+| AAA    |  171 |  148 |  278 |  246 |
+| AA     |  388 |  227 |  489 |  403 |
+| A      |  297 |  302 |  406 |  549 |
+| BBB    |  420 |  453 |  525 |  731 |
+| BB     | 1375 |  741 | 1423 | 1112 |
+| B      | 1310 |  945 | 1389 | 1537 |
+| CCC    | 2587 | 1704 | 2451 | 3093 |
+
+Read: **@6-10 implied ≈ 6-10 index** (A 297 vs 302, BBB 420 vs 453); **@3-31 implied sits 143–206bp BELOW the 3-31
+crisis-peak index** (A 406 vs 549, BBB 525 vs 731). Implied spreads move with the risk-free curve but do **not**
+climb to the March index ⇒ the custodian marks were struck against ~June credit spreads. **⇒ question for
+Mario/the colleague: what is the custodian's actual BT marking convention (date/source)?** NB: this affects the
+**interpretation of the OAS absolute level only** — it does **not** affect the calibration+risk-metric deliverable
+(which reprices BT exactly by construction, whatever BT's date).
+
+**Risk metrics robust to the date.** Excl. near-mat (n=462 @3-31): eff-dur median 5.95y, DV01 0.051/100/bp,
+convexity 41.6. Shift 6-10→3-31: eff-dur **+0.13y**, DV01 +0.0009, convexity +2.2 (earlier date = longer horizon +
+lower yield). The deliverable is stable across the curve-date choice.
+
+**GBP still blocked (2 bonds, `TNTG019421U`/`TNTG301334W`).** Mario's file is USD-only, and the *existing* GBP curve
+@3-31 still hits its non-arb 3y node (Annual variant): `bootstrap()` builds all four freq variants and dies on the
+bad Annual node even for a semiannual bond. **Root cause = GBP curve data (or the eager all-variant bootstrap), NOT
+the valuation date.** Revisit when a GBP replacement curve arrives, or robustify `bootstrap` to build only the
+needed variant. Non-blocking.
+
+**Code (`scripts/calibrate_risk.py`).** (1) added `FIP_OUT` env override → per-date output files, no clobbering;
+(2) **fixed a latent bug** — the by-rating index was a hardcoded 6-10 dict, wrong for any other date; now pulled
+**date-matched** via `oas_on(OAS_WB, VAL)` (`FIP_OAS_WB` overridable). Verified: 6-10 reproduces the old hardcode
+(148/227/302/453/741/945/1704), 3-31 gives the crisis-peak index (246/403/549/731/1112/1537/3093). 26/26 green.
+
+**Open / next**
+- **Ask Mario/colleague the BT marking date/source** (evidence above) — OAS-level interpretation, not a pipeline blocker.
+- GBP ×2: needs a GBP replacement curve or `bootstrap` variant-isolation (parked, non-blocking).
+- Position-level risk (portfolio DV01/duration via `mv_base_usd` × per-100 sensitivities); golden tests for
+  `calibrate`/`risk`.
+- EIR (IFRS-9) after the v1 Mario report + spec confirmation.
+
+---
+
+## 2026-06-30 — FX resolved (custodian base-USD columns) + 3-31 flat-file prep
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **FX self-conversion REMOVED — the custodian pre-converts.** Probed the master: it carries paired
+  `… - base` / `… - local` columns, and our loader already reads the **base-USD** ones — `BU` = **'Market value
+  - base'** (USD), `Z` = 'Book cost value - base' (USD). Verified on EUR bonds (e.g. `…22656W` BU 1,731,459 ==
+  local 1,304,104 / fx 0.7532; sibling `BV` = 'Market value - local' = 1,304,104). ⇒ per Mario, **no self-FX**:
+  dropped `loaders.to_usd`; the driver now takes position MV from `BU` directly (`mv_base_usd`). Kept `currency`
+  (AJ) — still needed to route each bond to its own-ccy **pricing** curve (**MV basis ≠ pricing curve** — Mario's
+  warning, don't conflate). `fx_rate` (BB) kept as a reference/audit link only. 26/26 golden tests green;
+  implied-OAS / risk table **unchanged** (per-100, FX-independent).
+- **3-31 flat file (Mario→Liping) — the caveat-1 fix, prepped, awaiting the file.** Mario gave Liping a flat file
+  with **all 2009-03-31** yield curves (the authoritative holdings-date curve). Plan: feed it through the existing
+  bootstrap and swap `VAL`→2009-03-31; the near-maturity OAS distortion should clear (each short bond gets its
+  true residual horizon). **Integration seam =** `bootstrap.load_par_curve(txt, date)`'s contract — it returns
+  `(tenors_years_ascending, par_pct)`; the 3-31 adapter only needs to emit that same tuple per (currency,
+  2009-03-31), then `bootstrap()` does the rest unchanged. **Need from Liping's file** to write the adapter fast:
+  layout (one file all ccys vs per-ccy), date/tenor encoding, and units (decimal vs %). The **2 GBP** curve-blocked
+  bonds may also resolve if the 3-31 file carries GBP — revisit together.
+
+**Open / next**
+- Get Liping's 3-31 flat file → write the adapter → re-calibrate at 3-31 → expect near-maturity OAS to normalise.
+- Position-level risk (use `mv_base_usd` × per-100 sensitivities): portfolio DV01 / duration. Golden tests for
+  `calibrate` / `risk`.
+
+---
+
+## 2026-06-30 — OAS REDEFINED as a calibration factor (Mario call) + implied-OAS & risk-metric layer
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Redefinition (Mario, phone).** OAS is a **calibration factor, NOT a pricing input.** New flow:
+(1) back out each bond's **implied OAS** from the custodian price `BT` (solve OAS s.t. model clean = `BT`);
+(2) on that calibrated model compute **risk metrics** (duration / DV01 / convexity / Greeks). The deliverable
+is the risk metrics; implied OAS is the intermediate product. This **moots v1's 6.4% IG dispersion** (no
+rating-average OAS forced onto single names) and **changes the data plan**: the WRDS/Bloomberg pulls for
+*distressed* and *sector* OAS are **CANCELLED** (each bond's OAS now comes from its own `BT`). FISD (MTN +
+callable terms) may still be needed — risk metrics need each bond's full cash flows — but that's a
+*pricing/terms* need, unrelated to OAS; still gated on WRDS account activation.
+
+**Implemented (on 47, default corrected engine; 26/26 golden tests still green).**
+- `src/pricing/calibrate.py` — `implied_oas(target_clean, …)`: Brent root-find of the flat OAS s.t.
+  `price_bond(...).clean == BT`. Clean is strictly decreasing in OAS ⇒ unique root; auto-widening bracket.
+- `src/pricing/risk.py` — `risk_metrics(...)`: effective **duration / DV01 / convexity** by ±1 bp central
+  difference. Key identity: `price_bond` adds OAS flat to the continuous zero, so **bumping OAS ≡ a parallel
+  curve shift** — no curve object is mutated. Duration/convexity use the dirty (full) PV; DV01 = price change
+  per +1 bp (per 100; ×par/100 for a position).
+- FX: `loaders.py` now carries `currency` (`AJ`) + `fx_rate` (`BB`) + a `to_usd()` helper. **BB is quoted
+  LOCAL-per-USD** (JPY 98.77, GBP 0.70, EUR 0.75 @ 2009) ⇒ local→USD is **÷ BB** (NOT the spoken "× rate" —
+  confirm w/ Mario; also confirm whether the stored MV/par are already base-USD).
+
+**Results @ 2009-06-10, canonical 476** (`outputs/implied_oas.csv`).
+- **Calibration exact**: `|clean(implied_oas) − BT|` max **2.2e-8**. **475/476 implied OAS > 0** (1 negative).
+- **Risk metrics validated**: numerical effective duration == continuous Macaulay (`Σ tᵢ·PVᵢ / P`) to **1e-7**;
+  sane (~10y → dur ≈ 6.6, DV01 ≈ 0.069, cvx ≈ 56; 30y AA → dur ≈ 12.3, DV01 ≈ 0.13, cvx ≈ 244).
+- **Implied OAS vs rating** (median bp): AAA 176 / AA 390 / A 292 / BBB 414 / BB 1374 / CCC 2585 — broadly
+  monotone, aligned with the v1 index OAS (148/227/302/453/741/1704) but **wider, with name dispersion**, and
+  **distressed clearly larger** (as Mario expected).
+
+**Three caveats found (pasted to the user — need a decision).**
+1. **Near-maturity distortion.** Bonds maturing within ~6 mo of 6-10 get inflated / negative implied OAS
+   (a 5-day AA → **1372 bp**; the lone negative is a 35-day A → −177 bp). A tiny BT-vs-model price gap ÷ a
+   near-zero horizon annualises to a huge "spread"; the gap is mostly the **70-day 3-31(holdings)/6-10(curve)
+   mismatch**. ⇒ for **calibration** the 3-31 date-match question **REOPENS** — different from the v1 *rating-OAS*
+   result (where 3-31 hurt): a 3-31 curve+date gives each short bond its true residual horizon and cleans the
+   short end. Ties to the still-open **"confirm BT's marking date/source."**
+2. **17 / 476 canonical bonds are EUR/GBP**, not USD (the book is **not** all-USD: 459 USD + 16 EUR + 1 GBP,
+   `TNTG…` ISINs). They're being priced on the **USD** curve (as v1 silently did) ⇒ their implied OAS is a
+   USD-vs-EUR-curve artifact. The EUR/GBP par curves **are** in `data/` ⇒ price them on their own-ccy curves
+   (v1.5). Surfaced by the FX work.
+3. **Distressed implied OAS** (BT 11–35 → OAS up to **~11,800 bp**) is a **recovery-driven plug**, not an
+   economic spread — fine as a calibration factor, not interpretable as credit.
+
+**Recon — legacy callable/option engine (background agent, read-only).** All option/Greek code is in
+`Project Pricing…/Module1` (`extracted/project_vba.txt`, 11,983 lines). **The straight callable/puttable engine
+is `BondOAS`** (l.4397-5861) — a **binomial short-rate/credit lattice** (0.5/0.5), `analysisType` 2=callable /
+3=putable / 4=sink / **5=solve implied OAS** / **6=±10 bp effective duration**. ⇒ **Mario's redefined flow
+(implied OAS → duration) literally IS the legacy `BondOAS` design.** `CBondPrice` (l.3904-4394) is a
+**convertible** pricer (CRR equity tree + Tsiveriotis-Fernandes), **not** the callable target — porting note.
+Greeks (l.6928-7225) are closed-form **Black-Scholes equity** option Greeks (for convertibles). **No
+DV01/convexity/Macaulay anywhere in legacy** (only ±10 bp effective duration) ⇒ our `risk.py` fills a real gap.
+Both callable engines build their **own** rate lattice (not the bootstrapped curve) ⇒ a v2 port re-points them
+at `ZeroCurve`.
+
+**Caveats — HANDLED this session (per Mario).** (1) near-maturity `<1y` now flagged (`calibrate.near_maturity`)
+and **excluded from the by-rating medians** (16 bonds; kept in the CSV); the 3-31 calibration-date question stays
+open. (2) **EUR/GBP FIXED** — `ZeroCurve.from_currency` routes by `currency`; the **15 EUR** re-priced on the EUR
+curve tighten implied OAS **~20–55 bp** (EUR rates > USD in 2009); the **2 GBP** can't bootstrap (GBP par
+non-arb-free at the 3y node @ 2009-06-10 — `bootstrap()` builds all variants together so the whole curve fails)
+→ skipped+flagged for follow-up (nearby GBP date / bootstrap robustness). (3) distressed → `recovery-plug` flag
+(BT<50) + a distress-excluded median. **Refined by-rating implied OAS (excl. near-maturity, own-ccy curves; bp):**
+AAA 171 / AA 386 / A 291 / BBB 413 / BB 1374 (855 excl-distress) / CCC 2585 (2279) — **A & BBB land on the index
+(302/453)**; **AA wide (386 vs 227) = the AA-financials sector effect** (real, not an artifact); HY wide = distress.
+New code: `zero_curve.from_currency`, `calibrate.near_maturity`, `scripts/calibrate_risk.py`. Also scrubbed a
+client-ISIN leak from `docs/wrds_data_plan.md` and `.gitignore` now blocks all of `data/`.
+
+**Open / next**
+- **Decide (Mario):** (a) calibration date — keep 6-10 or use a 3-31 curve+date to fix the short end (needs the
+  3-31 curve source / BT date confirmation); (b) FX direction (÷BB) + whether MV/par are already base-USD;
+  (c) price the 17 EUR/GBP names on their own-ccy curves now (v1.5) or defer.
+- Then: position-level risk (×par; portfolio DV01 / duration), spread / key-rate durations.
+- v2 callables: port `BondOAS` (lattice), re-pointed at `ZeroCurve`; needs vol + call/put schedules (FISD).
+- Amend `docs/wrds_data_plan.md` (Parts 2 & 3 — distressed/sector OAS — cancelled; Part 1 FISD still maybe).
+- Commit the calibrate/risk layer + FX on a fresh branch (currently scp'd to 47, uncommitted).
+
+---
+
+## 2026-06-29 — WRDS data-pull plan recorded (env ready; blocked on account activation)
+**Commit:** `[TO FILL]`
+**Author:** charlieee0712
+
+- **47 ↔ WRDS confirmed reachable** (`wrds-pgdata.wharton.upenn.edu:9737` OK; general outbound OK —
+  pypi/FRED hosts also reachable, so the old "FRED unreachable" was the 3y data-truncation, not the network).
+- **Env prepared on 47** (`PengSX` conda): installed `wrds` + `psycopg2-binary` (imports OK,
+  `wrds.Connection` present). Side effect: pandas **2.1.1 → 2.2.3** — verified harmless (pricing byte-identical;
+  **golden suite 26/26**). Offered to pin pandas back if the colleague's other work needs 2.1.1.
+- **Blocked:** user's WRDS account is **inactive** → must be reactivated on the WRDS portal (annual
+  re-validation / rep approval). Pull cannot run until then.
+- **Plan written → `docs/wrds_data_plan.md`** (execute-ready). Three pulls keyed by **ISIN→CUSIP**:
+  (1) **Mergent FISD** `fisd` — rescue the 135 MTN terms + callable call schedules → expand canonical >476;
+  (2) **Enhanced TRACE** `trace` — real 2009 marks for the 20 distressed BB/B/CCC names (index OAS can't
+  recover them); (3) **industry×rating spreads** — self-built (FISD SIC + TRACE) to narrow the AA-bank
+  sector-vs-index gap.
+- **Technical decisions baked into the plan** (upgrades over the raw spec): confirm all table/column names via
+  `describe_table` before bulk pulls; prefer direct ISIN join (CUSIP-derived fallback); apply **Dick-Nielsen**
+  cleaning to Enhanced TRACE; Part 3 is a **Z-spread computed by inverting our own `price_bond`** (≡ OAS for
+  option-free; drops straight into our engine; median per rating should ≈ the ICE index OAS = built-in
+  validation); **QA-gate the FISD join on the 476 known-terms bonds** before trusting it for the 135 MTNs;
+  client CUSIP/ISIN lists + all pulls stay **git-ignored** (`data/wrds/`).
+- Next on live connection: smoke query → promote skeletons to a tested `src/dataio/wrds_pull.py`.
+
+---
+
+## 2026-06-29 — Re-verified the BondPrice discounting "bug" from scratch (Liping's challenge)
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Context.** Liping questioned the 2026-06-27 call that `exp(−t·z_semi)` is a VBA bug, and flagged that
+our convention description was self-contradictory. Re-investigated from the raw VBA — not defending the
+prior conclusion.
+
+**Findings (verified, not code-reading alone):**
+- **Read the real `BondPrice`** (decompiled `Pricing File.xlsm`/`vbaProject.bin` → `Bootstrapping.bas`
+  via olevba on 47). `BondPrice` (l.108) and `BondPrice2` (l.487) BOTH bootstrap a **semiannual** zero
+  `z=2·((1/DF)^(1/2t)−1)` (l.346/364) then discount it with **continuous** `exp(−t·z)` (l.449); no
+  compensating step. (Our earlier line-refs 766–818 actually pointed at `BondPrice2` — identical
+  convention, so the conclusion held.)
+- **Root cause of the doc contradiction Liping caught: TWO bootstraps in legacy.** (i) auditable routine
+  = **continuous** (`z=−ln(DF)/t`), what our `bootstrap.py` ports; (ii) `BondPrice`'s embedded bootstrap
+  = **semiannual**. CLAUDE.md described only (i) as "the" convention while calling `exp(−t·z)` a bug —
+  logically backwards *if* z were continuous. Fixed the docs to distinguish them.
+- **Par-bond self-check = decisive proof.** A bootstrapped curve must reprice its own par bonds to 100.
+  Under the VBA's `exp(−t·z)`: 5y→99.90, **10y→99.67**, 25y→99.20 (all below par). Under the consistent
+  `(1+z/2)^(−2t)`: **100.000000** at every tenor. ⇒ the VBA discount is provably inconsistent with the
+  VBA's own curve → under-prices. (Node DF too low −0.11% @5y, −0.43% @10y, −1.31% @20y — reproduces the
+  6-27 numbers exactly.)
+- **Module check** (sample bond A 5.55% 2017, 2009-06-10 curve): VBA-literal **113.9073** vs consistent
+  **114.1365** = −0.20% (pure convention). Our `price_bond` default **114.1361** (= consistent to
+  −0.0004%; residual = our 41-tenor vs VBA 9-anchor curve build, NOT the convention); our **`vba_compat`
+  113.9073 = VBA-literal to 0.0000% (exact)**.
+
+**Verdict.**
+- **(a)** The VBA bug is **real** (semiannual zero discounted continuously; fails its own par self-check).
+- **(b)** Our fix is **correct, not a regression** (default reprices par to 100). **No rollback.** The v1
+  report's "corrected the VBA discounting bug" **stands**.
+- **(c)** `vba_compat` reproduces legacy **exactly** (0.0000%).
+- **Direction:** the *price* direction we documented (VBA under-prices) was **correct**; the only thing
+  "backwards" was the convention *description* (continuous vs semiannual bootstrap) — now fixed.
+
+**Impact scope (so no future session over-reads this).** The convention fix is worth only ≈**0.2% @8y**
+(node DF −0.43% @10y, grows with maturity), **far below v1's 6.4% IG dispersion**. Signed median ≈0
+whether default or vba_compat ⇒ **this does NOT change the v1 validation conclusion.**
+
+**Artifacts.** Line-faithful transcription kept at `47:/tmp/convention_test.py` (re-runs the par
+self-check + sample bond). Docs updated: CLAUDE.md «Conventions», this entry, `bond_price.py` docstring.
+
+---
+
+## 2026-06-27 — EIR located: a requirement, not legacy code (implement per IFRS-9)
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Searched ALL legacy code for EIR / amortised cost: `Pricing File.xlsm` (4 sheets + ~2k VBA lines) and
+  `Project Pricing Fixed Income Instruments.xlsm` (`Module1`/`Module2` = **11,983 VBA lines** + sheets).
+  **Zero hits** for amort / effective-interest / EIR / book-value / constant-yield. The CEO reference sheet
+  `Bond Px 4 Bonds w Diff Ratings` is the **Uganda CreditMetrics demo** (rating → sovereign-country curve +
+  1y-forward revaluation), NOT EIR.
+- ⇒ **EIR is a requirement, not code.** Implement per **IFRS-9 amortised cost** (constant-yield amortisation).
+  **No legacy golden output to reconcile against** (unlike BondPrice).
+- **Spec preset (confirm with Mario/CEO at the v1 report):**
+  - **Q1** master `Book cost` (Z) = **amortised carrying value** (data strongly suggests — another session:
+    book cost per-100 median 99.82, hugs par, corr −0.13 with BT, near-maturity closer to 100; typical of
+    amortised cost, not original purchase cost; tail exceptions exist). ⇒ amortised cost at valuation ≈ Z, and
+    EIR is computable **without a purchase date** (which is absent from the master's 131 columns).
+  - **Q2** deliverable = per-bond {effective yield, amortised cost} + an **amortised-cost vs market
+    (bootstrap+OAS)** comparison table.
+  - **Q3** scope = IFRS-9 amortised cost, carried at the book effective yield, **independent of the market curve**.
+
+**Open / next**
+- **Do NOT implement EIR yet.** Order: (1) report v1 to Mario + confirm the EIR spec; (2) then implement.
+
+---
+
+## 2026-06-27 — Batch pricing + OAS reconciliation; v1 success criterion + method boundaries
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- **Batch-priced the canonical 476** on the 2009-06-10 curve (corrected B). 462 semiannual + 14 annual
+  (`price_bond` generalised to `freq`), 0 unpriceable. Reconciled vs custodian BT (price) / BU (MV).
+- **OAS=0 result VALIDATES the engine.** Near-maturity high-grade bonds (credit ≈ 0) tie to BT to
+  **<0.2%** (BBB +0.02% / A −0.17% / AA +0.19%) — proving curve + discounting + the ②③ conventions +
+  the 70-day holdings/curve mismatch together contribute <0.2%. The systematic +22% median gap is
+  entirely the missing credit spread (largest for low rating / long duration) — exactly what OAS fixes.
+- **Rating OAS (EXACT, from the workbook) — v1 result.** Precise 2009-06-10 OAS read from
+  `Pricing File.xlsm` / `OAS Credit Curves` via **`src/credit/oas.py`** (`oas_on`): AAA 1.48 / AA 2.27 /
+  A 3.02 / BBB 4.53 / BB 7.41 / B 9.45 / CCC 17.04 %. IG (AAA-BBB, n=456) median |diff%| **21.3% → 6.43%**,
+  **signed median −0.41% (UNBIASED — curve+OAS centred on BT)**; 39% within 5%, 66% within 10%. HY (n=20)
+  137% → 23% (signed +23 — does not converge → v2). Golden `tests/test_oas.py`. Saved `outputs/recon_oas.csv`.
+- **v1 verdict — VALIDATED (success), framed as bias vs dispersion (not "6.4% > 5%").**
+  - *Is the method correct?* → **UNBIASED**: IG signed median **−0.41% (≈0)**, curve+OAS centred on BT;
+    with OAS=0 near-maturity high-grade <0.2%. ⇒ bootstrap→rating-OAS→discount is correct.
+  - *How precise?* → **|diff%| median 6.4% is DISPERSION, not bias** — individual-name scatter around the
+    index rating OAS (±300 bp normal in 2009), the direct result of v1's design choice (boundary ①: one
+    index OAS per rating, no name/term structure). Distress removal leaves it 6.1% ⇒ broad dispersion, not
+    outliers ⇒ a **known design boundary, not a bug**.
+  - ⇒ **Not a near-miss failure; "success, precision to improve in v1.5."** Precision is limited by the
+    index-rating-OAS design, which is explained and has a clear narrowing path.
+- **Narrowing path (priority) — REVISED after the 3-31 experiment (below); the residual is in OAS
+  *granularity*, not the date:**
+  ① **Finer OAS (sector / quality / name)** — the ONLY real path to <5% (v2).
+  ② **AA financials** (a concrete sector-OAS case: banks trade wider than the AA index OAS).
+  ③ **Index OAS has no term structure** → a duration-based credit-spread curve (v2).
+- **[NEGATIVE RESULT — tested 2026-06-27 — 3-31 date-match is a DEAD END, do not retry].** Hypothesis was
+  that the 70-day gap (3-31 holdings vs 6-10 curve) inflated the residual; **refuted.** Re-pricing AS-OF
+  2009-03-31 (a **3-31 UST curve from FRED `DGS*`**, validated same-source against the 6-10 txt row, **+**
+  3-31 OAS, fully date-matched to BT) makes IG **worse**: median |diff%| **6.43% → 11.14%**, signed
+  **−0.41% → −6.70%**. Cause: 3-31 is the **crisis-peak OAS** (BBB **7.31%** vs 6-10's 4.53%; CCC 30.93% vs
+  17.04%) — the peak spread overwhelms the lower 3-31 rates, so the 3-31 **total** discount rate is *higher*
+  and prices fall below BT. ⇒ **BT aligns with ~6-10 (tighter) spreads, not the 3-31 peak; the 70-day date
+  gap is NOT a precision lever.** This independently **confirms** the ~6.4% residual = index-OAS dispersion
+  (not date) — a harder proof than "distress removal leaves it 6.1%". *(Earlier this entry called the 3-31
+  curve the "biggest lever" — that is now refuted; kept here with data so no future session retries it.)*
+- **One-liner for Mario/Liping:** "bootstrap→rating-OAS→discount validated for ordinary IG credit, unbiased
+  vs BT (signed median ≈0); single-bond precision median ~6% is limited by the inherent dispersion of the
+  index rating OAS (a known design boundary), with a clear narrowing path — the biggest being the 3-31 curve
+  to remove the 70-day date mismatch. HY / distressed / callable are v2 as planned."
+- **FRED historical OAS no longer free** (ICE truncated to a rolling 3y window in April 2026; both the API
+  and fredgraph.csv only serve recent data — WebFetch 403, curl date-params ignored, Wayback unreachable).
+  → **RESOLVED** by reading the workbook's `OAS Credit Curves` archive (full daily 1997-2025) instead.
+
+**v1 success criterion (LOCKED with the team's framing)**
+- **NOT** "all 476 tie to BT" — impossible; distressed names can't be recovered by a rating-average OAS.
+- **v1 succeeds if** investment-grade, non-distressed bonds price within a reasonable band of BT (~5%)
+  via **bootstrap → rating OAS → discount**. That proves the method works for ordinary credit.
+- **Distressed single-names and callables are v2** (need single-name market price / recovery, or an option
+  model) — the same "needs richer inputs" bucket. This gives an objective yardstick for Mario/Liping.
+
+**Method boundaries (residual that is NOT a bug)**
+1. **Flat OAS, no term structure.** ICE BofA OAS is one index-level spread per rating, added flat across
+   all tenors → short end over-priced, long end under-priced. v1-acceptable (CEO's "Bond Px 4 Bonds" uses
+   flat OAS); part of the post-OAS residual is this, not an error.
+2. **Index OAS ≠ single-name distress.** The CCC index OAS is the average of *still-trading* CCCs; it
+   cannot reproduce a near-default name already marked on recovery (BT 12–29). Adding OAS lowers such names
+   but they stay well above BT — a method boundary, → v2.
+
+**Open / next**
+- **Finer OAS (sector/quality/name)** is now the #1 v1.5/v2 lever to tighten IG (the 3-31 date-match was tested
+  and refuted, above). **Confirm BT's marking date/source** with the colleague — a data-understanding item
+  (6-10 fits a nominally-3-31 BT), no longer a precision lever.
+- EIR / amortised-cost method (CEO's 2nd method) — possible lead in `Pricing File.xlsm` / `Bond Px 4 Bonds w Diff Ratings`.
+- v1.5/v2: sector OAS (AA financials), term-structure OAS, distressed single-names (market price/recovery), callables.
+- Commit the pricing layer (ZeroCurve + bond_price + oas + recon) on a fresh branch after the universe PR merges.
+
+---
+
+## 2026-06-27 — Curve layer (ZeroCurve) + BondPrice port; corrected the VBA z_semi discounting bug
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- **ZeroCurve** (`src/curves/zero_curve.py`): thin wrapper over the validated `bootstrap()`; serves
+  continuous zero rates + DFs (+ optional OAS spread) with linear interpolation. Bootstrapped the
+  **2009-06-10** USD curve and sanity-checked vs actual June-2009 UST (3m 0.18% … 10y 3.98% … 30y
+  4.76%): post-crisis ZLB short end, steep upward, zero>par, DFs sane. ✓
+- **BondPrice ported** (`src/pricing/bond_price.py`, curva=1 spot). Cash-flow conventions copied
+  verbatim from Bootstrapping.bas: **ACT/364** (t = days/364), **182-day backward** coupon schedule
+  from maturity, semiannual coupon = rate/2·100 (+100 principal at maturity), accrued =
+  coupon·(days since last coupon)/182, clean = dirty − accrued. Verified line-by-line on 5 sample
+  bonds (2–10y); price behaviour correct (premium ∝ (coupon − yield)·duration).
+- **z_semi discounting bug — found, verified, CORRECTED.** The VBA discounts each cash flow as
+  `exp(−t·z_semi)` (z_semi = semiannual-compounded zero) instead of its own bootstrapped factor
+  `exp(−t·z_cont)` = DisCF — it computes the correct DF and **discards it**. Mixing a semiannual rate
+  into a continuous formula systematically **under-prices**: node-level DF too low by −0.01% @2y,
+  −0.11% @5y, **−0.43% @10y**, −1.31% @20y; bond clean price too low −0.009% @2y → **−0.285% @10y**.
+  Verified by (a) reading the full BondPrice (502–818) — no compensating step after the
+  `exp(−t·z_semi)` discount — and (b) numerically on the real 2009-06-10 curve. **Decision** (per the
+  CEO's "dedicated, correct, extensible module" goal): discount with the bootstrapped DF by default;
+  keep `vba_compat=True` to reproduce the legacy `exp(−t·z_semi)` exactly, used only to explain the
+  reconciliation gap. Recorded in the `bond_price.py` docstring.
+- Conventions ②③ (182-day schedule, ACT/364) are VBA *choices* — kept as-is, flagged in code as
+  known sources of gap vs the custodian's BT/BU/DI (calendar coupon dates + ACT/ACT or 30/360), not bugs.
+
+**Open / next**
+- After sign-off: batch-price the canonical **476** (OAS=0), then add rating OAS, then reconcile vs
+  gold `BT/BU/DI` (expect a gap: 70-day holdings/curve mismatch + ②③ conventions + model-vs-mark).
+- (cheap, optional) Ask the colleague for the VBA tool's clean price on ONE of these 5 bonds to pin
+  the z_semi bias empirically against the real sheet (our finding is code-reading + replication).
+- Pricing layer (ZeroCurve + bond_price + this entry) is uncommitted; commit on a fresh branch after
+  the `feat/universe-pipeline` PR merges.
+
+---
+
+## 2026-06-27 — Server 47 live: env + data + bootstrap reconciled + universe pipeline
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- **Server 47 stood up.** Key-based `ssh 47` verified; cloned the repo; built `.venv` with
+  `--system-site-packages` so it reuses the conda env's *already-compiled* numpy 1.26.1 /
+  pandas 2.1.1 / scipy 1.11.3 / openpyxl 3.1.2, and only pip-installed pytest. Why: CentOS 7
+  (glibc 2.17, gcc 4.8.5) can't build modern wheels from source, and the Tsinghua mirror ships
+  pandas 2.3.3 as **sdist-only** so a naive `pip install -r` tried to compile pandas and failed.
+  All five satisfy `requirements.txt`.
+- **Data on 47**: scp'd the 3 inputs into `data/` (git-ignored by extension) and unzipped —
+  `data/USD_Yield_Curve.txt` (+26 others), `data/Bootstrapped/US_yield_curves.csv`,
+  `URS …V Mainak.xlsx`. The two `.xlsm` stay local until the BondPrice port.
+- **Bootstrap golden master reconciled** (US, 2024-01-16). Adopted **segmented** tolerances in
+  `tests/test_bootstrap.py` (not one blanket threshold — so the exact columns can't hide a
+  future regression):
+  - **Annual / Semiannual rates — RED LINE, kept strict `< 1e-9`** (observed 2.7e-15 / 4.4e-15,
+    bit-exact). The OAS pricing foundation; deliberately not relaxed.
+  - Quarterly rate: exact (`< 1e-9`) for every node ≤ 30y; the single 30y+ **extrapolated** tail
+    node tolerated `< 1e-4` (observed 2.12e-05 @ 31.08y).
+  - Monthly rate `< 0.1` pp; Monthly DF `< 1e-3` (observed 6.72e-04 @ 0.92y); A/S/Q DF `< 1e-4`.
+  - **Residual source**: the USD par txt's shortest tenor is **3m**, so the Monthly grid's 1m/2m
+    nodes are flat-extrapolated and differ infinitesimally from the VBA's short-end handling; that
+    rides the recursive bootstrap `DF_i = f(Σ_{k<i} DF_k)` into the Monthly belly. Compounded by a
+    **numpy/pandas version delta** vs the colleague's original validation env (this box: 1.26.1 /
+    2.1.1). **Economic impact ≈ 0 — does not affect pricing or OAS.** `test_ratings` stays fully green.
+- **Universe pipeline built & validated** (`src/dataio/loaders.py` + `universe.py`). openpyxl loaders
+  for the master `Fixed Income` + `Corporate Bonds` tab — column letters confirmed against the V-Mainak
+  book (Asset ID=`S`, ISIN=`X`, sub-cat=`U`, S&P=`CM`, Moody=`CL`, par=`CV`, call=`AB`, maturity=`BW`,
+  gold `BT`/`BU`/`DI`); the V-Mainak appended cols (`DL` dup Asset ID, `DO`/`DP` ~empty coupon) confirm
+  terms still come from the tab. `build_universe` runs Asset-ID join → notch-map → Layer A/B with the
+  single-primary-reason LOCKED priority. **Every documented count reproduces exactly** (join 597/135/19,
+  rating 712/4/16, Layer-A raw 54/73, MECE total 732) → **canonical 476 @ 2009-06-10** + per-bond
+  exclusion log. Golden `tests/test_universe.py`; **22 tests green on 47**. Named `dataio` (not `io`):
+  `conftest` puts `src/` at `sys.path[0]`, so an `io` package would shadow the stdlib `io`.
+
+**Open / next**
+- **Ask the colleague** (both **non-blocking**): (a) which **numpy/pandas versions** + **golden CSV
+  source** he used for the bootstrap validation (his "Quarterly exact / Monthly_DF < 1e-4" is tighter
+  than this env reproduces); (b) which **curve date/source** priced the 3-31 book — drives the final
+  valuation date + whether prices can tie to the custodian `BT/BU/DI`.
+- **Data-quality (defer to pricing):** the `Corporate Bonds` tab has 3 rows with `Freq = "—"`; if any
+  are Fixed and reach canonical they'd lack a payment frequency — screen at the pricing stage.
+- **Next (curve layer first):** wrap bootstrap output in a `ZeroCurve` class and bootstrap the
+  **2009-06-10** USD curve; sanity-check the post-crisis low-rate shape before pricing. Then copy the
+  two `.xlsm`, port `BondPrice`, price the canonical 476, reconcile vs `BT`/`BU`/`DI`.
+
+---
+
+## 2026-06-26 — Decisions: valuation date 2009-06-10 + 47 interface (ssh)
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- **Valuation date chosen = 2009-06-10** (first curve after the 2008-11-10 → 2009-06-10 gap;
+  the alternative, 2008-11-10, is the crisis trough with an extreme curve).
+- Recorded the **reconciliation caveat**: holdings are 3-31, nearest curve is 6-10 (70-day
+  mismatch) → computed prices won't tie to the custodian's 3-31 `BT/BU/DI`. The port's
+  to-the-digit golden master is the **VBA tool's output**, not the custodian mark; `BT/BU/DI`
+  is an independent cross-check only.
+- **Interface to server 47 = ssh from the Windows box** (option 2); requires key-based ssh.
+
+**Open / next (server 47)**
+- **Ask the colleague**: which curve **date/source** did the original tool use to price the 3-31
+  holdings? (Likely a 3-31 Bloomberg curve absent from our txt history.) Does he have the VBA
+  tool's **pricing output** for these bonds (= the real pricing golden master)?
+- Set up key-based `ssh 47`; clone + venv + `pip install`; copy data; `pytest`.
+- Then `src/io` loaders + `universe.build_universe()`; bootstrap the 2009-06-10 USD curve.
+
+---
+
+## 2026-06-26 — Integrate colleague's bootstrap module + adopt src/ layout
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Reviewed the colleague's validated `bootstrap.py` (faithful par→zero VBA port). Confirmed
+  conventions: Excel epoch 1899-12-30, continuous compounding, output cols
+  `Maturity, {Freq}_Rate/DF` (rates in percent), `load_par_curve` raises on a missing date.
+  Validation (US, 2024-01-16): Annual/Semiannual/Quarterly exact, Monthly < 0.1 pp (short-end).
+- Adopted a `src/<layer>/` layout: placed the module at `src/curves/bootstrap.py` and moved the
+  rating notch-map to `src/credit/ratings.py`. Root `conftest.py` now puts `src/` on `sys.path`.
+- Turned the module's `_self_test` into `tests/test_bootstrap.py` (golden-master; skips when the
+  git-ignored data files are absent — point via `FIP_US_TXT` / `FIP_US_GOLDEN`). Fixed the
+  `tests/test_ratings.py` import.
+- Updated `PROJECT_STATUS.md` (§5 architecture, §4 progress, §3.2 path) and `CLAUDE.md`.
+
+**Open / next (server 47)**
+- `pip install -r requirements.txt && pytest` — `test_ratings` green; `test_bootstrap` green once
+  the US par-curve txt + golden CSV are present.
+- Build `src/io` loaders + `universe.build_universe()`; pick the 2009 valuation date; wrap
+  bootstrap output in a `ZeroCurve`; port `BondPrice`; reconcile vs `BT`/`BU`/`DI`.
+
+---
+
+## 2026-06-26 — Lock rating notch-map + implement fip/ratings.py
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Finalised the rating notch-map (S&P / Moody's granular → 7 FRED parent buckets) and
+  implemented it in `fip/ratings.py`, with `tests/test_ratings.py` locking the two red lines:
+  IG/HY split (BBB−→BBB, BB+→BB); S&P CC/C & Moody Ca/C → CCC (not default); D/SD → defaulted;
+  NR/WR → no-rating; S&P-primary with Moody fallback and default precedence.
+- Locked the single-primary-reason priority and MTN handling (`terms-unavailable`: a
+  data-availability gap, not a security-type issue — addable later if a terms source appears).
+- Added `requirements.txt`, root `conftest.py`; `outputs/` git-ignored (pipeline emits client CSVs).
+- Untested pending a Python env (server 47 tomorrow).
+
+**Open / next (on server 47)**
+- Implement `loaders` (openpyxl read of master + Corporate Bonds tab) and
+  `universe.build_universe()` applying join → notch-map → Layer A → Layer B; emit the
+  per-bond exclusion log + canonical universe CSV; run pytest; produce the MECE funnel.
+- Then lock the valuation date, bootstrap the ~2009 curve, port `BondPrice`, reconcile vs `BT`/`BU`/`DI`.
+- Align module layout with the colleague's bootstrap Python (still to receive).
+
+---
+
+## 2026-06-26 — Master-sheet profiling: ratings, universe funnel, data sourcing
+**Commit:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Dumped all 131 master `Fixed Income` column names. **Resolved the rating gap**: the rating
+  columns exist as "Quality rating - Fitch/Moody/S&P" (`CK`/`CL`/`CM`) — earlier scan missed
+  them. Fill-rate: S&P 794/811, Moody 796/811 (~98% of corporates); Fitch empty.
+- Profiled key columns: par held = `CV` Shares/Par value (99.9%); custodian `BT`/`BU`/`DI`
+  present → use as golden master (kept separate from inputs).
+- Built date-independent universe funnel (732 unique corporates by Asset ID):
+  - Rating (default precedence): 712 covered / **4 defaulted** / **16 no-rating** (true "neither").
+  - Join on Asset ID: **597 matched** / 135 master-only / 19 tab-only.
+  - Coupon type (within matched): 543 FIXED / 54 non-vanilla; **73 callable**.
+- Locked design: rating S&P→Moody fallback w/ default precedence; join on Asset ID (ISIN
+  secondary); par=`CV`; EIR cost=`Z`; golden master separate; callable → v2 (own reason,
+  keep call fields); single primary reason per bond by priority.
+- Updated `PROJECT_STATUS.md` (§3.2) and `CLAUDE.md` with the deterministic two-layer
+  universe pipeline, exclusion taxonomy, and data-sourcing map.
+
+**Open / next**
+- Implement the MECE universe pipeline (single primary reason by agreed priority) →
+  per-bond exclusion log; build in Python on server 47.
+- Lock valuation date (drives Layer B); bootstrap the ~2009 curve.
+- Port `BondPrice`; reconcile computed price vs `BT`/`BU`/`DI`.
+
+---
+
+## 2026-06-26 — Onboarding: structural analysis + bootstrap validation
+**Commit:** `9b7fe7f` (docs scaffold) · `[TO FILL]` (this anchor update)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Done**
+- Mapped all four source workbooks: sheet inventory, column layouts, instrument
+  fields, and the pricing/credit logic embedded in cell formulas and VBA.
+- Documented the end-to-end pipeline & methodology (bootstrap → rating OAS →
+  discount pricing → CreditMetrics overlay) in `PROJECT_STATUS.md`, including the
+  exact bootstrap formulas and the FRED ICE BofA OAS source.
+- Confirmed the bootstrap formula against the auditable VBA and **reproduced it in
+  Python**: Annual / Semiannual / Quarterly **exact (0 error)**; **Monthly within
+  0.08 bp** (short-end fill convention).
+- Identified the **valuation-date mismatch**: holdings priced 2009-03-31, but the
+  bundled bootstrapped CSVs match curve date 2024-01-16 (RMSE 0); 2009-03-31 is
+  missing from the curve files (gap 2008-11-10 → 2009-06-10). Impact: 123 priceable
+  bonds at 2024-01-16 vs 667 at 2009-03-31.
+- Reconciled the corporate-bond universe into three counts (811 / 676 / 641).
+- Confirmed **Bloomberg dependency is cut** (txt par curves + FRED OAS).
+- Established the repo, `.gitignore` (excludes all client data), and project docs
+  (`PROJECT_STATUS.md`, `WORKLOG.md`, `CLAUDE.md`).
+
+**Open / next**
+- Decide canonical valuation date + universe; bootstrap a ~2009 curve for the real book.
+- Build `io` loaders + `instruments.Bond`; map rating + holdings from the master sheet.
+- Port `BondPrice` (from `Pricing File.xlsm → Bootstrapping.bas`) into `pricing`.
+- Locate & port the EIR (amortised-cost) method; then start the CreditMetrics layer.
+
+---
+
+<!-- Template for new entries:
+
+## YYYY-MM-DD — <short title>
+**Commit:** `<hash>`
+**Hours:** `[TO FILL]`
+**Author:** <name>
+
+**Done**
+- …
+
+**Open / next**
+- …
+-->
