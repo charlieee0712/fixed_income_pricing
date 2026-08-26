@@ -12,12 +12,20 @@
               -> response JSON -> output cells
               -> an error response -> message shown, stale numbers cleared
 
-    The pricing itself is not re-tested here: it is covered by the Python suite
-    (tests/test_vanilla_json_endpoint.py). The response used is the committed fixture
-    examples/vanilla_response_v1.json, which IS real engine output, so the numbers
-    checked below are the engine's numbers. A stand-in runner (a .cmd that copies the
-    fixture to the --output path) stands in for Python, so this runs on a Windows desk
-    with no Python installed.
+    Two modes:
+
+      default        a stand-in runner (a .cmd that copies the committed fixture to the
+                     --output path) plays the part of the engine, so the VBA can be
+                     tested on a Windows desk with no Python installed at all. The
+                     fixture IS real engine output, so the numbers checked are the
+                     engine's numbers.
+      -PythonExe     the real thing: a runner is generated that calls
+                     scripts/price_json.py with the interpreter you name, so Excel
+                     prices the bond live. Same expected numbers, since the engine is
+                     deterministic across platforms.
+
+    Either way the pricing itself is covered by the Python suite
+    (tests/test_vanilla_json_endpoint.py); what this script tests is the VBA adapter.
 
     Requires Excel, and "Trust access to the VBA project object model". The script
     enables that setting for the duration of the run and restores its previous state
@@ -31,11 +39,20 @@
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File integrations\excel_vba\tests\Run-BridgeTests.ps1
+
+.EXAMPLE
+    # end to end, with Excel calling Python for real
+    powershell -ExecutionPolicy Bypass -File integrations\excel_vba\tests\Run-BridgeTests.ps1 `
+        -PythonExe C:\Users\cnc\anaconda3\anaconda2025\python.exe
 #>
+param(
+    [string]$PythonExe = ""      # empty: use the stand-in runner (no Python needed)
+)
 
 $ErrorActionPreference = "Stop"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $bridge = Split-Path -Parent $here
+$repo = Split-Path -Parent (Split-Path -Parent $bridge)
 $examples = Join-Path $bridge "examples"
 $temp = $env:TEMP
 $secKey = "HKCU:\Software\Microsoft\Office\16.0\Excel\Security"
@@ -70,10 +87,21 @@ try {
     "AccessVBOM temporarily set to 1 (was: $(if ($hadVbom) { $oldVbom } else { 'not set' }))"
     ""
 
-    $fakeRunner = Join-Path $temp "ryse_fake_runner.cmd"
-    $canned = Join-Path $examples "vanilla_response_v1.json"
-    @("@echo off", "copy /Y `"$canned`" %4 >nul", "exit /b 0") |
-        Set-Content -Path $fakeRunner -Encoding ascii
+    $runnerPath = Join-Path $temp "ryse_test_runner.cmd"
+    if ($PythonExe) {
+        if (-not (Test-Path $PythonExe)) { throw "PythonExe not found: $PythonExe" }
+        @("@echo off",
+          "cd /d `"$repo`" || exit /b 2",
+          "set PYTHONPATH=src",
+          "`"$PythonExe`" scripts\price_json.py %*") |
+            Set-Content -Path $runnerPath -Encoding ascii
+        "runner: LIVE - $PythonExe against $repo"
+    } else {
+        $canned = Join-Path $examples "vanilla_response_v1.json"
+        @("@echo off", "copy /Y `"$canned`" %4 >nul", "exit /b 0") |
+            Set-Content -Path $runnerPath -Encoding ascii
+        "runner: stand-in (returns the committed fixture; no Python required)"
+    }
 
     $excel = New-Object -ComObject Excel.Application
     $excel.Visible = $false
@@ -87,7 +115,7 @@ try {
     $wb.VBProject.References.AddFromGuid("{420B2830-E718-11CF-893D-00A0C9054228}", 1, 0) | Out-Null
     Check "modules import + Scripting ref" $true "JsonConverter, RysePricingBridge, harness"
 
-    $excel.Run("Harness_Setup", $fakeRunner) | Out-Null
+    $excel.Run("Harness_Setup", $runnerPath) | Out-Null
     Check "sheet laid out and named" $true "10 input names, 14 output names, real date cells"
 
     # --- 1. what the sheet actually sends --------------------------------------------
@@ -113,8 +141,9 @@ try {
     $responsePath = Join-Path $temp "ryse_test_response.json"
     if (Test-Path $responsePath) { Remove-Item $responsePath }
     $exitCode = $excel.Run("Harness_RoundTrip", (Join-Path $temp "ryse_test_request2.json"), $responsePath)
+    $mode = if ($PythonExe) { "live Python priced it" } else { "stand-in runner" }
     Check "runner invoked and waited for" ((Test-Path $responsePath) -and ($exitCode -eq 0)) `
-        "exit code $exitCode; response file present when Run returned"
+        "exit code $exitCode; response present when Run returned ($mode)"
 
     $status = $excel.Run("Harness_Get", "FIP_Status")
     Check "status cell" ($status -eq "ok") "FIP_Status = $status"

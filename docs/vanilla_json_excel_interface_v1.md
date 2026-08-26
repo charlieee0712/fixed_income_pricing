@@ -316,12 +316,11 @@ Known limits of v1, stated rather than hidden: one bond per request (batch is
 refused, not half-supported); vanilla only (the floating, hybrid, callable,
 agency, index-linked and MBS engines exist in the repo but are not exposed here yet);
 each request rebuilds its curve, which is irrelevant at one bond and is the first
-thing to cache when batch arrives; and one link of the Excel path is still stood in
-for — `integrations/excel_vba/tests/Run-BridgeTests.ps1` drives the real VBA in a
-hidden Excel instance (23 checks: cells → JSON → a waited-for command → cells, plus
-the error path), but the runner it calls is a `.cmd` returning the committed fixture,
-because the Windows machine here has no Python. Excel invoking a *live* Python runner
-is the one step not yet exercised.
+thing to cache when batch arrives. The Excel path itself is tested end to end:
+`integrations/excel_vba/tests/Run-BridgeTests.ps1` drives the real VBA in a hidden
+Excel instance (23 checks: cells → JSON → a waited-for command → cells, plus the error
+path), both with a stand-in runner and, via `-PythonExe`, with Excel calling Python for
+real. Only the modal-dialog paths stay outside it.
 
 ## 13. Where the code is
 

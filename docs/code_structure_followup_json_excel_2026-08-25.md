@@ -176,16 +176,14 @@ place where the contract would have rejected a field a user could reasonably sen
 
 ## 5. Honest limits of v1
 
-* **Tested on real Excel; one link still stands in.** `integrations/excel_vba/tests/`
-  runs the VBA in a hidden Excel instance — 23 checks covering module import, the cells
-  → request JSON conversion (including Excel date serials becoming ISO strings), the
-  runner being invoked and waited for, every output cell mapping to the engine's real
-  numbers, and an error response clearing the stale ones. What is still stood in for:
-  the runner itself is a `.cmd` that returns the committed fixture, because this Windows
-  machine has no Python; and the dialog-reporting paths (`PriceVanillaBond`'s MsgBox,
-  `PopulateFromResponseFile`'s file picker) are deliberately not driven from automation,
-  where a modal dialog would hang. So the remaining untested link is exactly one: Excel
-  invoking a *live Python* runner.
+* **Tested end to end on real Excel.** `integrations/excel_vba/tests/` runs the VBA in a
+  hidden Excel instance — 23 checks covering module import, the cells → request JSON
+  conversion (including Excel date serials becoming ISO strings), the runner being
+  invoked and waited for, every output cell mapping to the engine's real numbers, and an
+  error response clearing the stale ones. It runs in two modes and **both pass**: with a
+  stand-in runner (no Python needed, so any Windows desk can check the VBA), and with
+  `-PythonExe`, where Excel calls Python for real and the bond is priced live. Only the
+  dialog paths stay outside it — a modal MsgBox cannot be driven headlessly.
   That test earned its place immediately — it found a real defect. JSON `null` reaches
   VBA as `Null`, not `Nothing`, so `Set x = Field(response, "applicability")` raised
   "Object required" on **every error response**: the sheet would have shown a VBA error

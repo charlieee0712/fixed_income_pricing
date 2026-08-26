@@ -169,8 +169,21 @@ checks — those are decided here, from the repo.
   rows. The sample report to Mario now carries the reconciliation evidence (§5).
 
 ## Environment (important)
-- **No usable local Python** on the Windows machine (only a Microsoft Store stub).
-  Run code on **server 47** or a real local install. Don't assume `python` works locally.
+- **Local Python EXISTS — earlier note was WRONG (corrected 2026-08-25).** `python` on PATH is
+  only the Microsoft Store stub (that part was right), but the machine has two full installs,
+  found through the registry (`HKLM/HKCU:\SOFTWARE\Python\PythonCore`), not the PATH:
+  `C:\Users\cnc\anaconda3\anaconda2025\python.exe` = **3.13.5, numpy 2.3.4 / pandas 2.3.3 /
+  scipy 1.16.3 / pytest 8.3.4 / openpyxl 3.1.5 — USE THIS ONE**; `C:\Users\cnc\Documents\Downloads
+  \python.exe` = 3.12.4 with the same stack a version older. (`C:\Users\cnc\anaconda3\python.exe`
+  = the 3.8.8 base env, numpy import BROKEN via mkl-service — do not use.) The whole suite runs
+  locally: `& "C:\Users\cnc\anaconda3\anaconda2025\python.exe" -m pytest -q` → **194 passed in
+  ~19s**, identical to 47, and the endpoint's JSON output is byte-for-byte the same as 47's ⇒
+  quick checks no longer need ssh. 47 remains the deployment target and the parity reference.
+- **`pytest.ini` (added 2026-08-25) is what makes a bare `pytest` work.** Without
+  `testpaths = tests`, a root-level run also walks the git-ignored Drive staging copies
+  (`corporate_bond/`, `code_structure_sample/`), which contain duplicates of the test files ⇒
+  "import file mismatch … use a unique basename" and ZERO tests run. ⚠️ Keep that file **ASCII**:
+  pytest reads it with the system codec (GBK here), so one em dash aborts every run.
 - **Interface to 47 = ssh from the Windows box** (chosen). Needs **key-based ssh** (the Bash
   tool is non-interactive — a password prompt hangs). Loop: edit locally → commit → `git push origin main`
   **+ `git push 47 main`** (direct deploy — see GFW bullet below; `git pull` on 47 only works when

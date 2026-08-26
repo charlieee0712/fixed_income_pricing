@@ -82,9 +82,19 @@ calibration residual −5.9e-09.
   `Null`, not `Nothing`, so `Set x = Field(response, "applicability")` raised "Object required"
   on EVERY error response — the sheet would have shown a VBA error instead of the reason the bond
   could not be priced. Fixed with a `FieldObject` accessor; the error path is now a regression
-  check. Remaining untested link: Excel invoking a LIVE Python runner (the test uses a `.cmd`
-  that returns the committed fixture, since this Windows box has no Python), plus the MsgBox /
-  file-picker paths, which cannot be driven headlessly.
+  check.
+- ✅ **End to end, with Excel calling Python for real.** The "no local Python" note in CLAUDE.md
+  was simply WRONG: the PATH holds only the Store stub, but the registry lists two full installs,
+  and `C:\Users\cnc\anaconda3\anaconda2025\python.exe` (3.13.5) has numpy/pandas/scipy/pytest. So
+  the last stood-in link was closed the same day: `Run-BridgeTests.ps1 -PythonExe <exe>` generates
+  a real runner and Excel prices the bond live — **23/23 in both modes**. Only the modal-dialog
+  paths stay outside the automated test. Two more findings from running locally: the whole suite
+  passes on Windows too (**194 in 18.8s**, and the endpoint's JSON is byte-identical to 47's — a
+  free cross-platform determinism check), but only after adding **`pytest.ini`**, because a bare
+  root-level `pytest` was collecting the git-ignored Drive staging copies' duplicate test files
+  ("import file mismatch", zero tests run). That file must stay ASCII — pytest reads it with the
+  system codec (GBK) and one em dash aborted the run.
+
 - Next engines through the same door in the approved rollout order, callable first — where
   volatility stops being "accepted but unused" and becomes a real input.
 
