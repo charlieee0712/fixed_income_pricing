@@ -46,6 +46,27 @@ checks — those are decided here, from the repo.
   single root `HANDOFF_FOR_CLAUDE_WEB.md` (removed same day it was born, 2026-08-15). Keep
   the bundle OUT of Drive staging copies (internal comms framing — not for Mario).
 
+## ⭐ Deliverables — audience & toolchain (user, 2026-08-25)
+- **The Google/cloud team now ATTENDS the briefing in person**, alongside Mario — they no longer
+  just receive the code afterwards. Every outward report must therefore serve two audiences at
+  once: **plain language throughout** (define each bond term in a clause where it first appears —
+  "callable = the borrower may repay early"), plus **one clearly-labelled engineering section**
+  (architecture, the single entry point, how to run it, determinism, parallelism) that the finance
+  reader can skip. Say in the opening which section is for whom. Never assume fixed-income
+  vocabulary; never talk down to Mario either.
+- **Package** = git-ignored staging folder `code_structure_sample/` + `code_structure_sample_<date>.zip`
+  at repo root: numbered docs (`00_README` · `01_weekly_report` md+PDF · `02_code_walkthrough` ·
+  `03_json_excel_interface` · `04_round_detail` · `05_previous_report`) + `src/ tests/ scripts/
+  integrations/` copied in (robocopy `/E`, **never `/MIR`** — the path guard rejects it). User drags
+  it to Drive.
+- **PDF = `python scripts/md_to_pdf.py --input X.md --output Y.pdf`** (2026-08-25). One local
+  command; the old pandoc@47 → HTML → local-Edge dance is RETIRED (local Python has `markdown`,
+  Edge is installed). The script carries three Edge flags that each fail **silently** —
+  `--headless=new` (the bare `--headless` writes NO pdf in current builds while still exiting 0),
+  a throwaway `--user-data-dir`, and `--no-pdf-header-footer`. Don't re-derive them.
+- **Self-review the md against the real outputs before rendering** (user's standing instruction):
+  every number in a report must be traceable to a run, not to memory.
+
 ## Code-structure migration (Mario directive 2026-08-15) — STATUS: sample APPROVED 2026-08-25
 - **Directive:** code "difficult to follow, a bit nested"; a **Google team takes over for
   cloud-computing optimisation** ⇒ many SIMPLE functions (not one complicated), **inputs
