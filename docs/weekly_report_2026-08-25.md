@@ -194,7 +194,7 @@ powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1    23 Excel ch
 ```
 
 **Reference documents in the repository:** the field-by-field interface contract, the Excel
-bridge how-to with worked request/response examples, and a ten-minute guided tour of the
+bridge how-to with worked request/response examples, and the fifteen-minute guided tour of the
 code for the walkthrough.
 
 **What the interface is strict about, and why:** dates must be text, not spreadsheet serial
