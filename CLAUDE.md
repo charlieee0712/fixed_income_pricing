@@ -95,9 +95,15 @@ checks — those are decided here, from the repo.
   (no file / no date row) vs CURVE_BUILD_FAILED (GBP 3-31 = not arb-free) are different codes; ⑥ no
   path, traceback or payload in any error message; ⑦ parity asserted with `==` vs direct calls.
   Docs: `docs/vanilla_json_excel_interface_v1.md` (reference) +
-  `docs/code_structure_followup_json_excel_2026-08-25.md` (decision record — ⏳ **Mario's three
-  comments still need pasting in VERBATIM**, §1 has the slots). Not yet click-tested from Excel
-  (no Excel on this box or on 47) — stated plainly in the README, not implied done.
+  `docs/code_structure_followup_json_excel_2026-08-25.md` (decision record). **Mario's three
+  comments are recorded in §1 as the user RECALLED them (paraphrase, not a transcript — treat the
+  wording as approximate):** ① "what happens if the volatility of yield changes — for OAS and for
+  price?" (he asked for the EFFECT, and the doc answers it: vanilla = exactly none, structurally;
+  callable = lower price at fixed spread + higher OAS at fixed price, the two numbers reserved for
+  that engine) · ② "add currency to our input" · ③ our code runs in our own Python env — can he and
+  the Google team "create ways from Excel to run Python code, to pass these inputs and parameters?"
+  with his own proposal Excel/VBA → JSON per bond → Python, "one JSON in, one JSON out" (hence the
+  single-bond canonical unit and the refusal of batch).
 
 ## Monthly-sheet golden reconciliation — Gates 0–3 DONE (2026-08-17)
 - **Files:** plan `docs/monthly_reconciliation_plan_2026-08-15.md` (Rev B, gate statuses in

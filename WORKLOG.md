@@ -66,9 +66,12 @@ normalisations, and two CLI subprocess runs. Worked example (real output): 6.5% 
 calibration residual −5.9e-09.
 
 **Open / next**
-- ⏳ **Mario's three comments need pasting in VERBATIM** —
-  `docs/code_structure_followup_json_excel_2026-08-25.md` §1 has the slots; the interpretation in
-  §2 is ours and is what to re-read if his wording differs in substance.
+- ✅ **Mario's three comments recorded** (`…followup_json_excel_2026-08-25.md` §1) from the user's
+  recollection — marked as a paraphrase, not a transcript. They confirmed the three readings, and
+  sharpened one: his volatility question asked for the EFFECT on OAS and price, so §2.2 now answers
+  it directly (vanilla: exactly none, because there is no option for volatility to be worth
+  anything on — hence `null`, not `0.0`; callable: lower price at a fixed spread, higher implied
+  OAS at a fixed price). His "for each bond" phrasing also confirms the single-bond canonical unit.
 - Excel side is **not yet click-tested end to end** (no Excel on this box or on 47); the fixtures
   make the VBA testable without Python, and the README says so plainly rather than implying done.
 - Next engines through the same door in the approved rollout order, callable first — where

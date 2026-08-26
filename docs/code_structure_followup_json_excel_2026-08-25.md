@@ -16,16 +16,24 @@ Mario reviewed the restructured vanilla sample (`src/pricer/` = `core/` engines 
 **approved the direction**, with three follow-up points. The sample-first freeze that
 had been in place since 2026-08-15 is therefore lifted for this workstream.
 
-> **Mario's three follow-up comments — verbatim, to be pasted in.**
+> **Mario's three follow-up comments**, as recalled by the user — a paraphrase from
+> memory, not a transcript. The wording is approximate; the substance is what this
+> round was built on.
 >
-> 1. *(currency)* …
-> 2. *(yield volatility)* …
-> 3. *(Excel ↔ JSON ↔ Python process)* …
+> 1. **Yield volatility.** *"What happens if the volatility of yield changes — for OAS
+>    and for price?"* Note the shape of the question: it asks for the **effect** of a
+>    volatility change, not merely whether the field is an input.
+> 2. **Currency.** *"Add currency to our input."*
+> 3. **Running the code.** Our code runs in our own Python environment; when he and the
+>    Google team take it over, *"can they create ways from Excel to run Python code, to
+>    pass these inputs and parameters?"* His own proposal: Excel/VBA reads the values
+>    from the cells, turns them into JSON files, and Python reads it **for each bond** —
+>    **"one JSON in, one JSON out."**
 >
-> The summaries in §2 are our working interpretation, recorded before his exact
-> wording was to hand; if the verbatim text differs in substance, §2 is what needs
-> re-reading, not the code — every item below is a data/contract decision, not an
-> engine change.
+> Because this is a recollection rather than a transcript, §2 is the authoritative
+> record of what was built and why. If his exact wording later differs in substance,
+> §2 is what needs re-reading, not the code — every item below is a data or contract
+> decision, not an engine change.
 
 ## 2. How we read the three points, and what follows from each
 
@@ -49,8 +57,24 @@ are configured. Two rules go with it:
 
 ### 2.2 Yield volatility
 
-*Read as:* is volatility an input to this thing or not — and if a generic form sends
-it, what happens?
+*Read as:* what does a change in yield volatility do to the OAS and to the price —
+and, secondarily, if a generic input form carries a volatility, what happens to the
+request?
+
+*Direct answer to the question he asked:* for a vanilla bond, a change in yield
+volatility moves neither the price nor the OAS **at all** — not slightly, but exactly
+not at all. The model discounts a fixed, known schedule of cash flows; the instrument
+contains no option, so there is nothing for volatility to be worth anything on and no
+volatility term enters the calculation anywhere. The honest report is therefore "not
+applicable", which is precisely why the response returns `null` and not `0.0`: a zero
+would claim we computed a vega and found it to be nil.
+
+The question becomes quantitative the moment a bond has an embedded option. For a
+callable, higher volatility makes the issuer's call more valuable, which **lowers the
+price at a fixed spread** and **raises the OAS implied from a fixed market price** —
+the two numbers the callable contract is already specified to return per volatility
+scenario (§6). Vanilla keeps answering "not applicable", and that answer stays correct
+rather than becoming stale.
 
 *Adopted:* vanilla is an option-free discounted-cash-flow calculation and has **no
 volatility parameter at all**. So the interface neither fails the request nor
@@ -82,6 +106,17 @@ Excel cells <- VBA adapter <- response.json <- runner command <-------+
 The internal design stays "many small functions"; the boundary is deliberately the
 opposite ("one call, everything back"). They are complementary: the endpoint arranges
 the same functions a Python caller uses and holds no formula of its own.
+
+His phrasing — JSON "for each bond" — is also the unit we implemented: one bond per
+request is canonical, and a batch payload is refused with a message saying so rather
+than half-supported. A portfolio is a loop over requests today and a list wrapper when
+a real consumer needs one; either way the per-bond object never changes shape.
+
+And the direct answer to "can they run it from Excel": yes — that is what this round
+delivers, and nothing in it is specific to our machine. The workbook knows one
+setting, a command taking `--input` and `--output`. The same request object works
+against a local Python install, a packaged executable that needs no Python on the
+desk, or an HTTP endpoint in the cloud, without a field changing meaning.
 
 The workbook knows exactly one thing about the engine — a command taking `--input`
 and `--output`. Pointing that at a packaged executable or an HTTP wrapper later
