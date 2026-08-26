@@ -48,6 +48,23 @@ Conventions / simplifications (v2 — assumption-driven, NOT a golden port; docu
     call price (issuer min); at a putable step floored at the put price (holder max); exercise is
     tested on the ex-coupon continuation, then the coupon is added (the legacy order). Pass exercise
     times in the SAME year units as the grid (the drivers use ACT/364 via ``to_lattice_schedule``).
+  * SINKING FUND (Round 2, 2026-08-25) — issuer OPTIONAL redemption of a fraction of the amount
+    still OUTSTANDING, at a contractual price, on scheduled dates. The node rule is a blend of
+    the continuation and the call-like exercise, applied where the call cap is applied:
+
+        cont <- (1 - f) * cont + f * min(cont, P)
+
+    The basis matters and is not a preference. With fractions of OUTSTANDING every remaining
+    cash flow (coupons, later redemptions, final principal) scales linearly with the amount
+    outstanding, so the value PER UNIT OUTSTANDING does not depend on how much was retired
+    earlier — the node value is path-independent and the tree stays recombining. With fractions
+    of ORIGINAL face that no longer holds: a fixed amount against a shrinking base makes the
+    per-unit value level-dependent, which a recombining tree cannot represent; that structure
+    needs a strip decomposition (one callable sub-bond per sink date) and is deliberately NOT
+    implemented here. Properties that follow and are tested: f = 1 reduces to the call cap
+    exactly; value is non-increasing in f; cumulative retirement is 1 - prod(1 - f_i) <= 1 by
+    construction. Deterministic principal AMORTISATION (a pass-through's known factor schedule)
+    is a different product and must never be routed here.
 """
 from __future__ import annotations
 
@@ -178,7 +195,38 @@ class ShortRateLattice:
         """Bermudan PUT price array (length ``N+1``) from a ``[(time_years, price), ...]`` schedule."""
         return self._schedule_array(schedule, side=-1)
 
-    def price_bond(self, coupon_rate, oas: float = 0.0, call_price=None, put_price=None) -> float:
+    def sink_arrays(self, entries):
+        """Per-step ``(fraction, price)`` arrays for an ISSUER OPTIONAL REDEMPTION schedule.
+
+        ``entries`` = iterable of ``(time_years, fraction, price)``. Unlike a call or put, a
+        sinking entry is a ONE-OFF event on its own date, not a step function that persists —
+        so each entry lands on the first tree step at or after its time, and nowhere else.
+
+        ``fraction`` is of the amount still OUTSTANDING at that step (see the module docstring
+        for why that basis, and not original face, is what a recombining tree can represent).
+        Inactive steps carry ``fraction = 0`` — never a price alone, so the blend below can
+        never evaluate ``0 * inf``. Two entries landing on one step are refused: the tree
+        resolves exercise on coupon dates, so a finer schedule would be silently coarsened.
+        """
+        fractions = np.zeros(self.N + 1)
+        prices = np.full(self.N + 1, np.inf)
+        used = set()
+        for t0, fraction, price in sorted((float(t), float(f), float(p)) for t, f, p in entries):
+            step = next((i for i in range(1, self.N) if self.t[i] >= t0 - 1e-9), None)
+            if step is None:                             # beyond the last exercisable step
+                continue
+            if step in used:
+                raise ValueError(
+                    f"two sinking redemptions fall in the same coupon period (tree step "
+                    f"{step}, t={self.t[step]:.4f}y); exercise is resolved on coupon dates, "
+                    f"so this schedule cannot be represented without coarsening it")
+            used.add(step)
+            fractions[step] = fraction
+            prices[step] = price
+        return fractions, prices
+
+    def price_bond(self, coupon_rate, oas: float = 0.0, call_price=None, put_price=None,
+                   sink_fraction=None, sink_price=None) -> float:
         """Root PV (per 100 face) by backward induction — the DIRTY price when the grid carries the
         real ``coupon_times`` (every step is a true coupon date, incl. the stub first period); on
         the regular synthetic grid t_0 is a coupon date, so dirty == clean. ``call_price`` /
@@ -192,6 +240,11 @@ class ShortRateLattice:
             if i >= 1:                                     # exercise (ex-coupon), then pay coupon
                 if call_price is not None:
                     cont = np.minimum(cont, call_price[i])
+                if sink_fraction is not None and sink_fraction[i]:
+                    # Issuer retires `f` of the OUTSTANDING at `sink_price`; the rest continues:
+                    #     cont <- (1 - f) * cont + f * min(cont, P)
+                    # At f = 1 this IS the call cap above, which is the anchor invariant.
+                    cont = cont - sink_fraction[i] * (cont - np.minimum(cont, sink_price[i]))
                 if put_price is not None:
                     cont = np.maximum(cont, put_price[i])
                 V = cont + cpn
@@ -201,7 +254,7 @@ class ShortRateLattice:
 
     def implied_oas(self, target_clean, coupon_rate, call_price=None, put_price=None,
                     lo: float = -0.20, hi: float = 2.0, xtol: float = 1e-10,
-                    accrued: float = 0.0) -> float:
+                    accrued: float = 0.0, sink_fraction=None, sink_price=None) -> float:
         """Flat continuous OAS (decimal) s.t. the lattice CLEAN price == ``target_clean`` (the
         custodian BT), where clean = tree PV (dirty) − ``accrued``. Pass the SHARED vanilla accrued
         (``pricing.bond_price.lattice_inputs``) with real ``coupon_times``; the default 0 is only
@@ -209,18 +262,21 @@ class ShortRateLattice:
         date-only (OAS-independent), so this root is identical to solving dirty == target + accrued
         — the clean/dirty invariance. Price is strictly decreasing in the OAS -> unique root."""
         def f(oas):
-            return self.price_bond(coupon_rate, oas, call_price, put_price) - accrued - target_clean
+            return self.price_bond(coupon_rate, oas, call_price, put_price,
+                                   sink_fraction, sink_price) - accrued - target_clean
         return _root_decreasing(f, lo, hi, xtol=xtol)
 
     def risk_metrics(self, coupon_rate, oas, call_price=None, put_price=None, bump: float = 1e-4,
-                     accrued: float = 0.0) -> dict:
+                     accrued: float = 0.0, sink_fraction=None, sink_price=None) -> dict:
         """Effective duration / DV01 / convexity by +/- ``bump`` OAS (== parallel short-rate shift). For a
         callable this captures the option's rate response (shorter duration than the straight bond).
         Duration/convexity divide by the DIRTY base (= the tree PV), matching ``pricing.risk``; the
         clean price (dirty − ``accrued``) is returned alongside."""
-        p0 = self.price_bond(coupon_rate, oas, call_price, put_price)
-        pu = self.price_bond(coupon_rate, oas + bump, call_price, put_price)   # rates up -> price down
-        pd = self.price_bond(coupon_rate, oas - bump, call_price, put_price)   # rates down -> price up
+        p0 = self.price_bond(coupon_rate, oas, call_price, put_price, sink_fraction, sink_price)
+        pu = self.price_bond(coupon_rate, oas + bump, call_price, put_price,   # rates up -> px down
+                             sink_fraction, sink_price)
+        pd = self.price_bond(coupon_rate, oas - bump, call_price, put_price,   # rates down -> px up
+                             sink_fraction, sink_price)
         if p0 == 0:
             return {"price": p0, "dirty": p0, "clean": p0 - accrued, "accrued": accrued,
                     "dv01": float("nan"), "eff_duration": float("nan"), "convexity": float("nan")}
@@ -241,10 +297,12 @@ def schedule_times(valuation_date, schedule):
     Inputs
     ------
     1. valuation_date : date-like — the pricing "as of" date (tree time 0).
-    2. schedule       : ``[(date, price_per_100), ...]`` — exercise dates and prices.
+    2. schedule       : ``[(date, price_per_100), ...]`` for a call/put, or
+       ``[(date, fraction, price_per_100), ...]`` for a sinking schedule — any trailing
+       fields are carried through unchanged, so ONE conversion serves every right.
 
-    Returns: ``[(time_years, price), ...]`` sorted by time, times clamped at 0 (a right
-    that is already exercisable today sits on the valuation node).
+    Returns: the same tuples with the date replaced by a time in years, sorted by time and
+    clamped at 0 (a right already exercisable today sits on the valuation node).
 
     THE day count here is the project's ACT/364, the same one the coupon grid uses, so an
     exercise date and a coupon date land on one axis. ``dataio.call_schedules
@@ -255,7 +313,8 @@ def schedule_times(valuation_date, schedule):
     against each other.
     """
     val = as_date(valuation_date)
-    return sorted((max(0.0, year_fraction(val, d)), float(p)) for d, p in schedule)
+    return sorted((max(0.0, year_fraction(val, entry[0])),
+                   *(float(x) for x in entry[1:])) for entry in schedule)
 
 
 def bond_tree(valuation_date, maturity, coupon_rate, curve, freq: int = 2,
