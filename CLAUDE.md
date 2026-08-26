@@ -173,8 +173,8 @@ checks — those are decided here, from the repo.
   Also: the plan's "FLOATING 426" is NOT in this extract (`mty_typ` 0, `calc_typ_des` 29) — 426 is
   the URS production count; **2b must re-derive its FRN cohort.**
 - **Mario report:** `docs/code_structure_round2_embedded_options_2026-08-25.md` — the volatility
-  answer on the one genuinely call-active holding (6.45%/2034, BT 90.04): price 90.4204/90.0402/
-  89.5138, OAS 414.52/410.77/404.84bp at vol 10/15/20% (≈10c of price or 1bp of spread per vol
+  answer on the one genuinely call-active holding (6.45%/2034, BT 90.04): price 90.4229/90.0426/
+  89.5161, OAS 414.52/410.77/404.84bp at vol 10/15/20% (≈10c of price or 1bp of spread per vol
   point); the other two callables are far from the call and move <0.1bp — so a portfolio-level
   vega would mislead.
 - **Round 2b carry-over:** FRN → `core/pricing/floating.py` + wrapper; endpoint `instrument_type`

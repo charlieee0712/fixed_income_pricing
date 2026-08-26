@@ -138,11 +138,11 @@ the outstanding data request. Of the three corporates, only one has a repayment 
 is currently worth anything: 6.45% of June 2034, marked at 90.04, repayable at face value
 from August 2014.
 
-| Rate volatility | Price, holding the spread at 410.8 bp | Spread, holding the market price at 90.04 |
+| Rate volatility | Price, holding the spread at 410.77 bp | Spread, holding the market price at 90.04 |
 |---|---|---|
-| 10% | 90.4204 | 414.52 bp |
-| **15% (our baseline)** | **90.0402** | **410.77 bp** |
-| 20% | 89.5138 | 404.84 bp |
+| 10% | 90.4229 | 414.52 bp |
+| **15% (our baseline)** | **90.0426** | **410.77 bp** |
+| 20% | 89.5161 | 404.84 bp |
 
 In round terms: **one volatility point is worth about ten cents of price, or about one
 basis point of spread**, on this bond.

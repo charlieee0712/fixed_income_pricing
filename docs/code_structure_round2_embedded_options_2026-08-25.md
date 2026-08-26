@@ -83,11 +83,11 @@ usual way this gets reported wrongly:
 On the portfolio's one genuinely call-active holding (6.45% of June 2034, marked 90.04,
 callable from August 2014 at par):
 
-| Volatility | Price at a fixed 410.8 bp | OAS at the fixed market price |
+| Volatility | Price at a fixed 410.77 bp | OAS at the fixed market price |
 |---|---|---|
-| 10% | 90.4204 | 414.52 bp |
-| **15% (our baseline)** | **90.0402** | **410.77 bp** |
-| 20% | 89.5138 | 404.84 bp |
+| 10% | 90.4229 | 414.52 bp |
+| **15% (our baseline)** | **90.0426** | **410.77 bp** |
+| 20% | 89.5161 | 404.84 bp |
 
 Roughly, **one volatility point costs about 10 cents per 100 of price, or about 1 bp of
 spread** on that bond. Both move in the direction the economics require: higher volatility

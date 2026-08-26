@@ -68,8 +68,8 @@ AND floating in a single schedule-normalising change instead of two.
 **Tests 194 → 223** (`test_pricer_tree_structure.py`, 29). Production CSVs verified
 SHA256-identical after every code-bearing commit. Mario report:
 `docs/code_structure_round2_embedded_options_2026-08-25.md` — including the volatility table
-on the one genuinely call-active holding (6.45% of 2034, BT 90.04): price 90.4204 / 90.0402 /
-89.5138 and OAS 414.52 / 410.77 / 404.84 bp at vol 10/15/20%, i.e. about 10 cents of price
+on the one genuinely call-active holding (6.45% of 2034, BT 90.04): price 90.4229 / 90.0426 /
+89.5161 and OAS 414.52 / 410.77 / 404.84 bp at vol 10/15/20%, i.e. about 10 cents of price
 or 1 bp of spread per volatility point. The other two callables are far from their call
 price and move by under a tenth of a basis point — which is why a single portfolio-level
 vega would be misleading.
