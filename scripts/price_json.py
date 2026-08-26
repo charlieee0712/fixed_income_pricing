@@ -59,7 +59,7 @@ def read_request(path: str):
     Returns: ``(payload, error_response)`` — exactly one of the two is None. A
     malformed file becomes an INVALID_JSON *response*, not a traceback.
     """
-    with open(path, "r", encoding="utf-8") as handle:
+    with open(path, "r", encoding="utf-8-sig") as handle:   # -sig: Excel writes a BOM
         text = handle.read()
     try:
         return json.loads(text), None

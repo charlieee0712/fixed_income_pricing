@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "request_id": "DEMO-20260825-0002",
+  "operation": "calibrate_and_risk",
+  "bond": {
+    "instrument_id": "DEMO-BOND-002",
+    "currency": "CHF",
+    "coupon_pct": 4.25,
+    "coupon_frequency": 2,
+    "maturity_date": "2015-06-30"
+  },
+  "market": {
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 98.10
+  }
+}

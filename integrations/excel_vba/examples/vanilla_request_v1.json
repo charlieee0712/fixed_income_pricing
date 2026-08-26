@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "request_id": "DEMO-20260825-0001",
+  "operation": "calibrate_and_risk",
+  "bond": {
+    "instrument_id": "DEMO-BOND-001",
+    "currency": "USD",
+    "coupon_pct": 6.5,
+    "coupon_frequency": 2,
+    "maturity_date": "2017-01-15",
+    "face_value": 100.0,
+    "day_count_label": "30/360"
+  },
+  "market": {
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 94.25
+  },
+  "analysis": {
+    "spread_shift_bp": 10.0
+  },
+  "model": {
+    "yield_volatility_decimal": 0.15
+  },
+  "metadata": {
+    "source": "excel_demo"
+  }
+}

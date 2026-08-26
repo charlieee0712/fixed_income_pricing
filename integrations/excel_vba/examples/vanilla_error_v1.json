@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "request_id": "DEMO-20260825-0002",
+  "status": "error",
+  "engine": "corporate_vanilla",
+  "operation": "calibrate_and_risk",
+  "inputs_used": {
+    "instrument_id": "DEMO-BOND-002",
+    "currency": "CHF",
+    "coupon_pct": 4.25,
+    "coupon_frequency": 2,
+    "maturity_date": "2015-06-30",
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 98.1,
+    "oas_bp_supplied": null,
+    "spread_shift_bp": 10.0,
+    "face_value_supplied": null,
+    "face_value_per_quote": 100.0
+  },
+  "market_data": null,
+  "results": null,
+  "applicability": null,
+  "warnings": [],
+  "errors": [
+    {
+      "code": "CURVE_NOT_FOUND",
+      "field": "bond.currency",
+      "message": "no yield curve is configured for currency 'CHF' (configured: AUD, EUR, GBP, JPY, KRW, USD)"
+    }
+  ]
+}

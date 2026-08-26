@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "request_id": "DEMO-20260825-0001",
+  "status": "ok",
+  "engine": "corporate_vanilla",
+  "operation": "calibrate_and_risk",
+  "inputs_used": {
+    "instrument_id": "DEMO-BOND-001",
+    "currency": "USD",
+    "coupon_pct": 6.5,
+    "coupon_frequency": 2,
+    "maturity_date": "2017-01-15",
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 94.25,
+    "oas_bp_supplied": null,
+    "spread_shift_bp": 10.0,
+    "face_value_supplied": 100.0,
+    "face_value_per_quote": 100.0
+  },
+  "market_data": {
+    "pricing_currency": "USD",
+    "valuation_date": "2009-03-31",
+    "curve_id": "USD|2009-03-31|Semiannual"
+  },
+  "results": {
+    "model_clean_price_per_100": 94.24999999411493,
+    "model_dirty_price_per_100": 95.41071427982922,
+    "accrued_interest_per_100": 1.1607142857142858,
+    "implied_oas_bp": 523.2980448854493,
+    "oas_source": "calibrated_from_clean_price",
+    "effective_duration_years": 6.090692137822485,
+    "dv01_per_100": 0.058111728732818335,
+    "convexity": 43.43704394133383,
+    "price_spread_tighter_per_100": 94.83319457648531,
+    "price_spread_wider_per_100": 93.6709497905553,
+    "calibration_residual_per_100": -5.88507020893303e-09
+  },
+  "applicability": {
+    "yield_volatility": {
+      "input_value_decimal": 0.15,
+      "used": false,
+      "price_effect_per_1pct_vol": null,
+      "oas_effect_bp_per_1pct_vol": null,
+      "reason": "Option-free vanilla DCF has no direct yield-volatility parameter; volatility drives the callable/option engines only."
+    },
+    "day_count": {
+      "input_value_label": "30/360",
+      "used": false,
+      "convention_used": "ACT/364 with a 182-day coupon grid",
+      "reason": "The validated engine prices on the legacy ACT/364 convention with a 182-day coupon grid; the day-count label is carried as data only."
+    }
+  },
+  "warnings": [],
+  "errors": []
+}
