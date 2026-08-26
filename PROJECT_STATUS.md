@@ -83,6 +83,16 @@ Repo: `github.com/charlieee0712/fixed_income_pricing`
 >   engine, shim or driver touched. **194 tests green.** Reference:
 >   `docs/vanilla_json_excel_interface_v1.md`; decisions:
 >   `docs/code_structure_followup_json_excel_2026-08-25.md`.
+> - **Round 2a — embedded options (2026-08-25):** the validated BDT lattice moved into
+>   `pricer/core/pricing/tree.py` (verbatim; `pricing/lattice.py` is a shim) and now serves THREE
+>   thin wrappers — callable, puttable and a new sinking-fund capability — off ONE engine, because
+>   14 workbook rows carry two rights at once (`CALL/SINK`, `CALL/PUT`). Sinking = issuer optional
+>   redemption of a fraction of the amount OUTSTANDING (an original-face basis is refused, not
+>   approximated); it is NOT amortisation and no `Sinking=Yes` holding was rerouted. Mario's
+>   volatility question is answered as two separate experiments (price at fixed OAS, OAS at fixed
+>   price) with signed per-bond numbers. **223 tests green**, and all three production driver CSVs
+>   are SHA256-identical to the pre-round freeze. No numeric golden exists for these families —
+>   all 474 workbook rows are in the stale 2010-03-01 batch. FRN + endpoint dispatch = Round 2b.
 > - **Outstanding:** an 11-security Bloomberg margin list, the pass-through data (Mario sourcing),
 >   the Govt-MBS 8-field × 882-CUSIP pull (requested 2026-07-22), a usable GBP par curve;
 >   deferred asks (KTBi terms / agency call schedules / one rating quirk) queued for the MBS-data

@@ -116,6 +116,50 @@ checks — those are decided here, from the repo.
   with his own proposal Excel/VBA → JSON per bond → Python, "one JSON in, one JSON out" (hence the
   single-bond canonical unit and the refusal of batch).
 
+## Round 2a — one shared tree: callable / puttable / sinking (2026-08-25) — FRN = Round 2b
+- **Plan** `docs/round2_monthly_q62_q71_execution_plan_v2_post_json_2026-08-25.md`; its **§21 =
+  the execution revision** (authoritative over the body). **Split decided here: FRN + endpoint
+  dispatch → Round 2b next week**; this week's headline (Mario's volatility answer) is entirely a
+  tree story, the tree cluster shares ONE migration across three wrappers, and sinking (the only
+  new modelling) needed the budget. Gate-0 freeze taken full-width (FRN + hybrids included).
+- **Q62:Q71 VERIFIED in the workbook:** row 61 = header; rows 62-71 carry the analysisType NUMBER
+  in col **P** and the label in col Q; row 67 shows this is input #1 `AnalysisType`. Mapping =
+  1 Bullet · 2 Callable · 3 Puttable · 4 SinkingF · 5 OAS · 6 Duration · 7-9 FRN · 10 Mtge.
+- **Code:** `core/pricing/tree.py` = the lattice MOVED VERBATIM from `pricing/lattice.py` (now a
+  shim; identity-asserted) + `schedule_times()` + `bond_tree()`. `assets/corporate/` gains
+  `embedded_option.py` (the ONE shared surface: price/OAS/duration/dv01/convexity/widening/
+  tightening + the two volatility experiments) and thin `callable.py` / `puttable.py` /
+  `sinking.py`. **194 → 223 green**; all three production CSVs SHA256-identical after every
+  code-bearing commit.
+- **⚠️ `to_lattice_schedule` still DEFAULTS to 365.25 d/y** while the coupon grid is ACT/364. Both
+  drivers pass `days_per_year=364.0` explicitly (production is fine), but a new caller taking the
+  default puts exercise dates on the WRONG axis — always route new code through
+  `core.pricing.tree.schedule_times`. Fixing the stale default = a follow-up, not this round.
+- **Call/put conflict rule ADDED (it did not exist):** the core applies `min(call)` then
+  `max(put)`, so a put above a call on one date silently won for the holder. Now refused at the
+  wrapper layer (core float path untouched). Same-date call+sink also refused (untested order).
+- **SINKING = issuer optional redemption, fractions of OUTSTANDING**, one node rule where the call
+  cap fires: `cont <- (1-f)*cont + f*min(cont,P)`. `fraction_basis="original"` is REFUSED (it
+  needs a strip decomposition — one callable sub-bond per sink date — because only the outstanding
+  basis keeps value-per-unit level-free and the node path-independent on a recombining tree).
+  f=1 reduces to the call cap BIT-FOR-BIT; f=0 = straight; value non-increasing in f. **NOT
+  amortisation** — no `Sinking=Yes` holding was rerouted; the 13 pass-through securities stay
+  data-gated.
+- **Monthly reality check (`docs/monthly_q62_q71_non_mortgage_mapping_2026-08-25.md`):** route
+  census callable **464** / put **7** / sink **18**, and **ALL 474 are in the stale 2010-03-01
+  batch — ZERO in the sound 2012-12 cohort** ⇒ *no numeric golden exists for these families*;
+  validation is production parity + `==` direct-call parity + invariants + Bloomberg three-way.
+  Also: the plan's "FLOATING 426" is NOT in this extract (`mty_typ` 0, `calc_typ_des` 29) — 426 is
+  the URS production count; **2b must re-derive its FRN cohort.**
+- **Mario report:** `docs/code_structure_round2_embedded_options_2026-08-25.md` — the volatility
+  answer on the one genuinely call-active holding (6.45%/2034, BT 90.04): price 90.4204/90.0402/
+  89.5138, OAS 414.52/410.77/404.84bp at vol 10/15/20% (≈10c of price or 1bp of spread per vol
+  point); the other two callables are far from the call and move <0.1bp — so a portfolio-level
+  vega would mislead.
+- **Round 2b carry-over:** FRN → `core/pricing/floating.py` + wrapper; endpoint `instrument_type`
+  dispatch for callable/puttable/floating in ONE change. ⚠️ `hybrid.py` imports FRN **privates**
+  (`_as_date`, `_df`, `YEAR_DAYS`, `simple_forward`) — the shim must re-export them.
+
 ## Monthly-sheet golden reconciliation — Gates 0–3 DONE (2026-08-17)
 - **Files:** plan `docs/monthly_reconciliation_plan_2026-08-15.md` (Rev B, gate statuses in
   place) + Gate-0 memo `docs/monthly_gate0_memo_2026-08-17.md` (cell/VBA-line citations) +

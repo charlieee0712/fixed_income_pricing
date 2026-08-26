@@ -5,6 +5,84 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-25 (second wave) — Round 2a: one shared tree for callable / puttable / sinking
+**Commit:** `d4ffee6` (plan revision) · `feaa164` (Gates 1-2) · `e59e56e` (Gate 3) ·
+this entry's commit (docs + records)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Scope decision (the user left this one to me).** The plan covered callable, puttable,
+sinking AND floating, and offered FRN as the movable piece if the week was too full. It is:
+**FRN moved to Round 2b.** Reasons: this week's headline — the volatility answer Mario asked
+for — is entirely a tree story (an FRN's answer is "not applicable"); the tree cluster shares
+one 225-line migration across three wrappers while FRN is a separable 188-line engine with
+its own wrapper, inputs and endpoint contract; and the round's only genuinely new modelling
+(sinking) deserved the budget rather than the remainder. Gate 0's freeze was taken
+**full-width including FRN and hybrids** so 2b starts from a known-good state.
+
+**Gate 0.** Baseline `c8d0a83`, 194 green. All three production drivers run LOCALLY now
+(6s / 4s / 7s) and their CSVs are the freeze. Verified in the workbook that the plan's cell
+correction is right AND sharper than stated: `Q61` is the header, rows 62-71 carry the
+analysisType NUMBER in column **P** and the label in column Q, and row 67 shows this is
+input #1 `AnalysisType`.
+
+**Gate 1 — migration, not rewrite.** `pricing/lattice.py` copied VERBATIM to
+`pricer/core/pricing/tree.py`; the old path is a shim re-exporting the same object (asserted
+by identity). Added `schedule_times()` and `bond_tree()`. The first exists for a specific
+reason: `dataio.call_schedules.to_lattice_schedule` still DEFAULTS to 365.25 days/year while
+the coupon grid is ACT/364 — both drivers pass 364.0 explicitly so production was always
+consistent, but a new caller taking the default would silently put exercise dates on a
+different axis than coupons. New code goes through core; a test pins the two together. The
+stale default is left alone (changing a validated data module for no production benefit is
+what a migration round must not do) and recorded as a follow-up.
+
+**Gate 2 — callable + puttable.** `assets/corporate/embedded_option.py` holds one shared
+surface; `callable.py` and `puttable.py` name the right and pass a schedule. Wrapper output
+equals the production driver path with `==`. **Found and fixed a real gap the plan predicted
+but the code did not have:** the core applies `min(call)` then `max(put)`, so a put priced
+above a call on the same date silently resolved in the holder's favour. Now refused at the
+wrapper with both prices named; the core float path is untouched.
+
+**Gate 3 — sinking fund, the new capability.** Issuer optional redemption of a fraction of
+the amount OUTSTANDING, one node rule where the call cap already fires:
+`cont <- (1-f)*cont + f*min(cont,P)`. The plan left the fraction basis to "the caller"; the
+code cannot, so v1 fixes it and REFUSES an original-face basis with a message naming the
+strip decomposition it would need. The reason is structural: on an outstanding basis every
+remaining flow scales with the amount outstanding, so value per unit is level-free and the
+node stays path-independent on a recombining tree; on an original-face basis it does not.
+Anchor invariant holds bit-for-bit (f=1 IS the call cap — compared at the node, because a
+one-off redemption is not the same as a Bermudan call array that stays live to maturity).
+
+**Gate 6 — and the finding that shapes the report.** Route census from the frozen extract:
+callable 464 / puttable 7 / sinking 18, and **all 474 sit in the stale 2010-03-01 batch with
+ZERO in the sound 2012-12-12 cohort**. There is therefore no numeric golden for any of this
+round's families, which is stated plainly rather than worked around. Also corrected: the
+plan's "FLOATING = 426 rows" is not in this extract (`mty_typ` has none, `calc_typ_des` has
+29) — 426 is the URS production count, a different population; Round 2b must re-derive it.
+Memo: `docs/monthly_q62_q71_non_mortgage_mapping_2026-08-25.md`.
+
+**Gate 5 DEFERRED to 2b** under the plan's own §11.2 escape hatch: the engine work is
+complete and clean, and doing the endpoint contract once next week covers callable, puttable
+AND floating in a single schedule-normalising change instead of two.
+
+**Tests 194 → 223** (`test_pricer_tree_structure.py`, 29). Production CSVs verified
+SHA256-identical after every code-bearing commit. Mario report:
+`docs/code_structure_round2_embedded_options_2026-08-25.md` — including the volatility table
+on the one genuinely call-active holding (6.45% of 2034, BT 90.04): price 90.4204 / 90.0402 /
+89.5138 and OAS 414.52 / 410.77 / 404.84 bp at vol 10/15/20%, i.e. about 10 cents of price
+or 1 bp of spread per volatility point. The other two callables are far from their call
+price and move by under a tenth of a basis point — which is why a single portfolio-level
+vega would be misleading.
+
+**Open / next (Round 2b)**
+- FRN migration into `core/pricing/floating.py` + the floating wrapper. ⚠️ `hybrid.py`
+  imports FRN **privates** (`_as_date`, `_df`, `YEAR_DAYS`, `simple_forward`) — the shim must
+  re-export them or the hybrid engine breaks on import.
+- Endpoint dispatch (`instrument_type`) for callable / puttable / floating in one change.
+- Re-derive the FRN cohort from the Monthly extract rather than reusing 426.
+
+---
+
 ## 2026-08-25 — Mario approves the sample → JSON/Excel interface v1 (currency, volatility, bridge)
 **Commit:** `3681e3a` (plan revision) · `b6d5b2a` (endpoint + seam + CLI + tests) ·
 `66ca4f0` (Excel bridge + real fixtures) · this entry's commit (docs)
