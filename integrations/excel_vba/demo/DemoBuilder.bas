@@ -111,9 +111,14 @@ Public Sub Build_DemoSheet(ByVal runnerPath As String)
     AddName "FIP_Errors", ws.Range("E18")
 
     ' ---- buttons -----------------------------------------------------------------
-    AddButton ws, 20, 300, 150, 30, "Price this bond", "PriceVanillaBond"
-    AddButton ws, 180, 300, 150, 30, "Show the request JSON", "WriteRequestToFile"
-    AddButton ws, 340, 300, 170, 30, "Load a saved answer", "PopulateFromResponseFile"
+    ' Demo_Price also drops the request and the answer onto the sheet (row 21 down), so
+    ' nobody has to leave Excel to see what actually crossed the boundary.
+    AddButton ws, 20, 300, 165, 32, "Price this bond", "Demo_Price"
+    AddButton ws, 195, 300, 110, 32, "Clear", "Demo_Clear"
+    AddButton ws, 315, 300, 205, 32, "Load saved answer (no Python)", "Demo_LoadSavedAnswer"
+    ws.Range("A19").Value = "The request and the answer appear below after each run."
+    ws.Range("A19").Font.Italic = True
+    ws.Range("A19").Font.Size = 9
 
     ws.Columns("A").ColumnWidth = 26
     ws.Columns("B").ColumnWidth = 34

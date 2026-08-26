@@ -61,12 +61,21 @@ Put **94.25** back and click again — it returns to 523.30.
 
 ### 4. Show what actually crossed the boundary (40 seconds)
 
-Click **Show the request JSON**, and open the file it names. This is Mario's own proposal on
-screen: one JSON in, one JSON out. Point out that the date left Excel as `"2017-01-15"` text
-and not as the number 42750 — the conversion the bridge does, and the reason a wrong date
-cannot slip through silently.
+Nothing to click — scroll down to row 21. The two documents are already there, side by side:
+**WHAT EXCEL SENT** on the left, **WHAT CAME BACK** on the right, refreshed on every run.
+This is Mario's own proposal on screen: one JSON in, one JSON out.
+
+Two things to point at:
+
+- the **same `request_id`** appears in both columns — that is how an answer is tied to its
+  question, and how a future service would do it too;
+- the maturity left Excel as the text `"2017-01-15"`, **not** as the number 42750. That is
+  the conversion the bridge does, and the reason a wrong date cannot slip through silently.
 
 ### 5. Break it on purpose (30 seconds)
+
+(The **Clear** button empties the results and the JSON panel if you want to re-run the
+reveal from scratch.)
 
 Type **CHF** into the currency cell and click. You get:
 
@@ -110,7 +119,7 @@ spread at a fixed price, at 10 / 15 / 20% volatility. Say:
 | A macro-security bar appears | Excel's normal prompt for a macro workbook | click *Enable Content* once |
 | `The pricing runner did not produce a response file` | the runner path is wrong for this machine | re-run `Build-DemoWorkbook.ps1` with the right `-PythonExe` |
 | `CURVE_NOT_FOUND … date` | the workbook was moved out of the repository, so `data/` is not found | put it back, or run the runner from the repo root |
-| Python is missing on the machine | a borrowed laptop | click **Load a saved answer** and pick `integrations/excel_vba/examples/vanilla_response_v1.json` — the mapping demonstrates without Python |
+| Python is missing on the machine | a borrowed laptop | click **Load saved answer (no Python)** — one click, no file browser: it reads the committed example response from the repository and fills the sheet |
 
 The last row is the safety net: the whole spreadsheet side can be shown with no Python
 installed at all.

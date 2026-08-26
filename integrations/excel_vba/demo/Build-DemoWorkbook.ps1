@@ -63,6 +63,7 @@ try {
 
     $wb.VBProject.VBComponents.Import((Join-Path $bridge "JsonConverter.bas")) | Out-Null
     $wb.VBProject.VBComponents.Import((Join-Path $bridge "RysePricingBridge.bas")) | Out-Null
+    $wb.VBProject.VBComponents.Import((Join-Path $here "DemoActions.bas")) | Out-Null
     $builder = $wb.VBProject.VBComponents.Import((Join-Path $here "DemoBuilder.bas"))
     $wb.VBProject.References.AddFromGuid("{420B2830-E718-11CF-893D-00A0C9054228}", 1, 0) | Out-Null
 
