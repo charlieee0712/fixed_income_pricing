@@ -44,6 +44,7 @@ Validation (US, valuation date 2024-01-16, vs golden US_yield_curves.csv):
 
 from __future__ import annotations
 import datetime as dt
+import os
 import numpy as np
 import pandas as pd
 
@@ -57,6 +58,46 @@ STANDARD_TENORS = np.array([
 
 FREQUENCIES = {"Annual": 1, "Semiannual": 2, "Quarterly": 4, "Monthly": 12}
 _MAX_MONTHS = 374  # output grid length (~31.17y), matches the legacy output
+
+# ---------------------------------------------------------------- par-yield file units
+#
+# The *_Yield_Curve.txt exports are NOT uniform: most store par yields as DECIMALS
+# (0.0304 = 3.04%), but two store them as PERCENT (3.04 = 3.04%). The unit is a property
+# of the FILE, not of anything readable inside a single row, so it is declared here
+# rather than sniffed — a threshold rule would have to distinguish a 0.5% Danish yield
+# from a 0.5 decimal, and it would get it wrong.
+#
+# Verified 2026-08-30 across all 26 data/*_Yield_Curve.txt files, by checking each
+# against the actual market at known dates:
+#   GBP  8,201 rows 1994-2026, median 3.897, max 10.64  -> UK rates in PERCENT
+#        (2009-03-31: 0.731 / 1.183 / 2.341 / 3.157 / 4.157 = the gilt curve that day)
+#   DKK  4,300 rows, median 0.543, min -1.90, max 4.399 -> Danish rates in PERCENT
+#        (2020-06-15: -0.463 ... +0.295 = the negative-rate curve of that summer)
+# Every other file is decimal, including USD, EUR, JPY, AUD and KRW.
+#
+# ⚠️ This mattered: read as decimals, the GBP file becomes a 73%-415% par curve, whose
+# bootstrap fails at the 3-year node with "par curve is not arbitrage-free". That message
+# was taken at face value for two months, and the one GBP holding was carried unpriced
+# with a Bloomberg curve request open against it. The curve was always fine.
+PAR_YIELD_UNITS = {
+    "GBP_Yield_Curve.txt": "percent",
+    "DKK_Yield_Curve.txt": "percent",
+}
+DEFAULT_PAR_YIELD_UNITS = "decimal"
+_UNIT_SCALE = {"decimal": 100.0, "percent": 1.0}    # factor to reach PERCENT
+
+# A par yield above this (in percent) is not a market: it is a units or data error.
+# The widest legitimate value across all 26 files is ~23% (SEK in the early 1990s).
+_MAX_PLAUSIBLE_PAR_PCT = 100.0
+
+
+class ParYieldUnitError(ValueError):
+    """A par-yield row that cannot be a market curve — a units or data problem.
+
+    Raised BEFORE the bootstrap, so a file read in the wrong units is reported as what it
+    is instead of resurfacing three years down the coupon grid as a non-arbitrage-free
+    node, which sends the reader looking at the market data instead of the loader.
+    """
 
 # Excel's 1900 date system (valid for dates after 1900-02-28).
 _EXCEL_EPOCH = dt.date(1899, 12, 30)
@@ -81,18 +122,41 @@ def _interp_flat(x: float, xs: np.ndarray, ys: np.ndarray) -> float:
     return float(np.interp(x, xs, ys))
 
 
-def load_par_curve(txt_path: str, valuation_date) -> tuple[np.ndarray, np.ndarray]:
+def par_yield_units(txt_path: str) -> str:
+    """Which units a par-yield file stores, from :data:`PAR_YIELD_UNITS`.
+
+    Inputs
+    ------
+    1. txt_path : str — path to a ``*_Yield_Curve.txt`` file (only its file name matters).
+
+    Returns: ``"decimal"`` (the default) or ``"percent"``.
+    """
+    return PAR_YIELD_UNITS.get(os.path.basename(str(txt_path)), DEFAULT_PAR_YIELD_UNITS)
+
+
+def load_par_curve(txt_path: str, valuation_date, units: str = None
+                   ) -> tuple[np.ndarray, np.ndarray]:
     """
     Read one valuation date's par-yield row from a *_Yield_Curve.txt file.
 
     The file's header is `Date,<tenor>,<tenor>,...` where each tenor column is a
-    maturity in years and each row is a date (Excel serial) of par yields in
-    decimal (e.g. 0.0304 = 3.04%).
+    maturity in years and each row is a date (Excel serial) of par yields.
+
+    Inputs
+    ------
+    1. txt_path       : str — the par-yield export.
+    2. valuation_date : date | str — the row to read; no nearest-date substitution.
+    3. units          : str | None — ``"decimal"`` or ``"percent"``; ``None`` (the
+       default) looks the file up in :data:`PAR_YIELD_UNITS`, which is decimal for every
+       file but GBP and DKK.
 
     Returns
     -------
     tenors  : market tenors present in the file (years), ascending
     par_pct : par yields at those tenors, in PERCENT, for the given date
+
+    Raises :class:`ParYieldUnitError` when the scaled row is not a plausible market curve
+    — which is what a file read in the wrong units looks like.
     """
     if isinstance(valuation_date, str):
         valuation_date = dt.date.fromisoformat(valuation_date)
@@ -108,7 +172,21 @@ def load_par_curve(txt_path: str, valuation_date) -> tuple[np.ndarray, np.ndarra
             f"Valuation date {valuation_date} (serial {serial}) not found in "
             f"{txt_path}. Nearest available dates must be chosen explicitly."
         )
-    par_pct = hit[tenor_cols].to_numpy(dtype=float).ravel() * 100.0
+    units = par_yield_units(txt_path) if units is None else str(units).lower()
+    if units not in _UNIT_SCALE:
+        raise ValueError(f"units must be 'decimal' or 'percent'; got {units!r}")
+    par_pct = hit[tenor_cols].to_numpy(dtype=float).ravel() * _UNIT_SCALE[units]
+
+    worst = float(np.nanmax(np.abs(par_pct))) if par_pct.size else 0.0
+    if worst > _MAX_PLAUSIBLE_PAR_PCT:
+        raise ParYieldUnitError(
+            f"{os.path.basename(str(txt_path))} at {valuation_date} gives a par yield of "
+            f"{worst:.1f}% after reading it as {units}. No market curve looks like that, "
+            f"so the file is almost certainly stored in the other unit — declare it in "
+            f"curves.bootstrap.PAR_YIELD_UNITS. (Left unchecked this surfaces later as "
+            f"'par curve is not arbitrage-free', which points at the market data instead "
+            f"of at the units.)"
+        )
     return tenors, par_pct
 
 

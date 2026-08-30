@@ -122,3 +122,67 @@ def test_monthly_df_short_end(aligned):
     # The 1m/2m flat-fill rides the recursive bootstrap (DF_i = f(Σ_{k<i} DF_k)) into the
     # Monthly belly: observed 6.72e-04 @ 0.92y. Economic impact ~0 (short-end fill, documented).
     assert _err(a, g, "Monthly_DF") < 1e-3
+
+
+# ---------------------------------------------------------------- par-yield file units
+#
+# Added 2026-08-30. The *_Yield_Curve.txt exports are not uniform: GBP and DKK store par
+# yields in PERCENT, every other file in decimals. Read as decimals the GBP file becomes
+# a 73%-415% par curve, whose bootstrap fails at the 3-year node with "par curve is not
+# arbitrage-free" — a true statement about a curve we had mis-scaled, which was recorded
+# as a fact about the market data and left the book's one GBP holding unpriced.
+
+def test_only_gbp_and_dkk_are_declared_percent():
+    from curves.bootstrap import DEFAULT_PAR_YIELD_UNITS, PAR_YIELD_UNITS, par_yield_units
+
+    assert set(PAR_YIELD_UNITS) == {"GBP_Yield_Curve.txt", "DKK_Yield_Curve.txt"}
+    assert DEFAULT_PAR_YIELD_UNITS == "decimal"
+    assert par_yield_units("anywhere/GBP_Yield_Curve.txt") == "percent"
+    assert par_yield_units("anywhere/USD_Yield_Curve.txt") == "decimal"
+
+
+def test_every_curve_file_reads_as_a_plausible_market_curve():
+    """The registry is only right if it makes every file plausible. This walks all of
+    them at whatever date each carries, which is the check that would have caught GBP."""
+    import glob
+    import os
+
+    import pandas as pd
+
+    from curves.bootstrap import excel_serial_to_date, load_par_curve
+
+    checked = 0
+    for path in sorted(glob.glob(str(_ROOT / "data" / "*_Yield_Curve.txt"))):
+        frame = pd.read_csv(path, usecols=["Date"])
+        for serial in (frame["Date"].iloc[0], frame["Date"].iloc[len(frame) // 2],
+                       frame["Date"].iloc[-1]):
+            _, par_pct = load_par_curve(path, excel_serial_to_date(int(serial)))
+            worst = float(np.nanmax(np.abs(par_pct)))
+            assert worst < 30.0, f"{os.path.basename(path)} at {serial}: {worst:.1f}%"
+            checked += 1
+    assert checked >= 60
+
+
+def test_a_file_read_in_the_wrong_units_is_named_as_a_units_problem():
+    """The guard must fire BEFORE the bootstrap, so the message points at the loader
+    rather than at the market."""
+    from curves.bootstrap import ParYieldUnitError, load_par_curve
+
+    with pytest.raises(ParYieldUnitError, match="PAR_YIELD_UNITS"):
+        load_par_curve(str(_ROOT / "data" / "GBP_Yield_Curve.txt"), "2009-03-31",
+                       units="decimal")
+
+
+def test_the_gbp_curve_bootstraps_and_looks_like_the_2009_gilt_market():
+    """2009-03-31 gilts: ~1.2% at 2y, ~2.3% at 5y, ~3.2% at 10y, ~4.2% at 30y."""
+    from curves.zero_curve import ZeroCurve
+
+    for variant in ("Annual", "Semiannual", "Quarterly", "Monthly"):
+        curve = ZeroCurve.from_currency(str(_ROOT / "data"), "GBP", "2009-03-31", freq=variant)
+        assert 0.010 < curve.zero_rate(2.0) < 0.015
+        assert 0.021 < curve.zero_rate(5.0) < 0.026
+        assert 0.030 < curve.zero_rate(10.0) < 0.035
+        assert 0.040 < curve.zero_rate(30.0) < 0.048
+        dfs = curve.grid[f"{variant}_DF"].to_numpy()
+        assert dfs.min() > 0.0
+        assert np.all(np.diff(dfs) <= 1e-15)          # discount factors never rise

@@ -183,14 +183,40 @@ def test_missing_curve_date_is_curve_not_found():
     assert VAL in error["message"]
 
 
-def test_unbuildable_curve_is_reported_as_a_build_failure():
-    """GBP has the file and the date; its par curve is not arbitrage-free there."""
-    error = error_of(analyze_vanilla_payload(request_payload(**{"bond.currency": "GBP"})))
+def test_unbuildable_curve_is_reported_as_a_build_failure(monkeypatch):
+    """A file and a date that exist, but a curve that cannot be bootstrapped.
+
+    This used to use GBP, whose par curve the loader could not bootstrap. That turned out
+    to be a units bug on our side rather than a property of the market data (see
+    ``curves.bootstrap.PAR_YIELD_UNITS``), and GBP now prices — so the fixture is built
+    deliberately instead of borrowed from a data defect. What is under test is the
+    MAPPING from an unbuildable curve onto CURVE_BUILD_FAILED, not the state of any file.
+    """
+    import curves.zero_curve as zero_curve
+
+    def refuse(*args, **kwargs):
+        raise ValueError("Non-positive discount factor at t=3.000 (freq=1); par curve "
+                         "is not arbitrage-free at this node.")
+
+    monkeypatch.setattr(zero_curve.ZeroCurve, "from_currency", staticmethod(refuse))
+    error = error_of(analyze_vanilla_payload(request_payload()))
     assert error["code"] == contracts.CURVE_BUILD_FAILED
-    assert "GBP" in error["message"]
+    assert "USD" in error["message"]
+    assert "arbitrage-free" in error["message"]
 
 
-@pytest.mark.parametrize("currency", ["CHF", "KRW", "GBP"])
+def test_a_gbp_bond_now_prices_on_the_gbp_curve():
+    """The GBP par-yield file is stored in PERCENT, not decimals. Read as decimals it
+    became a 73%-415% curve and the bootstrap correctly refused it — which was recorded
+    for two months as 'the GBP curve is not arbitrage-free' and left the book's one GBP
+    holding unpriced. The curve was always fine."""
+    response = analyze_vanilla_payload(request_payload(**{"bond.currency": "GBP"}))
+    assert response["status"] == "ok", response.get("errors")
+    assert response["results"]["implied_oas_bp"] > 0
+    assert abs(response["results"]["calibration_residual_per_100"]) < 1e-6
+
+
+@pytest.mark.parametrize("currency", ["CHF", "KRW"])
 def test_curve_errors_never_leak_a_file_path(currency):
     message = error_of(analyze_vanilla_payload(request_payload(
         **{"bond.currency": currency})))["message"]
