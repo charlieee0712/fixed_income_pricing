@@ -45,3 +45,8 @@ integrations/excel_vba/demo/run_engine.cmd
 # ---- Handoff bundles (uploaded to the claude.ai Project; regenerated on request) ----
 handoff1_*.zip
 handoff2_*.zip
+
+# Excel lock files (created while a workbook is open)
+~$*
+# undated staging zip (superseded by the dated ones above)
+code_structure_sample.zip
