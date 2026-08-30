@@ -32,7 +32,7 @@ Working rules derived:
 | G2 | pass-through amortization | 13 uniques (16 tab rows) | 13 corporate securities (out of output) | new schedule table + amortizing-vanilla engine on arrival | ⏳ Mario 07-20 · Liping 07-30 |
 | G3 | FRN/hybrid terms | 11 (3 all-terms + 8 margins) | 8 BT-marked hybrids; 3 FRNs priced imprecisely | `frn_spreads.csv` / `hybrid_switch_terms.csv` — one cell each | ⏳ Mario 07-20 · Liping 07-30 |
 | G4 | call schedule | 1 (AssuredGty US04622DAA90) | the unpriced 5th corporate callable | one `call_schedules.csv` row | ⏳ Liping 07-30 (first ask) |
-| G5 | deferred / confirmation-only | KTBi · GBP+KRW curves · 5 AGY confirms · 1 rating quirk · FHR 3122 ZB | 1 ILB + 2-3 GBP bonds; rest = confirmation | curve txt rows / `call_schedules.csv` / master fix | ⏳ Liping 07-30 (opportunistic); standing plan = Mario MBS touchpoint |
+| G5 | deferred / confirmation-only | KTBi · ~~GBP~~+KRW curves · 5 AGY confirms · 1 rating quirk · FHR 3122 ZB | 1 ILB; rest = confirmation | curve txt rows / `call_schedules.csv` / master fix | ⏳ Liping 07-30 (opportunistic); standing plan = Mario MBS touchpoint. **GBP WITHDRAWN 2026-08-30 — see below** |
 
 Channels: **Mario** (client side, owns G1/G2/G3 since 07-20/07-22, no reply yet) and **Liping**
 (colleague, occasional campus Bloomberg access; full request incl. BDP template sent 2026-07-30).
@@ -142,10 +142,31 @@ cost); the Mario-side deferral discipline is unchanged.
 |---|---|---|---|
 | KTBi indexation terms (index ratio / base CPI @2009-03-31) | TNTG673976U / KR1035027T36 | the 1 BT-marked ILB (`ilb-indexation-unverified`, $1.2M) | ratio_0 input to `pricing/ilb.py` |
 | KRW govt par curve, 2009-03-31 row | — | KTBi at the 3-31 baseline (file has 06-10 only) | row in the KRW curve txt |
-| UK Gilt par curve @2009-03-31 & 06-10 | — | FT-GBP (coupon path seeded) + 2 GBP calibration bonds (our GBP file has a non-arb 3y node) | replacement GBP curve file/rows |
+| ~~UK Gilt par curve @2009-03-31 & 06-10~~ **WITHDRAWN 2026-08-30** | — | ~~FT-GBP + 2 GBP bonds~~ — both now priced | ✅ **not a data gap: a units bug on our side.** The GBP file stores par yields in PERCENT while 24 of the 26 files store decimals; the loader scaled everything by 100, making the gilt curve 73%-415%, which the bootstrap correctly refused as "not arbitrage-free". We read that as a fact about the data. Fixed in `curves.bootstrap.PAR_YIELD_UNITS` + a units guard. **Do not ask Mario or Liping for a GBP curve.** |
 | Agency call schedules (confirmation) | US3133XKKW43 · US3128X4BE02 · US3128X4UZ20 · US31359ML849 · US31359M2B87 | none — par@100-from-AB lattice already matches custodian AQ 4/5 | `call_schedules.csv` rows if they differ |
 | FNMA 6.25 2011 rating quirk | TNTD04366584 / US31359MGT45 | senior-vs-sub identity behind the master's A/Aa2 | note / master correction |
 | FHR 3122 ZB (REMIC Z, misfiled as AGY debenture) | TNTD04733316 | CMO-phase input (BT-marked now, no force-pricing) | DES terms for the future CMO engine |
+
+## Closed by us, not by data (2026-08-30)
+
+One entry left this registry without anyone sending us anything, and the reason is worth
+keeping in front of whoever maintains it.
+
+**The GBP curve was never missing.** It sat here for two months as "our GBP file has a
+non-arb 3y node", sourced from the bootstrap's own error message — which was a true
+statement about the curve we had built, and a false one about the file. The par-yield
+exports are not uniform: GBP and DKK store percentages, the other 24 files store decimals,
+and the loader assumed decimals for all of them.
+
+The registry rule that follows: **an entry whose evidence is one of our own error messages
+is not yet a data gap.** Reproduce the claim against the raw file, or against the market
+the file is supposed to describe, before writing it down and before asking anyone for it.
+Here that check took minutes — the raw GBP row for 2009-03-31 reads
+0.731 / 1.183 / 2.341 / 3.157 / 4.157, which is the gilt curve that day, in percent.
+
+A guard now enforces the check: any par-yield row that scales above 100% raises
+`ParYieldUnitError` naming the units, instead of surfacing later as a statement about
+arbitrage. It catches DKK too, which nothing in this portfolio uses yet.
 
 ## Provisional (web-sourced) values — Bloomberg confirmation queue
 

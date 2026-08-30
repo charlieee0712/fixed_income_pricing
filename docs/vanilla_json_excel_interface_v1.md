@@ -11,6 +11,16 @@ document a developer needs; the how-to for setting up a workbook is
 
 ---
 
+---
+
+> ## ⚠️ Superseded in part by v1.1 (2026-08-30) — read §14 first
+>
+> Everything below is still accurate for a **plain** bond, and a request that names no
+> `bond.instrument_type` is a plain bond, so nothing here has stopped working. What v1.1
+> adds is a `bond.instrument_type` field that selects one of **seven** engines, and the
+> per-type fields each one needs. Those are in **§14 at the end of this document**.
+> The entry point is now `analyze_payload`; `analyze_vanilla_payload` remains as an alias.
+
 ## 1. Shape of the thing
 
 ```
@@ -337,3 +347,111 @@ tests/test_vanilla_json_endpoint.py   28 interface checks (parity, firm, lenient
 integrations/excel_vba/tests/         23 VBA checks, driven through a hidden Excel
 
 ```
+
+
+---
+
+## 14. v1.1 — instrument types (2026-08-30)
+
+`schema_version` is now `1.1`. The change is **additive**: one new optional field in
+`bond`, plus the per-type fields listed below. A v1.0 request is a valid v1.1 request and
+returns the same numbers, which the existing 28 endpoint tests and the 23 real-Excel
+bridge checks assert unchanged.
+
+### 14.1 The dispatch field
+
+```json
+"bond": { "instrument_type": "floating", ... }
+```
+
+| value | the bond | engine |
+|---|---|---|
+| `vanilla` (default) | fixed coupon, repaid at maturity | `core/pricing/analytical` |
+| `stepped` | coupon changes on a **known** schedule (stepped / step-up) | `core/pricing/analytical` + a coupon table |
+| `floating` | coupon resets to an index + a margin | `core/pricing/floating` |
+| `fixed_to_floating` | fixed to a switch date, floating after | `core/pricing/hybrid` |
+| `callable` | the issuer may repay early | `core/pricing/tree` |
+| `puttable` | the investor may sell it back early | `core/pricing/tree` |
+| `sinking` | the issuer may retire **part** early | `core/pricing/tree` |
+
+Hyphens and case are forgiven (`Fixed-To-Floating` works). An unrecognised value is
+refused with `UNSUPPORTED_INSTRUMENT`, which lists the valid ones.
+
+### 14.2 What each type adds to `bond`
+
+| type | required | optional | not used |
+|---|---|---|---|
+| `vanilla` | `coupon_pct` | — | — |
+| `stepped` | `coupon_schedule` | — | `coupon_pct` |
+| `floating` | — | `quoted_margin_bp`, `current_coupon_pct` | `coupon_pct` (warned + ignored) |
+| `fixed_to_floating` | `coupon_pct`, `switch_date`, **`quoted_margin_bp`** | `float_frequency` | — |
+| `callable` | `coupon_pct`, `call_schedule` | `put_schedule`, `model.yield_volatility_decimal` | — |
+| `puttable` | `coupon_pct`, `put_schedule` | `call_schedule`, volatility | — |
+| `sinking` | `coupon_pct`, `sinking_schedule`, `sinking_fraction_basis` | `call_schedule`, `put_schedule`, volatility | — |
+
+Schedules are arrays of objects, and **every date in them obeys the same ISO-string rule
+as every other date** — an Excel serial inside a schedule entry is refused exactly like
+one in `maturity_date`, and the error names the entry (`bond.call_schedule[0].date`):
+
+```json
+"coupon_schedule":  [ {"effective_from": null, "rate_pct": 7.0},
+                      {"effective_from": "2006-03-01", "rate_pct": 7.5} ],
+"call_schedule":    [ {"date": "2014-08-15", "price_per_100": 100.0} ],
+"sinking_schedule": [ {"date": "2014-08-15", "fraction": 0.05, "price_per_100": 100.0} ]
+```
+
+`rate_pct` is **percent**, like `coupon_pct`, and is converted at this boundary — the
+engines carry decimals internally, and this is the only place the two meet.
+`fraction` is a decimal share of the amount **outstanding**, in [0, 1].
+
+### 14.3 What each type adds to `results`
+
+| type | extra fields |
+|---|---|
+| `stepped` | `coupon_pct_in_force_at_valuation` |
+| `floating` | `next_reset_years`, `quoted_margin_source`, `spread_interpretation` |
+| `fixed_to_floating` | `next_switch_years`, `reference_oas_to_switch_bp`, `reference_note` |
+| tree types | `volatility_used_decimal` |
+
+`spread_interpretation` exists because the same field means two different things. With a
+quoted margin supplied, `implied_oas_bp` is a credit spread over the index. Without one —
+the case for most of this book, whose cells read "... + Spread" with no number — it is a
+discount margin that **absorbs the unknown contractual margin as well as credit**. The
+price is exact either way and the risk numbers are unaffected, but the response says which
+it is rather than leaving the reader to assume.
+
+### 14.4 Volatility, per type
+
+`applicability.yield_volatility` is no longer one sentence for everything:
+
+- **tree types** — `used: true`, with `price_effect_per_1pct_vol` (change in clean price
+  per +1 volatility **point**, at a fixed spread) and `oas_effect_bp_per_1pct_vol` (change
+  in the calibrated spread, at a fixed market price). **These answer different questions
+  and must never be combined.** Both need a market price, so under `price_at_oas` the
+  second is `null` with that reason. Sending `analysis.volatility_scenarios: [0.10, 0.15,
+  0.20]` adds a `scenarios` table — opt-in, because each scenario costs two more solved
+  lattices.
+- **the four option-free types** — `used: false`, both effects `null` (never `0.0`, which
+  would read as a calculated vega), and a `reason` naming why *that* product has none.
+
+### 14.5 Two refusals that are new, and why
+
+Both replace a failure that used to happen anyway, in a place that pointed the reader
+somewhere unhelpful.
+
+- **`fixed_to_floating` without `quoted_margin_bp`** → refused. A placeholder zero would
+  price the floating leg as if the borrower paid pure index, produce a confident number
+  for a half-modelled bond, and say nothing about it. The production drivers make the same
+  choice: those bonds are carried at the custodian price with a named flag.
+- **`sinking` without `sinking_fraction_basis`** → refused, naming that field. The engine
+  already refused it, but from inside the spread solver, so the message read "no spread
+  reprices this bond — check the price, the coupon and the maturity". `"original"` is also
+  refused, with the reason: a fixed share of the *original* face works against a shrinking
+  base, which a recombining tree cannot represent.
+
+### 14.6 Not yet done
+
+**The Excel bridge still sends plain bonds.** The engine and the message format handle all
+seven types; the worksheet does not yet have cells for the per-type fields. That is a
+layout decision for Mario's team, and it is the open question in the 2026-08-30 report.
+Nothing blocks it technically: the bridge writes whatever named cells it is given.

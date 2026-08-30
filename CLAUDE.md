@@ -193,6 +193,69 @@ checks — those are decided here, from the repo.
   dispatch for callable/puttable/floating in ONE change. ⚠️ `hybrid.py` imports FRN **privates**
   (`_as_date`, `_df`, `YEAR_DAYS`, `simple_forward`) — the shim must re-export them.
 
+## Round 2b — Mario's pivot column F: floating / hybrid / stepped (2026-08-30) — DONE
+- **The ask (meeting ~2026-08-27):** Mario annotated a NEW column **F** on the workbook's
+  **`Pivot of Corp Bonds`** sheet (sheet6; the column did not exist in the committed file — it
+  arrived with the 08-27 working-tree change). F5 (`F`, 617) = **"finished"**; F21 (zero) =
+  "just corp bond(fixed)"; rows 6-11 + 17-19 + 22 left BLANK; and **six rows marked "no"** =
+  the ask: **F12** Fixed→Floating 5 · **F13** stepped 7.00/7.50 2 · **F14** GBP LIBOR+Spread 1 ·
+  **F15** Reference Rate+Spread 12 · **F16** EURIBOR+Spread 9 · **F20** Step-up schedule 1.
+  **= 30 tab rows → 29 held → 23 priced / 6 not** (5 `hybrid-margin-unavailable` + 1 defaulted).
+  ⚠️ **"finished" means IN THE NEW `pricer/` STRUCTURE**, not "priced" — every one of these
+  already priced in the legacy layer since July. Rows 6-11 (`Fixed → Reset`, 6 tab/6 held/3
+  priced) came free: same engine, not part of his ask — report as adjacent.
+- **Migrated verbatim (body asserted byte-identical below the docstring), old paths = shims:**
+  `pricing/frn.py`→`core/pricing/floating.py` · `pricing/hybrid.py`→`core/pricing/hybrid.py`
+  (only its 2 import lines repointed; `pricing.bond_price.price_bond` IS
+  `analytical.price_fixed_rate_bond`, a pure alias) · `pricing/coupon_schedule.py`→
+  `core/pricing/coupon_schedule.py`. ⚠️ **The frn shim MUST re-export the privates**
+  `_as_date/_rate/_df/simple_forward/YEAR_DAYS` — hybrid imports them by name.
+  Also closed a real layering violation: `core/pricing/cashflows.py` imported `coupon_at`
+  from the legacy `pricing` package (core reaching upward); now a sibling import.
+- **Wrappers:** `assets/corporate/{floating,hybrid,stepped}.py` + `bonds_input` inputs 15-17
+  (`switch_date`, `float_freq`, `current_coupon`), `spread_over_libor`→**`quoted_margin_bp`**
+  (now USED), and `VOLATILITY_NOT_APPLICABLE` = a per-product reason (was one generic line).
+- **Endpoint: ONE contract change, seven types** (`bond.instrument_type`: vanilla · stepped ·
+  floating · fixed_to_floating · callable · puttable · sinking). `analyze_payload` is the new
+  public name; **`analyze_vanilla_payload` kept as an alias and a typeless payload is still
+  vanilla**, so the VBA bridge + its 23 Excel checks pass UNCHANGED (re-run and verified).
+  `schema_version` 1.0→1.1. Doc = `docs/vanilla_json_excel_interface_v1.md` **§14**.
+- **⚠️ FRN duration has TWO exact regimes and the SIGN flips** (pinned by tests; the old
+  docstring only described one): `current_coupon` supplied → **+**time to next reset;
+  omitted (projected) → **−**time SINCE last reset, because the curve bump reprices that
+  period's coupon too. Both |dur| ≤ one period and ≪ same-maturity fixed.
+- **223 → 287 tests.** New: `test_pricer_floating_structure` (31), `test_json_endpoint_dispatch`
+  (29), +4 bootstrap. Production parity re-run after EVERY code-bearing commit: all five driver
+  CSVs byte-identical, except the deliberate GBP delta below.
+- **Excel bridge still sends VANILLA only** — engine + contract do all seven; the worksheet
+  layout for per-type fields is the open question in the 08-30 report. Not a technical block.
+
+## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
+- **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
+  store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied
+  every file by 100 ⇒ the 2009-03-31 gilt curve became **73%–415%** ⇒ the bootstrap correctly
+  raised *"Non-positive discount factor at t=3.000; par curve is not arbitrage-free"* — and we
+  recorded that for two months as a fact about the DATA, and asked Mario/Liping for a
+  replacement GBP curve. **Raw row 2009-03-31 = 0.731/1.183/2.341/3.157/4.157 = that day's gilt
+  curve, in percent.** Verified across ALL 26 files × 3 dates.
+- **Fix = an explicit registry `curves.bootstrap.PAR_YIELD_UNITS` (NOT a sniffer** — no
+  threshold separates a 0.5% Danish yield from a 0.5 decimal; DKK would be luck) + `units=`
+  per call + **`ParYieldUnitError` raised BEFORE the bootstrap** when a scaled row exceeds 100%.
+- **Impact — the ONE intentional output change of Round 2b:** `TNTG700307W` (FT GBP 7.50% 2011)
+  `frn-curve-blocked` → priced **205.31bp / 1.86y** @3-31 (146.71 @6-10); **`TNTG301334W`
+  (UK EMTN fixed 5.50% 2033) was SILENTLY SKIPPED — not flagged — and is a plain `Fixed` bond,
+  i.e. inside the class already reported complete** → priced **197.30bp / 12.55y** @3-31 (149.29
+  @6-10). Corporate output **564→565 @3-31 / 559→560 @6-10; priced 553→555; flagged 11→10;
+  `frn-curve-blocked` route now EMPTY; driver header `skipped=1→0`.** `callable_risk` +
+  both `phase2` CSVs byte-identical (a GBP curve used to RAISE, so nothing could depend on it).
+- Cross-check: same bond = 279.93bp on the USD curve vs 197.30 on its own; the ~83bp gap IS the
+  gilt-vs-UST difference at 24y — two independent numbers agreeing.
+- **GBP ask WITHDRAWN from `docs/missing_data.md` (G5 + the deferred table). Do NOT re-ask.**
+  Registry rule added there: **an entry whose only evidence is one of our own error messages is
+  not yet a data gap** — reproduce it against the raw file first.
+- Two endpoint tests had used GBP as their "unbuildable curve" FIXTURE (borrowing a data defect);
+  the build-failure mapping is now monkeypatched, plus a test that a GBP bond prices.
+
 ## Monthly-sheet golden reconciliation — Gates 0–3 DONE (2026-08-17)
 - **Files:** plan `docs/monthly_reconciliation_plan_2026-08-15.md` (Rev B, gate statuses in
   place) + Gate-0 memo `docs/monthly_gate0_memo_2026-08-17.md` (cell/VBA-line citations) +
@@ -252,7 +315,12 @@ checks — those are decided here, from the repo.
   `C:\Users\cnc\anaconda3\anaconda2025\python.exe` = **3.13.5, numpy 2.3.4 / pandas 2.3.3 /
   scipy 1.16.3 / pytest 8.3.4 / openpyxl 3.1.5 — USE THIS ONE**; `C:\Users\cnc\Documents\Downloads
   \python.exe` = 3.12.4 with the same stack a version older. (`C:\Users\cnc\anaconda3\python.exe`
-  = the 3.8.8 base env, numpy import BROKEN via mkl-service — do not use.) The whole suite runs
+  = the 3.8.8 base env, numpy import BROKEN via mkl-service — do not use.) ⚠️ **Local ≡ 47 for the TEST SUITE and the
+  single-bond endpoint JSON, but NOT byte-for-byte for the 565-bond driver CSVs**: they differ by
+  up to **3.6e-8 relative, entirely in `convexity`** (a second difference ÷ bump² amplifies a
+  last-ulp by 1e8); prices/OAS/durations agree to ~1e-12 and every text column matches. So a
+  cross-platform `sha256` diff of a driver CSV shows a difference that is NOT a regression —
+  **do parity local-fresh vs local-fresh** (byte-exact, and stricter). The whole suite runs
   locally: `& "C:\Users\cnc\anaconda3\anaconda2025\python.exe" -m pytest -q` → **194 passed in
   ~19s**, identical to 47, and the endpoint's JSON output is byte-for-byte the same as 47's ⇒
   quick checks no longer need ssh. 47 remains the deployment target and the parity reference.

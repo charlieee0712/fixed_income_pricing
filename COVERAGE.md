@@ -6,18 +6,20 @@ and routes it to a pricing engine **or explicitly flags it** — nothing is sile
 
 - **pivot n** = the 676-row `Coupon_Formula2` classification (reconciles to Mario's pivot exactly;
   locked in `tests/test_universe.py`).
-- **priced/flagged** counts are over the held/rated/matched universe at 2009-06-10
-  (`outputs/implied_oas.csv`, 558 rows). Denominators differ: not every tab row is a held position.
+- **priced/flagged** counts are over the held/rated/matched universe
+  (`outputs/implied_oas_2009-03-31.csv`, **565 rows** @3-31 / 560 @6-10, both refreshed
+  2026-08-30). ⚠️ **Denominators differ and are easy to confuse**: 676 = tab rows,
+  565 = held/rated/matched positions at the 3-31 baseline, 555 = of those, fully priced.
 
 ## Class → engine → status
 
 | `Coupon_Formula2` class | pivot n | engine / route | status @2009-06-10 |
 |---|---|---|---|
 | **F** — plain fixed | 617 | `bond_price` vanilla · make-whole→vanilla · genuine-callable→BDT lattice (v2) | ✅ 522 priced (475 vanilla + **47 make-whole** — Sempra re-routed off the lattice 2026-07-20, make-whole documented) + 5 in the callable bucket (3 on the lattice); rest excluded for rating/maturity/terms |
-| **floating** — Ref-Rate / EURIBOR / GBP-LIBOR + Spread, Fixed→Floating | 27 | `frn.py` FRN · `hybrid.py` **fixed-then-float** · override → vanilla-schedule | ✅ 7 FRN-priced (4 documented margins, `frn_spreads.csv`) + 5 vanilla-schedule (rating-step/plain-fixed re-routes) + **8 on the fixed-then-float engine** (Allstate/Lincoln/Liberty/Chubb/AmEx/GE/SMBC/BofA — all still in their FIXED leg at VAL; main column + price-to-call reference) · ⚠️ 7 flagged (5 `hybrid-margin-unavailable` [Resona-US, BTMU, Resona-EUR, Shinsei×2 — structure documented, post-switch margin on the Mario list], 1 GBP curve [FT — coupon path seeded], 1 defaulted) |
+| **floating** — Ref-Rate / EURIBOR / GBP-LIBOR + Spread, Fixed→Floating | 27 | `core/pricing/floating` FRN · `core/pricing/hybrid` **fixed-then-float** · override → vanilla-schedule | ✅ **21 of 27 tab rows priced @3-31** (all 27 are held positions; 7 FRN + 8 hybrid + 6 vanilla-schedule re-routes, incl. the GBP bond) · ⚠️ 5 `hybrid-margin-unavailable` (post-switch margin on the Bloomberg list) + 1 defaulted floater at its recovery mark. **Migrated to `pricer/` 2026-08-30 (Round 2b, Mario's F12/F14/F15/F16)**; wrappers `assets/corporate/{floating,hybrid}` |
 | **fixed-to-reset** | 6 | `hybrid.py` fixed-then-float · override → vanilla-schedule | ✅ **2 on the hybrid engine** (BNP L+129 sw-2037, UniCredit E+176 sw-2015 — perps truncated at 90y; replaces coupon-continuation) + 1 vanilla-schedule (TI-2033 plain fixed) · ⚠️ 3 `hybrid-margin-unavailable` (Chuo, Resona 4.125% + 144A tranche) |
-| **stepped** — 7.00/7.50 date-segmented | 2 | `coupon_schedule` → vanilla | ✅ 1 priced (1 tab-only, not held) |
-| **step-up** | 1 | `coupon_schedule` → vanilla | ✅ **priced** — flat 11.875% (Aquila: rating-linked steps all reversed by 2009; SEC-sourced) |
+| **stepped** — 7.00/7.50 date-segmented | 2 | `core/pricing/coupon_schedule` → vanilla | ✅ 1 priced (1 tab-only, not held). **Migrated 2026-08-30 (Mario's F13)**; wrapper `assets/corporate/stepped` |
+| **step-up** | 1 | `core/pricing/coupon_schedule` → vanilla | ✅ **priced** — flat 11.875% (Aquila: rating-linked steps all reversed by 2009; SEC-sourced). **Migrated 2026-08-30 (Mario's F20)** |
 | **zero** — zero coupon / structured payoff | 1 | vanilla | ✅ **re-routed vanilla 6.95%** — the custodian 0% was a DATA ERROR (Comcast 6.95% due 2037), not a structured zero; OAS now 431bp (was −486bp artifact) |
 | **defaulted** — N/A (Defaulted) | 1 | recovery mark | ✅ BT-mark, no OAS |
 | **pass-through** | 16 | — | ⏳ Mario is sourcing the needed data on Bloomberg (meeting 2026-07-20); prepayment engine work starts when it lands. Out of the output until then. [was: excluded] |
@@ -25,20 +27,25 @@ and routes it to a pricing engine **or explicitly flags it** — nothing is sile
 | **na** — N/A | 4 | — | ❌ ignore permanently (Mario, confirmed 2026-07-20) |
 | **total** | **676** | | |
 
-## Priced vs flagged vs excluded (output universe, 559 rows @6-10 / 564 @3-31)
+## Priced vs flagged vs excluded (output universe, 560 rows @6-10 / 565 @3-31)
 
-Updated 2026-07-20 after the ISIN-lookup term overrides + the fixed-then-float hybrid engine
-(`docs/isin_lookup_2026-07-20.md`; engine = `src/pricing/hybrid.py`):
+Updated **2026-08-30** (Round 2b): the GBP par-yield units fix added two GBP bonds — one that
+was `frn-curve-blocked` and one that was silently SKIPPED (a plain `Fixed` bond, i.e. in the
+class already reported complete). See `src/curves/bootstrap.py` / `PAR_YIELD_UNITS`.
+Engine paths are now `pricer/core/pricing/{floating,hybrid,coupon_schedule}` (the
+`pricing.*` names are shims). Term-override background: `docs/isin_lookup_2026-07-20.md`.
 
-- **548 priced end-to-end @6-10 (553 @3-31)** (implied OAS + effective duration / DV01 /
+- **550 priced end-to-end @6-10 (555 @3-31)** (implied OAS + effective duration / DV01 /
   convexity): vanilla 475 (480 @3-31), make-whole 47 (incl. Sempra), vanilla-schedule 9
-  (stepped 1 + the 8 override paths), floating 7, **hybrid 10** (fixed-then-float main column +
+  (stepped 1 + the 8 override paths + the GBP 7.50% whose curve was blocked), floating 7,
+  **hybrid 10** (fixed-then-float main column +
   price-to-call reference; perps truncated at 90y; `next_switch_t` output per bond; kept OUT of
   the by-rating medians — jr-sub/T1 capital spreads, same policy as the floating route).
-- **11 flagged / BT-mark**: **hybrid-margin-unavailable 8** (structure documented in
+- **10 flagged / BT-mark**: **hybrid-margin-unavailable 8** (structure documented in
   `hybrid_switch_terms.csv`, post-switch margin on the Mario/Bloomberg list — incl. the previously
   FRN-priced BTMU/Resona-EUR and continuation-priced Chuo/Resona, deliberately not half-modelled),
-  recovery 2, frn-curve-blocked 1 (FT GBP — coupon path seeded, curve blocked).
+  recovery 2. **`frn-curve-blocked` is now EMPTY** (was 1, the FT GBP bond) and the driver
+  reports `skipped=0` (was 1).
   reset-continuation is RETIRED (BNP/UniCredit → hybrid; Chuo/Resona → margin-unavailable).
 - **21 excluded per Mario** (never enter the output): pass-through 16 (⏳ Mario sourcing Bloomberg
   data), amortizing 1, na 4 (permanent).
@@ -65,5 +72,5 @@ live in **`docs/isin_lookup_2026-07-20.md`**. What still stands:
 |---|---|---|
 | post-switch/post-call floating margins | 11 (3 exempt US FRNs — all terms; 8 hybrids — margin only) | → Mario/Bloomberg list; a margin fill = one `hybrid_switch_terms.csv` cell → the bond moves onto the hybrid engine with zero code change |
 | ~~fixed-then-float engine~~ | ~~10 hybrids~~ | ✅ **DONE 2026-07-20** — `src/pricing/hybrid.py`, all 10 priced (route `hybrid`) |
-| GBP curve | FT-GBP 7.50% (coupon path seeded) + any GBP | non-arb 3y node blocks it |
+| ~~GBP curve~~ | ~~FT-GBP 7.50% + any GBP~~ | ✅ **CLOSED 2026-08-30 — never a data gap.** The GBP par file is stored in PERCENT, not decimals; our loader scaled it by 100 and the bootstrap then correctly refused a 73%-415% curve. Both GBP bonds now price (205.3 / 197.3 bp @3-31). Request to Mario/Liping WITHDRAWN. |
 | pass-through data | 16 | ⏳ Mario sourcing on Bloomberg (meeting 2026-07-20) |
