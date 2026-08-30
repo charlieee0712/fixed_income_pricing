@@ -1,5 +1,12 @@
 # Feedback on your previous plans
 
+**Update 2026-08-30 — read §5 first.** Round 2b was executed *without a plan from you*: the
+ask arrived as annotations Mario wrote on a spreadsheet at the meeting. That round produced
+a fifth habit, and §4's five carry-over items are now closed and scored. Everything below
+§5 is unchanged and still applies.
+
+---
+
 Two plans you wrote were executed on 2026-08-25. Both were good: correctly scoped, properly
 deferential to the live repo, and explicit about what was out of scope. Both also needed
 corrections at the alignment gate, and the corrections fall into four repeatable patterns.
@@ -90,9 +97,9 @@ get caught by tests anyway.
 - **Offering the executor a scope decision** ("move FRN to next week if the week is too
   full") — that produced a better split than either extreme.
 
-## 4. For the next plan (Round 2b)
+## 4. For the next plan (Round 2b) — CLOSED, and how they scored
 
-Specific things to fold in:
+Specific things folded in (verdicts added 2026-08-30):
 
 1. **Re-derive the FRN cohort** from `outputs/monthly_golden_rows.csv`; do not reuse 426.
 2. Schedule a Gate-0 check that the `frn.py` shim must re-export the **private** names
@@ -105,3 +112,72 @@ Specific things to fold in:
    input set genuinely differs from the tree instruments'.
 5. Say explicitly whether sinking joins the endpoint in the same change or stays deferred
    with a documented field map.
+
+**How those five landed:**
+
+1. ✅ Moot, in a useful way. The FRN cohort never needed re-deriving, because the round's
+   population turned out to be **Mario's six pivot cells** (30 tab rows → 29 held), not a
+   Monthly-sheet cohort. The warning was still right: 426 would have been the wrong number.
+2. ✅ **This one earned its place.** The `frn.py` shim does re-export `_as_date`, `_rate`,
+   `_df`, `simple_forward` and `YEAR_DAYS`, and there is now a test named after the reason
+   (`test_floating_shim_still_carries_the_private_helpers_hybrid_needs`). Naming the single
+   most likely breakage in advance is the highest-value line a plan can contain.
+2. ✅ Hybrid outputs were frozen before and compared after — all five driver CSVs, hashed,
+   after every code-bearing commit.
+4. ✅ Decided up front, and the input set does differ: a floater has **no `coupon` field at
+   all**, and gains `quoted_margin_bp` + `current_coupon_pct`. Deciding it before the gate
+   was right.
+5. ✅ **Sinking joined in the same change — and so did callable, puttable, hybrid and
+   stepped.** All seven types landed in one contract change. Splitting it would have meant
+   two, which is exactly what deferring dispatch to this round was meant to avoid.
+
+---
+
+## 5. Round 2b (2026-08-30) — no plan, and a fifth habit
+
+**There was no plan from you this round.** Mario went down the coupon-type pivot at the
+meeting and annotated a new column F: `finished` against the plain-fixed row, `no` against
+six others. That column was the ask.
+
+Two things are worth carrying into how you write the next one.
+
+### The ambiguity that did not need resolving
+
+"Finished" is genuinely ambiguous — it could mean "priced" or "in the new package". The
+execution side did **not** stop to ask, because it checked and found that *both readings are
+satisfied by the same work*: migrate the engines, produce the numbers, and hand back a
+cell-by-cell status table. That is worth imitating. Before escalating an ambiguity, test
+whether the candidate readings actually diverge in what you would do. Often they don't, and
+the question costs a day.
+
+### ⭐ Habit 5 — a claimed data gap needs evidence from the source, not from our own error
+
+This round's largest finding was that a two-month-old entry in the missing-data registry —
+"our GBP file has a non-arb 3y node", which had generated a standing request to *both*
+Bloomberg channels — was **our bug**. The file stores par yields in percent while 24 of the
+26 store decimals; our loader scaled it by 100 and the bootstrap correctly refused the
+resulting 73%–415% curve. Full account: `05_traps_and_gotchas.md` §1.9.
+
+The registry entry's only evidence had been our own error message. Checking it against the
+raw file took minutes and would have shown a normal gilt curve.
+
+**What this means for a plan.** When a plan cites a blocker, say **where the evidence comes
+from**, and treat these two as different kinds of claim:
+
+| claim | status |
+|---|---|
+| "Bloomberg has not sent the pool factors" | a real gap — the absence is observable |
+| "our engine reports the curve is not arbitrage-free" | **a symptom**, not a gap — schedule a check against the raw source |
+
+This is the same shape as Habit 1 (name a count's source and population) and Habit 3 (never
+assert code state — schedule a gate check), extended to a third thing plans assert without
+checking: **the reason something is blocked.** If a plan's scope depends on a blocker, put
+"reproduce the blocker against the raw source" in the gate. It is cheap, and here it was the
+difference between two priced bonds and a request to a client for data we already had.
+
+### One more, smaller: don't let a test borrow a data defect
+
+Two endpoint tests used GBP as their "unbuildable curve" fixture. Fixing the curve broke
+them — correctly, but confusingly, because the subject of those tests was the error *mapping*,
+not the state of a file. If a plan specifies a test whose fixture is "this real thing happens
+to be broken", say so and prefer a constructed fixture.

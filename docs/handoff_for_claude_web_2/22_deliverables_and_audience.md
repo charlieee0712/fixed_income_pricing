@@ -101,3 +101,39 @@ to go and find; now the request and the answer appear on the sheet automatically
 Before a repo-wide change, build the smallest convincing slice plus a one-page report, and
 wait for approval. It worked: the August sample came back approved with three **additive**
 comments rather than a redesign, which is the cheapest possible outcome.
+
+---
+
+## Update 2026-08-30
+
+**Package of the round** — `code_structure_sample/` staged and zipped as
+`code_structure_sample_2026-08-30.zip` (616 KB, 113 files), for the user to drag to Drive:
+
+```text
+00_README.md                          orientation, and the two things to know first
+01_weekly_report_2026-08-30.md + pdf  the deliverable
+02_code_walkthrough_2026-08-30.md+pdf the 15-minute guided tour, refreshed for seven asset files
+03_json_excel_interface_v1.md         the contract; section 14 is the v1.1 instrument types
+04_previous_report_2026-08-25.md      context
+05_round2_detail_2026-08-25.md        the embedded-option round in depth
+src/ tests/ scripts/ integrations/    the code (robocopy /E, __pycache__ excluded)
+```
+
+Checks run before zipping, worth repeating every time: **no handoff files in the package**
+(they carry internal comms framing and are not for Mario), **no `docs/` folder copied
+wholesale**, no `__pycache__`, and the only workbook present is the demonstration one we
+built. Both bundles' zips are git-ignored, as is the staging folder.
+
+**Report structure that worked** — the 08-30 report leads with the six cells answered one by
+one, then spends a full section on the GBP correction *as a correction*, then the interface
+change, then what was deliberately not done, then the engineering section, then one question
+back. Putting the correction third — after the answer he asked for, before the engineering —
+kept it from reading either as burying it or as leading with an apology.
+
+**A number in a report must be traceable to a run.** This round that discipline caught a wrong
+count in a commit message (flagged 11 → 9, actually 11 → 10) and one unverified claim in the
+draft report — that the 23 Excel checks still passed. They were re-run rather than assumed,
+and they do.
+
+**PDF**: `python scripts/md_to_pdf.py --input X.md --output Y.pdf`. One command; the three
+silently-failing Edge flags are already inside the script and must not be re-derived.

@@ -124,3 +124,78 @@ replayable and comparable, which is exactly what a distributed runner needs.
 
 Every pricing function is pure: no shared state, no globals, one bond per call. A portfolio
 is an embarrassingly parallel workload and nothing in the design has to change for it.
+
+---
+
+## Update 2026-08-30 — v1.1: one entry point, seven instrument types
+
+`schema_version` 1.0 → **1.1**, and the change is **additive**: one new optional field in
+`bond`, plus per-type fields. A v1.0 request is a valid v1.1 request returning the same
+numbers — asserted by the 28 existing endpoint tests and the 23 real-Excel checks, all of
+which pass untouched.
+
+**Why this was done once rather than twice.** The 08-25 report told Mario dispatch would land
+"next week, so a single change covers callable, puttable and floating together rather than two
+changes". Doing floating now and the tree types later would have contradicted the recorded
+rationale for deferring it. All seven landed together.
+
+### The dispatch field
+
+```json
+"bond": { "instrument_type": "fixed_to_floating", ... }
+```
+
+`vanilla` (default) · `stepped` · `floating` · `fixed_to_floating` · `callable` · `puttable` ·
+`sinking`. Case and hyphens forgiven; an unknown value is `UNSUPPORTED_INSTRUMENT`, which
+lists the valid ones. **Absent = vanilla**, which is what keeps every existing caller working.
+
+The public entry is now `analyze_payload`; `analyze_vanilla_payload` is retained as an alias.
+
+### Per-type inputs
+
+| type | required | optional |
+|---|---|---|
+| `vanilla` | `coupon_pct` | — |
+| `stepped` | `coupon_schedule` | — |
+| `floating` | — | `quoted_margin_bp`, `current_coupon_pct` |
+| `fixed_to_floating` | `coupon_pct`, `switch_date`, **`quoted_margin_bp`** | `float_frequency` |
+| `callable` / `puttable` | `coupon_pct` + its own schedule | the other schedule, volatility |
+| `sinking` | `coupon_pct`, `sinking_schedule`, `sinking_fraction_basis` | call/put schedules, volatility |
+
+A **floater has no `coupon_pct` at all**; sending one produces a warning and is ignored.
+Schedules are arrays of objects, and **every date inside them obeys the same ISO-string rule
+as every other date** — an Excel serial in `bond.call_schedule[0].date` is refused exactly
+like one in `maturity_date`, and the error names the entry.
+
+### Per-type results
+
+`stepped` adds `coupon_pct_in_force_at_valuation`; `floating` adds `next_reset_years`,
+`quoted_margin_source` and **`spread_interpretation`**; `fixed_to_floating` adds
+`next_switch_years`, `reference_oas_to_switch_bp` and a `reference_note` labelling that column
+spurious for a deep discount; tree types add `volatility_used_decimal`.
+
+`spread_interpretation` exists because the same field means two things: a **credit spread over
+the index** when a margin was supplied, and a **discount margin absorbing the unknown
+contractual margin as well as credit** when it was not. Most of this book is the second case.
+The response says which, rather than leaving a reader to assume.
+
+### Volatility, per type
+
+Not one sentence for everything any more. The three tree types return real numbers in both
+directions (see `12`); the four option-free types return `null` — never `0.0`, which would
+read as a calculated vega — with a reason that names why **that** product has none. A stepped
+bond's reason is not a floater's.
+
+### Two refusals that are new
+
+Both replace a failure that happened anyway, somewhere unhelpful: a **hybrid with no
+post-switch margin** (a placeholder zero would report a half-modelled bond as whole), and a
+**sinking schedule with no fraction basis** (which used to surface as "no spread reprices this
+bond — check the price, the coupon and the maturity").
+
+### ⚠️ The demo workbook still sends plain bonds only
+
+The engine and the message contract handle all seven types. The **worksheet** does not yet
+have cells for the per-type fields, and that is a layout decision, not a technical one — it is
+the open question in the 08-30 report (`04` §2). The bridge writes whatever named cells it is
+given, so nothing blocks it once Mario answers.

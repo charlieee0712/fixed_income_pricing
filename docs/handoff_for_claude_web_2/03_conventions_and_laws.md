@@ -150,3 +150,57 @@ presentation; economics are never inferred.**
 - every result says which curve produced it (`curve_id` = `USD|2009-03-31|Semiannual`);
 - the interface echoes back what it actually ran on (`inputs_used`), so a wrong cell mapping
   is visible without reading Python.
+
+---
+
+## Added 2026-08-30
+
+### Par-yield file units
+
+`data/*_Yield_Curve.txt` are **not uniform**. `GBP_Yield_Curve.txt` and
+`DKK_Yield_Curve.txt` store par yields in **PERCENT**; the other 24 store **decimals**.
+Declared in `curves.bootstrap.PAR_YIELD_UNITS`, overridable per call with `units=`, and
+guarded: any scaled row above 100% raises `ParYieldUnitError` **before** the bootstrap.
+Detection was considered and rejected — DKK's median value is 0.543, so a threshold rule
+would have been right about GBP by luck. See `14` §1a and `05` §1.9.
+
+### Floating-rate duration has two exact regimes, and the sign flips
+
+Measured on a flat 4% curve, a 30-year note:
+
+| `current_coupon` | effective duration |
+|---|---|
+| supplied | **+0.104396** = +time to the **next** reset (independent of the coupon's level) |
+| projected | **−0.395604** = −time **since** the last reset (the bump reprices that coupon too) |
+| *same-maturity fixed bond* | *17.44* |
+
+Both are within one coupon period. A **third** regime applies to a deep-discount note —
+price ≈ par − spread annuity, so a rate rise shrinks the gap and the price rises, giving a
+negative duration of order spread × annuity duration that **grows with maturity** (a 57-year
+note near 50 shows ≈ −10.6). Universal law: `|duration| ≪` a same-maturity fixed bond.
+
+### A schedule crossing the JSON boundary carries units at the boundary, not inside
+
+`coupon_schedule` arrives as `rate_pct` (**percent**, like `coupon_pct`) and is converted to
+the engines' decimals in `contracts.py`. That is the only place the two conventions meet.
+Inside the asset layer a coupon *schedule* is decimal — the documented single exception to
+that layer's percent rule, because the parser and the override CSV both emit decimals, and
+two dialects of one object would be worse than one exception. `stepped.validate_schedule`
+refuses a percent-looking schedule rather than pricing a 750% coupon.
+
+### The audit echo mirrors the request, not the engine
+
+`inputs_used` echoes per-product inputs in the caller's own shape and units — schedules as
+objects with `rate_pct`, not as the engine's decimal tuples. The block exists so a wrong cell
+mapping in the spreadsheet is visible without reading Python; an echo in different units would
+defeat it. (It is also rounded to 10 dp, because `0.07 * 100` is `7.000000000000001` and an
+audit line that does not match the cell it came from is worse than useless.)
+
+### Parity protocol
+
+Windows and server 47 agree for the test suite and the single-bond endpoint JSON, but **full
+565-bond driver CSVs differ by up to 3.6e-8 relative, entirely in `convexity`** (a second
+difference ÷ bump² amplifies a last-bit rounding by 10⁸). Text columns identical; prices,
+spreads and durations agree to ~1e-12. Two local runs are byte-identical to each other, so
+**parity is asserted local-fresh vs local-fresh** — byte-exact, and stricter than the
+cross-platform comparison it replaces.

@@ -81,3 +81,43 @@ and the record says so. If a plan turns on the exact wording of one of them, ask
 The repository contains a real client portfolio and must stay **private**. The handoff
 bundles carry internal comms framing and must **not** go into the Drive staging copies that
 Mario receives. Drive access to the shared folder is Mario-only.
+
+---
+
+## Update 2026-08-30
+
+### The meeting of ~2026-08-27, and how this client communicates
+
+Mario discussed the 08-25 report, **agreed the next-week plan**, and then gave the actual ask
+**by annotating the workbook**: a new column F on the `Pivot of Corp Bonds` sheet, `finished`
+against the plain-fixed row, `no` against six others.
+
+That is worth internalising: **this client's directives can arrive as spreadsheet
+annotations**, not as messages. The column is now committed with the workbook, because it is
+the only record of what was asked and when. Check the workbook's diff after a meeting.
+
+### One thing we owe him, stated plainly in the report
+
+Section 3 of the 08-30 report says, in his language, that the sterling-curve blockage we had
+reported to him was **our bug** — a units mistake in our loader, not bad market data — and
+that the replacement-curve request is withdrawn. It also says that the same bug had been
+silently dropping a bond from the class he had already been shown as complete.
+
+**Reporting this rather than quietly fixing it is the decision.** He has been making planning
+decisions partly on the strength of a coverage number that was wrong, and the correction is
+more useful to him than the two extra bonds.
+
+### Outbound status
+
+- **Nothing new was asked of Mario or Liping this round**, and the deferral discipline stands.
+- The **GBP curve is off Liping's 07-30 list**. If she returns one anyway, it is a
+  cross-check, not a fix.
+- **One question is outstanding to Mario**, inside the 08-30 report: how he wants the extra
+  bond types laid out on the demonstration sheet. It is the only thing blocking us on the
+  Excel side, and it is deliberately posed as his call rather than presented as done.
+
+### The standing shape of a report to this audience
+
+Unchanged and working: plain language throughout with each bond term defined in a clause where
+it first appears, **one clearly-labelled engineering section** the finance reader can skip, and
+a statement in the opening of which section is for whom. The Google team attends in person.

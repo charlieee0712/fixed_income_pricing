@@ -71,3 +71,31 @@
   mixed-vintage cached data. Diagnostic only, never a numeric target.
 - **the bridge** — `RysePricingBridge.bas`, the Excel adapter. Reads named cells, writes one
   request, runs one configured command and waits, maps the answer back. No pricing in VBA.
+
+
+## Added 2026-08-30
+
+- **column F** — the status column Mario wrote on the workbook's `Pivot of Corp Bonds` sheet
+  at the 2026-08-27 meeting. `finished` = the coupon family is in the restructured `pricer/`
+  package (NOT "priced"); `no` = not yet. The six `no` rows were this round's ask.
+- **`instrument_type`** — the JSON field that selects the engine: `vanilla`, `stepped`,
+  `floating`, `fixed_to_floating`, `callable`, `puttable`, `sinking`. Absent = vanilla.
+- **quoted margin** — a floating note's contractual spread over its index (renamed from
+  `spread_over_libor`). Absent for most of this book, whose cells read "... + Spread" with no
+  number; a plain floater may then be priced with it absorbed into the calibrated spread,
+  a **hybrid may not**.
+- **discount margin (as we use it)** — what `implied_oas_bp` becomes on a floater priced with
+  no quoted margin: it absorbs the unknown contractual margin *and* credit. The response says
+  which of the two meanings applies rather than leaving it to be assumed.
+- **the two floating-duration regimes** — `+`time to next reset when the current coupon is
+  supplied, `−`time since the last reset when it is projected. Both correct, both within one
+  coupon period.
+- **`PAR_YIELD_UNITS`** — the per-file registry declaring which `*_Yield_Curve.txt` store par
+  yields in percent (GBP, DKK) rather than decimals (the other 24). Declared, never sniffed.
+- **`ParYieldUnitError`** — raised *before* the bootstrap when a scaled par row exceeds 100%,
+  so a units mistake cannot masquerade as "the curve is not arbitrage-free".
+- **`skipped=N`** — the calibration driver's header count of bonds dropped without a flag.
+  It was 1 for months (a GBP bond nobody could see was missing); it is now 0. Worth watching:
+  a flagged bond is visible, a skipped one is not.
+- **the convexity noise floor** — driver CSVs differ across platforms by ~1e-8, all in
+  `convexity`, because it is a second difference divided by bump². Not a regression.

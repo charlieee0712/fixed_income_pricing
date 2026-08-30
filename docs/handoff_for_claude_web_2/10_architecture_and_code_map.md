@@ -124,3 +124,50 @@ If a plan needs to reference real files, the fastest orientation is:
 4. `core/pricing/tree.py` — the one genuinely intricate file, and its docstring carries the
    model, the conventions and the sinking-fund reasoning;
 5. `endpoints/main.py` — the whole external surface, in about 50 lines.
+
+---
+
+## Update 2026-08-30 (Round 2b)
+
+Three more engines moved into `core/pricing/`, and the layering violation this migration
+existed to fix is closed.
+
+```text
+pricing/frn.py             -> core/pricing/floating.py          + assets/corporate/floating.py
+pricing/hybrid.py          -> core/pricing/hybrid.py            + assets/corporate/hybrid.py
+pricing/coupon_schedule.py -> core/pricing/coupon_schedule.py   + assets/corporate/stepped.py
+```
+
+**The layering fix.** `core/pricing/cashflows.py` had been doing:
+
+```python
+from pricing.coupon_schedule import coupon_at     # core reaching UP into the legacy package
+```
+
+Its own comment said "it moves into core/ in a later rollout step". That step is done; it now
+imports a sibling, and a test pins it (`test_core_no_longer_imports_coupon_at_from_the_legacy_package`).
+
+**Migration mechanics, unchanged and worth repeating.** Each move is verbatim — the body below
+the docstring is asserted byte-identical to the pre-move file — and each old path becomes a
+shim that re-exports **the same objects** (`a is b`, not `a == b`). Hybrid was the one
+exception: its two import lines were repointed at pricer-native modules, and a test asserts
+both targets are exact aliases (`core_hybrid.price_bond is analytical.price_fixed_rate_bond`).
+
+⚠️ **The `floating` shim re-exports PRIVATE names** — `_as_date`, `_rate`, `_df`,
+`simple_forward`, `YEAR_DAYS` — because `hybrid` builds its floating leg out of them by name.
+This was flagged in the previous handoff as the most likely way the migration would break, and
+there is now a test named after the reason.
+
+**The asset layer is seven files**, one per product:
+
+```text
+vanilla   stepped   floating   hybrid   callable   puttable   sinking
+                                        \______ all three over embedded_option ______/
+```
+
+Each is thin: it names inputs in a numbered block, converts units (percent/bp at this layer,
+decimals below) and delegates. `bonds_input.py` now catalogues **17** inputs and carries a
+**per-product** volatility-applicability map instead of one generic sentence.
+
+**Still not migrated** (reached through original paths, all working): `pricing/ilb.py`,
+`pricing/mbs.py`, `curves/`, `credit/`, `dataio/`.

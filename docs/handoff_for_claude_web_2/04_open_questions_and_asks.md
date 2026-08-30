@@ -12,12 +12,21 @@ Who owes what to whom, and what must **not** be re-asked yet.
 | 2026-07-22 (WhatsApp) | The **Govt-MBS 8-field × 882-CUSIP pull**, with `outputs/govt_mtge_cusips.csv` attached. | no reply yet |
 | 2026-08-25 (pending user action) | The weekly report + the updated Drive folder. Contains two questions (below). | user sends |
 
-## 2. Questions inside the current report
+## 2. Questions inside the current report (2026-08-30)
 
-1. **Which workbook should carry the Excel demonstration?** The authoritative URS holdings
-   file is never touched; a small demonstration workbook is what exists today.
-2. **Is the rollout order still right?** Floating next, then the remaining families, with
-   mortgages waiting on data.
+1. ⭐ **How should the extra bond types appear on the demonstration spreadsheet?** One sheet
+   with a bond-type dropdown that shows and hides the fields each type needs, or one small
+   sheet per type. **This is the only live blocker on our side**: the engine and the message
+   contract already handle all seven types, so it is purely a layout decision — a couple of
+   hours either way — and it is his team's daily view, so it is his call. Until he answers,
+   the bridge deliberately sends plain bonds only.
+
+**Answered by the 08-27 meeting, no longer open:**
+
+- ~~Which workbook should carry the Excel demonstration?~~ — the small demonstration workbook
+  stands; the authoritative holdings file is never touched.
+- ~~Is the rollout order still right?~~ — yes, and Mario refined it himself by marking the six
+  pivot cells. Those are now done; mortgages are next and are waiting on data, not on us.
 
 Also still open from the August sample, and low-stakes: **`bons_input.py` vs
 `bonds_input.py`** — the template's spelling looked like a typo, and the repo kept
@@ -48,8 +57,11 @@ gets one consolidated request rather than a drip:
 - the **lost `SteepFlat Table Monthly.txt`** twist table — becomes an ask only when the
   steepening/flattening (T/U) work actually starts. 43% of FIXED rows have a zero twist, so
   a good deal is reconcilable without it;
-- a **usable GBP curve** — the current file is not arbitrage-free at the 3-year node,
-  blocking 2 GBP bonds. Opportunistic, not urgent.
+- ~~a **usable GBP curve**~~ — **WITHDRAWN 2026-08-30. Do not raise this with anyone.**
+  It was never a data gap: the GBP file stores par yields in percent while 24 of the 26 store
+  decimals, our loader scaled it by 100, and the bootstrap correctly refused the resulting
+  73%–415% curve. Both GBP bonds now price. See `05` §1.9. If Liping returns a GBP curve
+  anyway (it was on her 07-30 list), treat it as a **cross-check**, not a fix.
 
 A plan that opens one of these without the user asking is a plan that will be edited.
 

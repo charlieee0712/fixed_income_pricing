@@ -5,6 +5,106 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-30 — Round 2b: Mario's pivot column F, and a units bug that was never a data gap
+**Commits:** `c196bd8` (engines → core/) · `5f7a9ec` (asset wrappers) · `3ad7503` (endpoint
+dispatch) · `9c2da93` (GBP par-yield units) · this entry's commit (docs + records)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**The ask.** At the meeting Mario went down the `Pivot of Corp Bonds` sheet and annotated a
+new column **F** — it is not in the committed workbook, it arrived with the 2026-08-27
+working-tree change, which is how it was dated. F5 (plain `Fixed`, 617 rows) = "finished";
+six rows marked "no" = the ask: **F12** Fixed→Floating (5) · **F13** stepped 7.00/7.50 (2) ·
+**F14** GBP LIBOR+Spread (1) · **F15** Reference Rate+Spread (12) · **F16** EURIBOR+Spread (9)
+· **F20** Step-up schedule (1).
+
+**Interpretation, stated because it decides the work.** "Finished" cannot mean "priced" —
+every one of these has priced in the legacy layer since July. It means *in the restructured
+`pricer/` package Mario's team takes over*, which is exactly what F5 describes (the approved
+sample was the vanilla chain). So the six cells = the three coupon families not yet migrated,
+and the deliverable is migration + numbers + a cell-by-cell status table. Both readings are
+satisfied by doing that, so the ambiguity did not need resolving before starting.
+
+**Census — source and population named, because three denominators are in play.**
+676 = tab rows · 565 = held/rated/matched positions @3-31 · 555 = of those, fully priced.
+His six cells: **30 tab rows → 29 held → 23 priced / 6 not** (5 `hybrid-margin-unavailable`
+awaiting the post-switch margins already on the Bloomberg list, 1 defaulted at its recovery
+mark). Rows 6-11 (`Fixed → Reset`, 6/6/3) share the hybrid engine and came free — reported as
+adjacent, not as part of his ask. Row 13 is the "denominators differ" case: 2 tab rows, 1 held.
+
+**Migrations (verbatim; body asserted byte-identical below the docstring).**
+`pricing/frn.py`→`core/pricing/floating.py`, `pricing/hybrid.py`→`core/pricing/hybrid.py`,
+`pricing/coupon_schedule.py`→`core/pricing/coupon_schedule.py`; old paths are shims. Only
+hybrid's two import lines changed, and both targets are exact aliases of the same objects
+(asserted). The frn shim re-exports `_as_date/_rate/_df/simple_forward/YEAR_DAYS` because
+hybrid composes its floating leg out of them by name. The move also closed a live layering
+violation — `core/pricing/cashflows.py` had been importing `coupon_at` from the legacy
+`pricing` package, i.e. core reaching up into a not-yet-migrated layer.
+
+**Wrappers + one endpoint change.** `assets/corporate/{floating,hybrid,stepped}.py`;
+`bonds_input` inputs 15-17 and `quoted_margin_bp` now USED. The endpoint gained
+`bond.instrument_type` covering all **seven** products in ONE contract change — doing
+floating now and the tree types later would have meant two, which is what deferring dispatch
+to this round was meant to avoid. `analyze_vanilla_payload` stays an alias and a typeless
+payload is still vanilla, so the VBA bridge is untouched: its **23 real-Excel checks were
+re-run and pass unchanged**.
+
+**A subtlety the docstring had glossed, now pinned.** An FRN's effective duration has two
+exact regimes and the sign flips: with `current_coupon` supplied it is **+**the time to the
+next reset; without it (that period projected off the curve) it is **−**the time *since* the
+last reset, because the bump reprices that coupon too. Measured: +0.104396 vs −0.395604 on the
+same bond, against 17.44y for the same-maturity fixed bond. Two tests wrote themselves wrong
+first — the engine was right both times.
+
+**⭐ The GBP curve was never missing.** F14 was recorded as blocked by "our GBP file has a
+non-arb 3y node", sourced from the bootstrap's own error. That error was true about the curve
+we built and false about the file: **`GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt` store par
+yields in PERCENT; the other 24 files store decimals**, and `load_par_curve` scaled everything
+by 100 — turning the gilt curve into 73%-415%, which the bootstrap then correctly refused.
+The raw 2009-03-31 row reads 0.731/1.183/2.341/3.157/4.157: that day's gilt market, in percent.
+Checked across all 26 files at three dates each.
+
+Fixed with an explicit `PAR_YIELD_UNITS` registry rather than a sniffer — no threshold
+separates a 0.5% Danish yield from a 0.5 decimal, and DKK would have been luck — plus a
+`ParYieldUnitError` guard that fires *before* the bootstrap when a scaled row exceeds 100%, so
+this class of failure can never again present itself as a statement about market data.
+
+Impact, the round's one intentional output change: `TNTG700307W` (FT GBP 7.50% 2011)
+`frn-curve-blocked` → **205.31 bp / 1.86y** @3-31; and `TNTG301334W` (UK EMTN fixed 5.50%
+2033), which was **not flagged but silently SKIPPED**, → **197.30 bp / 12.55y**. The second is
+a plain `Fixed` bond — inside the class already reported complete, which is the part worth
+remembering: a completeness count was wrong in a direction no report surfaced. Corporate
+output 564→565 @3-31 (559→560 @6-10), priced 553→555, flagged 11→10, `frn-curve-blocked` now
+empty, driver header `skipped=1→0`. Cross-check: 279.93 bp on the USD curve vs 197.30 on its
+own = the ~83 bp gilt-vs-UST gap at 24y. `callable_risk` and both `phase2` CSVs byte-identical,
+which is provable a priori — a GBP curve raised, so nothing could have depended on it.
+GBP **withdrawn** from `docs/missing_data.md`, with the rule that produced it: *an entry whose
+only evidence is one of our own error messages is not yet a data gap.*
+
+**Two endpoint tests had used GBP as their "unbuildable curve" fixture** — borrowing a data
+defect as a test fixture, which is precisely what went wrong here. Replaced with a monkeypatched
+loader (the mapping is the subject, not the state of a file), plus a test that GBP prices.
+
+**Verification.** 223 → **287** tests. All five production driver CSVs byte-identical to a
+pre-change baseline after every code-bearing commit, GBP delta excepted and itemised.
+Endpoint↔direct-call parity asserted with `==` per instrument type. Shim identity asserted on
+the *object*, not on equality.
+
+**Parity protocol correction.** The checked-in `outputs/*.csv` were produced on 47; a fresh
+local run differs by up to **3.6e-8 relative, entirely in `convexity`** (a second difference ÷
+bump² amplifies a last-ulp by 1e8), with every text column identical and prices/OAS/durations
+agreeing to ~1e-12. Two local runs are byte-identical to each other. So parity this round was
+local-fresh vs local-fresh — byte-exact, and stricter than a cross-platform comparison, which
+would show a difference that is not a regression. Recorded in CLAUDE.md's environment section.
+`outputs/` refreshed locally (git-ignored); 47 to be re-run at deployment.
+
+**Deliverable.** `docs/weekly_report_2026-08-30.md` (+ PDF via `scripts/md_to_pdf.py`) —
+cell-by-cell answers to F12-F16/F20, the GBP correction stated plainly as ours, and one
+question back: how Mario wants the extra bond types laid out on the demonstration sheet. The
+Excel bridge deliberately still sends vanilla only; the engine and contract do all seven.
+
+---
+
 ## 2026-08-25 (second wave) — Round 2a: one shared tree for callable / puttable / sinking
 **Commit:** `d4ffee6` (plan revision) · `feaa164` (Gates 1-2) · `e59e56e` (Gate 3) ·
 this entry's commit (docs + records)

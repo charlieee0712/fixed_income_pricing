@@ -67,3 +67,18 @@ is usually what stops it from being re-litigated by accident.
 | **The handoff bundles refresh ONLY on explicit request.** | 2026-08-17 | Previously refreshed at every milestone; the user stopped that. |
 | **Deferred asks stay deferred** until the next natural touchpoint (when Mario returns the MBS data). | 2026-07-22 | Do not drip-feed small requests at a busy counterparty. |
 | **Reports are written for Mario AND the Google team, who now attend the briefing.** | 2026-08-25 | Plain language throughout, plus a separate engineering section. |
+
+---
+
+## Round 2b (2026-08-30)
+
+| # | decision | why | date |
+|---|---|---|---|
+| L28 | **`finished` on Mario's pivot column F means "in the restructured `pricer/` package"**, not "priced" | every family he marked `no` had priced in the legacy layer since July; the plain-fixed row he marked `finished` is exactly the approved vanilla sample | 08-30 |
+| L29 | **Par-yield file units are DECLARED per file, never sniffed** (`PAR_YIELD_UNITS`: GBP + DKK are percent, the other 24 decimal) | no threshold separates a 0.5% Danish yield from a 0.5 decimal — a heuristic would have got DKK right by luck | 08-30 |
+| L30 | **A par row scaling above 100% raises before the bootstrap runs** (`ParYieldUnitError`) | so a units mistake can never again present itself downstream as "the par curve is not arbitrage-free", which is a claim about the market | 08-30 |
+| L31 | **An entry whose only evidence is one of our own error messages is not a data gap** — reproduce against the raw source first | cost: two months, a standing request to both Bloomberg channels, and one bond missing from every report | 08-30 |
+| L32 | **One entry point, seven instrument types** — `bond.instrument_type` dispatches; no second endpoint, envelope or error vocabulary | adding the mortgage engine later is one map entry and one function; splitting this change would have meant two contract revisions | 08-30 |
+| L33 | **A fixed-then-floating bond without its post-switch margin is REFUSED, not defaulted to zero** | a placeholder margin prices the floating leg as if the borrower paid pure index and reports a half-modelled bond as a whole one. A plain floater MAY absorb it into the spread — and the response then says so | 08-30 |
+| L34 | **Production parity is local-fresh vs local-fresh**, not cross-platform | driver CSVs differ across platforms by ~3.6e-8, all in convexity; the same-machine comparison is byte-exact and therefore stricter | 08-30 |
+| L35 | **The Excel bridge stays vanilla-only until Mario answers the layout question** | the engine and contract do all seven types; how they appear on a worksheet is his team's daily view and his call | 08-30 |

@@ -88,3 +88,35 @@ after it, and byte-identity is the acceptance criterion.
   the join is on Asset ID (100%), ISIN secondary;
 - the custodian's base-USD columns (`BU` market value, `Z` book cost) are used **directly**.
   There is no self-conversion anywhere; `currency` only ever routes a curve.
+
+---
+
+## Update 2026-08-30
+
+**One entry left the missing-data registry without anyone sending us anything.** The GBP
+curve request — open against **both** Bloomberg channels — was our own units bug, not a gap.
+See `05` §1.9. The registry now carries the rule that follows:
+
+> An entry whose only evidence is one of our own error messages is not yet a data gap.
+> Reproduce the claim against the raw file, or against the market the file is supposed to
+> describe, before writing it down and before asking anyone for it.
+
+Two kinds of claim, worth separating whenever a plan cites a blocker:
+
+| claim | status |
+|---|---|
+| "Bloomberg has not sent the pool factors" | a real gap — the absence is observable |
+| "our engine reports the curve is not arbitrage-free" | a **symptom** — schedule a check against the raw source |
+
+**Nothing new was asked of anyone this round.** The override tables are unchanged:
+`coupon_schedules.csv` (9 documented paths, incl. the FT-GBP 7.50% floor that was seeded
+against exactly this day), `frn_spreads.csv` (4 quoted margins), `make_whole_overrides.csv`,
+`hybrid_switch_terms.csv` (18 rows), `call_schedules.csv`. A margin fill is still **one cell**
+and prices the bond with zero code change — that architecture is what made the GBP fix a
+data-layer non-event too: the coupon path was already seeded, so the bond priced the moment
+the curve built.
+
+**A new file-level fact belongs here as data, not code:** `curves.bootstrap.PAR_YIELD_UNITS`
+declares that `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt` store par yields in percent
+while the other 24 exports store decimals. Treat it as part of the data layer: adding a new
+currency file means checking it against the market on a verifiable date and adding a line.

@@ -11,7 +11,7 @@ common source of wrong counts in a plan.
 |---|---|---|
 | **Monthly workbook rows** | 2,642 | the legacy run-sheet's saved outputs, ~2,600 bonds across several valuation dates. **Not** the client portfolio. |
 | **URS corporate universe** | 732 unique → **523 / 528 canonical** | the actual holdings after the exclusion funnel (6-10 / 3-31) |
-| **Priced output** | **564** = 553 priced + 11 flagged | what the corporate driver emits at 3-31 |
+| **Priced output** | **565** = 555 priced + 10 flagged | what the corporate driver emits at 3-31 (was 564 = 553 + 11 before the 08-30 GBP units fix; see the update at the end of this file) |
 
 A number quoted without its population is a number that will be wrong somewhere. "FLOATING
 426" is the cautionary example: it is a URS production count that a plan attributed to the
@@ -111,3 +111,38 @@ cmo-tranche · recovery
 ```
 
 11 bonds are flagged at 3-31. Each maps to a row in the missing-data registry.
+
+---
+
+## Update 2026-08-30 — counts, and a bond that was in none of them
+
+**Corporate output @3-31 is now 565 rows** (was 564): **555 priced + 10 flagged** (was
+553 + 11).
+
+| route | @3-31 |
+|---|---|
+| `vanilla` | 481 |
+| `make-whole-as-vanilla` | 47 |
+| `vanilla-schedule` | 10 |
+| `hybrid` | 10 |
+| `hybrid-margin-unavailable` | 8 |
+| `floating` | 7 |
+| `recovery` | 2 |
+| `frn-curve-blocked` | **0 — the route is now empty** |
+
+⚠️ **The lesson is not the counts, it is where the missing bond was.** `TNTG301334W` (a plain
+fixed 5.50% GBP bond of 2033) was **not in any of these numbers** — not priced, not flagged,
+not excluded. The driver caught a curve error and **skipped** it, and its header has been
+printing `skipped=1` for months without anyone reading it. It now prints `skipped=0`.
+
+Two things follow for any coverage reasoning:
+
+1. **Ask whether priced + flagged + excluded reconciles to the universe you started from**,
+   not just how many are flagged. A flagged bond is visible; a skipped one is not.
+2. The bond was `Coupon_Formula2 = Fixed` — i.e. inside the 617-row class Mario had already
+   been shown as *finished*. **A completeness statement can be wrong for a class you have
+   already signed off.**
+
+The three denominators, for any plan quoting a number: **676** tab rows · **565** held /
+rated / matched positions @3-31 (560 @6-10) · **555** fully priced. Row F13 is the standing
+illustration that they differ — 2 tab rows, 1 held position.

@@ -88,3 +88,39 @@ about what would unblock it.
 - the custodian `BT` as the calibration target;
 - for risk, a ±1 bp parallel shift of the spread, which for these engines is identical to a
   parallel curve shift.
+
+---
+
+## Update 2026-08-30 — the schedule engine moved, and got a wrapper
+
+`pricing/coupon_schedule.py` → **`pricer/core/pricing/coupon_schedule.py`** (verbatim; the old
+path is a shim), with a thin wrapper at **`assets/corporate/stepped.py`**. This serves Mario's
+pivot rows **F13** (7.00%/7.50% date-segmented, 2 rows) and **F20** (step-up, 1 row).
+
+**The point worth making to anyone reading it: these are not a new model.** The coupon varies
+over time but every future payment is known today — no option, no projection, no volatility.
+So they price on the ordinary discounting engine, which simply needs a coupon per date instead
+of one coupon. `stepped.py` therefore owns only the time-table and the rules for reading one;
+every pricing function forwards to `vanilla`.
+
+**Where a schedule comes from, in order of authority:**
+
+1. `data/coupon_schedules.csv` — a documented path from a primary source. This **outranks the
+   workbook's free text**, which has been wrong: one "zero coupon" was a custodian data error
+   for a 6.95% fixed bond (OAS −486 bp → +431 bp), and two "(VAR)" tags belonged to plain
+   fixed bonds.
+2. `parse_schedule` on the workbook cell.
+3. Nothing — a **data gap to flag, not a number to invent**. "Step-up schedule" names a
+   step-up without stating the steps. The parser returns `None`, never a guess, and also
+   refuses when the counts of rates and dates do not line up.
+
+**Units trap, documented rather than smoothed over.** A coupon *schedule* is in **DECIMAL**
+(0.075), unlike every other input at the asset layer, which is percent. That is deliberate:
+the parser and the override CSV both emit decimals, and converting at this one layer would
+create two dialects of the same object. `validate_schedule` refuses a percent-looking schedule
+(any rate ≥ 1.0) rather than pricing a 750% coupon. At the JSON boundary the field is
+`rate_pct` and `contracts.py` converts — that is the only place the two conventions meet.
+
+**Behaviour worth knowing:** a step already in the past simply falls out. Row F13's bond
+switched in March 2006, so at a 2009 valuation it is an ordinary 7.50% bond, and a test asserts
+it prices identically to one.

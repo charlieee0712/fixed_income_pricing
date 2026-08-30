@@ -155,3 +155,38 @@ from the master `AB` date at σ = 0.15 — the industry-standard agency assumpti
 lattice durations match the custodian's own option-adjusted duration on 4 of 5, which is a
 free external validation that the corporate side does not get (custodian AQ for corporates
 is a straight duration and misses the call).
+
+---
+
+## Update 2026-08-30
+
+Two additions, both small:
+
+- **`price_detail(...)`** returns clean, dirty and accrued from **one** tree build. It exists
+  because a caller reporting a full result set — the JSON endpoint, a driver — should not
+  build the tree three times to get three numbers. `clean` is bit-for-bit what
+  `calculated_price` returns (same call, same order), and `clean = dirty − accrued` exactly,
+  because accrued is the one shared date-only formula.
+- **The three tree products now reach the JSON interface** via `bond.instrument_type`, with
+  their schedules carried as arrays of objects. Two refusals were added at the contract layer
+  rather than left to surface from inside the solver:
+  - a **sinking schedule with no `sinking_fraction_basis`** — the engine already refused it,
+    but from inside the spread solver, so the message read *"no spread reprices this bond —
+    check the price, the coupon and the maturity"*, which sends the reader hunting in the
+    wrong place. It now names the field;
+  - **`"original"` as a fraction basis** — refused with the reason (a fixed share of the
+    original face works against a shrinking base; a recombining tree cannot represent it, and
+    it needs one callable sub-bond per sink date).
+
+**The volatility answer is now in the response**, both directions, for all three tree
+products: `price_effect_per_1pct_vol` (price at a fixed spread) and
+`oas_effect_bp_per_1pct_vol` (spread at a fixed price). They answer **different questions and
+must never be combined**. Both need a market price, so under `price_at_oas` the second is
+`null` with that reason. A full scenario table is opt-in via `analysis.volatility_scenarios`,
+because each scenario costs two more solved lattices.
+
+⚠️ **Test fixtures for volatility direction must be option-ACTIVE.** A call struck at 100 on a
+bond worth 96 is worthless, and the callable prices identically to the straight bond — which
+is correct, and asserts nothing. The dispatch tests use a 9.5% coupon marked at 104 against a
+par call, where the price falls 104.0772 → 104.0000 → 103.8615 and the spread tightens
+639.58 → 635.78 → 629.83 bp across 10/15/20% volatility.

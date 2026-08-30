@@ -1,241 +1,208 @@
 # Weekly report — fixed-income pricing module
 
-**Date:** 2026-08-25 · **Covers:** the work since the code-structure sample was approved
+**Date:** 2026-08-30 · **Covers:** the six rows you marked on the `Pivot of Corp Bonds` sheet
 
-Two things happened this week. First, your three follow-up points on the sample are all
-answered and built. Second, three more bond types now price through the restructured code.
-Everything that already worked still produces exactly the same numbers — that is checked
-automatically, to the last digit, after every change.
+You went down the coupon-type pivot with us and marked six rows **no** — the ones the
+restructured code did not yet cover. All six are now covered, and this report answers them
+cell by cell.
 
-This report is written to be read without the code. Section 5 is aimed at the engineering
-team; the rest is not.
+One of the six turned out not to be a data problem at all. It was a bug in how we read a
+market-data file, and it was also quietly costing us a bond in the row you had already
+marked **finished**. That is section 3, and it is the most important thing here.
 
----
-
-## 1. Where the module stands
-
-The module takes a bond, a market price and an interest-rate curve, and produces the
-numbers a risk system needs: what the bond is worth, what extra yield the market is
-charging this borrower, and how much the price moves when interest rates move.
-
-| | Where it stands today |
-|---|---|
-| Bond types priced | plain bonds, callable, puttable, sinking-fund, plus floating-rate and several others already in the engine |
-| Automatic checks | **223**, run in about 19 seconds |
-| Numbers changed by this week's restructuring | **none** — verified by comparing full output files, digit for digit |
-| Ways to run it | directly in Python, from a command line, or **from Excel** |
+As before: everything except **section 6** is written to be read without the code.
+Section 6 is for the engineering team and the finance reader can skip it.
 
 ---
 
-## 2. Your three follow-up points
+## 1. Your six cells, answered
 
-### 2.1 "Add currency to our input"
+A word on the counts first, because three different denominators are easy to confuse. The
+pivot counts **rows on the Corporate Bonds sheet** (676 of them). Not every row is a
+position the fund actually holds and rates. So each row below shows the pivot count, how
+many of those are live holdings, and how many now produce a full set of numbers.
 
-Done. Currency is now an explicit input, and it does one specific job: it selects the
-interest-rate curve of the bond's **own** currency. A euro bond discounted on a dollar
-curve is simply a wrong number that looks like a right one, so if we do not have a usable
-curve for a currency, the request is **refused** rather than quietly falling back to
-dollars. Six currencies are configured today — USD, EUR, GBP, JPY, AUD and KRW — and a
-curve must also exist for the exact valuation date being priced, which is why a request can
-come back saying the currency is fine but that date is not available. Both cases are
-reported as separate, named reasons rather than as one vague failure.
+| Cell | Coupon type | Pivot rows | Held | Priced | Not priced |
+|---|---|---|---|---|---|
+| **F12** | Fixed → Floating | 5 | 5 | 4 | 1 |
+| **F13** | 7.00% before 01-Mar-2006, 7.50% after | 2 | 1 | 1 | — |
+| **F14** | GBP LIBOR + Spread | 1 | 1 | **1** | — |
+| **F15** | Reference Rate + Spread | 12 | 12 | 11 | 1 |
+| **F16** | EURIBOR + Spread | 9 | 9 | 5 | 4 |
+| **F20** | Step-up schedule | 1 | 1 | 1 | — |
+| | **total** | **30** | **29** | **23** | **6** |
 
-One clarification worth stating: currency here chooses a pricing curve. It is *not* an
-instruction to convert anything — portfolio values stay on the custodian's base-dollar
-figures exactly as before.
+**The six that do not price are not a modelling gap.** Five are bonds that pay a fixed
+coupon for some years and then switch to a floating one, and the *margin they pay after
+the switch* is not in the workbook and is not public — it is on the Bloomberg list already
+with you. Each is carried at the custodian's price with that reason attached, and each
+becomes a priced bond the moment the margin arrives: it is one cell in a data file, with
+no code change at all. The sixth is a defaulted bond, which is carried at its recovery
+mark on purpose — a spread calculated against a borrower who has stopped paying would be
+a number without a meaning.
 
-### 2.2 "What happens if the volatility of yield changes — for OAS and for price?"
+We also, for free, covered the six rows immediately above yours (`Fixed → Reset`, rows
+6–11), because they are the same instrument shape and share the same engine. Three of
+those six now price; the other three are waiting on the same missing margins.
 
-This turned out to be two different questions, and they have to be answered separately —
-running them together is the usual way this gets reported wrongly:
+## 2. What these coupon types actually are
 
-- **hold the credit spread fixed, change volatility** → what happens to the **price**;
-- **hold the market price fixed, change volatility** → what happens to the **spread**.
+Four families sit behind your six cells, and they need genuinely different treatment:
 
-For a plain bond the answer to both is *nothing at all*, and that is not a shortcut: a
-plain bond has no early-repayment right, so there is nothing for volatility to act on. The
-module says so explicitly in its output rather than returning a zero, because a zero would
-look like a number we calculated.
+- **Floating-rate note** (F14, F15, F16) — the coupon is not fixed at all. It resets
+  periodically to a market interest rate plus a contractual margin. This has a
+  consequence worth knowing: such a bond keeps re-setting its own interest-rate risk away,
+  so a thirty-year floating note behaves, for rate purposes, like a bond maturing at its
+  next reset. Our numbers show exactly that, and the module reports the next reset date
+  beside the risk figure so the two can be checked against each other.
+- **Fixed → Floating** (F12) — fixed for some years, then floating. Priced as one bond
+  with one credit spread across both halves, because it is one borrower's one promise.
+  Splitting the spread in two would be inventing a second borrower.
+- **Stepped / step-up** (F13, F20) — the coupon changes over time on a schedule that is
+  **known in advance**. There is no option and no uncertainty here, so these are not a new
+  model at all: they are ordinary bonds priced with a table of coupons instead of one
+  coupon. Saying so is worth more than building something.
+- **Zero / structured** (F21, which you had already annotated "just corp bond (fixed)") —
+  agreed, and that is how it is treated.
 
-For a bond the borrower can repay early, the answer is real, and this week it became
-quantitative. See section 4.
+## 3. F14 was our bug, not missing data — please drop that request
 
-### 2.3 "Can the team run the Python from Excel — cells to JSON, one JSON in, one JSON out?"
+We have been telling you the single British-pound bond could not be priced because our UK
+interest-rate curve "was not arbitrage-free". That was wrong, and we should correct it
+plainly.
 
-Yes, and it is built and tested end to end. A spreadsheet sends one request file and gets
-one answer file back:
+The market-data files we were given are not all written the same way. Most store interest
+rates as decimals — `0.0304` meaning 3.04%. The **British-pound file stores them as
+percentages** — `3.04` meaning 3.04%. Our loader assumed decimals for every file, so it
+multiplied the pound rates by a hundred and produced a curve with three-year rates near
+200%. The bootstrapping step then, correctly, refused to build a curve out of it, and
+reported the only thing it could see: that the curve was not arbitrage-free. We read that
+as a statement about the data, and raised a request for a replacement UK curve.
 
-```text
-Excel cells  →  small VBA bridge  →  request.json
-                                          ↓
-                                    Python engine
-                                          ↓
-Excel cells  ←  small VBA bridge  ←  response.json
-```
+The curve was always fine. Read correctly, the 31 March 2009 file gives 1.18% at two
+years, 2.34% at five, 3.16% at ten and 4.16% at thirty — the actual gilt market that day.
 
-The spreadsheet knows exactly **one** thing about the engine: a command to run. Pointing
-that at a packaged program, or later at a web service, changes nothing else — not a field,
-not a cell, not a line of the spreadsheet code. There is no pricing logic in the
-spreadsheet, and none in the message layer either; both simply carry values to and from the
-same engine the production runs use.
+**What this changes:**
 
-We tested it on a real copy of Excel, driving the actual spreadsheet code: **23 checks,
-all passing**, including a full round trip where Excel really does call Python and gets a
-priced bond back. That exercise immediately earned its keep — it exposed a genuine defect
-in which any *failed* request would have shown a technical error box instead of the reason
-the bond could not be priced. That is exactly the moment a user most needs the reason. It
-is fixed, and the case is now a permanent test.
-
-One safeguard is worth mentioning because it is invisible when it works. Excel stores
-31 March 2009 internally as the number 39903. If that number reached the engine it would be
-read as a date in 1970, and the bond would be priced on the wrong day, on the wrong curve,
-with nothing looking broken. Dates must therefore arrive as text (`2009-03-31`); a bare
-number is refused. Converting it is the bridge's job, and that conversion is tested.
-
----
-
-## 3. Three more bond types, one shared engine
-
-The Monthly sheet lists ten analysis types. Removing the plain bond (already delivered) and
-the mortgage item (waiting on data) leaves four families. **Three are now built:**
-
-- **callable** — the borrower may repay early, on set dates, at a set price;
-- **puttable** — the investor may hand the bond back early, on set dates, at a set price;
-- **sinking fund** — the borrower may retire *part* of the bond early on set dates.
-
-They share **one** engine rather than having one each. The workbook itself makes the case:
-fourteen of its rows are bonds carrying two of these rights at the same time. A separate
-engine per product cannot price those without copying the other product's code into itself.
-One shared engine prices them by construction, and each bond type is a short file that names
-its inputs and passes them down — no calculation of its own.
-
-What was proven, stated separately because the evidence differs:
-
-- **Callable** — proven against the live portfolio. The existing engine was *moved*, not
-  rewritten, and the new front door reproduces the production calculation exactly, to the
-  last digit.
-- **Puttable** — no holding in the portfolio is a puttable bond today, so there is no live
-  comparison to make. What is tested is that the investor's right behaves as the exact
-  mirror of the borrower's. The route exists so a real one prices the day its terms arrive.
-- **Sinking fund** — the one genuinely new piece of modelling. It is validated by behaviour,
-  including one exact check: retiring *all* of a bond on a date is arithmetically the same
-  operation as calling it on that date, and the code produces the identical value.
-
-We should also say what the workbook could **not** give us. For these three families it
-holds 474 saved rows, and every one belongs to the March-2010 batch that we established in
-August as an unusable stale run — none is in the sound December-2012 batch. So there was no
-saved number to reconcile against, and we did not manufacture agreement with the stale ones.
-Validation is instead: existing outputs unchanged digit-for-digit, new functions matching
-direct calculation exactly, and the economics behaving as they must.
-
----
-
-## 4. The volatility answer, with numbers
-
-Three corporate bonds price on this engine today — one of them euro-denominated — along
-with five agency bonds; a fourth corporate is still waiting on its call terms, which are on
-the outstanding data request. Of the three corporates, only one has a repayment right that
-is currently worth anything: 6.45% of June 2034, marked at 90.04, repayable at face value
-from August 2014.
-
-| Rate volatility | Price, holding the spread at 410.77 bp | Spread, holding the market price at 90.04 |
+| | Before | Now |
 |---|---|---|
-| 10% | 90.4229 | 414.52 bp |
-| **15% (our baseline)** | **90.0426** | **410.77 bp** |
-| 20% | 89.5161 | 404.84 bp |
+| France Télécom 7.50% of 2011 (GBP) — your F14 | not priced | spread **205.3 bp**, rate sensitivity 1.86 years |
+| A UK 5.50% bond of 2033 (GBP) | **missing from the output entirely** | spread **197.3 bp**, rate sensitivity 12.55 years |
+| Corporate bonds in the output | 564 | **565** |
+| Of those, fully priced | 553 | **555** |
 
-In round terms: **one volatility point is worth about ten cents of price, or about one
-basis point of spread**, on this bond.
+The second bond is the part that matters beyond this week. It was not flagged, it was
+silently **skipped** — and it is a plain fixed-coupon bond, which is to say it belongs to
+the row you had already marked *finished*. A completeness count can be wrong in a
+direction that no report shows you, and this one was.
 
-Both directions are what the economics require. If rates are expected to move around more,
-the borrower's right to repay early is worth more, so the bond is worth less to us. And if
-the market price is *not* moving, then more of that same discount is explained as the cost
-of that right and less of it as credit risk — so the credit spread comes in.
+Two independent checks that the new numbers are right. The bond's spread measured against
+the *dollar* curve is 279.9 bp and against its own *sterling* curve 197.3 bp; the 83 bp
+gap is precisely the difference between gilt and Treasury yields at that maturity. And the
+France Télécom spread of 205 bp sits exactly where a single-A rated telecom belonged in
+March 2009, next to its own euro-denominated bonds.
 
-The other two make the opposite point, and it matters: both are priced far
-away from their repayment price (one is marked at 60), so their early-repayment right is
-nowhere near worth using, and volatility moves them by **less than a tenth of a basis
-point**. A single portfolio-level volatility sensitivity would have averaged that away
-completely. The answer is per-bond, and the module reports it per-bond.
+We also checked every one of the 26 market-data files this way, at three dates each. One
+other file — Danish krone — has the same percentage convention. It is not used by this
+portfolio, but it is now declared, so the next person to reach for it does not repeat
+this. And the loader now **refuses** any file whose rates come out above 100%, naming the
+units as the cause, so this class of mistake cannot again disguise itself as a statement
+about the market.
 
-For a bond with an investor's right instead, every sign flips: the price rises with
-volatility and the spread widens.
+**Action for you: the request for a replacement UK curve can be withdrawn.** Nothing else
+on the outstanding Bloomberg list changes.
 
----
+## 4. One change to the Excel connection
 
-## 5. For the engineering team
+Last week the spreadsheet could ask for one kind of bond. It can now ask for any of seven
+— plain, stepped, floating, fixed-then-floating, callable, puttable and sinking-fund — by
+naming the type in the request. Everything else is identical: same single entry point,
+same request and answer format, same error reporting.
 
-The structure follows the template: reusable mathematics in `core/`, thin per-bond-type
-wrappers in `assets/`, and a transport layer in `endpoints/` that does no arithmetic.
+We made this change **once**, covering all seven, rather than twice. And a request that
+does not name a type is still treated as a plain bond, so **nothing that works today
+stops working** — including the spreadsheet as it stands, whose 23 automated Excel checks
+all still pass untouched.
 
-**One entry point.** `analyze_vanilla_payload(request) → response` takes a plain dictionary
-and returns a plain dictionary. It never raises: failures come back as a response with a
-status and a reason. Whatever carries the message — a file today, an HTTP request later —
-calls that same function. There is no second pricing implementation to keep in step, and a
-test enforces it: every number the interface returns must equal the direct function call
-**exactly**, compared with `==` rather than a tolerance.
+Each type reports the one or two extra numbers only it has: the next reset date for a
+floating note, the switch date for a fixed-then-floating one, and — for the three types
+where somebody can repay or return the bond early — the volatility answer from your last
+round, in both directions.
 
-**Deterministic across platforms.** The same request produces byte-for-byte identical
-output on Windows (Python 3.13, NumPy 2.3) and on the Linux server (different Python,
-different NumPy). We checked the full response file, not a rounded summary. That matters
-for a move to the cloud: results are reproducible, so they can be cached, replayed and
-compared safely.
+There is one thing the module will now refuse rather than answer. If a fixed-then-floating
+bond is sent without its post-switch margin, we do not price it with a zero. A guessed
+margin produces a confident-looking number for a bond that is half-modelled, and nothing
+in the output would say so.
 
-**Parallel by construction.** Every pricing function is pure — no shared state, no
-globals, one bond per call. A portfolio is an embarrassingly parallel workload; nothing in
-the design has to change for that.
+## 5. What we deliberately did not do
 
-**Running it.**
+- **The demonstration spreadsheet still asks for plain bonds only.** The engine and the
+  message format handle all seven types, but putting seven bond types on a worksheet is a
+  layout question, and we would rather do it once with you than guess. The interface
+  document lists exactly which fields each type adds.
+- **No bond was re-classified to make a count look better.** The six unpriced bonds stay
+  unpriced and named.
+- **We did not touch the holdings workbook.** Your column F is your marking; section 1 is
+  the evidence for updating it, and the update is yours to make.
+
+## 6. For the engineering team
+
+**Structure.** Three engines moved into the template layout this week —
+`core/pricing/floating.py`, `core/pricing/hybrid.py` and `core/pricing/coupon_schedule.py`
+— each a verbatim move with the old import path left as a compatibility shim. Three thin
+per-product wrappers (`assets/corporate/{floating,hybrid,stepped}.py`) provide the
+one-simple-function-per-output surface, with numbered input blocks in every docstring.
+
+The move also closed a layering violation: `core/pricing/cashflows.py` had been importing
+from the legacy `pricing` package, i.e. the core reaching upward into a not-yet-migrated
+layer. It now imports a sibling.
+
+**Interface.** `analyze_payload(request) → response`, dispatching on
+`bond.instrument_type`. Adding an engine later is one map entry and one function — no new
+endpoint, no second envelope, no second error vocabulary. `analyze_vanilla_payload` is
+retained as an alias.
+
+**Verification.**
+
+| | |
+|---|---|
+| Automated checks | **287**, in about 21 seconds (223 at the start of the week) |
+| Production outputs after each migration step | byte-identical to a pre-change baseline, all five driver files |
+| Endpoint vs direct function call | asserted equal with `==`, per instrument type, not a tolerance |
+| Compatibility shims | asserted to re-export the *same object*, not an equivalent one |
+
+Two details worth knowing before you run it:
+
+- **Cross-platform determinism has a limit worth writing down.** Full 565-bond driver
+  outputs from Windows and from the Linux server differ by up to **3.6e-8 relative**, and
+  entirely in the convexity column — a second difference divided by the square of a
+  one-basis-point bump amplifies a last-bit rounding difference by 10⁸. Prices, spreads
+  and durations agree to about 1e-12, and every text column is identical. A byte-for-byte
+  comparison across platforms will therefore show a difference that is not a regression;
+  compare on one platform, or compare with a tolerance.
+- **The floating-rate duration has two exact regimes**, and the sign flips between them.
+  Supply the already-fixed current coupon and the answer is *plus* the time to the next
+  reset; omit it and the coupon is projected off the curve, the bump reprices it too, and
+  the answer is *minus* the time since the last reset. Both are within one coupon period
+  and both are correct; only the interpretation differs. It is pinned by tests.
 
 ```text
-python -m pytest -q                       223 checks, ~19 seconds
+python -m pytest -q                                              287 checks, ~21 s
 python scripts/price_json.py --input request.json --output response.json
-powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1    23 Excel checks
+powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  23 Excel checks
 ```
 
-**Reference documents in the repository:** the field-by-field interface contract, the Excel
-bridge how-to with worked request/response examples, and the fifteen-minute guided tour of the
-code for the walkthrough.
+## 7. Next
 
-**What the interface is strict about, and why:** dates must be text, not spreadsheet serial
-numbers (a silently wrong date is the worst failure available here); prices are always
-quoted per 100 face; the operation that calibrates a spread from a market price will not
-also accept a hand-typed spread, because the two can disagree and there is no right way to
-choose between them. Everything else is forgiving — lower-case currency, numbers as text,
-missing optional fields, unknown extra fields — with a warning rather than a rejection.
+- **Mortgage-backed securities** remain the largest outstanding block, and they are
+  waiting on the pool data pull, not on us — the engine skeleton is built to the exact
+  field list.
+- **The demonstration spreadsheet for the new bond types**, once you tell us how you would
+  like them laid out.
 
----
+## 8. One question for you
 
-## 6. What we deliberately did not do
-
-- **No bond was reclassified on a flag alone.** A sinking fund is an *option* to retire debt
-  early; an amortising bond simply repays principal on a fixed schedule. They are different
-  products and the portfolio's `Sinking = Yes` field does not distinguish them, so nothing
-  was moved into the new engine on the strength of it.
-- **Convertible bonds stay out.** One workbook row carries conversion rights; pricing it
-  properly needs an equity model we do not have, and approximating it would be worse than
-  leaving it flagged.
-- **Contradictory terms are refused, not guessed.** If terms imply an investor can hand a
-  bond back above the price at which the borrower can repay it, both cannot be true; the
-  module stops and says so.
-- **Mortgages remain their own phase**, still waiting on the data pull.
-
----
-
-## 7. Next week
-
-- **Floating-rate notes** — the fourth family from the Monthly sheet (items 7 to 9). It was
-  deliberately held back: this week's headline is the volatility answer, which is entirely
-  about bonds with early-repayment rights, and a floating-rate note has no volatility input
-  at all. Holding it back also kept the attention on the one genuinely new piece of
-  modelling.
-- **Connecting the new bond types to the Excel/JSON interface** — done once, next week, so a
-  single change covers callable, puttable and floating together rather than two changes.
-
-## 8. Two questions for you
-
-1. **Which workbook should carry the Excel demonstration?** We will not touch the
-   authoritative holdings file; a small demonstration workbook is what we have in mind
-   unless you would rather it lived somewhere specific.
-2. **Is the rollout order still right?** Floating next, then the remaining families, with
-   mortgages waiting on data — that is what we are working to unless you want it changed.
+**Do you want the extra bond types on the demonstration sheet, and if so, in what shape?**
+One sheet with a bond-type dropdown that shows and hides the fields each type needs, or a
+separate small sheet per type? We have no preference and it is a couple of hours either
+way — but it is your team's daily view, so it should be your call.

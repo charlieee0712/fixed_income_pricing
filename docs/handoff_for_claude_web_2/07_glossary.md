@@ -90,3 +90,31 @@ golden to reconcile to.
 
 **Two clients, never merged** — **URS** (the US pension book in USD; the actual target) and
 **Uganda** (a UGX demo living inside the legacy pricing workbook).
+
+## Added 2026-08-30
+
+- **column F** — the status column Mario wrote on the workbook's `Pivot of Corp Bonds` sheet
+  at the 2026-08-27 meeting. `finished` = that coupon family is in the restructured `pricer/`
+  package (**not** "priced"); `no` = not yet. The six `no` rows were Round 2b's entire ask.
+  It is committed with the workbook: a spreadsheet annotation from this client is a directive.
+- **`instrument_type`** — the JSON field selecting the engine: `vanilla` · `stepped` ·
+  `floating` · `fixed_to_floating` · `callable` · `puttable` · `sinking`. Absent = vanilla,
+  which is what keeps every v1.0 caller working.
+- **quoted margin** — a floating note's contractual spread over its index (the input formerly
+  catalogued as `spread_over_libor`, now `quoted_margin_bp` and marked USED).
+- **discount margin (as we use it)** — what `implied_oas_bp` *becomes* on a floater priced
+  with no quoted margin: it absorbs the unknown contractual margin **and** credit. The
+  response's `spread_interpretation` says which of the two meanings applies.
+- **the two floating-duration regimes** — `+`time to next reset (current coupon supplied) vs
+  `−`time since last reset (projected). Both exact, both within one coupon period.
+- **`PAR_YIELD_UNITS`** — the per-file registry declaring which par-yield exports store
+  percent (GBP, DKK) rather than decimals (the other 24). Declared, never sniffed.
+- **`ParYieldUnitError`** — raised *before* the bootstrap when a scaled par row exceeds 100%,
+  so a units mistake cannot masquerade as "the curve is not arbitrage-free".
+- **`skipped=N`** — the calibration driver's header count of bonds dropped **without a flag**.
+  It read 1 for months, hiding a GBP bond; it now reads 0. A flagged bond is visible; a
+  skipped one is not. Check it after every run.
+- **the convexity noise floor** — driver CSVs differ across platforms by ~1e-8, entirely in
+  `convexity`, because convexity is a second difference divided by bump². Not a regression.
+- **`price_detail`** — `embedded_option.price_detail(...)`, returning clean/dirty/accrued from
+  ONE tree build, so a caller reporting a full result set does not build the tree three times.

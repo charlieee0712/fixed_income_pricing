@@ -111,3 +111,55 @@ unknown and the basis differs — and it was reported that way rather than being
   (the sinking fund's f=1 case is the pattern to copy);
 - for anything touching the Monthly sheet: a classification of which rows are usable at all
   (see `19`) **before** any numeric comparison is proposed.
+
+---
+
+## Update 2026-08-30 — 287 tests, and a correction to the parity protocol
+
+**223 → 287.** New files: `test_pricer_floating_structure.py` (31) and
+`test_json_endpoint_dispatch.py` (29), plus 4 in `test_bootstrap.py` for the par-yield units.
+
+### ⚠️ The parity protocol changed, because the old one was measuring the wrong thing
+
+The checked-in `outputs/*.csv` were produced on **47**. A fresh **local** run of the same code
+differs by up to **3.6e-8 relative, entirely in the `convexity` column** — convexity is a
+second difference divided by the square of a 1 bp bump, so it amplifies a last-bit
+floating-point difference by 10⁸. Every text column matches exactly; prices, spreads and
+durations agree to ~1e-12.
+
+Before relying on that diagnosis, **two local runs of the same driver were checked and are
+byte-identical to each other**. So parity this round was asserted **local-fresh vs
+local-fresh** — byte-exact, and therefore a *stricter* test than the cross-platform comparison
+it replaces.
+
+The practical warning: a `sha256` diff of a driver CSV across platforms shows a difference
+that is **not a regression**. Do not diagnose it as one, and do not "fix" it.
+
+### What counted as evidence this round
+
+No numeric golden exists for the floating families — every relevant Monthly row is in the
+stale 2010-03-01 batch — so, in descending strength:
+
+1. **Production parity by hash** — all five driver CSVs byte-identical to a pre-change
+   baseline, after **every** code-bearing commit, not just at the end.
+2. **`==` parity** — every wrapper and every endpoint result equals the direct engine call
+   exactly, per instrument type. Not a tolerance: a tolerance permits a second, drifting
+   implementation.
+3. **Shim identity on the object** — `a is b`, not `a == b`. A shim that returns an equal
+   value from a re-implementation would pass the weaker check.
+4. **Invariants with at least one exact anchor** — the par-at-last-reset identity to 1e-12 at
+   every curve level; the margin-0 telescoping exact on any curve; both hybrid degenerate
+   limits bit-exact.
+
+### A test-writing lesson worth keeping
+
+**Two of this round's tests were written wrong before the engine was checked.** Both concerned
+the floating-rate duration; the docstring described one regime and the engine implements two,
+with opposite signs. The engine was right both times. When a test disagrees with an engine
+that has been in production for two months, **measure before editing either** — the numbers
+here (+0.104396 vs −0.395604, against 17.44 for the fixed bond) settled it in one run.
+
+**And do not let a test borrow a data defect.** Two endpoint tests used GBP as their
+"unbuildable curve" fixture; fixing the curve broke them. The subject was the error *mapping*,
+so they now monkeypatch the loader. Any fixture of the form "this real thing happens to be
+broken" will one day fail for the right reason and look like a regression.

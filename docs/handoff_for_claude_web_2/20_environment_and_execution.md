@@ -11,7 +11,7 @@ the wrong ones produces steps the executor has to rewrite.
 |---|---|---|
 | Role | authoring, Excel, PDFs, and now full test runs | deployment target and parity reference |
 | Python | `…\anaconda3\anaconda2025\python.exe` — 3.13.5, numpy 2.3.4, pandas 2.3.3, scipy 1.16.3, pytest 8.3.4 | conda env `PengSX`; pytest lives in the repo `.venv` |
-| Suite | 223 green in ~19 s | 223 green in ~92 s |
+| Suite | **287** green in ~21 s | **287** green in ~34 s |
 | Repo | `C:\Users\cnc\fixed_income_pricing` | `/home/PengSX/fixed_income_pricing` |
 
 **Correction worth flagging** (2026-08-25): the long-standing note that there was "no usable
@@ -104,3 +104,32 @@ instruction like "if not already present" produces no action unless it is attach
 locked decisions, environment facts, and explicit *don't re-derive this* notes. It is the
 single most useful file for predicting what the executor will do, and it is updated at the
 end of every round.
+
+---
+
+## Update 2026-08-30
+
+**Determinism has a documented limit now.** Local Windows and server 47 produce byte-identical
+results for the **test suite** and for the **single-bond endpoint JSON**, but **not** for the
+full 565-bond driver CSVs: those differ by up to **3.6e-8 relative, entirely in `convexity`**
+(a second difference ÷ bump² amplifies a last-bit rounding by 10⁸). Text columns are identical
+and prices/spreads/durations agree to ~1e-12.
+
+Consequences:
+
+- a cross-platform `sha256` diff of a driver CSV **shows a difference that is not a
+  regression** — do not chase it;
+- **production parity is asserted local-fresh vs local-fresh**, which is byte-exact and
+  therefore stricter. Two local runs of the same driver were verified byte-identical before
+  this was relied on;
+- the `outputs/*.csv` checked into the working tree are now **locally produced**. 47 remains
+  the deployment target and should be re-run at deployment.
+
+**Timings.** Full suite ~21 s local, ~34 s on 47. Each driver run loads the 3.4 MB workbook,
+so a five-driver parity sweep is a few minutes — run it in the background while writing the
+next piece rather than waiting on it.
+
+**Excel-side tests** (`integrations/excel_vba/tests/Run-BridgeTests.ps1`, 23 checks) drive a
+hidden real Excel instance and take about a minute. They are outside pytest and must be run
+deliberately — this round they were re-run to verify the v1.1 dispatch had not disturbed the
+bridge, rather than assumed from the fact that nothing in the .bas changed.

@@ -122,3 +122,59 @@ Settled by directive, test, or evidence. Reopen only if the user explicitly asks
 
 - **Reports serve two audiences**: Mario and the Google team, who now attend the briefing in
   person. Plain language throughout, plus one labelled engineering section.
+
+## Added 2026-08-30 (Round 2b — Mario's pivot column F)
+
+**What Mario's annotations mean**
+
+- **`finished` on the pivot's column F means "in the restructured `pricer/` package"**, not
+  "priced". Every coupon family he marked `no` had already been pricing in the legacy layer
+  since July. Read any future column-F marking that way.
+- **Column F is the ask.** It is committed with the workbook, because it is the only record of
+  what was requested and when. Do not treat a spreadsheet annotation as ephemeral.
+
+**Curves and market data**
+
+- **Par-yield file units are declared per file, never sniffed.**
+  `curves.bootstrap.PAR_YIELD_UNITS` marks `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt` as
+  PERCENT; the other 24 files are decimals. A threshold rule cannot separate a 0.5% Danish
+  yield from a 0.5 decimal, so declaring beats detecting.
+- **A par-yield row that scales above 100% raises `ParYieldUnitError` before the bootstrap
+  runs.** This exists so a units mistake can never again present itself downstream as
+  "the par curve is not arbitrage-free", which is a statement about the market.
+- **An entry whose only evidence is one of our own error messages is not yet a data gap.**
+  Reproduce the claim against the raw file, or against the market the file describes, before
+  writing it into the missing-data registry and before asking anyone for it. This rule cost
+  two months and one silently-dropped bond to learn.
+
+**Interface**
+
+- **One entry point, seven instrument types** — `bond.instrument_type` dispatches; there is
+  no second endpoint, envelope or error vocabulary. Adding the mortgage engine later is one
+  map entry and one function. `analyze_payload` is the public name; `analyze_vanilla_payload`
+  is retained as an alias and a typeless payload is still vanilla, which is what keeps the
+  Excel bridge working untouched.
+- **A fixed-then-floating bond without its post-switch margin is REFUSED, not defaulted to
+  zero.** A placeholder margin prices the floating leg as if the borrower paid pure index and
+  reports a half-modelled bond as a whole one. A plain floater *may* be priced with the margin
+  absorbed into the calibrated spread — and the response then says so explicitly, so the
+  number is never read as a clean credit spread.
+- **`schema_version` is 1.1 and the change is additive.** A v1.0 request is a valid v1.1
+  request returning the same numbers.
+
+**Numerical conventions**
+
+- **A floating note's effective duration has two exact regimes and the sign flips between
+  them.** With the already-fixed `current_coupon` supplied it is **+**the time to the next
+  reset; with that period projected off the curve it is **−**the time *since* the last reset,
+  because the bump reprices that coupon too. Both are within one coupon period and far below
+  a same-maturity fixed bond. Neither is a bug; only the interpretation differs.
+
+**Validation**
+
+- **Production parity is compared local-fresh vs local-fresh.** Windows and server 47 agree
+  for the test suite and the single-bond endpoint JSON, but full 565-bond driver CSVs differ
+  by up to **3.6e-8 relative, entirely in `convexity`** (a second difference ÷ bump² amplifies
+  a last-bit rounding by 10⁸). Text columns are identical and prices/spreads/durations agree
+  to ~1e-12. A cross-platform byte comparison therefore shows a difference that is not a
+  regression.

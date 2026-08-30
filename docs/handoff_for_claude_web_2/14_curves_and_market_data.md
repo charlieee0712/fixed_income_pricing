@@ -37,6 +37,43 @@ Quarterly exact to 30 y (the >30 y node is terminal extrapolation), Monthly with
 the short end. The golden test uses **segmented** thresholds rather than one loose one, so
 the strict cases stay strict.
 
+## 1a. ⭐ Par-yield file UNITS — declared, never detected (added 2026-08-30)
+
+**The exports are not uniform.** Twenty-four of the twenty-six `*_Yield_Curve.txt` files store
+par yields as **decimals** (`0.0304` = 3.04%). **`GBP_Yield_Curve.txt` and
+`DKK_Yield_Curve.txt` store PERCENT** (`3.04` = 3.04%).
+
+```python
+# curves/bootstrap.py
+PAR_YIELD_UNITS = {"GBP_Yield_Curve.txt": "percent", "DKK_Yield_Curve.txt": "percent"}
+DEFAULT_PAR_YIELD_UNITS = "decimal"
+```
+
+`load_par_curve(path, date, units=None)` looks the file up by name; `units=` overrides per
+call. Verified across all 26 files at three dates each, against the actual market — GBP's
+2009-03-31 row is `0.731 / 1.183 / 2.341 / 3.157 / 4.157`, which is that day's gilt curve;
+DKK's 2020-06-15 row runs `−0.463 … +0.295`, the negative-rate curve of that summer.
+
+**Why a registry and not a heuristic.** A "values above 1 must be percent" rule gets GBP right
+and **DKK wrong** — DKK's median value is 0.543, because Danish rates spent most of the sample
+near zero. No threshold separates a 0.5% yield from a 0.5 decimal. Declaring is the only
+honest option, and adding a new currency file means checking it against the market once and
+adding a line.
+
+**The guard.** `ParYieldUnitError` is raised **before** the bootstrap when any scaled par
+value exceeds 100%. It exists because of what happened without it: read as decimals, the GBP
+file became a 73%–415% par curve, and the bootstrap reported the only thing it could see —
+*"par curve is not arbitrage-free at this node"*. That is a true statement about the curve we
+built and a false one about the file, and it stood for two months as a data gap in the
+registry with an open Bloomberg request behind it. Full account: `05_traps_and_gotchas.md`
+§1.9; the rule it produced is in `03_conventions_and_laws.md`.
+
+**What it unblocked:** both GBP corporates now price — France Télécom 7.50% 2011 at
+**205.31 bp** / 1.86 y, and a UK EMTN fixed 5.50% 2033 at **197.30 bp** / 12.55 y, the latter
+having been absent from the output rather than flagged. Cross-check: the second bond prices at
+279.93 bp on the **USD** curve against 197.30 on its own, and the ~83 bp gap is precisely the
+gilt-vs-Treasury difference at 24 years — two independently computed numbers agreeing.
+
 ## 2. Currency routing
 
 ```python
@@ -49,18 +86,21 @@ than falling back. The wrapper the endpoint uses is
 picks the frequency variant and turns every failure into a single, path-free
 `CurveUnavailable` with a `reason` of `not_found` or `build_failed`.
 
-Three live failure modes, verified on the server:
+Two live failure modes, verified on the server:
 
 ```text
 CHF 2009-03-31   no par-curve file configured for the currency   -> not_found
 KRW 2009-03-31   file exists, that date is not in it             -> not_found
-GBP 2009-03-31   file and date exist, bootstrap refuses:         -> build_failed
-                 non-positive discount factor at t = 3.000,
-                 the par curve is not arbitrage-free there
 ```
 
-The GBP case blocks 2 GBP bonds and is on the opportunistic ask list. It is a **data**
-problem, not a date problem.
+⚠️ **GBP used to be the third**, listed here as the `build_failed` example and described as
+"a data problem, not a date problem". That was wrong — see §1a. It was a units bug in our
+loader, GBP now builds in all four variants, and both GBP bonds price.
+
+`build_failed` therefore has **no live example today**. Its mapping is still tested, by
+monkeypatching the loader to raise — which is the right way round: the subject of that test
+is the error mapping, not the state of any file. A test whose fixture is "this real thing
+happens to be broken" fails the day the thing is fixed, and looks like a regression.
 
 ## 3. The frequency variant matters
 

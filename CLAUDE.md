@@ -42,6 +42,8 @@ checks — those are decided here, from the repo.
   Zip → `handoff1_<date>.zip`. Precedence inside: 01 wins over the verbatim copies.
 - **`docs/handoff_for_claude_web_2/`** (NEW 2026-08-25) = **the DEEP bundle**: cap **40
   files**, no length limit per file, the reference web-Claude PLANS FROM. 32 files today.
+  **Last refreshed 2026-08-30** (user: "全面更新handsoff两个包") — h1 3,367 lines /
+  `handoff1_2026-08-30.zip` 110 KB · h2 7,548 lines / `handoff2_2026-08-30.zip` 228 KB.
   Structure: `00`-`07` orientation (START_HERE · current state · locked decisions ·
   conventions/laws · open asks · **traps & gotchas** · **feedback on previous plans** ·
   glossary) + `10`-`22` per-domain deep dives (architecture · engines fixed/tree/floating ·
@@ -51,10 +53,13 @@ checks — those are decided here, from the repo.
   phase2 methods · Mario's template). Zip → `handoff2_<date>.zip`.
   **Two files there are the point of the whole bundle:** `05_traps_and_gotchas` (the
   silent-failure list — Excel serials, the 365.25-vs-364 axis, VBA `Null`, Edge writing no
-  PDF, staging copies breaking pytest) and `06_feedback_on_previous_plans` (what the two
-  2026-08-25 plans got wrong + the four habits: name a count's SOURCE and POPULATION; never
-  leave a modelling choice to "the caller"; never assert code state — schedule a gate check;
-  name the silent-failure modes).
+  PDF, staging copies breaking pytest, and **since 08-30 §1.9-1.11: the GBP par-yield units
+  bug, the driver's silent `skipped=N`, and the cross-platform convexity noise floor**) and
+  `06_feedback_on_previous_plans` (what the two 2026-08-25 plans got wrong + the four habits:
+  name a count's SOURCE and POPULATION; never leave a modelling choice to "the caller"; never
+  assert code state — schedule a gate check; name the silent-failure modes — **plus habit 5,
+  added 08-30: a claimed data gap needs evidence from the SOURCE, not from our own error
+  message**; §4's five Round-2b carry-overs are now closed and scored).
 - Supersedes the single root `HANDOFF_FOR_CLAUDE_WEB.md` (removed the day it was born,
   2026-08-15). Structure originally copied from the user's csi1000 `handoff_2` pattern.
 

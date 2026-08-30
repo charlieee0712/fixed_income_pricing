@@ -1,119 +1,146 @@
 # Floating-rate notes and fixed-then-float hybrids
 
-**Round 2b's migration target.** Both engines are validated and in production; neither has
-moved into `pricer/` yet. Read this before writing that plan.
+**Migrated into `pricer/` on 2026-08-30 (Round 2b).** This file used to describe next week's
+target; it now describes shipped code. The engines answer Mario's pivot column-F rows
+**F12 · F14 · F15 · F16** (and, unmarked but sharing the hybrid engine, rows 6–11).
+
+```text
+pricing/frn.py     -> pricer/core/pricing/floating.py   + assets/corporate/floating.py
+pricing/hybrid.py  -> pricer/core/pricing/hybrid.py     + assets/corporate/hybrid.py
+```
+
+Both moved **verbatim** (the body below the docstring is asserted byte-identical to the
+pre-move file); the old paths are compatibility shims. Only hybrid's two import lines changed,
+and both targets are exact aliases of the same objects — asserted in a test, not assumed.
 
 ---
 
-## 1. The FRN engine (`pricing/frn.py`, 188 lines)
+## 1. The FRN engine (`core/pricing/floating.py`)
 
-**Method, settled 2026-07-08 with Mario:**
+Each future coupon is the **simple forward off our own bootstrapped `ZeroCurve`**,
+`F(t₀,t₁) = (DF(t₀)/DF(t₁) − 1)/(t₁−t₀)`, plus the note's quoted margin. Every cash flow is
+discounted on the **same** curve plus a flat calibrated spread. Single-curve — the 2009
+convention. OIS dual-curve discounting is a documented future enhancement, deliberately not
+modelled, and the docstring says so rather than leaving a reader to assume it was overlooked.
 
-```text
-coupon projection   simple implied forward off our own bootstrapped ZeroCurve:
-                    F(t1,t2) = (DF(t1)/DF(t2) − 1) / (t2 − t1),  plus the quoted margin
-discounting         the SAME curve plus a flat implied OAS (single-curve)
-calibration         implied OAS solved to the clean custodian mark
-effective duration  bump the CURVE, which REPROJECTS the forwards, then rediscount
-```
+Conventions mirror the fixed engine exactly (ACT/364, backward `round(364/freq)`-day grid,
+the same accrued formula), so FRN and vanilla numbers are directly comparable.
 
-Single-curve is the **2009 convention** and it matches what the legacy tree did. OIS
-dual-curve is recorded in the code and docs as a future enhancement, not as a defect — that
-transparency was a deliberate decision, not an oversight.
+**Input shape — the thing to know before reading the code.** A floater has **no `coupon`
+input at all**. It is replaced by two:
 
-**Public surface**: `simple_forward`, `parse_frn_spread`, `price_frn`, `implied_oas_frn`,
-`frn_risk_metrics`, and the `FrnResult` dataclass.
+| input | meaning |
+|---|---|
+| `quoted_margin_bp` | the contractual spread over the index |
+| `current_coupon_pct` | the ONE coupon already fixed, at the last reset (optional) |
 
-**Two behaviours that look like bugs and are not:**
+That difference *is* the instrument, and it is the first thing to point at in a walkthrough.
 
-- **duration bumps the curve, not the spread.** For a floater the coupon *follows* rates, so
-  bumping the discount spread alone gives a meaningless answer. Bumping the curve reprojects
-  the forwards, and the resulting duration is approximately the time to the next reset.
-- **a deep-discount long floater can have NEGATIVE effective duration.** The 2066/2067
-  floaters show about −10.7 against roughly +20 for a same-maturity fixed bond. They carry a
-  credit-spread annuity, and that is what the sign is telling you.
+### ⚠️ Duration: two exact regimes, and the sign flips
 
-**One bug fixed en route, worth remembering**: the stub (current) period's forward must
-start at the true last reset, i.e. `t_prev < 0`. Otherwise the par-floater telescoping
-identity breaks.
+The old docstring described only one of these, and two tests were written wrong against it
+before the engine was checked. Both regimes are exact, measured on a flat 4% curve, a
+30-year note:
 
-**Production**: 18 of 27 pure floaters priced at the time of the FRN round; 7 on the
-`floating` route at 3-31 today (the difference is hybrids and margin-gap names being split
-out). One is blocked by the unusable GBP curve.
+| `current_coupon_pct` | effective duration | why |
+|---|---|---|
+| supplied (e.g. 4% or 6%) | **+0.104396** = +time to the **next** reset | the running coupon is genuinely fixed, so the bump cannot move it |
+| omitted (projected) | **−0.395604** = −time **since** the last reset | the bump reprices that period's coupon too, so the note behaves like a claim struck at the last reset |
+| — | *same-maturity fixed bond: 17.44* | the comparison that makes both look small |
 
-**Validation is by invariant, not by golden** (there is no Bloomberg reference): par under
-any curve shift when spread and OAS are zero; OAS round-trip; near-par duration ≈ 0; and the
-signature check — FRN duration much smaller than a same-maturity fixed bond's, which holds
-even at 78 years.
+Both are within one coupon period, and the "supplied" case is independent of the coupon's
+level. A **third**, different regime exists for a deep-discount note: price ≈ par minus a
+spread annuity, so a rate rise shrinks the gap to par and the price *rises*, giving a negative
+duration of order spread × annuity duration — and this one **grows with maturity**, unlike the
+two above. A 57-year note marked near 50 shows ≈ −10.6.
 
-## 2. The hybrid engine (`pricing/hybrid.py`, 162 lines)
+Universal check: `|duration| ≪` a same-maturity fixed bond. That is the reliability test to
+run when a floater's number looks surprising.
 
-Fixed-then-float bonds: a fixed coupon to a switch date, then a floating leg. Composed
-rather than reimplemented:
+### The spread's meaning depends on an input
 
-```text
-fixed leg     price_bond's EXACT conventions, grid anchored at the SWITCH, accrued off it,
-              no face
-floating leg  price_frn's EXACT conventions, grid anchored at MATURITY truncated at the
-              switch, first period starts AT the switch, forward·tau + the documented
-              margin, face at maturity
-glue          ONE curve and ONE implied OAS discount both legs
-risk          curve bump (the FRN convention)
-```
+Most of this book's `coupon_formula` cells read "EURIBOR + Spread" with no number. Those notes
+are priced with `quoted_margin_bp = 0`, and the calibrated spread then **absorbs the unknown
+contractual margin as well as credit** — a discount-margin-type number, not a clean credit
+spread. The price still reprices the mark exactly and the risk numbers are unaffected (a
+floater's rate sensitivity is structural, not spread-level), and a real margin can be
+separated back out later.
 
-**Why this composition is trustworthy:**
+**The endpoint states which of the two meanings applies**, in `results.spread_interpretation`,
+rather than leaving a reader to assume. Four notes have documented margins in
+`data/frn_spreads.csv` (Bear L+40, PNC L+14, MS L+45, IndepComm L+182 — the first three
+corrected to quarterly).
 
-- **degenerate limits delegate**: switch ≥ maturity calls `price_bond`; switch ≤ valuation
-  calls `price_frn`. Bit-exact, by construction;
-- **the margin-zero identity**: with spread = 0 and OAS = 0 the floating leg telescopes
-  *exactly* to `face · DF(t_switch)` on **any** curve, so the hybrid equals a fixed-to-switch
-  bullet. That is the composition test, and it is the reason the glue can be trusted.
+## 2. The hybrid engine (`core/pricing/hybrid.py`)
 
-**Production**: 10 fully-termed hybrids priced; 8 BT-marked `hybrid-margin-unavailable`
-because their post-call margin is unknown. A margin arriving is **one CSV cell** in
-`data/hybrid_switch_terms.csv` and the bond prices — zero code change.
+Fixed coupon to a contractual switch date, floating after. **Every** such bond in the URS book
+was still inside its fixed leg at valuation, with switches from 2009 to 2037.
 
-At the valuation date **every** fixed-to-float hybrid was still in its fixed leg (switches
-run 2009-10 to 2037). Two perpetuals truncate at 90 years, where the face PV is negligible.
+- **fixed leg** (valuation → switch): the vanilla engine's conventions, grid anchored at the
+  **switch**, accrued off that grid, no face;
+- **floating leg** (switch → maturity): the FRN engine's conventions, grid anchored at
+  **maturity** and truncated at the switch, first period starting **at** the switch;
+- **one curve and one calibrated spread discount both legs**, because it is one borrower's one
+  promise. Splitting the spread would invent a second credit.
 
-`price-to-call` is reported as a **reference column only**: for a deep-discount name it is
-spurious (the market is pricing extension, not the call). SMBC is the clearest example —
-415 bp as a hybrid versus 1869 bp priced to call.
+**Degenerate limits delegate rather than approximate**, so they agree bit-for-bit by
+construction: switch ≥ maturity → the vanilla engine; switch ≤ valuation → the FRN engine.
+Both are asserted with `==`.
 
-## 3. The coupling that will break the migration if ignored
+**The composition itself is validated by the margin-0 identity**: with margin and spread both
+zero, the floating leg telescopes *exactly* to `face × DF(t_switch)` on **any** curve, so the
+hybrid equals a plain bullet maturing at the switch. That is the test that proves the two legs
+are glued correctly rather than merely each being right.
+
+**Perpetuals** truncate at 90 years, where the face is worth essentially nothing.
+
+**`reference_oas_to_switch_bp`** is a secondary column — the spread of a bullet repaid at par
+on the switch date. It is a real market convention while a bond trades near par and **actively
+misleading for a deep discount**, where the market is pricing *extension*: a bond marked at 36
+solves a spread of many hundreds of basis points that describes nothing. The response labels
+it, and `implied_oas_bp` is always the answer.
+
+## 3. The coupling that would have broken the migration
+
+`hybrid.py` imported **private** names from `frn.py`:
 
 ```python
-# src/pricing/hybrid.py
 from pricing.frn import YEAR_DAYS, _as_date, _df, price_frn, simple_forward
 ```
 
-The hybrid imports **private** names from the FRN module. Any shim left at `pricing/frn.py`
-must re-export `_as_date`, `_df` and `YEAR_DAYS` as well as the public functions, or the
-hybrid engine fails at **import time**. This is the single most likely way Round 2b goes
-wrong.
+The shim therefore re-exports the privates as well as the public surface, and there is a test
+named after the reason:
+`test_floating_shim_still_carries_the_private_helpers_hybrid_needs`. This was flagged in the
+previous handoff as the single most likely way the migration would break, and naming it in
+advance is why it did not.
 
-Other import sites to update or preserve: `scripts/calibrate_risk.py`, `tests/test_frn.py`,
-`tests/test_hybrid.py`, `tests/test_price_convention.py`.
+## 4. Volatility policy
 
-## 4. Volatility policy for floaters
+**A plain floater and a fixed-then-floating bond both have no volatility input, structurally**
+— nobody holds an option, so there is nothing for rate volatility to act on. The endpoint
+returns `null` (never `0.0`, which would read as a calculated vega) with a **per-product
+reason**, not one generic line. A callable floater would need the tree; none is held.
 
-The current FRN engine is deterministic and has **no** stochastic volatility parameter. It
-should report exactly that — `yield_volatility_applicable = false` with the reason — and
-must not manufacture a zero vega. A callable FRN or a stochastic-rate FRN would be a
-separate product extension, not a tweak to this engine.
+## 5. What Round 2b actually proved
 
-That policy is also why FRN was moved out of the volatility-focused week: its honest answer
-to Mario's question is "not applicable".
+No numeric golden exists for these families — every relevant Monthly row is in the stale
+2010-03-01 batch. So the evidence is:
 
-## 5. What Round 2b has to prove
+- production driver CSVs **byte-identical** to a pre-change baseline after every code-bearing
+  commit (all five files, hashed);
+- endpoint and wrapper results equal to direct engine calls with **`==`**, not a tolerance;
+- shim identity asserted on the **object** (`a is b`), not on equality;
+- the invariants above, each with at least one exact anchor: the par-at-last-reset identity
+  holds to 1e-12 at every curve level, the margin-0 telescoping is exact on any curve, and the
+  two degenerate limits are bit-exact.
 
-1. the FRN implementation moves **verbatim** into `core/pricing/floating.py`, with
-   `pricing/frn.py` as a shim that re-exports the privates;
-2. every existing FRN **and hybrid** test stays green;
-3. frozen production outputs (`outputs/implied_oas.csv` in particular) stay
-   **byte-identical** — freeze before, compare after, by hash;
-4. a thin `assets/corporate/floating.py` wrapper appears, with the same per-output function
-   names as the other wrappers plus `next_reset_time`;
-5. the endpoint gains `instrument_type` dispatch. A floater's input set genuinely differs —
-   quoted margin, reset anchor, current coupon — so that contract deserves deciding in the
-   plan rather than at the gate.
+## 6. Route census (source: `outputs/implied_oas_2009-03-31.csv`, 565 rows)
+
+Rows 12/14/15/16 = 27 tab rows, all 27 held: **7 FRN + 8 hybrid + 6 vanilla-schedule
+re-routes = 21 priced**; 5 `hybrid-margin-unavailable` + 1 defaulted floater. Rows 6–11
+(`Fixed → Reset`) = 6 tab / 6 held / 3 priced, 3 awaiting margins.
+
+The 8 margin-gap names are **deliberately not half-modelled** — a guessed post-switch margin
+prices the floating leg as if the borrower paid pure index and reports a confident number for
+a bond nobody has fully specified. A margin fill is **one cell** in
+`data/hybrid_switch_terms.csv` and the bond prices with zero code change.

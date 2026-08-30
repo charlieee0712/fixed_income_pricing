@@ -72,6 +72,76 @@ number in it is plausible and internally consistent-looking, and tuning a new en
 reproduce it would corrupt the engine. See `19_monthly_sheet_reconciliation.md` for the four
 proofs.
 
+### 1.9 ⭐ A market-data file in the wrong units, reported as bad market data
+
+**The most expensive one so far: it survived two months, cost a standing request to the
+client, and hid a bond from every report we produced.**
+
+The `data/*_Yield_Curve.txt` par-yield exports are **not uniform**. Twenty-four of the
+twenty-six store rates as decimals (`0.0304` = 3.04%); **`GBP_Yield_Curve.txt` and
+`DKK_Yield_Curve.txt` store percentages** (`3.04` = 3.04%). `load_par_curve` multiplied every
+file by 100 unconditionally, so the 2009-03-31 gilt curve arrived as a **73%–415% par curve**.
+The bootstrap then did exactly the right thing and refused it:
+
+```text
+Non-positive discount factor at t=3.000 (freq=1);
+par curve is not arbitrage-free at this node.
+```
+
+That message is **true about the curve we built and false about the file**. We recorded it as
+a property of the data, wrote "our GBP file has a non-arb 3y node" into the missing-data
+registry, and asked both Mario and Liping for a replacement UK curve. The raw row was
+`0.731 / 1.183 / 2.341 / 3.157 / 4.157` all along — that day's gilt market, in percent.
+
+What it cost:
+
+- one sterling bond carried unpriced for two months with an open data request against it;
+- **one sterling bond missing from the output entirely** — see 1.10, which is the worse half;
+- a wrong entry in a registry whose whole purpose is to say what we are waiting for.
+
+The fix is deliberately a **declaration, not a detection**: `curves.bootstrap.PAR_YIELD_UNITS`
+names the two percent files. A sniffing heuristic was considered and rejected, and the reason
+generalises — no threshold separates a 0.5% Danish yield from a 0.5 decimal. DKK's median
+value is 0.543, so any "looks bigger than 1 ⇒ percent" rule would have got GBP right and DKK
+wrong, by luck rather than by reasoning. Alongside it, `ParYieldUnitError` fires **before** the
+bootstrap when a scaled row exceeds 100%, naming units as the cause, so this failure class can
+never again disguise itself as a statement about arbitrage.
+
+**The generalisable lesson, now a rule in the missing-data registry:** *an entry whose only
+evidence is one of our own error messages is not yet a data gap.* Reproduce the claim against
+the raw source — or against the market the source is supposed to describe — before writing it
+down and before asking anyone for it. Here that check took minutes.
+
+### 1.10 A bond dropped by the driver without a flag
+
+The same units bug hid a second sterling bond, and this one is the more instructive failure:
+it was not flagged, it was **silently skipped**. `TNTG301334W`, a plain fixed 5.50% of 2033,
+simply did not appear in the output at all — no row, no reason, no count anywhere that went
+down. And it is a `Coupon_Formula2 = Fixed` bond, i.e. a member of the class Mario had already
+been shown as *finished*.
+
+**A flagged bond is visible; a skipped one is not.** The driver header has always printed
+`skipped=N` and it read `skipped=1` for months without anyone reading it. It now reads
+`skipped=0`, and that number is worth watching after every run: it is the only place a
+silently-dropped position shows up.
+
+When you next reason about coverage, the question is not "how many are flagged" but
+**"do priced + flagged equal the universe we started from?"**
+
+### 1.11 Cross-platform CSV comparison showing a difference that is not a regression
+
+Full 565-bond driver outputs from Windows and from server 47 are **not byte-identical**. They
+differ by up to **3.6e-8 relative, and entirely in the `convexity` column** — convexity is a
+second difference divided by the square of a one-basis-point bump, so it amplifies a last-bit
+floating-point difference by 10⁸. Prices, spreads and durations agree to about 1e-12, and every
+text column matches exactly.
+
+Two consequences. A `sha256` diff of a driver CSV across platforms will look like a
+regression and is not one. And the correct parity protocol is **local-fresh vs local-fresh**,
+which is byte-exact and therefore a *stricter* test than the cross-platform comparison it
+replaces. (Two local runs of the same driver are byte-identical — that was verified before
+relying on it.)
+
 ## 2. Environment traps
 
 | Trap | Reality |
@@ -111,6 +181,10 @@ proofs.
 
 ## 4. Data traps
 
+- **The par-yield exports are not in consistent units** — GBP and DKK are percent, the other
+  24 files are decimals. Declared in `curves.bootstrap.PAR_YIELD_UNITS`; see 1.9. Assume the
+  same about any *new* market-data file until it has been checked against the actual market
+  on a date you can verify independently.
 - **The custodian's coupon columns in the master sheet are EMPTY.** Terms come from the
   `Corporate Bonds` tab; the join is on Asset ID (100% match), ISIN secondary.
 - **`Coupon_Formula2` is column M**, not N. (Mario said N; the header confirms M, and N is
@@ -133,6 +207,11 @@ proofs.
 - **Do not refresh the handoff bundles automatically.** Only on explicit request.
 - **Keep the handoff bundles out of the Drive staging copies.** They contain internal comms
   framing and are not for Mario.
+- **A test fixture must not borrow a data defect.** Two endpoint tests used GBP as their
+  "unbuildable curve" example, so fixing the curve broke them. The subject of those tests is
+  the *mapping* from an unbuildable curve onto `CURVE_BUILD_FAILED`, not the state of any
+  file; they now monkeypatch the loader. Whenever a test's fixture is "this real thing happens
+  to be broken", the test will one day fail for the right reason and look like a regression.
 - **A number quoted from a CSV may be rounded.** The weekly report's volatility table was
   first computed from a CSV's rounded spread (410.8) and produced a price row that
   contradicted the report's own claim that the baseline reproduces the mark. Recalibrating
