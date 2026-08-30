@@ -25,12 +25,32 @@ from __future__ import annotations
 import math
 import uuid
 
-SCHEMA_VERSION = "1.0"
-ENGINE = "corporate_vanilla"
+SCHEMA_VERSION = "1.1"
+ENGINE = "corporate_vanilla"                    # engine of a request that names no type
 
 OPERATION_CALIBRATE = "calibrate_and_risk"      # clean price IN  -> implied OAS OUT
 OPERATION_PRICE_AT_OAS = "price_at_oas"         # OAS in bp   IN  -> model price OUT
 OPERATIONS = (OPERATION_CALIBRATE, OPERATION_PRICE_AT_OAS)
+
+# One dispatch key, seven products. Adding types here rather than adding endpoints keeps
+# ONE entry point, one envelope and one set of error codes for every bond in the book.
+VANILLA = "vanilla"
+STEPPED = "stepped"
+FLOATING = "floating"
+FIXED_TO_FLOATING = "fixed_to_floating"
+CALLABLE = "callable"
+PUTTABLE = "puttable"
+SINKING = "sinking"
+INSTRUMENT_TYPES = (VANILLA, STEPPED, FLOATING, FIXED_TO_FLOATING,
+                    CALLABLE, PUTTABLE, SINKING)
+
+# The products priced on the short-rate tree — the only ones with a volatility input.
+TREE_TYPES = (CALLABLE, PUTTABLE, SINKING)
+# The products whose coupon is a fixed schedule rather than a single rate.
+SCHEDULE_TYPES = (STEPPED,)
+
+DEFAULT_VOLATILITY = 0.15                       # Mario v1 short-rate volatility
+DEFAULT_SINKING_BASIS = "outstanding"
 
 DEFAULT_SPREAD_SHIFT_BP = 10.0
 QUOTE_FACE = 100.0                              # every price in this contract is per 100
@@ -39,6 +59,7 @@ QUOTE_FACE = 100.0                              # every price in this contract i
 INVALID_JSON = "INVALID_JSON"
 VALIDATION_ERROR = "VALIDATION_ERROR"
 UNSUPPORTED_OPERATION = "UNSUPPORTED_OPERATION"
+UNSUPPORTED_INSTRUMENT = "UNSUPPORTED_INSTRUMENT"
 CURVE_NOT_FOUND = "CURVE_NOT_FOUND"
 CURVE_BUILD_FAILED = "CURVE_BUILD_FAILED"
 CALIBRATION_FAILED = "CALIBRATION_FAILED"
@@ -52,10 +73,15 @@ NON_FINITE_RESULT = "NON_FINITE_RESULT"
 
 _KNOWN_TOP = {"schema_version", "request_id", "operation",
               "bond", "market", "analysis", "model", "metadata"}
-_KNOWN_BOND = {"instrument_id", "currency", "coupon_pct", "coupon_frequency",
-               "maturity_date", "face_value", "day_count_label"}
+_KNOWN_BOND = {"instrument_id", "instrument_type", "currency", "coupon_pct",
+               "coupon_frequency", "maturity_date", "face_value", "day_count_label",
+               # per-product inputs (each used by the types named in bonds_input)
+               "coupon_schedule", "quoted_margin_bp", "current_coupon_pct",
+               "switch_date", "float_frequency",
+               "call_schedule", "put_schedule", "sinking_schedule",
+               "sinking_fraction_basis"}
 _KNOWN_MARKET = {"valuation_date", "clean_price_per_100"}
-_KNOWN_ANALYSIS = {"oas_bp", "spread_shift_bp"}
+_KNOWN_ANALYSIS = {"oas_bp", "spread_shift_bp", "volatility_scenarios"}
 _KNOWN_MODEL = {"yield_volatility_decimal"}
 
 
@@ -129,9 +155,31 @@ def normalize_request(payload, warnings: list = None):
             field="bond.maturity_date",
         )
 
+    instrument_type = (_text(bond.get("instrument_type"), "bond.instrument_type")
+                       or VANILLA).lower().replace("-", "_").replace(" ", "_")
+    if instrument_type not in INSTRUMENT_TYPES:
+        raise RequestError(
+            UNSUPPORTED_INSTRUMENT,
+            f"instrument_type {instrument_type!r} is not supported; use one of "
+            f"{', '.join(INSTRUMENT_TYPES)}",
+            field="bond.instrument_type",
+        )
+
     currency = _text(bond.get("currency"), "bond.currency", required=True).upper()
-    coupon_pct = _number(bond.get("coupon_pct"), "bond.coupon_pct", required=True,
-                         minimum=0.0, maximum=40.0)
+    # A floating note has NO fixed coupon input; a stepped bond carries a schedule
+    # instead of a rate. Requiring one everywhere would force callers to invent a number.
+    coupon_required = instrument_type not in (FLOATING,) + SCHEDULE_TYPES
+    coupon_pct = _number(bond.get("coupon_pct"), "bond.coupon_pct",
+                         required=coupon_required, minimum=0.0, maximum=40.0)
+    if instrument_type == FLOATING and coupon_pct is not None:
+        warnings.append(_warning(
+            UNUSED_FIELD, "bond.coupon_pct",
+            "a floating-rate note has no fixed coupon: 'bond.coupon_pct' was ignored. "
+            "The already-fixed coupon of the CURRENT period goes in "
+            "'bond.current_coupon_pct'; the contractual spread goes in "
+            "'bond.quoted_margin_bp'.",
+        ))
+        coupon_pct = None
     coupon_frequency = _frequency(bond.get("coupon_frequency"))
 
     clean_price = _number(market.get("clean_price_per_100"), "market.clean_price_per_100",
@@ -157,11 +205,15 @@ def normalize_request(payload, warnings: list = None):
             f"par / {QUOTE_FACE:g} on your side.",
         ))
 
+    product = _product_inputs(bond, analysis, instrument_type, valuation_date,
+                              maturity_date, warnings)
+
     request = {
         "schema_version": _text(payload.get("schema_version"), "schema_version") or SCHEMA_VERSION,
         "request_id": _text(payload.get("request_id"), "request_id") or _generated_id(),
         "operation": operation,
         "instrument_id": _text(bond.get("instrument_id"), "bond.instrument_id"),
+        "instrument_type": instrument_type,
         "currency": currency,
         "coupon_pct": coupon_pct,
         "coupon_frequency": coupon_frequency,
@@ -175,7 +227,158 @@ def normalize_request(payload, warnings: list = None):
         "yield_volatility": _number(model.get("yield_volatility_decimal"),
                                     "model.yield_volatility_decimal", minimum=0.0),
     }
+    request.update(product)
     return request, warnings
+
+
+def _product_inputs(bond: dict, analysis: dict, instrument_type: str, valuation_date: str,
+                    maturity_date: str, warnings: list) -> dict:
+    """Normalise the inputs that belong to one product only.
+
+    Inputs
+    ------
+    1. bond            : dict — the request's bond section.
+    2. analysis        : dict — the request's analysis section.
+    3. instrument_type : str — the dispatch key, already validated.
+    4. valuation_date  : str — normalised ISO date.
+    5. maturity_date   : str — normalised ISO date.
+    6. warnings        : list — accumulator, appended in place.
+
+    Returns: dict of engine-ready per-product values, with every key present for every
+    type (``None`` where the product does not use it) so the response shape never
+    depends on which branch ran. Raises :class:`RequestError` for a missing input the
+    product cannot be priced without.
+    """
+    out = {
+        "coupon_schedule": None,
+        "quoted_margin_bp": None,
+        "current_coupon_pct": None,
+        "switch_date": None,
+        "float_frequency": None,
+        "call_schedule": None,
+        "put_schedule": None,
+        "sinking_schedule": None,
+        "sinking_fraction_basis": None,
+        "volatility_scenarios": None,
+    }
+
+    if instrument_type in SCHEDULE_TYPES:
+        out["coupon_schedule"] = _coupon_schedule(bond.get("coupon_schedule"))
+
+    if instrument_type in (FLOATING, FIXED_TO_FLOATING):
+        # A hybrid MUST have its post-switch margin: pricing one on a placeholder zero
+        # would report a half-modelled bond as a whole one. A plain floater may be
+        # priced with the margin absorbed into the calibrated spread, and the response
+        # says which happened, so the number is never read as a clean credit spread.
+        margin = _number(bond.get("quoted_margin_bp"), "bond.quoted_margin_bp",
+                         required=(instrument_type == FIXED_TO_FLOATING),
+                         minimum=0.0, maximum=5000.0)
+        if margin is None:
+            margin = 0.0
+            warnings.append(_warning(
+                UNUSED_FIELD, "bond.quoted_margin_bp",
+                "no quoted margin was supplied, so the calibrated spread ABSORBS the "
+                "note's contractual margin as well as its credit. The price is exact and "
+                "the risk numbers are unaffected, but do not read the spread as a clean "
+                "credit spread until a margin is supplied.",
+            ))
+        out["quoted_margin_bp"] = margin
+
+    if instrument_type == FLOATING:
+        out["current_coupon_pct"] = _number(bond.get("current_coupon_pct"),
+                                            "bond.current_coupon_pct",
+                                            minimum=0.0, maximum=40.0)
+
+    if instrument_type == FIXED_TO_FLOATING:
+        switch = _iso_date(bond.get("switch_date"), "bond.switch_date")
+        if switch <= valuation_date:
+            warnings.append(_warning(
+                UNUSED_FIELD, "bond.switch_date",
+                f"the switch date {switch} is on or before the valuation date — this bond "
+                f"is already floating, and it is priced on the floating-rate engine.",
+            ))
+        out["switch_date"] = switch
+        if bond.get("float_frequency") is not None:
+            out["float_frequency"] = _frequency(bond.get("float_frequency"),
+                                                field="bond.float_frequency")
+
+    if instrument_type in TREE_TYPES:
+        out["call_schedule"] = _exercise_schedule(bond.get("call_schedule"),
+                                                  "bond.call_schedule")
+        out["put_schedule"] = _exercise_schedule(bond.get("put_schedule"),
+                                                 "bond.put_schedule")
+        out["sinking_schedule"] = _sinking_schedule(bond.get("sinking_schedule"))
+        out["sinking_fraction_basis"] = _text(bond.get("sinking_fraction_basis"),
+                                              "bond.sinking_fraction_basis")
+        _require_matching_schedule(instrument_type, out)
+        if out["sinking_schedule"]:
+            _check_sinking_basis(out["sinking_fraction_basis"])
+        out["volatility_scenarios"] = _volatility_scenarios(
+            analysis.get("volatility_scenarios"))
+
+    return out
+
+
+def _check_sinking_basis(basis) -> None:
+    """A sinking schedule must say what its fractions are fractions OF.
+
+    Inputs
+    ------
+    1. basis : str | None — ``bond.sinking_fraction_basis``.
+
+    Returns: None. Raises :class:`RequestError` when it is missing or not
+    ``"outstanding"``.
+
+    The engine already refuses both cases, but it does so from inside the spread solver,
+    where the failure surfaces as "no spread reprices this bond — check the price, the
+    coupon and the maturity". That message sends the reader hunting in the wrong place.
+    Refusing here names the actual field.
+    """
+    if basis is None:
+        raise RequestError(
+            VALIDATION_ERROR,
+            "'bond.sinking_fraction_basis' is required with a sinking schedule: this "
+            f"engine retires a fraction of the amount still OUTSTANDING, so send "
+            f"{DEFAULT_SINKING_BASIS!r}. It is not defaulted, because a caller who meant "
+            f"fractions of the ORIGINAL face would otherwise get the other model without "
+            f"being told.",
+            field="bond.sinking_fraction_basis",
+        )
+    if basis.strip().lower() != DEFAULT_SINKING_BASIS:
+        raise RequestError(
+            VALIDATION_ERROR,
+            f"'bond.sinking_fraction_basis' {basis!r} is not implemented; this engine "
+            f"supports {DEFAULT_SINKING_BASIS!r} only. Retiring a fixed share of the "
+            f"ORIGINAL face works against a shrinking base, which a recombining tree "
+            f"cannot represent — that structure needs one callable sub-bond per sink "
+            f"date. Convert the schedule rather than relabelling it.",
+            field="bond.sinking_fraction_basis",
+        )
+
+
+def _require_matching_schedule(instrument_type: str, product: dict) -> None:
+    """A tree product must carry the right the caller says it has.
+
+    Inputs
+    ------
+    1. instrument_type : str — callable / puttable / sinking.
+    2. product         : dict — the normalised per-product inputs.
+
+    Returns: None. Raises :class:`RequestError` when the schedule naming the product's
+    own right is absent — a callable bond with no call schedule is a straight bond, and
+    silently pricing it as one would answer a question nobody asked.
+    """
+    needed = {CALLABLE: ("call_schedule", "a call schedule"),
+              PUTTABLE: ("put_schedule", "a put schedule"),
+              SINKING: ("sinking_schedule", "a sinking-fund schedule")}[instrument_type]
+    if not product[needed[0]]:
+        raise RequestError(
+            VALIDATION_ERROR,
+            f"instrument_type '{instrument_type}' needs {needed[1]} in "
+            f"'bond.{needed[0]}'; without one the bond is a straight bond and should be "
+            f"sent as instrument_type 'vanilla'",
+            field=f"bond.{needed[0]}",
+        )
 
 
 def inputs_used(request: dict) -> dict:
@@ -188,8 +391,9 @@ def inputs_used(request: dict) -> dict:
     Returns: dict — the audit block of the response. A wrong cell mapping in the
     Excel bridge shows up here immediately, without anyone reading Python.
     """
-    return {
+    used = {
         "instrument_id": request["instrument_id"],
+        "instrument_type": request.get("instrument_type", VANILLA),
         "currency": request["currency"],
         "coupon_pct": request["coupon_pct"],
         "coupon_frequency": request["coupon_frequency"],
@@ -201,6 +405,66 @@ def inputs_used(request: dict) -> dict:
         "face_value_supplied": request["face_value_supplied"],
         "face_value_per_quote": QUOTE_FACE,
     }
+    # Per-product inputs are echoed only where the product uses them, so a vanilla
+    # response is unchanged from v1.0 and a floating one is not padded with nulls.
+    extras = {
+        STEPPED: ("coupon_schedule",),
+        FLOATING: ("quoted_margin_bp", "current_coupon_pct"),
+        FIXED_TO_FLOATING: ("quoted_margin_bp", "switch_date", "float_frequency"),
+        CALLABLE: ("call_schedule", "put_schedule"),
+        PUTTABLE: ("call_schedule", "put_schedule"),
+        SINKING: ("sinking_schedule", "sinking_fraction_basis", "call_schedule",
+                  "put_schedule"),
+    }.get(request.get("instrument_type"), ())
+    for name in extras:
+        used[name] = _echo(name, request.get(name))
+    return used
+
+
+def _echo(name: str, value):
+    """Echo one per-product input in the SHAPE THE CALLER SENT IT.
+
+    Inputs
+    ------
+    1. name  : str — the field name.
+    2. value : the normalised, engine-ready value.
+
+    Returns: JSON-ready value. Schedules go back out as objects with the request's own
+    field names and units — ``rate_pct``, not the engine's decimal — because the audit
+    block exists so a wrong cell mapping in the spreadsheet is visible without reading
+    Python. An echo in different units than the request would defeat that.
+    """
+    if value is None:
+        return None
+    if name == "coupon_schedule":
+        # round only the ECHO: 0.07 * 100 is 7.000000000000001, and an audit line that
+        # does not match the cell it came from is worse than useless
+        return [{"effective_from": _iso(eff), "rate_pct": round(rate * 100.0, 10)}
+                for eff, rate in value]
+    if name in ("call_schedule", "put_schedule"):
+        return [{"date": _iso(date), "price_per_100": price} for date, price in value]
+    if name == "sinking_schedule":
+        return [{"date": _iso(date), "fraction": fraction, "price_per_100": price}
+                for date, fraction, price in value]
+    return value
+
+
+def _iso(value):
+    """A date as an ISO string; ``None`` passes through."""
+    return None if value is None else value.isoformat()
+
+
+def engine_for(instrument_type) -> str:
+    """Engine name reported in the response envelope.
+
+    Inputs
+    ------
+    1. instrument_type : str | None — the dispatch key.
+
+    Returns: str — ``corporate_<type>``; a request that names no type keeps the v1.0
+    value ``corporate_vanilla`` exactly.
+    """
+    return f"corporate_{instrument_type or VANILLA}"
 
 
 def success_response(request: dict, market_data: dict, results: dict,
@@ -221,7 +485,7 @@ def success_response(request: dict, market_data: dict, results: dict,
         "schema_version": SCHEMA_VERSION,
         "request_id": request["request_id"],
         "status": "ok",
-        "engine": ENGINE,
+        "engine": engine_for(request.get("instrument_type")),
         "operation": request["operation"],
         "inputs_used": inputs_used(request),
         "market_data": market_data,
@@ -250,7 +514,7 @@ def error_response(code: str, message: str, field: str = None,
         "schema_version": SCHEMA_VERSION,
         "request_id": (request or {}).get("request_id"),
         "status": "error",
-        "engine": ENGINE,
+        "engine": engine_for((request or {}).get("instrument_type")),
         "operation": (request or {}).get("operation"),
         "inputs_used": inputs_used(request) if request else None,
         "market_data": None,
@@ -355,11 +619,10 @@ def _number(value, field: str, required: bool = False, minimum: float = None,
     return number
 
 
-def _frequency(value) -> int:
+def _frequency(value, field: str = "bond.coupon_frequency") -> int:
     """Coupon payments per year, restricted to the four supported schedules."""
     if value is None:
-        raise RequestError(VALIDATION_ERROR, "'bond.coupon_frequency' is required",
-                           field="bond.coupon_frequency")
+        raise RequestError(VALIDATION_ERROR, f"'{field}' is required", field=field)
     try:
         freq = int(float(value))
     except (TypeError, ValueError):
@@ -367,11 +630,146 @@ def _frequency(value) -> int:
     if freq not in (1, 2, 4, 12):
         raise RequestError(
             VALIDATION_ERROR,
-            f"'bond.coupon_frequency' must be 1 (annual), 2 (semiannual), 4 (quarterly) "
+            f"'{field}' must be 1 (annual), 2 (semiannual), 4 (quarterly) "
             f"or 12 (monthly); got {value!r}",
-            field="bond.coupon_frequency",
+            field=field,
         )
     return freq
+
+
+def _entries(value, field: str):
+    """A schedule section as a list of JSON objects; absent -> None, wrong shape -> error."""
+    if value is None or value == []:
+        return None
+    if not isinstance(value, list) or not all(isinstance(e, dict) for e in value):
+        raise RequestError(
+            VALIDATION_ERROR,
+            f"'{field}' must be a list of objects, e.g. "
+            f"[{{\"date\": \"2014-08-15\", \"price_per_100\": 100}}]",
+            field=field,
+        )
+    return value
+
+
+def _coupon_schedule(value):
+    """``bond.coupon_schedule`` -> the engine's ``[(date | None, rate_decimal), ...]``.
+
+    Inputs
+    ------
+    1. value : list — ``[{"effective_from": "YYYY-MM-DD" | null, "rate_pct": 7.5}, ...]``.
+
+    Returns: the engine-shaped schedule, sorted with the open-ended entry first.
+
+    ⚠️ The JSON says **rate_pct** and the engine takes decimals; this boundary is the one
+    place that conversion happens, so an external caller sees percent everywhere (as it
+    does for ``coupon_pct``) and the engine keeps its single internal convention.
+    A stepped bond with no schedule is refused: its whole definition is the schedule.
+    """
+    import pandas as pd  # noqa: F401  (kept local, like _iso_date)
+
+    entries = _entries(value, "bond.coupon_schedule")
+    if not entries:
+        raise RequestError(
+            VALIDATION_ERROR,
+            "instrument_type 'stepped' needs 'bond.coupon_schedule', e.g. "
+            "[{\"effective_from\": null, \"rate_pct\": 7.0}, "
+            "{\"effective_from\": \"2006-03-01\", \"rate_pct\": 7.5}]. A step-up whose "
+            "steps are not known is a data gap to report, not a schedule to invent.",
+            field="bond.coupon_schedule",
+        )
+    out = []
+    for i, entry in enumerate(entries):
+        where = f"bond.coupon_schedule[{i}]"
+        raw = entry.get("effective_from")
+        eff = None if raw is None or (isinstance(raw, str) and not raw.strip()) \
+            else _iso_date(raw, f"{where}.effective_from")
+        rate = _number(entry.get("rate_pct"), f"{where}.rate_pct", required=True,
+                       minimum=0.0, maximum=40.0)
+        out.append((eff, rate / 100.0))
+    out.sort(key=lambda e: (e[0] is not None, e[0] or ""))
+    # the open-ended entry ("from issuance") keeps its None; the engine reads it as
+    # "in force before every dated step"
+    return [(None if eff is None else _as_date(eff), rate) for eff, rate in out]
+
+
+def _exercise_schedule(value, field: str):
+    """``bond.call_schedule`` / ``put_schedule`` -> ``[(date, price_per_100), ...]``.
+
+    Inputs
+    ------
+    1. value : list — ``[{"date": "2014-08-15", "price_per_100": 100.0}, ...]``.
+    2. field : str — the JSON path, for error messages.
+
+    Returns: the engine-shaped schedule, or ``None`` when absent. Ordering and duplicate
+    handling are the asset layer's job (it normalises there for every caller, not only
+    this one).
+    """
+    entries = _entries(value, field)
+    if not entries:
+        return None
+    out = []
+    for i, entry in enumerate(entries):
+        where = f"{field}[{i}]"
+        date = _as_date(_iso_date(entry.get("date"), f"{where}.date"))
+        price = _number(entry.get("price_per_100"), f"{where}.price_per_100",
+                        required=True, strictly_positive=True)
+        out.append((date, price))
+    return out
+
+
+def _sinking_schedule(value):
+    """``bond.sinking_schedule`` -> ``[(date, fraction, price_per_100), ...]``.
+
+    Inputs
+    ------
+    1. value : list — ``[{"date": ..., "fraction": 0.05, "price_per_100": 100.0}, ...]``.
+
+    Returns: the engine-shaped schedule, or ``None`` when absent. ``fraction`` is the
+    share of the amount OUTSTANDING the issuer may retire on that date, as a DECIMAL in
+    [0, 1] — not a percentage, and not a share of the original face.
+    """
+    entries = _entries(value, "bond.sinking_schedule")
+    if not entries:
+        return None
+    out = []
+    for i, entry in enumerate(entries):
+        where = f"bond.sinking_schedule[{i}]"
+        date = _as_date(_iso_date(entry.get("date"), f"{where}.date"))
+        fraction = _number(entry.get("fraction"), f"{where}.fraction", required=True,
+                           minimum=0.0, maximum=1.0)
+        price = _number(entry.get("price_per_100"), f"{where}.price_per_100",
+                        required=True, strictly_positive=True)
+        out.append((date, fraction, price))
+    return out
+
+
+def _volatility_scenarios(value):
+    """``analysis.volatility_scenarios`` -> a tuple of DECIMAL volatilities, or None.
+
+    Inputs
+    ------
+    1. value : list of numbers — e.g. ``[0.10, 0.15, 0.20]``.
+
+    Returns: tuple of floats, or ``None`` when the caller did not ask for the scenario
+    table. The local slopes around the baseline are always returned; the table is extra
+    work (two solved lattices per scenario) and is therefore opt-in.
+    """
+    if value is None or value == []:
+        return None
+    if not isinstance(value, list):
+        raise RequestError(VALIDATION_ERROR,
+                           "'analysis.volatility_scenarios' must be a list of numbers, "
+                           "e.g. [0.10, 0.15, 0.20]",
+                           field="analysis.volatility_scenarios")
+    return tuple(_number(v, f"analysis.volatility_scenarios[{i}]", required=True,
+                         minimum=0.0, maximum=2.0) for i, v in enumerate(value))
+
+
+def _as_date(iso: str):
+    """Normalised ISO string -> ``datetime.date`` (what the engines take)."""
+    import datetime as dt
+
+    return dt.date.fromisoformat(iso)
 
 
 def _iso_date(value, field: str) -> str:

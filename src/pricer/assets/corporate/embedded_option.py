@@ -261,6 +261,30 @@ def calculated_price(coupon: float, cpn_freq: int, maturity, valuation_date, cur
     return dirty - accrued
 
 
+def price_detail(coupon: float, cpn_freq: int, maturity, valuation_date, curve,
+                 oas: float = 0.0, *, volatility: float = SIGMA_DEFAULT,
+                 call_schedule=None, put_schedule=None, sinking_schedule=None,
+                 fraction_basis=None) -> dict:
+    """Clean, dirty and accrued together, from ONE tree build.
+
+    Inputs: identical to :func:`calculated_price`.
+
+    Returns: ``{"clean": ..., "dirty": ..., "accrued": ...}`` per 100 face. ``clean`` is
+    bit-for-bit what :func:`calculated_price` returns (same call, same order); the tree's
+    root PV is the DIRTY value and accrued is the ONE shared date-only formula, so
+    ``clean = dirty - accrued`` exactly, as it does on every other engine.
+
+    Exists because a caller reporting a full result set — the JSON endpoint, a driver —
+    needs all three and should not build the tree three times to get them.
+    """
+    lattice, accrued, call_array, put_array, sink_f, sink_p = _prepare(
+        coupon, cpn_freq, maturity, valuation_date, curve, volatility,
+        call_schedule, put_schedule, sinking_schedule, fraction_basis)
+    dirty = lattice.price_bond(coupon / 100.0, oas * _BP, call_array, put_array,
+                               sink_f, sink_p)
+    return {"clean": dirty - accrued, "dirty": dirty, "accrued": accrued}
+
+
 def implied_oas(coupon: float, cpn_freq: int, maturity, valuation_date,
                 market_price: float, curve, *, volatility: float = SIGMA_DEFAULT,
                 call_schedule=None, put_schedule=None, sinking_schedule=None,

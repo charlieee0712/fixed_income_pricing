@@ -1,4 +1,4 @@
-"""File-based runner for the vanilla JSON interface (plan §8): one request file in,
+"""File-based runner for the JSON pricing interface (plan §8): one request file in,
 one response file out. This is the process the Excel/VBA bridge invokes; it is also
 the simplest way to try the interface by hand.
 
@@ -28,7 +28,7 @@ import tempfile
 sys.path.insert(0, "src")
 
 from pricer.endpoints import contracts                      # noqa: E402
-from pricer.endpoints.main import analyze_vanilla_payload    # noqa: E402
+from pricer.endpoints.main import analyze_payload    # noqa: E402
 
 
 def parse_args(argv=None):
@@ -40,7 +40,11 @@ def parse_args(argv=None):
 
     Returns: ``argparse.Namespace`` with ``input``, ``output``, ``data_dir``.
     """
-    parser = argparse.ArgumentParser(description="Price one vanilla bond from a JSON request.")
+    parser = argparse.ArgumentParser(
+        description="Price one corporate bond from a JSON request. The bond's type "
+                    "travels in the request (bond.instrument_type: vanilla, stepped, "
+                    "floating, fixed_to_floating, callable, puttable, sinking); a request "
+                    "that names none is a vanilla bond.")
     parser.add_argument("--input", required=True, help="request JSON file")
     parser.add_argument("--output", required=True, help="response JSON file to write")
     parser.add_argument("--data-dir", default=None,
@@ -123,7 +127,7 @@ def main(argv=None) -> int:
         print(f"error could not read the request file ({exc.__class__.__name__})")
         return 2
 
-    response = failure if failure is not None else analyze_vanilla_payload(payload)
+    response = failure if failure is not None else analyze_payload(payload)
 
     try:
         write_response(args.output, response)
