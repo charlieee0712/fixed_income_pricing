@@ -32,13 +32,19 @@ checks — those are decided here, from the repo.
   when zipped, and BOTH stay OUT of the Drive staging copies (internal comms framing — not
   for Mario).
 - **`docs/handoff_for_claude_web_1/`** (was `docs/handoff_for_claude_web/`, renamed
-  2026-08-25) = **the SHORT bundle**: ≤12 files, fast re-orientation, new content displaces
-  old. Curated (update in place, REPLACE the NEW list — never append): `00_START_HERE`,
-  `01_current_state_and_open_items`, `02_locked_decisions_and_conventions`, `10_glossary`.
+  2026-08-25) = **the DECISION bundle**: **13 files**. ⚠️ **The "keep it short" rule was
+  REPEALED by the user 2026-08-30** ("handsoff1也不需要太短 尽可能包含决策端所需的重要信息") —
+  the split with h2 is now by **purpose, not length**: h1 carries everything needed to
+  **decide** (state · numbers · locked decisions · the numerical laws · open asks · traps ·
+  feedback on its own plans), h2 everything needed to **specify** (engine internals, code map,
+  module conventions, environment). New content still displaces stale content. Curated (update
+  in place, REPLACE the NEW list — never append): `00_START_HERE`,
+  `01_current_state_and_open_items`, `02_locked_decisions_and_conventions` (its **§D = the
+  numerical laws**, added 08-30), `10_glossary`, **`12_traps_and_plan_feedback` (NEW 08-30 —
+  Part A silent failures in cost order, Part B the five habits)**.
   Verbatim (re-copy every refresh): 03←`PROJECT_STATUS.md` · 04←`WORKLOG.md` ·
   05←`COVERAGE.md` · 06←`docs/missing_data.md` · 07←`docs/phase2_methods_2026-07-22.md` ·
-  08←**the ACTIVE Mario-facing report** (now `docs/weekly_report_2026-08-25.md`; was the
-  08-15 sample report) · 09←Mario's template txt · 11←`docs/monthly_recon_report_2026-08-17.md`.
+  08←**the ACTIVE Mario-facing report** (now `docs/weekly_report_2026-08-30.md`) · 09←Mario's template txt · 11←`docs/monthly_recon_report_2026-08-17.md`.
   Zip → `handoff1_<date>.zip`. Precedence inside: 01 wins over the verbatim copies.
 - **`docs/handoff_for_claude_web_2/`** (NEW 2026-08-25) = **the DEEP bundle**: cap **40
   files**, no length limit per file, the reference web-Claude PLANS FROM. 32 files today.

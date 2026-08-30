@@ -178,3 +178,139 @@ Settled by directive, test, or evidence. Reopen only if the user explicitly asks
   a last-bit rounding by 10⁸). Text columns are identical and prices/spreads/durations agree
   to ~1e-12. A cross-platform byte comparison therefore shows a difference that is not a
   regression.
+
+---
+
+# D · The numerical laws a plan must not break
+
+Everything above is a *decision*. This section is the *arithmetic* every validated number in
+the repo sits on. Breaking one of these silently invalidates the lot, so a plan that touches
+pricing should be checked against it. (handoff 2's `03` carries the same laws with the
+derivations.)
+
+## D1 · The calendar: ACT/364 with a 182-day grid
+
+One year is **364 days**; one semiannual period is **182**. The schedule is built **backwards
+from maturity** in `round(364/freq)`-day steps until just before valuation.
+
+This is not an approximation to improve. It is the legacy engine's own convention, verified
+against the VBA on 2026-06-29, and every validated number rests on it. Real day-count labels
+(`30/360`, `ACT/ACT`) are carried as **data** and reported unused — the legacy tool's own input
+dictionary says of that field: *"30/360, but is not used"*.
+
+## D2 · The discounting law
+
+```text
+DF(t) = exp(-t · (z_continuous(t) + spread))          z linearly interpolated, monthly grid
+```
+
+The test that this is *correct* and not merely chosen: a curve must reprice its own par bonds
+to exactly 100. It does. The legacy stored a **semiannual** zero and discounted it with the
+**continuous** formula, which under-prices systematically (10y par bond → 99.67; ≈0.2% at 8y).
+`vba_compat=True` reproduces that bug bit for bit and exists only for reconciliation — never
+the default. ⚠️ Two bootstraps exist in the legacy code and must not be conflated: the
+auditable routine uses continuous `z = −ln(DF)/t`; `BondPrice`'s embedded one uses semiannual
+`z = 2·((1/DF)^(1/2t) − 1)`. Same discount factors, different expression.
+
+## D3 · The clean / dirty law
+
+```text
+model PV     = DIRTY
+custodian BT = CLEAN
+calibration solves   clean(OAS) == BT   ⟺   dirty(OAS) == BT + accrued
+```
+
+Both forms give the **same root**, because accrued depends only on dates — not on the OAS, the
+curve, or any embedded option. Unit-tested per engine (16 checks). Two consequences:
+
+- **there is exactly ONE accrued formula** (`core/pricing/cashflows.accrued_interest`), shared
+  by the analytical engine, FRN, hybrid, ILB and the lattice. A second copy is how this rots;
+- **duration, DV01 and convexity divide by the DIRTY price.** Tested both ways against the
+  custodian's duration on 61 bonds; dirty won 41–20.
+
+## D4 · Units
+
+| layer | units |
+|---|---|
+| `assets/` wrappers (the legacy-facing surface) | coupon **PERCENT**, prices per **100**, spreads **BASIS POINTS**, volatility **DECIMAL** |
+| `core/` engines | decimals throughout |
+| the JSON interface | the asset layer's units, and every field name says so |
+
+Wrappers convert; the core never sees percent. A volatility "point" is one percentage point
+(0.01 decimal). **The one documented exception**: a coupon *schedule* is decimal even at the
+asset layer, because the parser and the override CSV both emit decimals and two dialects of one
+object would be worse; at the JSON boundary the field is `rate_pct` and `contracts.py`
+converts. `stepped.validate_schedule` refuses a percent-looking schedule rather than pricing a
+750% coupon.
+
+## D5 · Currency routes a curve — it is not an FX instruction
+
+A bond discounts on its **own-currency** curve. Portfolio values stay on the custodian's
+base-USD columns; nothing self-converts. **No silent USD fallback.** Failures are named
+separately because they mean different things to whoever must fix them:
+
+```text
+currency not configured           -> CURVE_NOT_FOUND     (e.g. CHF)
+configured, but no row for date   -> CURVE_NOT_FOUND     (e.g. KRW at 2009-03-31)
+row exists, bootstrap refuses it  -> CURVE_BUILD_FAILED
+```
+
+⚠️ **`CURVE_BUILD_FAILED` has no live example any more.** GBP used to be it; that was our units
+bug, not the market's (see `12` A1). The mapping is still tested, by monkeypatching the loader
+— which is the right way round.
+
+## D6 · Par-yield file units are declared, never detected
+
+`PAR_YIELD_UNITS` marks `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt` as **percent**; the
+other 24 exports are decimals. A threshold heuristic cannot separate a 0.5% Danish yield from a
+0.5 decimal. Any scaled row above 100% raises `ParYieldUnitError` **before** the bootstrap, so
+a units mistake can never again surface as a claim about arbitrage.
+
+## D7 · OAS is calibrated, never supplied — with one named exception
+
+`calibrate_and_risk` takes the clean market price and **refuses** a supplied `oas_bp`: a mark
+and a hand-typed spread can disagree and there is no principled tiebreak. `price_at_oas` is the
+separately named operation for "price this at a spread I choose" (what the legacy per-metric
+functions did). The solve is robust rather than clever: price is strictly decreasing in the
+spread, so the root is unique; the bracket auto-widens; Brent finds it.
+
+## D8 · Migration law
+
+A migration **moves** code; it does not rewrite it.
+
+```text
+copy the implementation verbatim       float-operation order preserved
+old path becomes a shim                re-exporting the SAME objects (identity-asserted)
+prove it by hashing whole outputs      not by spot-checking numbers
+run the full suite after every commit
+```
+
+If a frozen output changes, **stop and diagnose before continuing**. "It is only the last
+digit" is exactly the signal that something moved.
+
+## D9 · Refuse rather than guess — the current list
+
+Every refusal marks a place where a silent assumption would produce a plausible **wrong**
+number: a date sent as a number (an Excel serial); a currency with no usable curve; a put
+priced above a call on the same date; a sinking date colliding with a call or put; two sinking
+redemptions inside one coupon period; an exercise schedule entirely after maturity (it would
+quietly price a straight bond); a `fraction_basis` the engine does not implement; a coupon
+above 40 percent; a **hybrid with no post-switch margin**; a **sinking schedule with no
+fraction basis**.
+
+**Forgiven, deliberately:** lower-case currency, numbers as text, unsorted schedules, duplicate
+schedule entries (deduped with a warning), missing optional fields, unknown extra fields, a
+face value other than 100 (echoed, not applied), and volatility on an instrument with no use
+for it (echoed, reported unused, `null` sensitivities — never a fabricated zero).
+
+**The dividing line, worth restating in any plan touching the contract: leniency is for
+presentation; economics are never inferred.**
+
+## D10 · Reporting laws
+
+- a value that could not be computed finitely is serialised as `null` with a warning, never a
+  placeholder digit;
+- error messages never carry a file path, a traceback or the client payload;
+- every result names the curve that produced it (`curve_id` = `USD|2009-03-31|Semiannual`);
+- the response echoes what it actually ran on (`inputs_used`), **in the caller's own units and
+  shape**, so a wrong cell mapping is visible without reading Python.
