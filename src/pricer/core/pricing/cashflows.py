@@ -13,11 +13,8 @@ so solving ``dirty(OAS) = target + AI`` and ``clean(OAS) = target`` give the SAM
 """
 from __future__ import annotations
 
+from pricer.core.pricing.coupon_schedule import coupon_at
 from pricer.core.utils.dates import YEAR_DAYS, as_date, coupon_dates, year_fraction
-# NOTE: pricing.coupon_schedule is a real (not-yet-migrated) module, NOT one of the
-# compatibility shims — it moves into core/ in a later rollout step; importing it
-# here does not violate the "never import the shims" rule.
-from pricing.coupon_schedule import coupon_at
 
 
 def period_coupon_amount(coupon_rate: float, freq: int = 2, face: float = 100.0) -> float:
