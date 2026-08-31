@@ -28,6 +28,7 @@ import pandas as pd
 from credit.oas import oas_on
 from curves.zero_curve import ZeroCurve
 from dataio.loaders import load_corporate_terms, load_master
+from dataio.dispositions import reconcile
 from dataio.universe import build_universe
 from pricing.calibrate import implied_oas, near_maturity
 from dataio.term_overrides import (load_coupon_schedule_overrides, load_frn_spreads,
@@ -40,7 +41,9 @@ from pricing.risk import risk_metrics
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
 WB = os.environ.get("FIP_URS_WB", os.path.join(DATA_DIR, "URS Fixed Income Mar 2009 - FI Positions V Mainak.xlsx"))
 VAL = os.environ.get("FIP_VAL_DATE", "2009-06-10")
-OUT = os.environ.get("FIP_OUT", "outputs/implied_oas.csv")  # per-date override avoids clobbering
+OUT = os.environ.get("FIP_OUT", "outputs/implied_oas.csv")
+DISPOSITION_OUT = os.environ.get("FIP_CORP_DISPOSITION_OUT",
+                                 "outputs/corporate_disposition.csv")  # per-date override avoids clobbering
 OAS_WB = os.environ.get("FIP_OAS_WB", os.path.join(DATA_DIR, "Pricing File.xlsm"))  # index OAS source
 # Term-override tables (dataio.term_overrides; evidence in docs/isin_lookup_2026-07-20.md).
 # All optional: absent file = no overrides.
@@ -49,6 +52,28 @@ FRN_SPREADS_CSV = os.environ.get("FIP_FRN_SPREADS", os.path.join(DATA_DIR, "frn_
 MW_CSV = os.environ.get("FIP_MAKE_WHOLE", os.path.join(DATA_DIR, "make_whole_overrides.csv"))
 HYBRID_CSV = os.environ.get("FIP_HYBRID_TERMS", os.path.join(DATA_DIR, "hybrid_switch_terms.csv"))
 MIN_YEARS = 1.0          # below this remaining maturity -> implied OAS unreliable -> excluded
+
+# ---- what every excluded bond's reason MEANS, so no bond can leave here undisposed ----
+#
+# An exclusion reason is one of two very different things, and conflating them is what let
+# TNTD04920858 disappear in August: a TERMINAL reason is a disposition ("this bond is not
+# priced, and here is why"), while a ROUTING reason is an instruction ("some other engine
+# handles this"). A routing reason is only discharged when the destination honours it.
+TERMINAL_EXCLUSIONS = {
+    "terms-unavailable": "terms in neither sheet (MTN); on the Bloomberg request list",
+    "excluded-structured": "excluded per Mario: pass-through / amortizing / N-A",
+    "no-rating": "no usable rating after the notch map",
+    "matured": "matured at the valuation date",
+    "defaulted": "defaulted; carried at the custodian mark, no spread",
+}
+# reason -> where the bond is supposed to end up instead
+ROUTED_ELSEWHERE = {
+    "callable": "priced by scripts/callable_risk.py on the BDT lattice; see "
+                "outputs/callable_disposition.csv for its own named outcome",
+}
+# reasons whose destination is THIS output: the coupon-class router pulls them back in.
+# A bond with one of these that does NOT arrive is undisposed, and reconcile() will say so.
+ROUTED_HERE = {"floating", "special-fixed"}
 DISTRESS_BT = 50.0       # below this clean price -> implied OAS is a recovery plug -> flagged, kept
 PERP_TRUNC_YEARS = 90    # perpetual reset bonds priced by coupon-continuation to a long truncation
                          # (face PV at 90y is negligible under crisis discount rates; noted per bond)
@@ -505,8 +530,33 @@ def main():
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     df.to_csv(OUT, index=False)
 
-    # ---- integrity ----
+    # ---- integrity: every bond in the population leaves with exactly one outcome ----
+    #
+    # This is the guard the GBP omission and TNTD04920858 both slipped past. Counting is not
+    # enough: 732 = 565 + 3 + 164 balanced perfectly while a bond sat in none of them.
+    # reconcile() works over SETS of identifiers and raises if the cover is not exact.
+    in_output = set(df["asset_id"].astype(str))
+    named = {aid: ("skipped-by-driver", why) for aid, why in skipped}
+    for _, b in _excluded.iterrows():
+        aid = str(b["asset_id"])
+        if aid in in_output:
+            continue                       # the output row IS its disposition
+        reason = b["primary_reason"]
+        if reason in ROUTED_ELSEWHERE:
+            named[aid] = (f"routed-to-{reason}", ROUTED_ELSEWHERE[reason])
+        elif reason in TERMINAL_EXCLUSIONS:
+            named[aid] = (reason, TERMINAL_EXCLUSIONS[reason])
+        # a ROUTED_HERE reason that did not arrive, or an unknown reason, is left
+        # undisposed on purpose so reconcile() names it rather than absorbing it.
+    population = set(canon["asset_id"].astype(str)) | set(_excluded["asset_id"].astype(str))
+    disposition = reconcile(population, in_output, named)
+    disposition.insert(1, "valuation_date", VAL)
+    os.makedirs(os.path.dirname(DISPOSITION_OUT) or ".", exist_ok=True)
+    disposition.to_csv(DISPOSITION_OUT, index=False)
+
     print(f"# calibrate_risk @ {VAL}  canonical={len(canon)} priced={len(df)} skipped={len(skipped)}")
+    print(f"# disposition: population={len(population)} in-output={len(in_output)} "
+          f"named-elsewhere={len(named)} (every bond accounted for) -> {DISPOSITION_OUT}")
     for aid, why in skipped[:25]:
         print("  skip", aid, why)
     print(f"[calibration] |clean(implied_oas) - BT| max={(df['clean'] - df['bt']).abs().max():.2e}")
