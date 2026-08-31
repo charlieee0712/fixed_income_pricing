@@ -60,6 +60,12 @@
       "reason": "price effect = change in clean price per +1 volatility POINT at a FIXED spread; oas effect = change in the calibrated spread per +1 volatility point at a FIXED market price. Different questions \u2014 never combine them."
     }
   },
-  "warnings": [],
+  "warnings": [
+    {
+      "code": "PROVISIONAL_TERMS",
+      "field": "bond.exercise_terms_status",
+      "message": "the exercise schedule is not marked as confirmed, so these results are PROVISIONAL: an exercise date or price taken from a convention rather than from the documents changes the option value and the risk. Send exercise_terms_status='confirmed' once the terms are verified."
+    }
+  ],
   "errors": []
 }

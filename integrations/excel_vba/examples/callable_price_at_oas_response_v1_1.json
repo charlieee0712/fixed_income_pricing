@@ -64,6 +64,12 @@
       "reason": "both volatility experiments are anchored on a market price; send operation 'calibrate_and_risk' with market.clean_price_per_100 to get them"
     }
   },
-  "warnings": [],
+  "warnings": [
+    {
+      "code": "PROVISIONAL_TERMS",
+      "field": "bond.exercise_terms_status",
+      "message": "the exercise schedule is not marked as confirmed, so these results are PROVISIONAL: an exercise date or price taken from a convention rather than from the documents changes the option value and the risk. Send exercise_terms_status='confirmed' once the terms are verified."
+    }
+  ],
   "errors": []
 }
