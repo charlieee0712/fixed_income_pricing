@@ -457,9 +457,65 @@ somewhere unhelpful.
   refused, with the reason: a fixed share of the *original* face works against a shrinking
   base, which a recombining tree cannot represent.
 
-### 14.6 Not yet done
+### 14.6 What each layer supports
 
-**The Excel bridge still sends plain bonds.** The engine and the message format handle all
-seven types; the worksheet does not yet have cells for the per-type fields. That is a
-layout decision for Mario's team, and it is the open question in the 2026-08-30 report.
-Nothing blocks it technically: the bridge writes whatever named cells it is given.
+Updated 2026-08-31, after the Excel bridge was extended to the tree products.
+
+| Layer | vanilla | stepped | floating | fixed→float | callable | puttable | sinking |
+|---|---|---|---|---|---|---|---|
+| Python wrapper | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| JSON endpoint | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Real Excel bridge** | ✅ | via the same fields | via the same fields | via the same fields | **✅ tested** | **✅ tested** | **✅ tested** |
+| Final customer layout | complete | pending Mario | pending Mario | pending Mario | pending Mario | pending Mario | pending Mario |
+| Live URS cohort | 481 bonds | 10 | 7 | 10 | 3 | **none** | **none** |
+
+Two rows deserve reading together. The **bridge** row says the adapter can send and display
+these products; the **layout** row says the polished daily-use worksheet has not been
+designed, because that is Mario's decision and the open question in the 2026-08-30 report.
+What exists today for the tree types is an engineering/QA surface, not a customer sheet.
+
+And the **live cohort** row is the honest caveat on the puttable and sinking evidence: no
+URS holding is a puttable or a sinking-fund bond. Those are validated on **synthetic
+fixtures**, which prove the model and interface behave, and prove nothing about a portfolio.
+They are labelled synthetic wherever they appear.
+
+### 14.7 Excel-side inputs for the tree products
+
+All optional. A sheet that names no `FIP_InstrumentType` sends exactly the v1.0 vanilla
+request it always did — which is what keeps the existing workbook and its original checks
+working untouched.
+
+| named cell | meaning |
+|---|---|
+| `FIP_InstrumentType` | the dispatch value; absent → vanilla |
+| `FIP_Operation` | `calibrate_and_risk` (default) or `price_at_oas` |
+| `FIP_OASBp` | read **only** for `price_at_oas` — the calibrating operation refuses a supplied spread, so sending one would turn a good sheet into an error |
+| `FIP_SinkingFractionBasis` | `outstanding`; never defaulted by the bridge |
+
+Schedules are **named Excel Tables**, so they can be any length and live on any sheet —
+which is what keeps the bridge independent of the layout Mario has yet to choose:
+
+```text
+FIP_CallSchedule      Date | PricePer100
+FIP_PutSchedule       Date | PricePer100
+FIP_SinkingSchedule   Date | FractionOutstanding | PricePer100
+```
+
+The rules, and they are deliberately strict in one direction only:
+
+1. a **wholly blank row is ignored** — a table can be laid out with spare rows;
+2. a **partly filled row is an error** naming the table and the row number, raised in Excel
+   before Python is called. Nothing is defaulted: an assumed exercise price or redemption
+   fraction would be a contractual term nobody agreed to;
+3. every date becomes an **ISO string**; a numeric Excel serial never reaches the JSON;
+4. **row order is preserved** — the bridge does not sort, dedupe, infer or fill;
+5. an **absent or empty table is omitted**, not sent as an empty schedule. A required one
+   that is missing comes back as the engine's own named refusal.
+
+### 14.8 Not yet done
+
+**The polished customer worksheet.** The engine, the contract and the bridge handle all
+seven types, and the tree types are covered by real-Excel tests. What does not exist is the
+daily-use layout — one adaptive sheet with a type dropdown, or one small sheet per type.
+That is the open question in the 2026-08-30 report, and it is deliberately Mario's to
+answer rather than ours to assume.

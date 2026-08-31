@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "operation": "price_at_oas",
+  "bond": {
+    "instrument_id": "DEMO-CALLABLE-001",
+    "instrument_type": "callable",
+    "currency": "USD",
+    "coupon_frequency": 2,
+    "maturity_date": "2014-04-01",
+    "coupon_pct": 9.5,
+    "call_schedule": [
+      {
+        "date": "2011-04-01",
+        "price_per_100": 100.0
+      },
+      {
+        "date": "2012-04-01",
+        "price_per_100": 100.0
+      }
+    ]
+  },
+  "market": {
+    "valuation_date": "2009-03-31"
+  },
+  "analysis": {
+    "spread_shift_bp": 10.0,
+    "oas_bp": 400.0
+  },
+  "model": {
+    "yield_volatility_decimal": 0.15
+  },
+  "metadata": {
+    "source": "excel_bridge",
+    "workbook": "fixture"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "status": "ok",
+  "engine": "corporate_callable",
+  "operation": "price_at_oas",
+  "inputs_used": {
+    "instrument_id": "DEMO-CALLABLE-001",
+    "instrument_type": "callable",
+    "currency": "USD",
+    "coupon_pct": 9.5,
+    "coupon_frequency": 2,
+    "maturity_date": "2014-04-01",
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": null,
+    "oas_bp_supplied": 400.0,
+    "spread_shift_bp": 10.0,
+    "face_value_supplied": null,
+    "face_value_per_quote": 100.0,
+    "call_schedule": [
+      {
+        "date": "2011-04-01",
+        "price_per_100": 100.0
+      },
+      {
+        "date": "2012-04-01",
+        "price_per_100": 100.0
+      }
+    ],
+    "put_schedule": null
+  },
+  "market_data": {
+    "pricing_currency": "USD",
+    "valuation_date": "2009-03-31",
+    "curve_id": "USD|2009-03-31|Semiannual"
+  },
+  "results": {
+    "model_clean_price_per_100": 108.83419012464965,
+    "model_dirty_price_per_100": 113.40149781695735,
+    "accrued_interest_per_100": 4.5673076923076925,
+    "implied_oas_bp": 400.0,
+    "oas_source": "supplied_by_caller",
+    "effective_duration_years": 1.8146326991126427,
+    "dv01_per_100": 0.020578206606700178,
+    "convexity": 3.5602796115762807,
+    "price_spread_tighter_per_100": 109.04017419388974,
+    "price_spread_wider_per_100": 108.6286097965845,
+    "calibration_residual_per_100": null,
+    "volatility_used_decimal": 0.15
+  },
+  "applicability": {
+    "day_count": {
+      "input_value_label": null,
+      "used": false,
+      "convention_used": "ACT/364 with a 182-day coupon grid",
+      "reason": "The validated engine prices on the legacy ACT/364 convention with a 182-day coupon grid; the day-count label is carried as data only."
+    },
+    "yield_volatility": {
+      "input_value_decimal": 0.15,
+      "used": true,
+      "baseline_volatility_decimal": 0.15,
+      "price_effect_per_1pct_vol": null,
+      "oas_effect_bp_per_1pct_vol": null,
+      "reason": "both volatility experiments are anchored on a market price; send operation 'calibrate_and_risk' with market.clean_price_per_100 to get them"
+    }
+  },
+  "warnings": [],
+  "errors": []
+}

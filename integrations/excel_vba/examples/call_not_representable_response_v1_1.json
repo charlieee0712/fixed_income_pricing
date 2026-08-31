@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "status": "error",
+  "engine": "corporate_callable",
+  "operation": "calibrate_and_risk",
+  "inputs_used": {
+    "instrument_id": "DEMO-CALLABLE-001",
+    "instrument_type": "callable",
+    "currency": "USD",
+    "coupon_pct": 5.0,
+    "coupon_frequency": 2,
+    "maturity_date": "2012-03-01",
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 85.1226,
+    "oas_bp_supplied": null,
+    "spread_shift_bp": 10.0,
+    "face_value_supplied": null,
+    "face_value_per_quote": 100.0,
+    "call_schedule": [
+      {
+        "date": "2011-12-02",
+        "price_per_100": 100.0
+      }
+    ],
+    "put_schedule": null
+  },
+  "market_data": null,
+  "results": null,
+  "applicability": null,
+  "warnings": [],
+  "errors": [
+    {
+      "code": "VALIDATION_ERROR",
+      "field": "bond.call_schedule",
+      "message": "the call schedule cannot be represented on this bond's model grid: its earliest exercise date 2011-12-02 falls after the last exercisable coupon date 2011-09-01 and before maturity 2012-03-01. The lattice exercises on coupon dates only, and never at maturity, so there is no node at which this right could be taken. It is refused rather than ignored \u2014 ignoring it prices a straight bond and reports the option as worth zero."
+    }
+  ]
+}

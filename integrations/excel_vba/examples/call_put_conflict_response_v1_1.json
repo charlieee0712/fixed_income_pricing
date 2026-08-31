@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "status": "error",
+  "engine": "corporate_callable",
+  "operation": "calibrate_and_risk",
+  "inputs_used": {
+    "instrument_id": "DEMO-CALLABLE-001",
+    "instrument_type": "callable",
+    "currency": "USD",
+    "coupon_pct": 9.5,
+    "coupon_frequency": 2,
+    "maturity_date": "2014-04-01",
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 104.0,
+    "oas_bp_supplied": null,
+    "spread_shift_bp": 10.0,
+    "face_value_supplied": null,
+    "face_value_per_quote": 100.0,
+    "call_schedule": [
+      {
+        "date": "2011-04-01",
+        "price_per_100": 100.0
+      }
+    ],
+    "put_schedule": [
+      {
+        "date": "2011-04-01",
+        "price_per_100": 103.0
+      }
+    ]
+  },
+  "market_data": null,
+  "results": null,
+  "applicability": null,
+  "warnings": [],
+  "errors": [
+    {
+      "code": "VALIDATION_ERROR",
+      "field": "bond.put_schedule",
+      "message": "contradictory terms on 2011-04-01: put price 103.0 is above the call price 100.0. The issuer could call at 100.0 whatever the holder does, so these terms cannot both hold \u2014 check the schedules."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.1",
+  "request_id": null,
+  "status": "error",
+  "engine": "corporate_vanilla",
+  "operation": null,
+  "inputs_used": null,
+  "market_data": null,
+  "results": null,
+  "applicability": null,
+  "warnings": [],
+  "errors": [
+    {
+      "code": "VALIDATION_ERROR",
+      "field": "bond.sinking_fraction_basis",
+      "message": "'bond.sinking_fraction_basis' 'original' is not implemented; this engine supports 'outstanding' only. Retiring a fixed share of the ORIGINAL face works against a shrinking base, which a recombining tree cannot represent \u2014 that structure needs one callable sub-bond per sink date. Convert the schedule rather than relabelling it."
+    }
+  ]
+}

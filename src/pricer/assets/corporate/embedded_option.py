@@ -42,6 +42,60 @@ SINKING_MODE = "issuer_optional_redemption"
 OUTSTANDING = "outstanding"     # the only fraction basis a recombining tree can represent
 
 
+class ExerciseTermsError(ValueError):
+    """The exercise terms as described cannot be priced — a CONTRACT problem.
+
+    Every refusal in this module is one of these, and they exist as a family for one
+    reason: without it they surface from inside the spread solver, which reports "no
+    spread reprices this bond — check the price, the coupon and the maturity". Three
+    fields, none of them the problem. The caller is sent to look at the mark when the
+    actual fault is two contradictory dates in a schedule.
+
+    ``field`` is the JSON path the caller can act on; the endpoint uses it verbatim.
+    Subclasses ``ValueError`` so existing callers that catch ValueError still behave.
+    """
+
+    def __init__(self, message, field="bond"):
+        super().__init__(message)
+        self.field = field
+
+
+class ExerciseScheduleNotRepresentable(ExerciseTermsError):
+    """A right that was accepted and then could not be placed on the model's time grid.
+
+    The lattice exercises on the bond's **coupon dates**, and by construction never at the
+    root or at maturity — you do not exercise at issue or at redemption. So an exercise
+    date falling between the last interior coupon and maturity lands on no node at all,
+    and the exercise array comes back entirely inactive.
+
+    Without this exception that case is silent: the bond prices as a **straight bond**
+    while the caller believes an option was applied, and the option's value reads as
+    exactly zero — which looks like "the right is worthless" and is really "the right was
+    never evaluated". That distinction cost a real finding: ``TNTD04920858``'s call sits 90
+    days before maturity, inside its final coupon period.
+
+    The exception carries the dates a reader needs (``right``, ``first_exercise``,
+    ``last_exercisable``, ``maturity``) as attributes, so the layer that *does* know which
+    security this is — an endpoint, a driver — can name it when reporting. The engine
+    deliberately does not take an instrument id it has no other use for.
+    """
+
+    def __init__(self, right, first_exercise, last_exercisable, maturity):
+        self.right = right
+        self.first_exercise = first_exercise
+        self.last_exercisable = last_exercisable
+        self.maturity = maturity
+        super().__init__(
+            f"the {right} schedule cannot be represented on this bond's model grid: its "
+            f"earliest exercise date {first_exercise} falls after the last exercisable "
+            f"coupon date {last_exercisable} and before maturity {maturity}. The lattice "
+            f"exercises on coupon dates only, and never at maturity, so there is no node "
+            f"at which this right could be taken. It is refused rather than ignored — "
+            f"ignoring it prices a straight bond and reports the option as worth zero.",
+            field=f"bond.{right}_schedule")
+
+
+
 # --------------------------------------------------------------------------- schedules
 
 def normalize_schedule(schedule, valuation_date, maturity, label: str):
@@ -72,15 +126,18 @@ def normalize_schedule(schedule, valuation_date, maturity, label: str):
             continue
         if date in by_date:
             if by_date[date] != price:
-                raise ValueError(f"{label} schedule has two different prices on {date}: "
-                                 f"{by_date[date]} and {price} — one date, one price")
+                raise ExerciseTermsError(
+                    f"{label} schedule has two different prices on {date}: "
+                    f"{by_date[date]} and {price} — one date, one price",
+                    field=f"bond.{label}_schedule")
             warnings.warn(f"duplicate {label} entry on {date} ignored", stacklevel=3)
             continue
         by_date[date] = price
     if not by_date:
-        raise ValueError(f"{label} schedule is entirely inert: all {dropped} date(s) fall "
-                         f"after the maturity {mat}, so the bond would price as a straight "
-                         f"bond")
+        raise ExerciseTermsError(
+            f"{label} schedule is entirely inert: all {dropped} date(s) fall after the "
+            f"maturity {mat}, so the bond would price as a straight bond",
+            field=f"bond.{label}_schedule")
     if dropped:
         warnings.warn(f"{dropped} {label} date(s) after maturity ignored", stacklevel=3)
     return sorted(by_date.items())
@@ -127,22 +184,26 @@ def normalize_sinking_schedule(schedule, valuation_date, maturity, fraction_basi
     for entry in schedule:
         date, fraction, price = as_date(entry[0]), float(entry[1]), float(entry[2])
         if not (0.0 <= fraction <= 1.0):
-            raise ValueError(f"sinking fraction on {date} is {fraction}; it must be in "
-                             f"[0, 1] as a share of the amount outstanding (0 = a "
-                             f"scheduled date on which nothing is retired)")
+            raise ExerciseTermsError(
+                f"sinking fraction on {date} is {fraction}; it must be in [0, 1] as a "
+                f"share of the amount outstanding (0 = a scheduled date on which nothing "
+                f"is retired)", field="bond.sinking_schedule")
         if date > mat:
             dropped += 1
             continue
         if date in by_date:
             if by_date[date] != (fraction, price):
-                raise ValueError(f"sinking schedule has two different redemptions on "
-                                 f"{date}: {by_date[date]} and {(fraction, price)}")
+                raise ExerciseTermsError(
+                    f"sinking schedule has two different redemptions on {date}: "
+                    f"{by_date[date]} and {(fraction, price)}",
+                    field="bond.sinking_schedule")
             warnings.warn(f"duplicate sinking entry on {date} ignored", stacklevel=3)
             continue
         by_date[date] = (fraction, price)
     if not by_date:
-        raise ValueError(f"sinking schedule is entirely inert: all {dropped} date(s) fall "
-                         f"after the maturity {mat}")
+        raise ExerciseTermsError(
+            f"sinking schedule is entirely inert: all {dropped} date(s) fall after the "
+            f"maturity {mat}", field="bond.sinking_schedule")
     if dropped:
         warnings.warn(f"{dropped} sinking date(s) after maturity ignored", stacklevel=3)
     return sorted((d, f, p) for d, (f, p) in by_date.items())
@@ -169,10 +230,11 @@ def check_call_put_conflict(call_schedule, put_schedule) -> None:
     for date, put_price in put_schedule:
         call_price = calls.get(date)
         if call_price is not None and put_price > call_price:
-            raise ValueError(
+            raise ExerciseTermsError(
                 f"contradictory terms on {date}: put price {put_price} is above the call "
                 f"price {call_price}. The issuer could call at {call_price} whatever the "
-                f"holder does, so these terms cannot both hold — check the schedules.")
+                f"holder does, so these terms cannot both hold — check the schedules.",
+                field="bond.put_schedule")
 
 
 def check_sinking_overlap(sinking_schedule, call_schedule, put_schedule) -> None:
@@ -195,44 +257,11 @@ def check_sinking_overlap(sinking_schedule, call_schedule, put_schedule) -> None
     others = {d for d, _ in (call_schedule or [])} | {d for d, _ in (put_schedule or [])}
     clash = sorted({d for d, _f, _p in sinking_schedule} & others)
     if clash:
-        raise ValueError(
+        raise ExerciseTermsError(
             f"a sinking redemption coincides with a call/put date on {clash[0]}. Two "
             f"exercise rights on one date need a defined order, and no order is tested "
-            f"yet — split the dates or price the features separately.")
-
-
-class ExerciseScheduleNotRepresentable(ValueError):
-    """A right that was accepted and then could not be placed on the model's time grid.
-
-    The lattice exercises on the bond's **coupon dates**, and by construction never at the
-    root or at maturity — you do not exercise at issue or at redemption. So an exercise
-    date falling between the last interior coupon and maturity lands on no node at all,
-    and the exercise array comes back entirely inactive.
-
-    Without this exception that case is silent: the bond prices as a **straight bond**
-    while the caller believes an option was applied, and the option's value reads as
-    exactly zero — which looks like "the right is worthless" and is really "the right was
-    never evaluated". That distinction cost a real finding: ``TNTD04920858``'s call sits 90
-    days before maturity, inside its final coupon period.
-
-    The exception carries the dates a reader needs (``right``, ``first_exercise``,
-    ``last_exercisable``, ``maturity``) as attributes, so the layer that *does* know which
-    security this is — an endpoint, a driver — can name it when reporting. The engine
-    deliberately does not take an instrument id it has no other use for.
-    """
-
-    def __init__(self, right, first_exercise, last_exercisable, maturity):
-        self.right = right
-        self.first_exercise = first_exercise
-        self.last_exercisable = last_exercisable
-        self.maturity = maturity
-        super().__init__(
-            f"the {right} schedule cannot be represented on this bond's model grid: its "
-            f"earliest exercise date {first_exercise} falls after the last exercisable "
-            f"coupon date {last_exercisable} and before maturity {maturity}. The lattice "
-            f"exercises on coupon dates only, and never at maturity, so there is no node "
-            f"at which this right could be taken. It is refused rather than ignored — "
-            f"ignoring it prices a straight bond and reports the option as worth zero.")
+            f"yet — split the dates or price the features separately.",
+            field="bond.sinking_schedule")
 
 
 def _exercisable_dates(valuation_date, maturity, cpn_freq):

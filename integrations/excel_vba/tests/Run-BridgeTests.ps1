@@ -188,6 +188,185 @@ try {
     Check "stale numbers cleared" (([string]::IsNullOrEmpty($clean2)) -and ([string]::IsNullOrEmpty($oas2))) `
         "price and OAS blanked, not left showing the previous bond"
 
+    # === 4. instrument types: callable, puttable, sinking (2026-08-31) ================
+    # Everything above is the original vanilla suite, run unchanged. From here the same
+    # bridge is driven with a type named, which is the only difference between the two.
+    $excel.Run("Harness_SetupTypes") | Out-Null
+    Check "type inputs + schedule tables laid out" $true `
+        "FIP_InstrumentType/Operation/OASBp/SinkingFractionBasis + 3 named Tables"
+
+    function Get-Request($path) {
+        $excel.Run("Harness_WriteRequest", $path) | Out-Null
+        Get-Content $path -Raw | ConvertFrom-Json
+    }
+
+    # --- 4.1 callable: the request the sheet builds -----------------------------------
+    $excel.Run("Harness_SetText", "FIP_InstrumentType", "callable") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_CouponPct", "9.5") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_CleanMarketPrice", "104") | Out-Null
+    $excel.Run("Harness_SetDate", "FIP_MaturityDate", "2014-04-01") | Out-Null
+    $excel.Run("Harness_SetSchedule", "FIP_CallSchedule", "2011-04-01|100;2012-04-01|100") | Out-Null
+
+    $reqPath = Join-Path $temp "ryse_callable_request.json"
+    $req = Get-Request $reqPath
+    Check "instrument type serialised" ($req.bond.instrument_type -eq "callable") `
+        "bond.instrument_type = $($req.bond.instrument_type)"
+    Check "schema version follows the type" ($req.schema_version -eq "1.1") `
+        "schema_version = $($req.schema_version)"
+    Check "call schedule is an ordered array" `
+        (($req.bond.call_schedule.Count -eq 2) -and `
+         ($req.bond.call_schedule[0].date -eq "2011-04-01") -and `
+         ($req.bond.call_schedule[1].date -eq "2012-04-01")) `
+        "2 rows, first $($req.bond.call_schedule[0].date), then $($req.bond.call_schedule[1].date)"
+    Check "schedule dates are ISO strings" `
+        (($req.bond.call_schedule[0].date -is [string]) -and `
+         ($req.bond.call_schedule[0].date -match '^\d{4}-\d{2}-\d{2}$')) `
+        "typed as $($req.bond.call_schedule[0].date.GetType().Name), value $($req.bond.call_schedule[0].date)"
+    $rawJson = Get-Content $reqPath -Raw
+    Check "no Excel date serial anywhere in the JSON" `
+        (-not ($rawJson -match '"date"\s*:\s*\d')) "grep for a numeric date field found none"
+    Check "prices per 100 carried" ($req.bond.call_schedule[0].price_per_100 -eq 100) `
+        "price_per_100 = $($req.bond.call_schedule[0].price_per_100)"
+    Check "blank table rows ignored" ($req.bond.call_schedule.Count -eq 2) `
+        "table has 6 data rows, 2 filled, 2 sent"
+    Check "empty optional tables omitted" `
+        ((-not ($req.bond.PSObject.Properties.Name -contains "put_schedule")) -and `
+         (-not ($req.bond.PSObject.Properties.Name -contains "sinking_schedule"))) `
+        "put and sinking tables are empty, so neither field is sent"
+    Check "calibrating operation sends no OAS" `
+        (-not ($req.analysis.PSObject.Properties.Name -contains "oas_bp")) `
+        "calibrate_and_risk refuses a supplied spread, so the bridge does not send one"
+
+    # --- 4.2 both operations, from the sheet ------------------------------------------
+    $excel.Run("Harness_SetText", "FIP_Operation", "price_at_oas") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_OASBp", "400") | Out-Null
+    $req2 = Get-Request (Join-Path $temp "ryse_callable_oas_request.json")
+    Check "price_at_oas sends the chosen spread" `
+        (($req2.operation -eq "price_at_oas") -and ($req2.analysis.oas_bp -eq 400)) `
+        "operation $($req2.operation), analysis.oas_bp $($req2.analysis.oas_bp)"
+    $excel.Run("Harness_SetText", "FIP_Operation", "calibrate_and_risk") | Out-Null
+    $req3 = Get-Request (Join-Path $temp "ryse_callable_calib_request.json")
+    Check "the OAS cell is ignored when calibrating" `
+        (-not ($req3.analysis.PSObject.Properties.Name -contains "oas_bp")) `
+        "FIP_OASBp still holds 400, and is deliberately not sent"
+
+    # --- 4.3 combined rights, and row order -------------------------------------------
+    $excel.Run("Harness_SetSchedule", "FIP_PutSchedule", "2012-04-01|100") | Out-Null
+    $req4 = Get-Request (Join-Path $temp "ryse_combined_request.json")
+    Check "call and put transmitted together" `
+        (($req4.bond.call_schedule.Count -eq 2) -and ($req4.bond.put_schedule.Count -eq 1)) `
+        "call 2 rows, put 1 row, one request"
+    $excel.Run("Harness_SetSchedule", "FIP_CallSchedule", "2012-04-01|100;2011-04-01|100") | Out-Null
+    $req5 = Get-Request (Join-Path $temp "ryse_order_request.json")
+    Check "row order preserved, not sorted" `
+        (($req5.bond.call_schedule[0].date -eq "2012-04-01") -and `
+         ($req5.bond.call_schedule[1].date -eq "2011-04-01")) `
+        "sheet order kept; sorting is the engine's job, not the bridge's"
+    $excel.Run("Harness_SetSchedule", "FIP_CallSchedule", "2011-04-01|100;2012-04-01|100") | Out-Null
+    $excel.Run("Harness_ClearSchedule", "FIP_PutSchedule") | Out-Null
+
+    # --- 4.4 a partly filled row fails in Excel, before Python is ever called ----------
+    $excel.Run("Harness_SetSchedule", "FIP_CallSchedule", "2011-04-01|100;2012-04-01|") | Out-Null
+    $vbaErr = $excel.Run("Harness_TryWriteRequest", (Join-Path $temp "ryse_bad_request.json"))
+    Check "partly filled row refused in Excel" `
+        (($vbaErr -like "*FIP_CallSchedule*") -and ($vbaErr -like "*row 2*")) `
+        "$($vbaErr.Substring(0, [math]::Min(64, $vbaErr.Length)))..."
+    $excel.Run("Harness_SetSchedule", "FIP_CallSchedule", "2011-04-01|100;2012-04-01|100") | Out-Null
+
+    # --- 4.5 sinking: three columns, and the basis --------------------------------------
+    $excel.Run("Harness_SetText", "FIP_InstrumentType", "sinking") | Out-Null
+    $excel.Run("Harness_ClearSchedule", "FIP_CallSchedule") | Out-Null
+    $excel.Run("Harness_SetSchedule", "FIP_SinkingSchedule", `
+               "2011-04-01|0.25|100;2012-04-01|0.25|100") | Out-Null
+    $excel.Run("Harness_SetText", "FIP_SinkingFractionBasis", "outstanding") | Out-Null
+    $req6 = Get-Request (Join-Path $temp "ryse_sinking_request.json")
+    Check "sinking row serialised in full" `
+        (($req6.bond.sinking_schedule[0].date -eq "2011-04-01") -and `
+         ($req6.bond.sinking_schedule[0].fraction -eq 0.25) -and `
+         ($req6.bond.sinking_schedule[0].price_per_100 -eq 100)) `
+        "date / fraction of OUTSTANDING / price per 100"
+    Check "sinking basis transmitted, never defaulted" `
+        ($req6.bond.sinking_fraction_basis -eq "outstanding") `
+        "bond.sinking_fraction_basis = $($req6.bond.sinking_fraction_basis)"
+
+    # --- 4.6 response mapping, from the committed fixtures ------------------------------
+    # These run in BOTH modes: they need no engine, only the response the engine produced.
+    $excel.Run("Harness_Populate", (Join-Path $examples "callable_calibrate_response_v1_1.json")) | Out-Null
+    $cOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+    $cDur = $excel.Run("Harness_Get", "FIP_EffectiveDuration")
+    Check "callable response mapped" `
+        ((Near $cOas 635.7847879698965 1e-6) -and (Near $cDur 2.1477821341758556 1e-9)) `
+        "OAS $cOas bp, duration $cDur y"
+    $cEngine = $excel.Run("Harness_Get", "FIP_Engine")
+    $cType = $excel.Run("Harness_Get", "FIP_InstrumentTypeUsed")
+    $cVol = $excel.Run("Harness_Get", "FIP_VolatilityUsed")
+    Check "engine, type and volatility echoed" `
+        (($cEngine -eq "corporate_callable") -and ($cType -eq "callable") -and (Near $cVol 0.15 1e-12)) `
+        "$cEngine / $cType / vol $cVol"
+    $cVolNote = $excel.Run("Harness_Get", "FIP_VolatilityApplicability")
+    Check "volatility reported as USED for a tree product" ($cVolNote -like "used*") `
+        "$($cVolNote.Substring(0, [math]::Min(58, $cVolNote.Length)))..."
+
+    $excel.Run("Harness_Populate", (Join-Path $examples "puttable_response_v1_1.json")) | Out-Null
+    $pOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+    Check "puttable response mapped (synthetic fixture)" (Near $pOas 524.0332691173533 1e-6) `
+        "OAS $pOas bp - a SYNTHETIC bond; no URS holding is puttable"
+
+    $excel.Run("Harness_Populate", (Join-Path $examples "sinking_response_v1_1.json")) | Out-Null
+    $sOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+    Check "sinking response mapped (synthetic fixture)" (Near $sOas 666.895386209944 1e-6) `
+        "OAS $sOas bp - a SYNTHETIC bond; no URS holding is a sinking fund"
+
+    # --- 4.7 the three structured refusals, and stale cells ----------------------------
+    $excel.Run("Harness_Populate", (Join-Path $examples "call_put_conflict_response_v1_1.json")) | Out-Null
+    $e1 = $excel.Run("Harness_Get", "FIP_Errors")
+    $c1 = $excel.Run("Harness_Get", "FIP_ModelCleanPrice")
+    Check "contradictory call/put shown as a schedule error" `
+        (($e1 -like "VALIDATION_ERROR*") -and ($e1 -like "*put price*") -and `
+         ([string]::IsNullOrEmpty($c1))) `
+        "named the schedule, not the price; stale numbers cleared"
+
+    $excel.Run("Harness_Populate", (Join-Path $examples "sinking_original_basis_response_v1_1.json")) | Out-Null
+    $e2 = $excel.Run("Harness_Get", "FIP_Errors")
+    Check "original-face sinking basis refused with its reason" `
+        (($e2 -like "VALIDATION_ERROR*") -and ($e2 -like "*sub-bond*")) `
+        "$($e2.Substring(0, [math]::Min(58, $e2.Length)))..."
+
+    $excel.Run("Harness_Populate", (Join-Path $examples "call_not_representable_response_v1_1.json")) | Out-Null
+    $e3 = $excel.Run("Harness_Get", "FIP_Errors")
+    $c3 = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+    Check "a call the grid cannot place shows the real reason" `
+        (($e3 -like "VALIDATION_ERROR*") -and ($e3 -like "*coupon date*") -and `
+         ([string]::IsNullOrEmpty($c3))) `
+        "the sheet says WHY, and shows no number"
+
+    # --- 4.8 a LIVE typed round trip, only when a real interpreter was named -----------
+    if ($PythonExe) {
+        $excel.Run("Harness_SetText", "FIP_InstrumentType", "callable") | Out-Null
+        $excel.Run("Harness_ClearSchedule", "FIP_SinkingSchedule") | Out-Null
+        $excel.Run("Harness_SetText", "FIP_SinkingFractionBasis", "") | Out-Null
+        $excel.Run("Harness_SetSchedule", "FIP_CallSchedule", "2011-04-01|100;2012-04-01|100") | Out-Null
+        $liveResp = Join-Path $temp "ryse_callable_live_response.json"
+        $rc = $excel.Run("Harness_TypedRoundTrip", (Join-Path $temp "ryse_callable_live_request.json"), $liveResp)
+        $lOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+        Check "LIVE callable round trip through Python" `
+            (($rc -eq 0) -and (Near $lOas 635.7847879698965 1e-6)) `
+            "exit $rc, OAS $lOas bp - equals the endpoint and the direct wrapper call"
+
+        # the two volatility experiments, as three ordinary single-bond calls
+        $prices = @()
+        foreach ($vol in @("0.10", "0.15", "0.20")) {
+            $excel.Run("Harness_SetNumber", "FIP_YieldVolatility", $vol) | Out-Null
+            $excel.Run("Harness_TypedRoundTrip", (Join-Path $temp "ryse_vol_req.json"), `
+                       (Join-Path $temp "ryse_vol_resp.json")) | Out-Null
+            $prices += [double]($excel.Run("Harness_Get", "FIP_ImpliedOASBp"))
+        }
+        Check "volatility direction holds from Excel" `
+            (($prices[0] -gt $prices[1]) -and ($prices[1] -gt $prices[2])) `
+            "OAS tightens as volatility rises: $([math]::Round($prices[0],2)) > $([math]::Round($prices[1],2)) > $([math]::Round($prices[2],2)) bp"
+        $excel.Run("Harness_SetNumber", "FIP_YieldVolatility", "0.15") | Out-Null
+    }
+
     ""
     $passed = ($results | Where-Object Result -eq 'PASS').Count
     "$passed/$($results.Count) checks passed"

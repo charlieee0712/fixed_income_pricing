@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "operation": "calibrate_and_risk",
+  "bond": {
+    "instrument_id": "DEMO-SINKING-001",
+    "instrument_type": "sinking",
+    "currency": "USD",
+    "coupon_frequency": 2,
+    "maturity_date": "2014-04-01",
+    "coupon_pct": 9.5,
+    "sinking_schedule": [
+      {
+        "date": "2011-04-01",
+        "fraction": 0.25,
+        "price_per_100": 100.0
+      },
+      {
+        "date": "2012-04-01",
+        "fraction": 0.25,
+        "price_per_100": 100.0
+      }
+    ],
+    "sinking_fraction_basis": "outstanding"
+  },
+  "market": {
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 104.0
+  },
+  "analysis": {
+    "spread_shift_bp": 10.0
+  },
+  "model": {
+    "yield_volatility_decimal": 0.15
+  },
+  "metadata": {
+    "source": "excel_bridge",
+    "workbook": "fixture"
+  }
+}

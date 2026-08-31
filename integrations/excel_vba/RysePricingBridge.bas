@@ -13,11 +13,36 @@ Attribute VB_Name = "RysePricingBridge"
 '   * Tools > References > "Microsoft Scripting Runtime"   (VBA-JSON uses Dictionary)
 '   * one runner command, configured as described in README.md — NOT hard-coded here
 '
-' Entry points:
-'   PriceVanillaBond            the button: sheet -> engine -> sheet
+' Entry points (all preserved from v1; PriceVanillaBond is now a wrapper):
+'   PriceBond                   the button: sheet -> engine -> sheet, any instrument type
+'   PriceVanillaBond            the v1 name, kept working — calls PriceBond
 '   WriteRequestToFile          write the request JSON only (inspect what Excel sends)
 '   PopulateFromResponseFile    map a saved response into the sheet (fixture smoke test,
 '                               works with no Python installed at all)
+'
+' Instrument types (2026-08-31). The bond's type travels IN the request, so one sheet and
+' one code path reach every product the engine supports. A sheet that names no type sends
+' EXACTLY the v1.0 vanilla request it always did — that is what keeps the existing
+' workbook, and its 23 checks, working untouched.
+'
+'   FIP_InstrumentType   vanilla | stepped | floating | fixed_to_floating |
+'                        callable | puttable | sinking      (absent -> vanilla)
+'   FIP_Operation        calibrate_and_risk | price_at_oas  (absent -> calibrate_and_risk)
+'   FIP_OASBp            read ONLY for price_at_oas: the calibrating operation refuses a
+'                        supplied spread, so sending one would turn a good sheet into an error
+'   FIP_SinkingFractionBasis   "outstanding" — never defaulted here
+'
+' Exercise schedules are named Excel TABLES, so they can be any length and can sit
+' anywhere on any sheet:
+'
+'   FIP_CallSchedule      Date | PricePer100
+'   FIP_PutSchedule       Date | PricePer100
+'   FIP_SinkingSchedule   Date | FractionOutstanding | PricePer100
+'
+' The rule for all three: a wholly blank row is ignored, a PARTLY filled row is an error
+' naming the table and the row, dates become ISO strings, and nothing is sorted, deduped,
+' inferred or defaulted. An assumed exercise price or redemption fraction would be a
+' contractual term nobody agreed to.
 '==========================================================================================
 Option Explicit
 
@@ -32,6 +57,20 @@ Private Const NAME_CLEAN_PRICE As String = "FIP_CleanMarketPrice"
 Private Const NAME_SHIFT As String = "FIP_SpreadShiftBp"
 Private Const NAME_VOLATILITY As String = "FIP_YieldVolatility"
 Private Const NAME_RUNNER As String = "FIP_RunnerCommand"
+
+' Instrument-type / operation inputs. ALL OPTIONAL: absent means the v1.0 vanilla path.
+Private Const NAME_INSTRUMENT_TYPE As String = "FIP_InstrumentType"
+Private Const NAME_OPERATION As String = "FIP_Operation"
+Private Const NAME_OAS_BP As String = "FIP_OASBp"
+Private Const NAME_SINK_BASIS As String = "FIP_SinkingFractionBasis"
+
+' Named Excel Tables (ListObjects) holding variable-length exercise schedules.
+Private Const TABLE_CALL As String = "FIP_CallSchedule"
+Private Const TABLE_PUT As String = "FIP_PutSchedule"
+Private Const TABLE_SINK As String = "FIP_SinkingSchedule"
+
+Private Const OP_CALIBRATE As String = "calibrate_and_risk"
+Private Const OP_PRICE_AT_OAS As String = "price_at_oas"
 
 ' Output cells.
 Private Const OUT_STATUS As String = "FIP_Status"
@@ -49,10 +88,22 @@ Private Const OUT_VOL_NOTE As String = "FIP_VolatilityApplicability"
 Private Const OUT_WARNINGS As String = "FIP_Warnings"
 Private Const OUT_ERRORS As String = "FIP_Errors"
 
+' Optional extra outputs — useful on an engineering/QA surface, ignored if the sheet
+' does not define them.
+Private Const OUT_ENGINE As String = "FIP_Engine"
+Private Const OUT_TYPE_USED As String = "FIP_InstrumentTypeUsed"
+Private Const OUT_VOL_USED As String = "FIP_VolatilityUsed"
+
 
 '------------------------------------------------------------------ the button
 Public Sub PriceVanillaBond()
-    ' Sheet -> request JSON -> runner -> response JSON -> sheet. One click.
+    ' The v1 entry point, kept so existing buttons and macros keep working. It is now a
+    ' wrapper: a sheet that names no instrument type still sends the same vanilla request.
+    PriceBond
+End Sub
+
+Public Sub PriceBond()
+    ' Sheet -> request JSON -> runner -> response JSON -> sheet. One click, any type.
     Dim requestPath As String, responsePath As String
     Dim exitCode As Long
     Dim response As Object
@@ -62,7 +113,7 @@ Public Sub PriceVanillaBond()
     requestPath = TempFilePath("ryse_request_")
     responsePath = TempFilePath("ryse_response_")
 
-    WriteRequestJson BuildVanillaRequest(), requestPath
+    WriteRequestJson BuildRequest(), requestPath
     exitCode = RunPricingCommand(requestPath, responsePath)
 
     If Not FileExists(responsePath) Then
@@ -73,7 +124,7 @@ Public Sub PriceVanillaBond()
     End If
 
     Set response = ReadResponseJson(responsePath)
-    PopulateVanillaOutputs response
+    PopulateOutputs response
 
     DeleteFileIfPresent requestPath
     DeleteFileIfPresent responsePath
@@ -86,10 +137,17 @@ End Sub
 
 '------------------------------------------------------------------ build the request
 Public Function BuildVanillaRequest() As Object
+    ' The v1 name, kept working. A sheet with no FIP_InstrumentType produces exactly the
+    ' request it always did.
+    Set BuildVanillaRequest = BuildRequest()
+End Function
+
+Public Function BuildRequest() As Object
     ' Read the named input cells and return the request as nested Dictionaries.
     ' Optional cells left empty are OMITTED so the engine applies its own defaults.
     Dim request As Object, bond As Object, market As Object
     Dim analysis As Object, model As Object, metadata As Object
+    Dim instrumentType As String, operation As String
 
     Set request = New Dictionary
     Set bond = New Dictionary
@@ -98,25 +156,44 @@ Public Function BuildVanillaRequest() As Object
     Set model = New Dictionary
     Set metadata = New Dictionary
 
-    request("schema_version") = "1.0"
+    instrumentType = LCase$(Trim$(OptionalText(NAME_INSTRUMENT_TYPE)))
+    operation = LCase$(Trim$(OptionalText(NAME_OPERATION)))
+    If Len(operation) = 0 Then operation = OP_CALIBRATE
+
+    If Len(instrumentType) = 0 Then
+        request("schema_version") = "1.0"          ' the untouched v1.0 path
+    Else
+        request("schema_version") = "1.1"
+        bond("instrument_type") = instrumentType
+    End If
     request("request_id") = "XL-" & Format$(Now, "yyyymmdd-hhnnss")
-    request("operation") = "calibrate_and_risk"
+    request("operation") = operation
 
     If HasValue(NAME_INSTRUMENT) Then bond("instrument_id") = CStr(NamedValue(NAME_INSTRUMENT))
     bond("currency") = UCase$(Trim$(CStr(NamedValue(NAME_CURRENCY))))
-    bond("coupon_pct") = CDbl(NamedValue(NAME_COUPON))
+    If HasValue(NAME_COUPON) Then bond("coupon_pct") = CDbl(NamedValue(NAME_COUPON))
     bond("coupon_frequency") = CLng(NamedValue(NAME_FREQUENCY))
     ' ISO STRINGS, never Excel serial numbers: the engine refuses a numeric date
     ' because a serial would silently be read as 1970-01-01.
     bond("maturity_date") = IsoDate(NamedValue(NAME_MATURITY))
 
+    AddExerciseSchedules bond, instrumentType
+
     market("valuation_date") = IsoDate(NamedValue(NAME_VALUATION))
-    market("clean_price_per_100") = CDbl(NamedValue(NAME_CLEAN_PRICE))
+    If HasValue(NAME_CLEAN_PRICE) Then
+        market("clean_price_per_100") = CDbl(NamedValue(NAME_CLEAN_PRICE))
+    End If
 
     If HasValue(NAME_SHIFT) Then analysis("spread_shift_bp") = CDbl(NamedValue(NAME_SHIFT))
+    If operation = OP_PRICE_AT_OAS Then
+        ' Read ONLY here. calibrate_and_risk REFUSES a supplied spread, because a mark and
+        ' a typed spread can disagree and there is no principled way to choose; sending one
+        ' anyway would turn a perfectly good sheet into an error response.
+        If HasValue(NAME_OAS_BP) Then analysis("oas_bp") = CDbl(NamedValue(NAME_OAS_BP))
+    End If
     If HasValue(NAME_VOLATILITY) Then
-        ' Vanilla does not use this. It is sent anyway so the response can say so
-        ' explicitly instead of the sheet quietly implying it mattered.
+        ' The option-free types do not use this. It is sent anyway so the response can say
+        ' so explicitly instead of the sheet quietly implying it mattered.
         model("yield_volatility_decimal") = CDbl(NamedValue(NAME_VOLATILITY))
     End If
 
@@ -129,7 +206,113 @@ Public Function BuildVanillaRequest() As Object
     If model.Count > 0 Then Set request("model") = model
     Set request("metadata") = metadata
 
-    Set BuildVanillaRequest = request
+    Set BuildRequest = request
+End Function
+
+
+'------------------------------------------------------------------ exercise schedules
+Private Sub AddExerciseSchedules(ByVal bond As Object, ByVal instrumentType As String)
+    ' Only the tree products carry exercise rights. For every other type the tables are
+    ' not read at all, so a workbook may keep them lying around without affecting a
+    ' vanilla or floating request.
+    Select Case instrumentType
+        Case "callable", "puttable", "sinking"
+            AddSchedule bond, "call_schedule", TABLE_CALL, False
+            AddSchedule bond, "put_schedule", TABLE_PUT, False
+            AddSchedule bond, "sinking_schedule", TABLE_SINK, True
+            If HasValue(NAME_SINK_BASIS) Then
+                ' Never defaulted here. The engine requires it with a sinking schedule and
+                ' names the field if it is missing; guessing "outstanding" would hide a
+                ' caller who actually meant fractions of the ORIGINAL face.
+                bond("sinking_fraction_basis") = Trim$(CStr(NamedValue(NAME_SINK_BASIS)))
+            End If
+    End Select
+End Sub
+
+Private Sub AddSchedule(ByVal bond As Object, ByVal fieldName As String, _
+                        ByVal tableName As String, ByVal wantFraction As Boolean)
+    Dim entries As Object
+    Set entries = ScheduleRows(tableName, wantFraction)
+    ' An absent or empty table is OMITTED, never sent as an empty or invented schedule.
+    ' A required one that is missing comes back as the engine's own named refusal.
+    If entries Is Nothing Then Exit Sub
+    Set bond(fieldName) = entries
+End Sub
+
+Private Function ScheduleRows(ByVal tableName As String, ByVal wantFraction As Boolean) As Object
+    ' One named Excel Table -> a JSON array of objects, in the table's own row order.
+    Dim table As Object, body As Object, entries As Object, entry As Object
+    Dim r As Long, filled As Long, expected As Long
+    Dim dateCell As Variant, fractionCell As Variant, priceCell As Variant
+
+    Set table = FindTable(tableName)
+    If table Is Nothing Then Exit Function
+    Set body = table.DataBodyRange
+    If body Is Nothing Then Exit Function                  ' header row only
+
+    Set entries = New Collection
+    expected = IIf(wantFraction, 3, 2)
+
+    For r = 1 To body.Rows.Count
+        dateCell = body.Cells(r, 1).Value
+        If wantFraction Then
+            fractionCell = body.Cells(r, 2).Value
+            priceCell = body.Cells(r, 3).Value
+        Else
+            fractionCell = Empty
+            priceCell = body.Cells(r, 2).Value
+        End If
+
+        filled = 0
+        If Not IsBlankValue(dateCell) Then filled = filled + 1
+        If Not IsBlankValue(priceCell) Then filled = filled + 1
+        If wantFraction Then
+            If Not IsBlankValue(fractionCell) Then filled = filled + 1
+        End If
+
+        If filled > 0 Then
+            If filled < expected Then
+                Err.Raise vbObjectError + 514, "RysePricingBridge", _
+                    "Table " & tableName & ", row " & r & " is only partly filled (" & _
+                    filled & " of " & expected & " values). Fill the whole row or clear " & _
+                    "it. Nothing is defaulted here: an assumed exercise price or " & _
+                    "redemption fraction would be a contractual term nobody agreed to."
+            End If
+            Set entry = New Dictionary
+            ' ISO string, never an Excel serial - a serial would be read as 1970-01-01.
+            entry("date") = IsoDate(dateCell)
+            If wantFraction Then entry("fraction") = CDbl(fractionCell)
+            entry("price_per_100") = CDbl(priceCell)
+            entries.Add entry                              ' row ORDER preserved
+        End If
+    Next r
+
+    If entries.Count = 0 Then Exit Function                ' all rows blank -> omitted
+    Set ScheduleRows = entries
+End Function
+
+Private Function FindTable(ByVal tableName As String) As Object
+    ' Workbook-wide lookup, so a schedule table can live on any sheet. This is what keeps
+    ' the bridge independent of the final worksheet layout, which is Mario's to choose.
+    Dim sheet As Object, table As Object
+    For Each sheet In ThisWorkbook.Worksheets
+        For Each table In sheet.ListObjects
+            If StrComp(table.Name, tableName, vbTextCompare) = 0 Then
+                Set FindTable = table
+                Exit Function
+            End If
+        Next table
+    Next sheet
+End Function
+
+Private Function IsBlankValue(ByVal Value As Variant) As Boolean
+    If IsEmpty(Value) Then IsBlankValue = True: Exit Function
+    If IsNull(Value) Then IsBlankValue = True: Exit Function
+    IsBlankValue = (Len(Trim$(CStr(Value))) = 0)
+End Function
+
+Private Function OptionalText(ByVal cellName As String) As String
+    If HasValue(cellName) Then OptionalText = CStr(NamedValue(cellName))
 End Function
 
 
@@ -162,8 +345,16 @@ End Function
 
 '------------------------------------------------------------------ write results back
 Public Sub PopulateVanillaOutputs(ByVal response As Object)
+    ' The v1 name, kept working.
+    PopulateOutputs response
+End Sub
+
+Public Sub PopulateOutputs(ByVal response As Object)
     ' Map one response onto the named output cells. Missing names are skipped, so a
-    ' sheet may show only the outputs it cares about.
+    ' sheet may show only the outputs it cares about. The result fields below are the
+    ' ones EVERY instrument type returns; a product's extras (next reset, next switch,
+    ' the volatility numbers) are in the response JSON and on the QA surface, not in a
+    ' type-specific panel — that panel is Mario's layout decision, not ours.
     Dim results As Object
 
     SetNamedValue OUT_STATUS, Field(response, "status")
@@ -188,6 +379,11 @@ Public Sub PopulateVanillaOutputs(ByVal response As Object)
     SetNamedValue OUT_TIGHTER, Field(results, "price_spread_tighter_per_100")
     SetNamedValue OUT_WIDER, Field(results, "price_spread_wider_per_100")
     SetNamedValue OUT_CURVE, Field(FieldObject(response, "market_data"), "curve_id")
+
+    ' Optional engineering outputs: what the engine says it actually did.
+    SetNamedValue OUT_ENGINE, Field(response, "engine")
+    SetNamedValue OUT_TYPE_USED, Field(FieldObject(response, "inputs_used"), "instrument_type")
+    SetNamedValue OUT_VOL_USED, Field(results, "volatility_used_decimal")
 End Sub
 
 Private Function VolatilityNote(ByVal response As Object) As String
@@ -202,10 +398,35 @@ Private Function VolatilityNote(ByVal response As Object) As String
     If vol Is Nothing Then Exit Function
 
     If Field(vol, "used") = True Then
-        VolatilityNote = "used"
+        ' A tree product: say what it was worth, in both directions, rather than "used".
+        VolatilityNote = "used — " & _
+            EffectText(Field(vol, "price_effect_per_1pct_vol"), " price / vol point") & _
+            EffectText(Field(vol, "oas_effect_bp_per_1pct_vol"), " bp OAS / vol point")
+        If Len(Trim$(VolatilityNote)) <= 7 Then VolatilityNote = "used"
     Else
-        VolatilityNote = "not used by vanilla — " & CStr(Field(vol, "reason"))
+        ' Names the TYPE, so the sentence stays true for every product. For a vanilla
+        ' request this is the v1 wording, unchanged.
+        VolatilityNote = "not used by " & UsedType(response) & " — " & _
+                         CStr(Field(vol, "reason"))
     End If
+End Function
+
+Private Function UsedType(ByVal response As Object) As String
+    ' The instrument type the engine echoed back; "vanilla" when the caller named none.
+    Dim used As Object
+    UsedType = "vanilla"
+    Set used = FieldObject(response, "inputs_used")
+    If used Is Nothing Then Exit Function
+    If Not used.Exists("instrument_type") Then Exit Function
+    If IsNull(used("instrument_type")) Then Exit Function
+    UsedType = CStr(used("instrument_type"))
+End Function
+
+Private Function EffectText(ByVal value As Variant, ByVal suffix As String) As String
+    ' A null volatility effect is left out entirely rather than shown as zero.
+    If IsNull(value) Or IsEmpty(value) Then Exit Function
+    If Not IsNumeric(value) Then Exit Function
+    EffectText = Format$(CDbl(value), "0.0000") & suffix & "; "
 End Function
 
 Private Sub ClearResultCells()
@@ -233,7 +454,7 @@ Public Sub PopulateFromResponseFile()
     path = Application.GetOpenFilename("JSON files (*.json), *.json", , _
                                        "Choose a saved response JSON")
     If VarType(path) = vbBoolean Then Exit Sub
-    PopulateVanillaOutputs ReadResponseJson(CStr(path))
+    PopulateOutputs ReadResponseJson(CStr(path))
 End Sub
 
 

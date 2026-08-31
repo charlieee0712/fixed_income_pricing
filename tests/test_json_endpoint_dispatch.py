@@ -378,3 +378,46 @@ def test_an_unplaceable_put_schedule_names_the_put_field():
                       put_schedule=[{"date": "2011-12-02", "price_per_100": 100.0}])
     request["bond"]["maturity_date"] = "2012-03-01"
     assert error_of(analyze_payload(request))["field"] == "bond.put_schedule"
+
+
+def test_every_exercise_terms_refusal_names_its_own_field():
+    """A whole class of misleading errors, closed together.
+
+    Each of these is a CONTRACT problem — the terms as described cannot be priced. Each
+    is raised from inside the engine as a ValueError, so without the ExerciseTermsError
+    family they are caught by the spread solver and reported as "no spread reprices this
+    bond - check the price, the coupon and the maturity". Three fields, all of them
+    correct, and the reader sent to the wrong file.
+
+    Found by generating the Excel fixtures: the call/put conflict came back blaming
+    `market.clean_price_per_100`.
+    """
+    cases = {
+        "bond.put_schedule": dict(
+            instrument_type="callable", coupon_pct=9.5,
+            call_schedule=[{"date": "2011-04-01", "price_per_100": 100.0}],
+            put_schedule=[{"date": "2011-04-01", "price_per_100": 103.0}]),
+        "bond.sinking_schedule": dict(
+            instrument_type="sinking", coupon_pct=9.5,
+            sinking_fraction_basis="outstanding",
+            sinking_schedule=[{"date": "2011-04-01", "fraction": 0.25,
+                               "price_per_100": 100.0}],
+            call_schedule=[{"date": "2011-04-01", "price_per_100": 100.0}]),
+        "bond.call_schedule": dict(
+            instrument_type="callable", coupon_pct=9.5,
+            call_schedule=[{"date": "2011-04-01", "price_per_100": 100.0},
+                           {"date": "2011-04-01", "price_per_100": 102.0}]),
+    }
+    for expected_field, bond in cases.items():
+        err = error_of(analyze_payload(payload(price=104.0, **bond)))
+        assert err["code"] == contracts.VALIDATION_ERROR, (expected_field, err)
+        assert err["field"] == expected_field, err
+        assert "no spread reprices" not in err["message"]
+
+
+def test_a_schedule_entirely_after_maturity_names_the_schedule_too():
+    err = error_of(analyze_payload(payload(
+        "callable", price=104.0, coupon_pct=9.5,
+        call_schedule=[{"date": "2020-04-01", "price_per_100": 100.0}])))
+    assert err["field"] == "bond.call_schedule"
+    assert "straight bond" in err["message"]

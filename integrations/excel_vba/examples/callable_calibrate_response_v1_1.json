@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "status": "ok",
+  "engine": "corporate_callable",
+  "operation": "calibrate_and_risk",
+  "inputs_used": {
+    "instrument_id": "DEMO-CALLABLE-001",
+    "instrument_type": "callable",
+    "currency": "USD",
+    "coupon_pct": 9.5,
+    "coupon_frequency": 2,
+    "maturity_date": "2014-04-01",
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 104.0,
+    "oas_bp_supplied": null,
+    "spread_shift_bp": 10.0,
+    "face_value_supplied": null,
+    "face_value_per_quote": 100.0,
+    "call_schedule": [
+      {
+        "date": "2011-04-01",
+        "price_per_100": 100.0
+      },
+      {
+        "date": "2012-04-01",
+        "price_per_100": 100.0
+      }
+    ],
+    "put_schedule": null
+  },
+  "market_data": {
+    "pricing_currency": "USD",
+    "valuation_date": "2009-03-31",
+    "curve_id": "USD|2009-03-31|Semiannual"
+  },
+  "results": {
+    "model_clean_price_per_100": 104.00000000658798,
+    "model_dirty_price_per_100": 108.56730769889568,
+    "accrued_interest_per_100": 4.5673076923076925,
+    "implied_oas_bp": 635.7847879698965,
+    "oas_source": "calibrated_from_clean_price",
+    "effective_duration_years": 2.1477821341758556,
+    "dv01_per_100": 0.023317892383126093,
+    "convexity": 5.8233537387446095,
+    "price_spread_tighter_per_100": 104.22710923624062,
+    "price_spread_wider_per_100": 103.76713685073018,
+    "calibration_residual_per_100": 6.5879817157110665e-09,
+    "volatility_used_decimal": 0.15
+  },
+  "applicability": {
+    "day_count": {
+      "input_value_label": null,
+      "used": false,
+      "convention_used": "ACT/364 with a 182-day coupon grid",
+      "reason": "The validated engine prices on the legacy ACT/364 convention with a 182-day coupon grid; the day-count label is carried as data only."
+    },
+    "yield_volatility": {
+      "input_value_decimal": 0.15,
+      "used": true,
+      "baseline_volatility_decimal": 0.15,
+      "price_effect_per_1pct_vol": -0.026386494989949938,
+      "oas_effect_bp_per_1pct_vol": -1.1531148338691537,
+      "reason": "price effect = change in clean price per +1 volatility POINT at a FIXED spread; oas effect = change in the calibrated spread per +1 volatility point at a FIXED market price. Different questions \u2014 never combine them."
+    }
+  },
+  "warnings": [],
+  "errors": []
+}
