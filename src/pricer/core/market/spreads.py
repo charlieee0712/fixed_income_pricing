@@ -9,10 +9,9 @@ factor is), so the root is unique and bracketing (Brent) is robust.
 """
 from __future__ import annotations
 
-from pricer.errors import CalibrationError
-
 import pandas as pd
 from scipy.optimize import brentq
+from pricer.errors import CalibrationError
 
 
 def solve_spread_to_price(price_at_spread, target_price: float,

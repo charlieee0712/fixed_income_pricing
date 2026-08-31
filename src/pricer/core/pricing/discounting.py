@@ -34,6 +34,39 @@ def discount_factor(zero_rate: float, t: float, spread: float = 0.0) -> float:
     return math.exp(-t * (zero_rate + spread))
 
 
+def curve_rate(curve, t: float, spread: float = 0.0) -> float:
+    """Continuous zero rate off a curve at ``t``, plus a flat spread.
+
+    Inputs
+    ------
+    1. curve  : ZeroCurve — anything exposing ``zero_rate(t)`` in DECIMAL.
+    2. t      : float — time in years (ACT/364 by repo convention).
+    3. spread : float — flat credit spread / OAS added to the rate, DECIMAL.
+
+    Returns: float rate = curve.zero_rate(t) + spread.
+    """
+    return float(curve.zero_rate(t)) + spread
+
+
+def curve_discount_factor(curve, t: float, spread: float = 0.0) -> float:
+    """Discount factor read straight off a curve — the curve-facing form of
+    :func:`discount_factor`, which takes a rate the caller has already looked up.
+
+    Inputs
+    ------
+    1. curve  : ZeroCurve — anything exposing ``zero_rate(t)`` in DECIMAL.
+    2. t      : float — time in years (ACT/364 by repo convention).
+    3. spread : float — flat credit spread / OAS added to the rate, DECIMAL.
+
+    Returns: float DF = exp(-t * (curve.zero_rate(t) + spread)).
+
+    This is the public name for what the floating engine kept as a module-private ``_df``
+    and the hybrid engine imported by that private name. The arithmetic is unchanged and the
+    float operation order is preserved exactly, so every shipped number is bit-identical.
+    """
+    return discount_factor(float(curve.zero_rate(t)), t, spread)
+
+
 def present_value(amount: float, df: float) -> float:
     """Present value of one cash flow.
 

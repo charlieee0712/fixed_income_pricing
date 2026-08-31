@@ -68,12 +68,11 @@ Conventions / simplifications (v2 — assumption-driven, NOT a golden port; docu
 """
 from __future__ import annotations
 
-from pricer.errors import CalibrationError
-
 import numpy as np
 
 from pricer.core.pricing.cashflows import lattice_inputs
 from pricer.core.utils.dates import exercise_schedule_times, as_date, year_fraction
+from pricer.errors import CalibrationError
 
 
 def _root_decreasing(f, lo, hi, xtol=1e-12, maxiter=200):

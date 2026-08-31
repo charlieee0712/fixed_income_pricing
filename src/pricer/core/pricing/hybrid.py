@@ -46,16 +46,16 @@ the switch) is returned on every result for per-bond verification.
 """
 from __future__ import annotations
 
-from pricer.errors import CalibrationError
-
 import datetime as dt
 from dataclasses import dataclass
 
 from scipy.optimize import brentq
 
 from pricer.core.pricing.analytical import price_fixed_rate_bond as price_bond
-from pricer.core.pricing.floating import (YEAR_DAYS, _as_date, _df, price_frn,
-                                          simple_forward)
+from pricer.core.pricing.discounting import curve_discount_factor
+from pricer.core.pricing.floating import YEAR_DAYS, price_frn, simple_forward
+from pricer.core.utils.dates import as_date
+from pricer.errors import CalibrationError
 
 
 @dataclass
@@ -76,7 +76,7 @@ def price_hybrid(valuation_date, maturity, curve, oas: float = 0.0, *, fixed_rat
     (the duration bump); ``oas`` shifts only the discounting. ``spread`` is the documented quoted
     margin of the floating leg (decimal).
     """
-    val, mat, sw = _as_date(valuation_date), _as_date(maturity), _as_date(switch_date)
+    val, mat, sw = as_date(valuation_date), as_date(maturity), as_date(switch_date)
     if float_freq is None:
         float_freq = fixed_freq
     if val > mat:
@@ -97,7 +97,7 @@ def price_hybrid(valuation_date, maturity, curve, oas: float = 0.0, *, fixed_rat
     d = sw
     while d >= val:
         t = (d - val).days / YEAR_DAYS
-        df = _df(curve, t, curve_shift + oas)
+        df = curve_discount_factor(curve, t, curve_shift + oas)
         dirty += period_cpn * df
         cfs.append((d, t, fixed_rate, period_cpn, df, period_cpn * df))
         d = d - dt.timedelta(days=step_f)
@@ -119,7 +119,7 @@ def price_hybrid(valuation_date, maturity, curve, oas: float = 0.0, *, fixed_rat
         tau = t - prev_t
         rate_cf = simple_forward(curve, prev_t, t, curve_shift) + spread
         amount = rate_cf * tau * face + (face if dd == mat else 0.0)
-        df = _df(curve, t, curve_shift + oas)
+        df = curve_discount_factor(curve, t, curve_shift + oas)
         dirty += amount * df
         cfs.append((dd, t, rate_cf, amount, df, amount * df))
         prev_t = t

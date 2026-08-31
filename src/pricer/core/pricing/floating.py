@@ -49,8 +49,6 @@ spread-independent; once a real spread is supplied it can be separated back out 
 """
 from __future__ import annotations
 
-from pricer.errors import CalibrationError
-
 import datetime as dt
 import math
 import re
@@ -59,22 +57,24 @@ from dataclasses import dataclass
 import pandas as pd
 from scipy.optimize import brentq
 
+from pricer.core.pricing.discounting import curve_discount_factor, curve_rate
+from pricer.core.utils.dates import as_date
+from pricer.errors import CalibrationError
+
 YEAR_DAYS = 364.0
 
 _SPREAD_BP = re.compile(r"\+\s*(\d+(?:\.\d+)?)\s*bp", re.I)
 _SPREAD_PCT = re.compile(r"\+\s*(\d+(?:\.\d+)?)\s*%")
 
 
-def _as_date(x) -> dt.date:
-    return pd.Timestamp(x).date()
-
-
-def _rate(curve, t, shift):
-    return float(curve.zero_rate(t)) + shift
-
-
-def _df(curve, t, shift):
-    return math.exp(-t * _rate(curve, t, shift))
+# Back-compat aliases. These three were the module's own private helpers, and
+# `core/pricing/hybrid.py` imported them BY THEIR PRIVATE NAMES across a module boundary --
+# a seam no refactor could see and no reader could rely on. They are now the canonical public
+# functions, kept under the old names because `src/pricing/frn.py` (the legacy shim) re-exports
+# them and the hybrid shim resolves them through it. Same objects, so nothing can drift.
+_as_date = as_date
+_rate = curve_rate
+_df = curve_discount_factor
 
 
 def simple_forward(curve, t0, t1, shift: float = 0.0):
