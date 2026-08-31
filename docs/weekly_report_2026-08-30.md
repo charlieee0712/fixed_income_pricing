@@ -56,11 +56,30 @@ those six now price; the other three are waiting on the same missing margins.
 Four families sit behind your six cells, and they need genuinely different treatment:
 
 - **Floating-rate note** (F14, F15, F16) — the coupon is not fixed at all. It resets
-  periodically to a market interest rate plus a contractual margin. This has a
-  consequence worth knowing: such a bond keeps re-setting its own interest-rate risk away,
-  so a thirty-year floating note behaves, for rate purposes, like a bond maturing at its
-  next reset. Our numbers show exactly that, and the module reports the next reset date
-  beside the risk figure so the two can be checked against each other.
+  periodically to a market interest rate plus a contractual margin. The consequence worth
+  knowing: such a bond keeps re-setting its own interest-rate risk away, so a thirty-year
+  floating note carries the rate risk of **a single coupon period**, not of thirty years.
+
+  Two cautions on reading those risk figures, because the usual shorthand — "a floater's
+  risk is the time to its next reset" — is only true in one of three cases.
+
+  *First*, whether it is the time to the **next** reset or the time **since the last** one
+  depends on whether we know the coupon that is currently running. If we do, the figure is
+  the time forward to the next reset; if that coupon has to be estimated from the market
+  curve, the figure is the same length of time but pointing **backwards**, and therefore
+  negative. Both are correct and both are less than one coupon period. *Second*, a bond
+  trading well below face value carries an additional, genuinely negative figure that grows
+  with maturity — that is the discount itself unwinding, not a sign error. The module reports
+  the next reset date beside every risk figure so the two can be checked against each other,
+  and section 6 gives the exact numbers.
+
+  A third caution, about the **spread** rather than the risk. Most of these notes are
+  described in the workbook only as "... + Spread", with no number: the contractual margin is
+  not recorded anywhere we can read. For those, the spread we report absorbs that unknown
+  margin **as well as** the borrower's credit, so it should be read as a total discount
+  margin and not as a clean credit spread. Where a margin is documented, it is used and the
+  spread is a credit spread. The output says which of the two it is for every bond, rather
+  than leaving it to be assumed.
 - **Fixed → Floating** (F12) — fixed for some years, then floating. Priced as one bond
   with one credit spread across both halves, because it is one borrower's one promise.
   Splitting the spread in two would be inventing a second borrower.
