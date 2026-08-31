@@ -181,9 +181,48 @@ def implied_oas_frn(target_clean, valuation_date, maturity, curve, *, current_co
 def frn_risk_metrics(valuation_date, maturity, curve, oas, *, current_coupon=None, spread: float = 0.0,
                      face: float = 100.0, freq: int = 2, bump: float = 1e-4) -> dict:
     """Effective duration / DV01 / convexity by a parallel **curve** bump (reprojects the forwards
-    AND rediscounts) — the correct FRN rate sensitivity. ``oas`` is held at its calibrated value."""
+    AND rediscounts) — the correct FRN rate sensitivity. ``oas`` is held at its calibrated value.
+
+    Inputs
+    ------
+    1. valuation_date : date-like — pricing "as of" date.
+    2. maturity       : date-like — final coupon and redemption date.
+    3. curve          : ZeroCurve — projection AND discounting curve (2009 single-curve convention).
+    4. oas            : float — the calibrated flat spread, DECIMAL, held fixed across the bumps.
+    5. current_coupon : float | None — the coupon already fixed at the last reset, DECIMAL. When
+       None it is projected off the curve; see the note below, which is what this function does
+       differently from a plain repricing.
+    6. spread         : float — quoted margin over the index, DECIMAL.
+    7. face           : float — redemption amount, default 100.
+    8. freq           : int — resets per year.
+    9. bump           : float — parallel curve shift for the difference quotients, default 1bp.
+
+    THE CURRENT COUPON IS FROZEN ACROSS THE BUMPS. It was fixed at the last reset date, which is
+    in the past, so it is a KNOWN cash flow: moving today's curve cannot change it. Supplying
+    ``current_coupon`` always froze it. Leaving it None did not — the stub was reprojected off the
+    bumped curve, so the bump silently repriced a coupon that had already been set. That gave the
+    projected case a duration of MINUS the time SINCE the last reset, against PLUS the time TO the
+    next reset for an otherwise identical bond whose coupon happened to be recorded. Two bonds, one
+    economic exposure, opposite-signed answers, decided by a data field.
+
+    When the coupon is not observed we freeze a BASE-CURVE PROXY instead: the stub rate the
+    unbumped curve implies, read back off the engine's own cash-flow grid so it uses the true
+    period start (before the valuation date) and already includes the quoted margin. At zero shift
+    the proxy reproduces the unfrozen number exactly, so PRICE AND CALIBRATED OAS DO NOT MOVE —
+    only the sensitivities do, and both regimes now agree.
+    """
+    # the proxy is read off the engine's own grid: cashflows[0] is the stub period, and its rate is
+    # already `simple_forward(true period start ... ) + spread`. Rebuilding it here would risk
+    # dropping the margin or mis-dating the period start.
+    frozen = current_coupon
+    if frozen is None:
+        probe = price_frn(valuation_date, maturity, curve, oas=oas, current_coupon=None,
+                          spread=spread, face=face, freq=freq)
+        if probe.cashflows:
+            frozen = probe.cashflows[0][2]
+
     def priced(shift):
-        return price_frn(valuation_date, maturity, curve, oas=oas, current_coupon=current_coupon,
+        return price_frn(valuation_date, maturity, curve, oas=oas, current_coupon=frozen,
                          spread=spread, face=face, freq=freq, curve_shift=shift)
 
     base = priced(0.0)

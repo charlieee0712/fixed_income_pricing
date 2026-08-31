@@ -27,6 +27,7 @@ import pricing.coupon_schedule as legacy_sched
 import pricing.frn as legacy_frn
 import pricing.hybrid as legacy_hybrid
 from curves.zero_curve import ZeroCurve
+import pricer.core.pricing.floating as core_floating
 from pricer.assets.corporate import floating, hybrid, stepped, vanilla
 from pricer.assets.corporate import bonds_input
 from pricer.core.market.curves import flat_zero_curve
@@ -209,36 +210,59 @@ def test_a_floaters_duration_is_one_coupon_period_not_its_maturity():
     """The signature floating-rate check: a 30-year floater carries the rate risk of a
     single coupon period, while the same-maturity fixed bond carries decades.
 
-    WHICH end of that period depends on one input, and the two cases are exact — worth
-    pinning, because a reader who knows only "duration ~ the next reset" will otherwise
-    read the negative number as a bug:
+    It is +time to the NEXT reset whether or not the running coupon was recorded, because
+    the running coupon is frozen across the risk bumps either way. That coupon was set at
+    the last reset date, which is in the past, so a move in today's curve cannot change it.
 
-    * ``current_coupon_pct`` GIVEN (the real case — the running coupon really was fixed
-      at the last reset, and a curve bump cannot change it) -> duration = +time to the
-      next reset, and independently of what that coupon is;
-    * ``current_coupon_pct`` OMITTED (the current period projected off the curve like
-      every other) -> the bump moves that coupon too, and the note behaves like a claim
-      struck at the last reset -> duration = -time SINCE the last reset.
+    THIS TEST PREVIOUSLY PINNED THE OPPOSITE for the projected case. Omitting
+    ``current_coupon_pct`` used to reproject the stub off the BUMPED curve, so the bump
+    silently repriced an already-fixed coupon and the note behaved like a claim struck at
+    the last reset: duration came out as MINUS the time SINCE that reset. Two bonds with
+    one economic exposure got opposite-signed answers, decided by whether a custodian field
+    happened to be numeric. The old assertion documented real behaviour, and that behaviour
+    was the defect; see the regime-merge test below.
     """
     curve = flat_zero_curve(0.04)
     long_mat = "2039-04-01"
     to_next = floating.next_reset_years(FREQ, long_mat, VAL, curve)
-    since_last = 1.0 / FREQ - to_next
     fixed_dur = vanilla.duration(4.0, FREQ, long_mat, VAL, 0.0, curve)
 
-    for coupon in (4.0, 6.0):
-        dur_fixed_cpn = floating.duration(FREQ, long_mat, VAL, 0.0, curve,
-                                          current_coupon_pct=coupon)
-        assert dur_fixed_cpn == pytest.approx(to_next, abs=1e-6)
+    for coupon in (4.0, 6.0, None):
+        dur = floating.duration(FREQ, long_mat, VAL, 0.0, curve, current_coupon_pct=coupon)
+        assert dur == pytest.approx(to_next, abs=1e-6)      # +, and the SAME + either way
+        assert 0.0 < dur <= 1.0 / FREQ                      # within one coupon period
+        assert dur < 0.05 * fixed_dur                       # against the fixed bond's ~17y
 
-    dur_projected = floating.duration(FREQ, long_mat, VAL, 0.0, curve)
-    assert dur_projected == pytest.approx(-since_last, abs=1e-6)
 
-    # both regimes: within one coupon period, and far below the fixed bond's 17 years
-    for dur in (dur_projected, floating.duration(FREQ, long_mat, VAL, 0.0, curve,
-                                                 current_coupon_pct=4.0)):
-        assert abs(dur) <= 1.0 / FREQ
-        assert abs(dur) < 0.05 * fixed_dur
+def test_the_running_coupon_cannot_be_repriced_by_a_curve_bump():
+    """The whole change, in one assertion: the stub cash flow is identical under ±bump.
+
+    Everything else here is a consequence — the sign, the regime merge, the unchanged base
+    price. If a future edit reprojects the current period again, this fails first and says
+    exactly what broke, rather than surfacing as a sign nobody can explain.
+    """
+    curve = flat_zero_curve(0.04)
+    kwargs = dict(oas=0.012, spread=0.0045, freq=FREQ)
+    base = core_floating.price_frn(VAL, "2039-04-01", curve, **kwargs)
+    stub = base.cashflows[0][2]
+
+    amounts = {core_floating.price_frn("2009-03-31", "2039-04-01", curve,
+                                       current_coupon=stub, curve_shift=shift,
+                                       **kwargs).cashflows[0][3]
+               for shift in (-1e-4, 0.0, 1e-4)}
+    assert len(amounts) == 1                                 # one value, exactly
+
+    # and the proxy the risk function builds for itself reproduces the base price exactly,
+    # so calibrated OAS and reported price cannot move: only the sensitivities do
+    risk = core_floating.frn_risk_metrics(VAL, "2039-04-01", curve, 0.012,
+                                          spread=0.0045, freq=FREQ)
+    assert risk["dirty"] == base.dirty
+    assert risk["clean"] == base.clean
+    supplied = core_floating.frn_risk_metrics(VAL, "2039-04-01", curve, 0.012,
+                                              current_coupon=stub, spread=0.0045, freq=FREQ)
+    assert risk["eff_duration"] == supplied["eff_duration"]  # the regimes are now ONE path
+    assert risk["convexity"] == supplied["convexity"]
+    assert risk["dv01"] == supplied["dv01"]
 
 
 def test_hybrid_degenerates_to_the_vanilla_engine_when_it_never_floats():
