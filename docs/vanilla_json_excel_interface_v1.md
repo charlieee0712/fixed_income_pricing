@@ -512,10 +512,91 @@ The rules, and they are deliberately strict in one direction only:
 5. an **absent or empty table is omitted**, not sent as an empty schedule. A required one
    that is missing comes back as the engine's own named refusal.
 
-### 14.8 Not yet done
+### 14.8 What Excel can actually send — three different numbers, corrected 2026-08-31
 
-**The polished customer worksheet.** The engine, the contract and the bridge handle all
-seven types, and the tree types are covered by real-Excel tests. What does not exist is the
-daily-use layout — one adaptive sheet with a type dropdown, or one small sheet per type.
-That is the open question in the 2026-08-30 report, and it is deliberately Mario's to
-answer rather than ours to assume.
+An earlier version of this section said the bridge "handles all seven types". That reads one
+number off the engine and attaches it to the spreadsheet, and the two are not the same. The
+honest statement has three parts, and each was measured by driving `BuildRequest` and running
+the result through the live endpoint:
+
+| | count | which |
+|---|---:|---|
+| **supported by the engine and the contract** | **7** | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
+| **constructible by the VBA builder** | **5** | the above minus `stepped` (no cells for a coupon table) and `fixed_to_floating` (no cells for the margin or the switch date) |
+| **tested from real Excel** | **4** | vanilla · callable · puttable · sinking |
+
+`floating` is constructible but only in its margin-absent form: the sheet has no cell for the
+quoted margin or for the running coupon, so the spread it gets back is a discount margin rather
+than a clean credit spread, and the running-coupon input of §15.5 cannot be exercised from Excel
+at all.
+
+Closing that asymmetry is small — one named table for the coupon schedule and three cells
+(`FIP_SwitchDate`, `FIP_QuotedMarginBp`, `FIP_CurrentCouponPct`) — and layout-neutral in the way
+§14.7 already established. It is **deliberately not done**, because the worksheet design is
+Mario's to answer.
+
+### 14.9 Not yet done
+
+**The polished customer worksheet.** What does not exist is the daily-use layout — one adaptive
+sheet with a type dropdown, or one small sheet per type. That is the open question in the
+2026-08-30 report, and it is deliberately Mario's to answer rather than ours to assume.
+
+---
+
+## 15. v1.1 — confidence labelling (2026-08-31)
+
+Additive: **`schema_version` stays `"1.1"`**. Nothing here is required, nothing here is
+removed, and no result changes. A caller who ignores this section gets exactly the numbers
+they got before, plus one warning telling them what the numbers rest on.
+
+### 15.1 The problem
+
+An exercise price of `100.0` in a response looks identical whether it came from a prospectus
+or from a convention somebody applied to a custodian date. Every exercise schedule in this
+project is the second kind. Likewise a floating-rate note's *running* coupon — the one already
+fixed at the last reset — is an observable, and when the custodian file does not record it we
+estimate it from the curve. Both facts were true and written down, and neither was visible at
+the point where a person reads a number.
+
+### 15.2 New request field
+
+| field | where | values | default |
+|---|---|---|---|
+| `exercise_terms_status` | `bond` | `"confirmed"` \| `"provisional"` | `"provisional"` |
+
+Only for the tree types (`callable`, `puttable`, `sinking`). **Anything else is refused** with
+`VALIDATION_ERROR` on `bond.exercise_terms_status` — `"verified"`, `"final"`, `"TRUE"` and a
+typo must not be read as confirmation. The default is `provisional`, never `confirmed`: an
+absent statement of provenance is not evidence of good provenance.
+
+### 15.3 New warning codes
+
+| code | field | raised when |
+|---|---|---|
+| `PROVISIONAL_TERMS` | `bond.exercise_terms_status` | a tree request whose exercise terms are not declared confirmed |
+| `PROVISIONAL_RISK` | `bond.current_coupon_pct` | a `floating` request with no running coupon, so it is estimated |
+
+Both are **warnings on an `ok` response**, not errors. The bond prices; the response says what
+the price rests on.
+
+### 15.4 The labels never change a number
+
+`PROVISIONAL_TERMS` describes the *inputs*. Sending `exercise_terms_status: "confirmed"`
+suppresses the warning and returns a `results` block equal to the unlabelled one — asserted
+with `==` in `tests/test_json_endpoint_dispatch.py`. A label that quietly altered arithmetic
+would be worse than no label.
+
+### 15.5 What a floating response now guarantees
+
+The running coupon is held **fixed** across the risk bumps whether it was supplied or
+estimated, because it was set in the past and a move in today's curve cannot change it.
+Before 2026-08-31 an estimated coupon was re-projected on the bumped curve, which flipped the
+sign of the reported duration. Supplied and estimated now travel one code path and return the
+same sensitivities for the same coupon. See `docs/frn_current_coupon_freeze_2026-08-31.md`.
+
+### 15.6 Excel
+
+The bridge sends vanilla only, and neither warning fires on a vanilla request, so the
+committed v1.0 fixtures and all 23 worksheet checks are unaffected. The six v1.1 tree example
+responses in `integrations/excel_vba/examples/` were regenerated: only their `warnings` array
+changes. Excel gate re-run on real Excel — **48/48 fixture mode, 50/50 live-Python mode**.

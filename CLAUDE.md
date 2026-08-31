@@ -239,15 +239,21 @@ checks — those are decided here, from the repo.
   public name; **`analyze_vanilla_payload` kept as an alias and a typeless payload is still
   vanilla**, so the VBA bridge + its 23 Excel checks pass UNCHANGED (re-run and verified).
   `schema_version` 1.0→1.1. Doc = `docs/vanilla_json_excel_interface_v1.md` **§14**.
-- **⚠️ FRN duration has TWO exact regimes and the SIGN flips** (pinned by tests; the old
-  docstring only described one): `current_coupon` supplied → **+**time to next reset;
-  omitted (projected) → **−**time SINCE last reset, because the curve bump reprices that
-  period's coupon too. Both |dur| ≤ one period and ≪ same-maturity fixed.
-- **223 → 287 tests.** New: `test_pricer_floating_structure` (31), `test_json_endpoint_dispatch`
+- ~~**FRN duration has TWO exact regimes and the SIGN flips**~~ **SUPERSEDED 2026-08-31 — the
+  two regimes were a BUG, not a property.** They are now ONE: the running coupon is frozen
+  under the bumps whether supplied or projected, so duration is **+**time to next reset either
+  way. (Was: supplied → +to next reset; omitted → −time SINCE last reset, because the bump
+  repriced a coupon already fixed at the last reset.) See the hardening section below.
+- **223 → 287 tests** (390 after the 08-31 hardening). New: `test_pricer_floating_structure` (31), `test_json_endpoint_dispatch`
   (29), +4 bootstrap. Production parity re-run after EVERY code-bearing commit: all five driver
   CSVs byte-identical, except the deliberate GBP delta below.
-- **Excel bridge still sends VANILLA only** — engine + contract do all seven; the worksheet
-  layout for per-type fields is the open question in the 08-30 report. Not a technical block.
+- **⚠️ Excel scope = THREE different numbers, never "the spreadsheet can ask for any of seven"
+  (measured 08-31 by driving `BuildRequest`):** **7** supported by the engine + contract · **5**
+  constructible by the VBA builder (not `stepped` — no coupon-table cells; not
+  `fixed_to_floating` — no margin/switch cells) · **4** tested from real Excel (vanilla,
+  callable, puttable, sinking). `floating` is constructible only margin-absent, so the
+  current-coupon input is unreachable from the sheet. Closing it = 1 named table + 3 cells,
+  layout-neutral — deliberately NOT done, the worksheet design is Mario's to answer.
 
 ## Round 2b delivery-quality pass (2026-08-31) — two more silent omissions, closed
 - **Plan** `docs/cc_next_instruction_round2b_delivery_quality_and_tree_excel_bridge_2026-08-30.md`;
@@ -327,6 +333,64 @@ checks — those are decided here, from the repo.
   this" from "the daily-use worksheet exists" — only the first is true for the tree types.
   **The final layout stays Mario's open question.**
 
+## Round 2b HARDENING + release (2026-08-31) — DONE, 390 tests
+Directive `docs/cc_post_round2b_review_hardening_and_release_instruction_2026-08-31.md`;
+Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
+- **⭐ THE ONE INTENTIONAL NUMERICAL CHANGE — FRN running coupon frozen under risk bumps.**
+  It was fixed at the last reset ⇒ a curve bump cannot change it. Supplied → already frozen;
+  projected → the bump repriced it ⇒ **the sign flipped**. Now frozen either way, via a
+  **base-curve proxy** read off `FrnResult.cashflows[0][2]` (true stub start, margin already in).
+  Placed in `frn_risk_metrics`, **NOT** `price_frn` — keeps the par-under-any-shift telescoping
+  invariant. At shift 0 the proxy == the old value ⇒ **price and OAS cannot move**. 6 of 7
+  floaters moved, all +, each = one period × 100/P to within 3%; 4 stay negative (deep-discount
+  spread-annuity = real economics). Doc `docs/frn_current_coupon_freeze_2026-08-31.md`.
+- **THIRD "two owners, one decision" found & closed — `defaulted` names a COUPON CLASS *and* an
+  EXCLUSION REASON**, with a recovery path keyed on each ⇒ `TNTD03067251` (8.78M par, 3 legs,
+  coupon_class `F`, rating D) matched NEITHER = invisible. Now the **rating decides once**,
+  unless a permanent Mario coupon-class exclusion outranks it. **Output 565→566 @3-31,
+  560→561 @6-10** (11 flagged both dates = 8 hybrid-margin + 3 recovery). `TNTD03044683`
+  stays out but its reason is now `excluded-structured` (class `na`), not `defaulted`.
+- **Domain exception family `src/pricer/errors.py`** (`PricingDomainError` → `ContractTermsError`
+  (+`.field`) → `ExerciseTermsError`; `CalibrationError`) — **rooted at `Exception`, NOT
+  `ValueError`**, because the solvers' `except ValueError` was swallowing contract refusals and
+  reporting them as "no spread reprices this bond". Only `CalibrationError` may become
+  `CALIBRATION_FAILED`. `tests/test_exception_wiring.py` parses every src/scripts file and
+  requires each name in an `except` clause to be BOUND — it caught a live `NameError` in
+  `phase2_risk.py` (3 handlers named `CalibrationError`, never imported; green only because no
+  bond had failed).
+- **ONE ACT/364 exercise conversion:** `core/utils/dates.exercise_schedule_times`;
+  `tree.schedule_times` + `dataio.to_lattice_schedule` both delegate. **`days_per_year` DELETED**
+  (was defaulting to 365.25 while coupons run on 364).
+- **Private-helper seam closed:** `hybrid` no longer imports `floating._as_date/_df`.
+  `discounting` gains `curve_rate` / `curve_discount_factor`; floating's privates are now
+  **aliases** (`is`-asserted) so the `pricing/frn.py` shim's re-export contract still holds.
+- **Provenance/confidence labelling.** `data/call_schedules.csv` + `load_call_provenance` →
+  `exercise_terms_status|_source|exercise_price_source|_as_of` on all 8 lattice-priced bonds
+  (**0 confirmed, 9 of 9 rows provisional** = custodian AB date + par-call convention); a missing
+  column defaults to `provisional`, an unrecognised status is REFUSED. `calibrate_risk` adds
+  `current_coupon_source` + `risk_status` (6 proxy / 1 supplied). Endpoint: **`PROVISIONAL_TERMS`
+  / `PROVISIONAL_RISK` warnings + `bond.exercise_terms_status`** — interface doc **§15**;
+  **`schema_version` stays 1.1** (additive). Labels never change a number (`==` asserted).
+  `TNTD04115619` carries a named `review_note` (1994bp on a 3.9y BBB @60.65 — recorded, NOT a
+  threshold; nothing is filtered on it).
+- **Disposition sidecars are now DATED** (`corporate_disposition_<VAL>.csv`,
+  `callable_disposition_<VAL>.csv`) — the undated defaults let 6-10 overwrite 3-31, i.e. the
+  artifact built to prove nothing is silently lost was itself losing a run. 732 rows each date.
+- **`scripts/release_facts.py` → `docs/release_facts_<date>.md`** = rows + sha256 of all 5
+  production CSVs + 4 sidecars + the real pytest line, written **UTF-8 explicitly** (redirected
+  stdout encodes as GBK here — same trap as `pytest.ini`). Quote docs from THIS, not memory.
+- **Docs:** `short_gap_callable_design_note_2026-08-31.md` (why `TNTD04920858` stays refused +
+  the 3 things an off-coupon exercise node must settle: irregular-step BDT calibration,
+  off-coupon accrued/call price, event ordering) · `shim_exit_policy_2026-08-31.md` (4 exit
+  criteria, ALL required; **criterion 1 is UNMET** — all three drivers still import `pricing.*`;
+  retire nothing now). Corrected: weekly report **§4.5** (new), walkthrough, interface §14.8/§15,
+  `COVERAGE.md`, `missing_data.md` G5 (+3 corporate schedules, confirmation-only).
+- **Excel gate re-run on real Excel: 48/48 fixture + 50/50 live.** 6 v1.1 tree fixtures
+  regenerated (warnings array only); the 2 vanilla `_v1` fixtures deliberately LEFT at schema
+  1.0 — being 1.0 is what they exist to prove.
+- **NO new Mario/Liping request opened** (by instruction). The 3 corporate + 5 agency schedules
+  went onto the existing **confirmation-only deferred** queue.
+
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
   store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied
@@ -343,7 +407,8 @@ checks — those are decided here, from the repo.
   (UK EMTN fixed 5.50% 2033) was SILENTLY SKIPPED — not flagged — and is a plain `Fixed` bond,
   i.e. inside the class already reported complete** → priced **197.30bp / 12.55y** @3-31 (149.29
   @6-10). Corporate output **564→565 @3-31 / 559→560 @6-10; priced 553→555; flagged 11→10;
-  `frn-curve-blocked` route now EMPTY; driver header `skipped=1→0`.** `callable_risk` +
+  `frn-curve-blocked` route now EMPTY; driver header `skipped=1→0`.** [08-31: 565→**566** /
+  560→**561**, flagged back to **11** — a THIRD invisible bond, see the hardening section.] `callable_risk` +
   both `phase2` CSVs byte-identical (a GBP curve used to RAISE, so nothing could depend on it).
 - Cross-check: same bond = 279.93bp on the USD curve vs 197.30 on its own; the ~83bp gap IS the
   gilt-vs-UST difference at 24y — two independent numbers agreeing.

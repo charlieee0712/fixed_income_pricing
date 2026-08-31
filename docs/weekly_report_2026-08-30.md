@@ -109,12 +109,15 @@ years, 2.34% at five, 3.16% at ten and 4.16% at thirty — the actual gilt marke
 
 **What this changes:**
 
-| | Before | Now |
+| | Before this fix | After it |
 |---|---|---|
 | France Télécom 7.50% of 2011 (GBP) — your F14 | not priced | spread **205.3 bp**, rate sensitivity 1.86 years |
 | A UK 5.50% bond of 2033 (GBP) | **missing from the output entirely** | spread **197.3 bp**, rate sensitivity 12.55 years |
 | Corporate bonds in the output | 564 | **565** |
 | Of those, fully priced | 553 | **555** |
+
+*(A later review this week found one more bond in the same condition and raised the output to
+**566**; section 4.5 has that one.)*
 
 The second bond is the part that matters beyond this week. It was not flagged, it was
 silently **skipped** — and it is a plain fixed-coupon bond, which is to say it belongs to
@@ -183,15 +186,30 @@ windows; both are real decisions and we have not taken either quietly.
 
 ## 4. One change to the Excel connection
 
-Last week the spreadsheet could ask for one kind of bond. It can now ask for any of seven
-— plain, stepped, floating, fixed-then-floating, callable, puttable and sinking-fund — by
-naming the type in the request. Everything else is identical: same single entry point,
-same request and answer format, same error reporting.
+The pricing engine now accepts **seven kinds of bond** by name — plain, stepped, floating,
+fixed-then-floating, callable, puttable and sinking-fund — through the same single entry
+point, the same request and answer format, and the same error reporting as before.
 
-We made this change **once**, covering all seven, rather than twice. And a request that
-does not name a type is still treated as a plain bond, so **nothing that works today
-stops working** — including the spreadsheet as it stands, whose original 23 automated
-Excel checks all still pass untouched.
+**Three different numbers matter here, and it is worth being exact about which is which**,
+because saying "the spreadsheet can ask for any of seven" would overstate what we have
+actually put in front of you:
+
+| | how many | which |
+|---|---:|---|
+| the **engine** prices, and the request format covers | **7** | all of the above |
+| the **spreadsheet** can currently build a request for | **5** | all except stepped and fixed-then-floating — no cells exist yet for a coupon table, a margin or a switch date |
+| we have **tested end-to-end from real Excel** | **4** | plain, callable, puttable, sinking-fund |
+
+The gap is a matter of cells on a sheet, not of engineering: adding the missing four cells
+and one small table is straightforward, and we have deliberately left it until you have told
+us what the sheet should look like (section 8). One consequence worth flagging: a floating
+note sent from Excel today has nowhere to carry its margin, so the spread that comes back
+absorbs the margin rather than isolating credit. From the engine directly, it does not.
+
+We made the engine change **once**, covering all seven, rather than twice. A request that
+does not name a type is still treated as a plain bond, so **nothing that works today stops
+working** — including the spreadsheet as it stands, whose original 23 automated Excel checks
+all still pass untouched.
 
 Each type reports the one or two extra numbers only it has: the next reset date for a
 floating note, the switch date for a fixed-then-floating one, and — for the three types
@@ -248,14 +266,91 @@ them that way everywhere they appear.
 
 The automated spreadsheet checks went from 23 to **50**.
 
-**What is still not built is the layout** — the daily-use sheet with all seven bond types
-on it. That is the question in section 8, and it is genuinely yours to answer: what exists
-today is an engineering test surface, not a sheet we would ask anyone to work in.
+**What is still not built is the layout** — the daily-use sheet, whether that is one sheet
+with a type dropdown or a small sheet per type. That is the question in section 8, and it is
+genuinely yours to answer: what exists today is an engineering test surface, not a sheet we
+would ask anyone to work in. The two bond types the sheet cannot yet send are waiting on the
+same answer.
+
+## 4.5 A review pass over everything above — three corrections
+
+Before sending this we reviewed the week's work against the live outputs rather than against
+our own notes. Three things came out of it. All are corrections to work described earlier in
+this report, and we would rather you saw them here than found them later.
+
+### One more bond that was invisible — the output is 566, not 565
+
+This is the **third** instance of the same shape as sections 3 and 3.1, and it is the largest
+position of the three: **8.78 million nominal**, held across three lots.
+
+The word "defaulted" was doing two jobs in our code. It is a description of a bond's *coupon*
+— your workbook records some as "N/A (Defaulted)" — and it is separately a *credit rating* of
+D. A bond can have one without the other, and this one does: its rating is in default, while
+its coupon formula is an ordinary fixed rate. Two different pieces of code handled defaulted
+bonds, one keyed on each meaning, and a bond with this combination matched neither. It is now
+handled **once, by the rating**, and appears as a named recovery line at your custodian's mark
+— we do not compute a spread for a defaulted bond, because the number would describe expected
+recovery rather than credit.
+
+A fourth defaulted holding stays out of the output, correctly, but its stated reason was also
+wrong: it was reported as excluded for being in default, when what actually excludes it is its
+coupon type, one of the categories you told us in July to leave out permanently. It now says so.
+
+### Floating-rate risk: one number per bond, not two answers depending on a data field
+
+The coupon a floating-rate note is paying *right now* was set at its last reset date, in the
+past. It is a known amount, and a change in today's interest rates cannot alter it.
+
+Our model held it fixed whenever your file recorded the number, and re-estimated it from the
+curve whenever your file left it blank — and in that second case, moving rates moved a coupon
+that had already been decided. The effect was not small: it reversed the sign of the reported
+rate sensitivity. Two notes with the same economics could receive opposite-signed answers, and
+which one you got depended on whether a field in the custodian file happened to be filled in.
+
+Both cases now hold the coupon fixed. Six of the seven floating notes moved, all in the same
+direction, and **no price and no spread changed at all** — the correction touches only the
+rate-sensitivity columns:
+
+| bond | market price | sensitivity before | after |
+|---|---:|---:|---:|
+| TNTD04955876 | 69.62 | −1.13 | −0.43 |
+| TNTD04259874 | 72.64 | −1.37 | −0.69 |
+| TNTD03035014 | 92.92 | −0.33 | **+0.20** |
+| TNTD04882955 | 67.04 | −1.85 | −1.48 |
+| TNTD04131505 | 81.34 | −0.47 | −0.17 |
+| TNTD03027773 | 98.54 | −0.20 | **+0.05** |
+
+Each move equals one coupon period scaled by how far below par the bond trades, to within 3% —
+which is the size the correction should be, and is how we checked it rather than eyeballing.
+
+Four remain negative, and that is genuine rather than left-over error. A floating note trading
+in the 60s does so because its credit spread is wide, and a wide spread behaves like a fixed
+annuity sitting on top of the floating coupon, carrying ordinary fixed-income sensitivity. The
+two notes closest to par cross into small positive numbers, which is the textbook result for a
+floater and is the clearest sign the fix does what it should.
+
+### Numbers now say what they rest on
+
+Two things were true, documented, and invisible at the point where somebody reads a number.
+
+**No call schedule in this project has been confirmed.** All nine are a date from your
+custodian file with a repayment price of 100 assumed on top — a convention you approved for
+version 1, not a term anyone has read out of a document. A "100.00" in a spreadsheet cell
+looks the same either way. Every affected row now carries `provisional`, names where the terms
+came from, and dates them; the count of confirmed exercise terms in this project is **zero**,
+and the output says so. These are on the existing confirmation-only list and we are **not**
+asking you for them now — every one of those bonds prices today.
+
+**Six of the seven floating notes are priced on an estimated current coupon** (the fix above),
+and those rows now say `base_curve_proxy` and mark their sensitivities provisional.
+
+Neither label changes any number. They describe the inputs, and we test that a labelled result
+equals an unlabelled one exactly.
 
 ## 5. What we deliberately did not do
 
-- **We did not design the daily-use worksheet.** The spreadsheet can now send every bond
-  type (section 4.1), but putting seven of them on one sheet — or on seven small sheets —
+- **We did not design the daily-use worksheet.** The engine takes every bond type and the
+  spreadsheet can send five of them (section 4), but putting seven on one sheet — or on seven small sheets —
   is a layout question we would rather settle with you than guess at. What exists is an
   engineering test surface, clearly labelled as such.
 - **No bond was re-classified to make a count look better.** The six unpriced bonds stay
@@ -284,7 +379,7 @@ retained as an alias.
 
 | | |
 |---|---|
-| Automated checks | **302**, in about 24 seconds (223 when this round began) |
+| Automated checks | **390**, in about 35 seconds (223 when this round began) |
 | Population accounting | enforced at run time — every bond leaves with a number or a named reason, checked as a SET of identifiers, not as a total |
 | Production outputs after each migration step | byte-identical to a pre-change baseline, all five driver files |
 | Endpoint vs direct function call | asserted equal with `==`, per instrument type, not a tolerance |
@@ -292,21 +387,23 @@ retained as an alias.
 
 Two details worth knowing before you run it:
 
-- **Cross-platform determinism has a limit worth writing down.** Full 565-bond driver
+- **Cross-platform determinism has a limit worth writing down.** Full 566-bond driver
   outputs from Windows and from the Linux server differ by up to **3.6e-8 relative**, and
   entirely in the convexity column — a second difference divided by the square of a
   one-basis-point bump amplifies a last-bit rounding difference by 10⁸. Prices, spreads
   and durations agree to about 1e-12, and every text column is identical. A byte-for-byte
   comparison across platforms will therefore show a difference that is not a regression;
   compare on one platform, or compare with a tolerance.
-- **The floating-rate duration has two exact regimes**, and the sign flips between them.
-  Supply the already-fixed current coupon and the answer is *plus* the time to the next
-  reset; omit it and the coupon is projected off the curve, the bump reprices it too, and
-  the answer is *minus* the time since the last reset. Both are within one coupon period
-  and both are correct; only the interpretation differs. It is pinned by tests.
+- **The floating-rate duration used to have two regimes with opposite signs. It now has
+  one.** An earlier draft of this report described the two as both correct, differing only
+  in interpretation. On review that was wrong, and section 4.5 explains what changed: the
+  coupon a floating note is *currently* paying was fixed at its last reset, so a move in
+  today's interest rates cannot change it. We were holding it fixed when your file recorded
+  it and re-estimating it when your file did not, which is what produced the second sign.
+  Both cases now hold it fixed and both give *plus* the time to the next reset.
 
 ```text
-python -m pytest -q                                              302 checks, ~24 s
+python -m pytest -q                                              390 checks, ~35 s
 python scripts/price_json.py --input request.json --output response.json
 powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  48 Excel checks
 powershell -File ...\Run-BridgeTests.ps1 -PythonExe <python.exe>   50, against a live engine

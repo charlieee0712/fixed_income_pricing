@@ -50,9 +50,23 @@ workbook coupon family      Coupon_Formula2 on the Corporate Bonds tab
 
 ```text
 moving the three engines            nothing at all — five driver CSVs byte-identical
+the exception family, the ACT/364   nothing at all — five driver CSVs byte-identical
+  conversion, the private-helper
+  refactor
 the GBP par-yield units correction  two GBP securities, and the headline counts
 the callable routing fix            no priced number; one bond went from invisible to named
+the defaulted-security rule         no priced number; one bond (8.78M par) went from
+                                    invisible to a named recovery row.  565 -> 566 @3-31
+the FRN current-coupon freeze       THE one intentional change: six floating notes' rate
+                                    sensitivity. No price, no spread, no other column, and
+                                    no other file.  Table in
+                                    docs/frn_current_coupon_freeze_2026-08-31.md
+the provenance labels               new COLUMNS only; every pre-existing value unchanged
+                                    except one FRN flag string
 ```
+
+Everything above is proven by hashes rather than by inspection: `docs/release_facts_2026-08-31.md`
+carries the sha256 of all five production CSVs and all four disposition sidecars.
 
 ## The tour, in order
 
@@ -168,13 +182,17 @@ to run. Point it at a packaged executable or an HTTP service and nothing else ch
 
 | Claim | Number |
 |---|---|
-| Automatic checks | **300** in ~24 s (223 before this round) |
+| Automatic checks | **390** in ~35 s (223 before this round) |
 | Behaviour change from the restructuring | **zero** — production CSVs hash-identical |
-| Excel bridge | **23/23**, on real Excel, including a live Python round trip |
+| Excel bridge | **48/48** fixture mode, **50/50** against a live Python engine, on real Excel |
 | Cross-platform | response file **byte-identical** on Windows and Linux |
 | Volatility, call-active bond | ~10 cents of price, or ~1 bp of spread, per vol point |
-| Bond types the interface reaches | **7**, through one entry point and one request format |
+| Bond types — **three different numbers** | **7** the engine and request format cover · **5** the spreadsheet can build · **4** tested end-to-end from real Excel |
+| Corporate output | **566** @3-31 (555 with a model spread + 11 at the custodian mark) · **561** @6-10 |
 | Bonds added by the GBP units fix | **2** — one blocked, one silently skipped |
+| Bonds added by the defaulted-rule fix | **1** — 8.78M par, matched neither of two recovery paths |
+| Exercise terms confirmed against Bloomberg | **0 of 9** — every schedule is labelled `provisional` in the output |
+| Securities accounted for in the disposition files | **732** at each of the two dates |
 
 ---
 
