@@ -76,7 +76,11 @@ ROUTED_ELSEWHERE = {
 }
 # reasons whose destination is THIS output: the coupon-class router pulls them back in.
 # A bond with one of these that does NOT arrive is undisposed, and reconcile() will say so.
-ROUTED_HERE = {"floating", "special-fixed"}
+ROUTED_HERE = {"floating", "special-fixed", "defaulted"}
+# Mario's permanent exclusions (2026-07-20): these coupon classes leave the output for good, and
+# they OUTRANK a defaulted rating when a security has both. A bond excluded for its coupon class
+# must say so; reporting it as `defaulted` names the wrong owner and hides a decision Mario made.
+PERMANENTLY_EXCLUDED_CLASSES = {"pass-through", "amortizing", "na", "unknown"}
 DISTRESS_BT = 50.0       # below this clean price -> implied OAS is a recovery plug -> flagged, kept
 PERP_TRUNC_YEARS = 90    # perpetual reset bonds priced by coupon-continuation to a long truncation
                          # (face PV at 90y is negligible under crisis discount rates; noted per bond)
@@ -263,7 +267,45 @@ def main():
     # parsed coupon schedule. Defaulted = recovery mark (BT, no OAS — solving an OAS for a defaulted
     # bond is meaningless). Step-up whose steps aren't in the workbook = schedule-unavailable (BT mark,
     # flagged for a terms source, exactly like a missing call schedule).
-    special = _excluded[_excluded["coupon_class"].isin(["zero", "stepped", "step-up", "defaulted"])]
+    # DEFAULT is decided ONCE, here, and by the RATING (`primary_reason`), never by the coupon
+    # class. The word `defaulted` names two independent things in this project — a coupon formula
+    # reading "N/A (Defaulted)" and a rating that maps to D/SD — and a bond can have either
+    # without the other. Two recovery paths used to exist, one keyed on each field, and a
+    # security whose coupon class was plain `F` matched neither: TNTD03067251, 8.78M par across
+    # three legs, appeared in no count and produced no message. See docs/... §7.2.
+    _defaulted = _excluded[_excluded["primary_reason"] == "defaulted"]
+    _rest = _excluded[_excluded["primary_reason"] != "defaulted"]
+    for _, b in _defaulted.iterrows():
+        aid = str(b["asset_id"])
+        if b["coupon_class"] in PERMANENTLY_EXCLUDED_CLASSES:
+            continue        # Mario's exclusion wins; the disposition names THAT, not the rating
+        bt = pd.to_numeric(recon.loc[aid, "gold_price"], errors="coerce") if aid in recon.index else np.nan
+        mv = pd.to_numeric(recon.loc[aid, "gold_mkt_value"], errors="coerce") if aid in recon.index else np.nan
+        mat = b["maturity"]
+        ttm = (pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25 if pd.notna(mat) else np.nan
+        try:
+            fr = int(b["freq"])
+        except (TypeError, ValueError):
+            fr = 2
+        rows.append(dict(
+            asset_id=aid, isin=b.get("isin"),
+            ccy=(str(b.get("currency")).strip().upper() if b.get("currency") is not None else "USD"),
+            fx=b.get("fx_rate"), rating=b["rating_bucket"], src=b.get("rating_source"),
+            coupon=pd.to_numeric(b.get("coupon"), errors="coerce"), freq=fr,
+            maturity=(pd.Timestamp(mat).date() if pd.notna(mat) else None),
+            ttm=(round(ttm, 3) if pd.notna(ttm) else np.nan),
+            par=pd.to_numeric(b.get("par_value"), errors="coerce"),
+            bt=(float(bt) if pd.notna(bt) else np.nan),
+            clean=(float(bt) if pd.notna(bt) else np.nan),
+            implied_oas=np.nan, implied_bp=np.nan, implied_bp_usd_curve=np.nan,
+            eff_dur=np.nan, dv01=np.nan, convexity=np.nan, mv_base_usd=mv,
+            near_maturity=False, recovery_plug=False, route="recovery",
+            flag=(f"recovery mark: rating is in default, BT used as the price, no OAS "
+                  f"(coupon class {b['coupon_class']}); solving a spread for a defaulted "
+                  f"bond would describe recovery, not credit"),
+        ))
+
+    special = _rest[_rest["coupon_class"].isin(["zero", "stepped", "step-up", "defaulted"])]
     for _, b in special.iterrows():
         aid = str(b["asset_id"])
         cc = b["coupon_class"]
@@ -347,7 +389,7 @@ def main():
     # -type spread). Effective duration bumps the CURVE (reprojects), so it is ~ time to the next reset,
     # far below a same-maturity fixed bond. Fixed->Floating (needs a switch date), perpetual/no-maturity,
     # defaulted and curve-blocked names are flagged, NOT force-priced.
-    floaters = _excluded[_excluded["coupon_class"] == "floating"]
+    floaters = _rest[_rest["coupon_class"] == "floating"]
     for _, b in floaters.iterrows():
         aid = str(b["asset_id"])
         mat = b["maturity"]
@@ -373,9 +415,11 @@ def main():
             convexity=np.nan, mv_base_usd=mv, near_maturity=False, recovery_plug=False,
             next_reset_t=np.nan, route="", flag="",
         )
-        if b["primary_reason"] == "defaulted" or (pd.notna(bt) and bt <= 1.0):
+        if pd.notna(bt) and bt <= 1.0:
+            # a defaulted RATING is handled once, above; this is the separate case of a floater
+            # the custodian marks at essentially nothing, whatever its rating says
             row.update(route="recovery", clean=(float(bt) if pd.notna(bt) else np.nan),
-                       flag="recovery mark: defaulted floater, BT used, no OAS")
+                       flag="recovery mark: floater marked at ~zero by the custodian, BT used, no OAS")
             rows.append(row); continue
         # fixed-to-float hybrids (data/hybrid_switch_terms.csv): the fixed-then-float engine — or a
         # hybrid-margin-unavailable BT-mark when the post-switch margin is a documented gap. The CSV
@@ -549,7 +593,14 @@ def main():
         if aid in in_output:
             continue                       # the output row IS its disposition
         reason = b["primary_reason"]
-        if reason in ROUTED_ELSEWHERE:
+        if reason == "defaulted" and b["coupon_class"] in PERMANENTLY_EXCLUDED_CLASSES:
+            # both apply; Mario's coupon-class exclusion is the one that actually keeps it out,
+            # so that is what the disposition records
+            named[aid] = ("excluded-structured",
+                          f"{TERMINAL_EXCLUSIONS['excluded-structured']} (coupon class "
+                          f"{b['coupon_class']}); the rating is also in default, but the "
+                          f"coupon-class exclusion is permanent and decides the outcome")
+        elif reason in ROUTED_ELSEWHERE:
             named[aid] = (f"routed-to-{reason}", ROUTED_ELSEWHERE[reason])
         elif reason in TERMINAL_EXCLUSIONS:
             named[aid] = (reason, TERMINAL_EXCLUSIONS[reason])

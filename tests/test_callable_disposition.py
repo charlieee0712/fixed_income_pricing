@@ -326,3 +326,51 @@ def test_an_unrecognised_status_in_the_table_is_refused(tmp_path):
                    "AAA,2012-06-15,100.0,verified\n", encoding="utf-8")
     with pytest.raises(ValueError, match="exercise_terms_status"):
         load_call_provenance(str(bad))
+
+
+# --------------------------------------------------------- the defaulted-security rule
+
+def _calibrate_risk_module():
+    """Import the driver without running it (its work is behind a __main__ guard)."""
+    import importlib.util
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    spec = importlib.util.spec_from_file_location(
+        "calibrate_risk_under_test", os.path.join(root, "scripts", "calibrate_risk.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_a_defaulted_security_has_exactly_one_owner():
+    """`defaulted` names two independent things, and that is what went wrong.
+
+    It is a COUPON CLASS (the workbook cell reads "N/A (Defaulted)") and it is an EXCLUSION
+    REASON (the rating maps to D/SD). A bond can have either without the other. Two recovery
+    paths existed, one keyed on each field, so a security with a defaulted RATING and a plain
+    `F` coupon formula matched neither: TNTD03067251, 8.78M par across three legs, was in no
+    count and produced no message.
+
+    The rule is now: the RATING decides, in one place, unless a permanent coupon-class
+    exclusion also applies — in which case that exclusion is what actually keeps the bond
+    out, and is what the disposition must say.
+    """
+    from dataio import coupon_types
+
+    driver = _calibrate_risk_module()
+
+    # a defaulted security's destination is THIS output, so a non-arrival is undisposed and
+    # reconcile() must name it rather than absorb it
+    assert "defaulted" in driver.ROUTED_HERE
+
+    # every class Mario permanently excluded must be known to the rule. If someone adds one to
+    # the router and forgets here, a defaulted bond of that class gets a recovery row it should
+    # not have -- so the two lists are pinned together rather than kept in step by hand.
+    excluded_classes = {cls for cls, route in coupon_types.ROUTE.items()
+                        if route == coupon_types.EXCLUDED}
+    assert excluded_classes == driver.PERMANENTLY_EXCLUDED_CLASSES, (
+        f"coupon_types routes {sorted(excluded_classes)} to EXCLUDED, but the defaulted rule "
+        f"knows {sorted(driver.PERMANENTLY_EXCLUDED_CLASSES)}")
+
+    # and the exclusion it falls back to is a real terminal reason, not an invented string
+    assert "excluded-structured" in driver.TERMINAL_EXCLUSIONS
