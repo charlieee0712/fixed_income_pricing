@@ -20,7 +20,7 @@ are stated once, here, and every table below says which one it uses.
 ```text
 676   ROWS on the Corporate Bonds tab            <- what Mario's pivot counts
 616   unique SECURITIES on that tab              <- 60 asset IDs are listed more than once
-565   held / rated / matched positions in the output at 2009-03-31
+566   held / rated / matched positions in the output at 2009-03-31
 555   of those, fully model-priced
 ```
 
@@ -93,7 +93,7 @@ Source: `outputs/column_f_delivery_audit_2009-03-31.csv`.
 | F12 | TNTD04986722 | USD | 6.375% | 2067-03-29 | hybrid | fixed_to_floating | 805.88 | 2.432 | 57.08 |
 | F13 | TNTD04283895 | USD | 7.500% | 2011-03-01 | vanilla-schedule | stepped | 283.57 | 1.821 | 107.10 |
 | F14 | TNTG700307W | GBP | 7.500% | 2011-03-14 | vanilla-schedule | stepped | 205.31 | 1.857 | 108.05 |
-| F15 | TNTD03027773 | USD | — | 2010-07-19 | floating | floating | 153.40 | −0.204 | 98.54 |
+| F15 | TNTD03027773 | USD | — | 2010-07-19 | floating | floating | 153.40 | +0.049 | 98.54 |
 | F15 | TNTD03035014 | USD | — | 2010-06-16 | floating | floating | 606.08 | −0.332 | 92.92 |
 | F15 | TNTD03057893 | USD | 6.375% | 2067-11-15 | hybrid | fixed_to_floating | 967.40 | 2.602 | 50.00 |
 | F15 | TNTD03080834 | USD | 1.2425% | 2010-01-21 | floating | floating | 397.33 | **+0.313** | 97.07 |
@@ -116,11 +116,19 @@ Source: `outputs/column_f_delivery_audit_2009-03-31.csv`.
 | F16 | TNTG701369W | EUR | 7.250% | 2012-04-24 | vanilla-schedule | stepped | 381.40 | 2.698 | 103.87 |
 | F20 | TNTD04150829 | USD | 11.875% | 2012-07-01 | vanilla-schedule | stepped | 864.28 | 2.741 | 105.00 |
 
-⚠️ **`TNTD03080834` is the one floater with a POSITIVE duration**, and that is not an
-anomaly — it is the only one whose already-fixed current coupon is known (1.2425%). Its
-duration `+0.313187` equals its time to next reset `0.313187` **exactly**. Every other
-floater's current coupon is projected off the curve, so the rate bump reprices that coupon
-too and the duration is minus the time *since* the last reset. See §5.
+⚠️ **Updated 2026-08-31.** This section previously explained that `TNTD03080834` was the one
+floater with a positive duration *because* it is the only one whose already-fixed current
+coupon is recorded (1.2425%), every other floater's being projected off the curve so that the
+rate bump repriced that coupon too and produced minus the time *since* the last reset.
+
+That behaviour was a **bug**, not a second regime. The running coupon was fixed at the last
+reset and a bump in today's curve cannot change it, whether or not the custodian file records
+the number. It is now frozen in both cases, and the two paths return the same answer for the
+same coupon. `TNTD03080834` still reprices exactly — duration `+0.313187` equals its time to
+next reset `0.313187` — and two more floaters have crossed into small positives. Four remain
+negative for a different and genuine reason: at a deep discount the wide credit spread behaves
+like a fixed annuity with ordinary sensitivity. See §5 and
+`docs/frn_current_coupon_freeze_2026-08-31.md`.
 
 ## 4. Reconstruction manifest
 
@@ -178,15 +186,14 @@ The *clean* price is par to a few cents; the *dirty* price is where the identity
 **OAS round trip** (real USD curve, 45 bp quoted margin): solved 118.186503 bp reprices to
 96.5000000000 against a 96.5 target — residual −4.7e-11.
 
-**The two duration regimes**, flat 4%, a 30-year note:
+**One duration regime** (two, until 2026-08-31), flat 4%, a 30-year note:
 
 | current coupon | effective duration |
 |---|---|
 | fixed at 4.00% | **+0.104396** |
 | fixed at 6.00% | **+0.104396** (independent of the level) |
-| projected off the curve | **−0.395604** |
+| projected off the curve | **+0.104396** (was −0.395604 — the bug) |
 | *+time to next reset* | *+0.104396* |
-| *−time since last reset* | *−0.395604* |
 | *same-maturity fixed 4% bond* | *+17.4381* |
 
 **A third regime on the real book** — deep discount, where the price is par minus a spread
@@ -194,15 +201,20 @@ annuity, so a rate rise shrinks the gap and the price *rises*. This one grows wi
 unlike the two above:
 
 ```text
-asset          mark    OAS bp    eff-dur   next reset   same-maturity FIXED
-TNTD03080834  97.07    397.33    +0.3132     0.3132y          +0.801
-TNTD03027773  98.54    153.40    -0.2042     0.0549y          +1.261
-TNTD03035014  92.92    606.08    -0.3322     0.2143y          +1.178
-TNTD04131505  81.34    748.60    -0.4719     0.0962y          +2.637
-TNTD04955876  69.62    772.91    -1.1322     0.3104y          +4.226
-TNTD04259874  72.64    864.34    -1.3663     0.0192y          +4.283
-TNTD04882955  67.04    618.06    -1.8521     0.0769y          +6.095
+asset          mark    OAS bp    eff-dur   next reset   same-maturity FIXED   running coupon
+TNTD03080834  97.07    397.33    +0.3132     0.3132y          +0.801           supplied
+TNTD03035014  92.92    606.08    +0.1990     0.2143y          +1.178           base-curve proxy
+TNTD03027773  98.54    153.40    +0.0491     0.0549y          +1.261           base-curve proxy
+TNTD04131505  81.34    748.60    -0.1669     0.0962y          +2.637           base-curve proxy
+TNTD04955876  69.62    772.91    -0.4313     0.3104y          +4.226           base-curve proxy
+TNTD04259874  72.64    864.34    -0.6878     0.0192y          +4.283           base-curve proxy
+TNTD04882955  67.04    618.06    -1.4814     0.0769y          +6.095           base-curve proxy
 ```
+
+The ordering is the point: duration rises monotonically with the mark. A floater at 97-99
+sits close to its next-reset value; one in the 60s carries the sensitivity of the spread
+annuity that pushed it there. All seven are still far below the same-maturity fixed bond,
+which is the signature floating-rate check.
 
 In every case `|eff-dur|` is far below the same-maturity fixed bond — the reliability check.
 
