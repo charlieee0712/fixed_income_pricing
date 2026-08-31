@@ -77,11 +77,19 @@ checks — those are decided here, from the repo.
   (architecture, the single entry point, how to run it, determinism, parallelism) that the finance
   reader can skip. Say in the opening which section is for whom. Never assume fixed-income
   vocabulary; never talk down to Mario either.
-- **Package** = git-ignored staging folder `code_structure_sample/` + `code_structure_sample_<date>.zip`
-  at repo root: numbered docs (`00_README` · `01_weekly_report` md+PDF · `02_code_walkthrough` ·
-  `03_json_excel_interface` · `04_round_detail` · `05_previous_report`) + `src/ tests/ scripts/
-  integrations/` copied in (robocopy `/E`, **never `/MIR`** — the path guard rejects it). User drags
-  it to Drive.
+- **Package = the git-ignored staging FOLDER `code_structure_sample/` only. ⚠️ NO ZIP
+  (user, 2026-08-31: "google drive可以直接传folder") — Drive uploads folders directly, so
+  zipping was pure overhead. All packaging zips were deleted; regenerate none.** Contents:
+  numbered docs (`00_README` · `01_weekly_report` md+PDF · `02_code_walkthrough` md+PDF ·
+  `03_json_excel_interface` · `04_previous_report` · `05_round_detail` ·
+  `06_delivery_evidence`) + `src/ tests/ scripts/ integrations/` copied in (robocopy `/E`,
+  **never `/MIR`** — the path guard rejects it; and `Remove-Item` must be its own command,
+  the guard reads `/E` in a combined line as a path). User drags the folder to Drive.
+  **Refresh the folder's doc copies after ANY late edit to the source docs** — the 08-31
+  audit corrected five numbers in the weekly report *after* the folder was built.
+  Same for the handoff bundles: `docs/handoff_for_claude_web_1/` and `_2/` are folders the
+  user uploads; their zips are gone too and are only worth rebuilding if claude.ai ever
+  needs an archive rather than files.
 - **PDF = `python scripts/md_to_pdf.py --input X.md --output Y.pdf`** (2026-08-25). One local
   command; the old pandoc@47 → HTML → local-Edge dance is RETIRED (local Python has `markdown`,
   Edge is installed). The script carries three Edge flags that each fail **silently** —
