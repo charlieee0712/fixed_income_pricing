@@ -223,8 +223,16 @@ failures are genuinely different situations and are reported as such:
 ```
 CHF 2009-03-31   no curve file configured for that currency   -> CURVE_NOT_FOUND
 KRW 2009-03-31   file exists, that date is not in it          -> CURVE_NOT_FOUND
-GBP 2009-03-31   file and date exist, par curve not arb-free  -> CURVE_BUILD_FAILED
 ```
+
+⚠️ **`CURVE_BUILD_FAILED` has no live example.** GBP used to be the third line here — until
+2026-08-30, when the GBP par file turned out to be stored in percent while 24 of the 26
+files store decimals. Our loader scaled it by 100 and the bootstrap correctly refused the
+resulting 73%-415% curve; we had recorded that as a fact about the market data. GBP now
+builds in all four variants and both GBP bonds price. The code path is still there and still
+tested — by monkeypatching the loader, which is the right way round: the subject of that
+test is the error MAPPING, not the state of any file. A test whose fixture is "this real
+thing happens to be broken" fails the day the thing is fixed, and looks like a regression.
 
 There is **no silent USD fallback**. A bond whose currency we cannot price is
 refused, because a EUR bond quietly discounted on a USD curve is a wrong number that

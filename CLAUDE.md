@@ -241,6 +241,49 @@ checks — those are decided here, from the repo.
 - **Excel bridge still sends VANILLA only** — engine + contract do all seven; the worksheet
   layout for per-type fields is the open question in the 08-30 report. Not a technical block.
 
+## Round 2b delivery-quality pass (2026-08-31) — two more silent omissions, closed
+- **Plan** `docs/cc_next_instruction_round2b_delivery_quality_and_tree_excel_bridge_2026-08-30.md`;
+  its **§26 = the Gate-0 revision** (authoritative over the body). Workstream A (hardening) is
+  DONE; **Workstream B (Excel bridge for callable/puttable/sinking) is NOT started** — the plan
+  mandates a checkpoint between them and says A ships even if B is dropped.
+- **⭐ `TNTD04920858` was priced by NOTHING** (US828807BX41, 5.00% 2012-03-01, callable at par
+  from 2011-12-02, gap **90d**; held, par 850k, MV 723,542, BT 85.12, A−/A3). `universe` sent
+  gap ≤7d to vanilla and excluded the rest as `callable`; `callable_risk.py` took only gap
+  >366d. **Two files owning half a decision each.** In no output, no document, no message. It
+  was in the WORKLOG once as a *"minor loose end"* and then fell out of every count.
+  **Fix = separate the responsibilities, NOT align two numbers:** routing decides candidacy,
+  the driver consumes ALL candidates (`GAP_DAYS` deleted), the tree/wrapper decides
+  representability.
+- **⭐ Its "option value = 0.000000" was the option NEVER BEING EVALUATED.** The lattice
+  exercises on coupon dates and never at root/maturity; a call inside the FINAL COUPON PERIOD
+  lands on no node ⇒ `call_array` all-`inf` ⇒ silently prices as a straight bond.
+  `ExerciseScheduleNotRepresentable` + `check_representable` now refuse it, **before any spread
+  solving**, from `embedded_option._prepare` AND from the driver's hand-built path (one rule,
+  two callers), **each right checked separately** (a live put must not license a dead call).
+  ⚠️ **The guard tests REPRESENTABILITY, not economic activity** — `fraction = 0` on a sinking
+  date is a legitimate contract; a first version broke 2 Round-2a tests by conflating them.
+  Endpoint maps it to `VALIDATION_ERROR` + `bond.<right>_schedule`, never `CALIBRATION_FAILED`.
+  **All 8 bonds with call schedules verified unaffected — latent, not live.**
+- **`src/dataio/dispositions.py` — `reconcile()` over SETS, not counts.** Both drivers run it at
+  run time: corporate `population=732 = 565 in-output + 167 named`, callable `5 = 3 + 2`.
+  A **terminal** exclusion reason is a disposition; a **routing** reason (`callable`,
+  `floating` 32, `special-fixed` 3) is only discharged when the destination honours it.
+  Sidecars `outputs/{corporate,callable}_disposition.csv` = intentional structural additions.
+- **⚠️ COUNTING CORRECTION — the tab has 676 ROWS but only 616 unique SECURITIES** (60 asset IDs
+  listed more than once). `F13`'s "2 rows" are the SAME bond `TNTD04283895` twice. The chain is
+  **30 pivot ROWS → 29 SECURITIES → 29 held → 23 priced + 6 named**; the 30→29 step is a
+  DUPLICATE LISTING, not an unheld row. The plan, both handoff bundles and the 08-30 report all
+  said "2 tab rows, 1 held" — corrected in the report; **the handoff bundles still carry it**
+  (no auto-refresh) and must be fixed at the next explicit refresh.
+- **Evidence:** `docs/client_directive_pivot_column_f_2026-08-27.md` (provenance — ⚠️ column F is
+  IN the tracked workbook, sheet6, committed `a5f7c81`; a screenshot was not the only evidence)
+  + `docs/column_f_delivery_matrix_2026-08-31.md` (four populations · six cells · the 6 unpriced
+  named · the 29-security table · reconstruction manifest · fresh-run engine evidence) +
+  `scripts/column_f_audit.py` (regenerates it).
+- **287 → 300 tests**, green locally and on 47; five driver CSVs byte-identical at both dates;
+  Excel 23/23. **DEFERRED and named:** an exercise-only lattice node vs a documented
+  short-gap⇒vanilla rule. The 0.000000 supports NEITHER — it came from non-exercise.
+
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
   store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied

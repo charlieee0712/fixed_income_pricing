@@ -49,8 +49,34 @@ Engine paths are now `pricer/core/pricing/{floating,hybrid,coupon_schedule}` (th
   reset-continuation is RETIRED (BNP/UniCredit → hybrid; Chuo/Resona → margin-unavailable).
 - **21 excluded per Mario** (never enter the output): pass-through 16 (⏳ Mario sourcing Bloomberg
   data), amortizing 1, na 4 (permanent).
-- Callable bucket now **5** (Sempra re-routed): 3 priced on the v2 BDT lattice, 1 awaiting a
-  `call_schedules.csv` row (TNTD04923866).
+- Callable bucket **5**, and all five are now NAMED rather than counted (2026-08-31 — a count
+  of "5, of which 3 priced and 1 awaiting a schedule" accounted for only four, and the fifth
+  turned out to be priced by nothing at all):
+
+  | asset | gap | disposition |
+  |---|---:|---|
+  | `TNTD04441873` | 7243 d | priced on the BDT lattice |
+  | `TNTG701850W` | 1809 d | priced on the BDT lattice |
+  | `TNTD04115619` | 1096 d | priced on the BDT lattice |
+  | `TNTD04923866` | 20819 d | `schedule-unavailable` — genuinely no call terms; on Liping's list |
+  | `TNTD04920858` | **90 d** | `call-schedule-not-representable-on-current-grid` |
+
+  `TNTD04920858` (US828807BX41, 5.00% due 2012-03-01, callable at par from 2011-12-02; held,
+  par 850k, MV 723,542, custodian 85.12, A−/A3) sat in a hole between two thresholds — the
+  universe routed gap ≤ 7d to vanilla and excluded the rest as `callable`, while the lattice
+  driver only accepted gap > 366d. It appeared in **no output and no document**, with no
+  message anywhere, and had been recorded once in the WORKLOG as a "minor loose end". The
+  driver now consumes the whole bucket and applies no threshold of its own; deciding *whether*
+  a bond is callable happens in one place only. Its call date falls inside the final coupon
+  period, where the coupon-date lattice has no exercise node, so it is REFUSED rather than
+  silently priced as a straight bond — see `docs/column_f_delivery_matrix_2026-08-31.md` §0
+  and `tests/test_callable_disposition.py`.
+
+- **Disposition is now mechanical, not counted.** `dataio/dispositions.reconcile` proves every
+  candidate has exactly one named outcome over SETS of identifiers, and both drivers run it:
+  `outputs/corporate_disposition.csv` (population 732 = 565 in-output + 167 named) and
+  `outputs/callable_disposition.csv` (5 = 3 priced + 2 named skips). A count check balances
+  even with the wrong bond in the wrong set, which is how two omissions survived.
 
 ## Interpretation guards (not bugs)
 

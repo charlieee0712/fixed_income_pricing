@@ -5,6 +5,153 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-31 — Round 2b delivery-quality pass: two more silent omissions, closed
+**Commits:** `271a42b` (plan + Gate-0 revision) · `aa186ed` (callable routing + exercise guard)
+· `2974e73` (full-population invariant + column-F audit) · this entry's commit (evidence docs)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**The instruction.** The user uploaded
+`docs/cc_next_instruction_round2b_delivery_quality_and_tree_excel_bridge_2026-08-30.md`: two
+workstreams, A (harden the delivery quality of the FRN/hybrid/schedule/column-F work) then B
+(extend the Excel bridge to the tree types), with a mandatory checkpoint between them and an
+explicit rule that A ships even if B is dropped. Gate 0 was run first, per the instruction's
+own §3, and its results are recorded as §26 in that file.
+
+**Gate 0 confirmed the expected baseline on every point** except HEAD (`694e849`, two doc-only
+commits past the `a5f7c81` the plan expected): 287 tests green locally and on 47, all five
+driver CSVs byte-identical to the committed baseline, **23/23 real-Excel checks in BOTH the
+fixture and the live-Python runner modes**, schema v1.1 with seven types read from the live
+contract, and the six-cell census re-derived from the live 565-row output.
+
+### ⭐ Finding 1 — a callable priced by nothing, in a hole between two thresholds
+
+`TNTD04920858` / `US828807BX41` — a US real-estate 5.00% of 2012-03-01, callable at par from
+2011-12-02 (gap **90 days**); **held**: par 850,000, MV 723,542, custodian 85.12, A−/A3, at
+both valuation dates. It appeared in **no output and no document**, with no message anywhere.
+
+Root cause: `dataio/universe.py` routed gap ≤ 7d to vanilla and excluded the rest as
+`callable`; `scripts/callable_risk.py` priced only gap > 366d. Two files each owning half of
+one decision, with a hole between them. It had been written down once — this log, July: *"1
+short-gap callable (32–180d) still unpriced ... minor loose end"* — and then fell out of every
+count that followed.
+
+**The fix is not two aligned numbers.** The user's directive, adopted: separate the
+responsibilities — the routing layer decides *whether* a bond is a callable candidate, the
+driver consumes **every** candidate and applies no threshold of its own, and the tree/wrapper
+decides whether the contract is *representable*. `GAP_DAYS` is deleted; the driver warns if a
+make-whole candidate ever reaches it (the mirror failure).
+
+### ⭐ Finding 2 — the "option value = 0.000000" was the option never being evaluated
+
+Verifying the first finding produced a second. Sent to the lattice, the bond returned an
+option value of exactly 0.000000 at every volatility, which reads as *the right is worthless*.
+It is not. The lattice exercises on coupon dates and, by design, never at the root or at
+maturity; this bond's call sits 90 days before maturity, **inside the final coupon period**,
+so `call_array` came back entirely `inf` and the bond priced as a straight bond.
+
+Evidence captured at HEAD before the fix, on a 3% flat curve where the option is genuinely
+valuable (continuation at the call date is 102.5·exp(−0.25·0.03) = 101.73 > 100, so an issuer
+would call):
+
+```text
+straight bond                       105.5000550571
+SAME bond + a call at 2011-12-02    105.5000550571     difference 0.000e+00
+same for a put, and for a sinking schedule                     0.000e+00
+```
+
+Fixed with `ExerciseScheduleNotRepresentable` + `check_representable`, called from
+`embedded_option._prepare` **before any spread solving** and by the driver on its hand-built
+lattice path — one rule, two callers. **Each right is checked separately**: a live put must
+not license dropping a dead call. The exception carries `right` / `first_exercise` /
+`last_exercisable` / `maturity` as attributes rather than taking an instrument id the engine
+has no use for; the endpoint and the driver name the security.
+
+⚠️ **The guard tests REPRESENTABILITY, not economic activity.** A first version tested the
+sinking array for a non-zero fraction and broke two Round-2a tests — correctly: `fraction = 0`
+is a legitimate contract ("a scheduled date on which nothing is retired") that must price as
+a straight bond. The line is: refuse *"the model cannot express this"*, never *"this right
+happens to be worth nothing"*.
+
+**Endpoint:** the exception is a `ValueError`, so without explicit handling the spread
+solver's own `except ValueError` reported *"no spread reprices this bond — check the price,
+the coupon and the maturity"* — three fields, none of them the problem, the same mistake the
+sinking-basis refusal used to make. It is now re-raised past `_spread` and `_pricing_errors`
+and mapped to `VALIDATION_ERROR` naming `bond.call_schedule` / `put_schedule` /
+`sinking_schedule`, with a test asserting the misleading sentence is absent.
+
+**All 8 bonds carrying call terms today were checked and are unaffected** — this was latent,
+not live. No published number is wrong.
+
+### The counting is now mechanical
+
+New `src/dataio/dispositions.py`. `reconcile()` proves every candidate has exactly one named
+outcome over **sets of identifiers**, raising on an undisposed id, an id in both sets, a skip
+with an empty reason, and an id that was never a candidate. Both drivers run it at run time —
+not only in pytest, where it could go stale against a git-ignored output file:
+
+```text
+corporate   population=732  in-output=565  named-elsewhere=167
+callable    candidates=5    priced=3       named skips=2
+```
+
+The vocabulary is declared, because conflating its halves is what caused the defect: a
+**terminal** reason is a disposition; a **routing** reason is an instruction, discharged only
+when the destination honours it. `callable` routes to the lattice driver; `floating` (32) and
+`special-fixed` (3) route back into the corporate output and are verified to arrive.
+
+`data/call_schedules.csv` gains a provenance column and `TNTD04920858`'s row (par@100 from
+URS master AB, provisional, NOT Bloomberg-confirmed). That row exists so the driver reaches
+the **true** blocker instead of reporting a fabricated "no schedule data" gap — habit 5
+applied to our own output. It is not there to make the bond price.
+
+### Finding 3 — a counting error in our own reporting, caught by the new audit
+
+`scripts/column_f_audit.py` generates the six-cell delivery evidence. It immediately found
+that the plan, both handoff bundles and the 2026-08-30 report all describe `F13` as "2 tab
+rows, 1 held" — which reads as *one of them is not a holding*. False: the two rows are the
+**same security**, `TNTD04283895`, listed twice. The tab has **676 ROWS but only 616 unique
+SECURITIES**; 60 asset IDs appear more than once. The corrected chain is
+
+```text
+30 pivot ROWS -> 29 unique SECURITIES -> 29 held -> 23 priced + 6 named
+```
+
+and the 30 to 29 step is a duplicate listing, not a security missing from the book. Habit 1 —
+name a count's source *and* population — applied to our own reporting, and it found an error
+in a number already shipped. The report now carries the correction explicitly.
+
+### Evidence produced
+
+- `docs/client_directive_pivot_column_f_2026-08-27.md` — the directive's provenance. ⚠️ The
+  plan assumed a screenshot was the only evidence; in the live repo **column F is in the
+  tracked workbook** (sheet6) and was committed in `a5f7c81` for exactly this purpose, which
+  is stronger. The workbook was never written to in order to record it.
+- `docs/column_f_delivery_matrix_2026-08-31.md` — the four populations, the six cells, the six
+  unpriced names with what unblocks each, the 29-security disposition table, the
+  reconstruction manifest, and the engine evidence from fresh runs: the par-floater identity
+  exact at every curve level, the OAS round trip to −4.7e-11, both floating-duration regimes
+  (+0.104396 / −0.395604 against +17.4381 for the same-maturity fixed bond), the third
+  deep-discount regime on the real book, hybrid degenerate limits bit-for-bit, the margin-0
+  telescoping to 1.4e-14 on any curve, all 10 live hybrids still in their fixed leg
+  (`next_switch_t` 0.577 … 28.332y), and stepped == plain-7.50% to 0.00e+00.
+- The report gains §3.1 on the callable finding, written as a strength of the hardening pass:
+  found before it reached him, all eight scheduled callables verified unaffected.
+
+**Verification.** 287 → **300** tests, green locally and on 47. All five production driver
+CSVs byte-identical to the Gate-0 freeze at both valuation dates. Excel bridge 23/23. The only
+new artifacts are the two disposition sidecars — intentional structural additions, not
+pricing drift.
+
+**Deferred, deliberately and named:** whether to give the lattice an exercise-only node
+between the last coupon and maturity (a real change to the time grid — QuantLib treats
+callability dates as mandatory lattice times, so this is a model design, not a patch), or to
+adopt a documented short-gap-call ⇒ vanilla rule (a new modelling threshold). The current
+0.000000 supports neither, because it came from the right not being exercised. `TNTD04920858`
+stays unpriced and named until one is chosen. **No new Mario/Liping request was opened.**
+
+---
+
 ## 2026-08-30 — Round 2b: Mario's pivot column F, and a units bug that was never a data gap
 **Commits:** `c196bd8` (engines → core/) · `5f7a9ec` (asset wrappers) · `3ad7503` (endpoint
 dispatch) · `9c2da93` (GBP par-yield units) · this entry's commit (docs + records)

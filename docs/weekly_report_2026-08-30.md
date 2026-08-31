@@ -17,20 +17,26 @@ Section 6 is for the engineering team and the finance reader can skip it.
 
 ## 1. Your six cells, answered
 
-A word on the counts first, because three different denominators are easy to confuse. The
-pivot counts **rows on the Corporate Bonds sheet** (676 of them). Not every row is a
-position the fund actually holds and rates. So each row below shows the pivot count, how
-many of those are live holdings, and how many now produce a full set of numbers.
+A word on the counts first, because several different denominators are easy to confuse. The
+pivot counts **rows on the Corporate Bonds sheet** (676 of them). That sheet lists some
+securities more than once — 60 of them — so 676 rows are 616 distinct bonds. Each row below
+therefore shows the pivot count, the number of distinct securities behind it, how many are
+live holdings, and how many now produce a full set of numbers.
 
-| Cell | Coupon type | Pivot rows | Held | Priced | Not priced |
-|---|---|---|---|---|---|
-| **F12** | Fixed → Floating | 5 | 5 | 4 | 1 |
-| **F13** | 7.00% before 01-Mar-2006, 7.50% after | 2 | 1 | 1 | — |
-| **F14** | GBP LIBOR + Spread | 1 | 1 | **1** | — |
-| **F15** | Reference Rate + Spread | 12 | 12 | 11 | 1 |
-| **F16** | EURIBOR + Spread | 9 | 9 | 5 | 4 |
-| **F20** | Step-up schedule | 1 | 1 | 1 | — |
-| | **total** | **30** | **29** | **23** | **6** |
+| Cell | Coupon type | Pivot rows | Securities | Held | Priced | Not priced |
+|---|---|---|---|---|---|---|
+| **F12** | Fixed → Floating | 5 | 5 | 5 | 4 | 1 |
+| **F13** | 7.00% before 01-Mar-2006, 7.50% after | 2 | **1** | 1 | 1 | — |
+| **F14** | GBP LIBOR + Spread | 1 | 1 | 1 | **1** | — |
+| **F15** | Reference Rate + Spread | 12 | 12 | 12 | 11 | 1 |
+| **F16** | EURIBOR + Spread | 9 | 9 | 9 | 5 | 4 |
+| **F20** | Step-up schedule | 1 | 1 | 1 | 1 | — |
+| | **total** | **30** | **29** | **29** | **23** | **6** |
+
+**A correction to how we put this to you.** An earlier draft of this table showed F13 as
+"2 rows, 1 held", which reads as though one of those two is not a holding. It is not: your
+sheet lists the *same* bond twice. One bond, held, priced. Every one of the 29 distinct
+securities behind your six cells is a live holding — none of them is missing from the book.
 
 **The six that do not price are not a modelling gap.** Five are bonds that pay a fixed
 coupon for some years and then switch to a floating one, and the *margin they pay after
@@ -112,6 +118,50 @@ about the market.
 **Action for you: the request for a replacement UK curve can be withdrawn.** Nothing else
 on the outstanding Bloomberg list changes.
 
+### 3.1 A second one of the same kind — caught before it reached you
+
+Having found one bond that had gone missing without a trace, we went looking for others of
+the same shape. There was one, and this time we found it **before** it affected any number
+we have shown you.
+
+Five bonds in the portfolio are callable — the borrower may repay early. Three are priced on
+the option model, and one is waiting for its call terms, which are on the outstanding data
+request. That accounts for four. **The fifth had fallen between two rules.** One part of the
+code treated a call less than a week before maturity as economically irrelevant and priced
+the bond normally; another part only sent bonds to the option model when the call was more
+than a year before maturity. A bond whose call sits 90 days before maturity satisfied
+neither, so it was priced by nothing — and, unlike a flagged bond, it produced no message
+anywhere. It is a real holding: 850,000 nominal, marked at 85.12.
+
+It had even been written down, once, in our own work log, as a "minor loose end" — and then
+it fell out of every count that followed. That is the lesson rather than the bond: a
+completeness figure can be wrong in a direction no report shows you, and the same failure
+had now happened twice.
+
+Two things changed, neither of which moves a price:
+
+- **the counting is now mechanical.** Every bond in the portfolio must leave the calculation
+  either with a number or with a named reason. That is checked as a set — not as a total,
+  because a total of "3 priced + 2 skipped = 5" balances perfectly even with the wrong bond
+  in the wrong place, which is exactly how this one stayed hidden. The check runs on every
+  production run and stops it if any bond is unaccounted for.
+- **the two rules became one.** Deciding *whether* a bond is callable now happens in one
+  place only; the option model simply prices everything it is sent.
+
+And a third thing, which is the part worth knowing about the model itself. When we sent that
+bond to the option model to see what it was worth, it returned a value for the early-repayment
+right of **exactly zero** — which looks like "the right is worthless". It was not. The option
+model makes its decisions on the bond's coupon dates, and this bond's call date falls in the
+final three months, after the last coupon. There was no date on which the model could
+consider it, so it never did. The number was not an answer; it was the absence of a question.
+
+The model now **refuses** such a bond rather than pricing it as an ordinary one — which is
+why the fifth callable bond is still not priced, and is now named and explained instead. We
+checked all eight bonds that carry call terms today: none of them is affected, so no number
+you have been given is wrong. Deciding what that bond should ultimately be worth needs
+either a change to the option model's calendar or a documented rule about very short call
+windows; both are real decisions and we have not taken either quietly.
+
 ## 4. One change to the Excel connection
 
 Last week the spreadsheet could ask for one kind of bond. It can now ask for any of seven
@@ -166,7 +216,8 @@ retained as an alias.
 
 | | |
 |---|---|
-| Automated checks | **287**, in about 21 seconds (223 at the start of the week) |
+| Automated checks | **300**, in about 24 seconds (223 at the start of the week) |
+| Population accounting | enforced at run time — every bond leaves with a number or a named reason, checked as a SET of identifiers, not as a total |
 | Production outputs after each migration step | byte-identical to a pre-change baseline, all five driver files |
 | Endpoint vs direct function call | asserted equal with `==`, per instrument type, not a tolerance |
 | Compatibility shims | asserted to re-export the *same object*, not an equivalent one |
@@ -187,7 +238,7 @@ Two details worth knowing before you run it:
   and both are correct; only the interpretation differs. It is pinned by tests.
 
 ```text
-python -m pytest -q                                              287 checks, ~21 s
+python -m pytest -q                                              300 checks, ~24 s
 python scripts/price_json.py --input request.json --output response.json
 powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  23 Excel checks
 ```
