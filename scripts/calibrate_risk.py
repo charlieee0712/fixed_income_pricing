@@ -42,8 +42,10 @@ DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
 WB = os.environ.get("FIP_URS_WB", os.path.join(DATA_DIR, "URS Fixed Income Mar 2009 - FI Positions V Mainak.xlsx"))
 VAL = os.environ.get("FIP_VAL_DATE", "2009-06-10")
 OUT = os.environ.get("FIP_OUT", "outputs/implied_oas.csv")
+# ⚠️ dated, for the same reason as the calibration output itself: an undated default is
+# overwritten by the next valuation date, silently.
 DISPOSITION_OUT = os.environ.get("FIP_CORP_DISPOSITION_OUT",
-                                 "outputs/corporate_disposition.csv")  # per-date override avoids clobbering
+                                 f"outputs/corporate_disposition_{VAL}.csv")  # per-date override avoids clobbering
 OAS_WB = os.environ.get("FIP_OAS_WB", os.path.join(DATA_DIR, "Pricing File.xlsm"))  # index OAS source
 # Term-override tables (dataio.term_overrides; evidence in docs/isin_lookup_2026-07-20.md).
 # All optional: absent file = no overrides.

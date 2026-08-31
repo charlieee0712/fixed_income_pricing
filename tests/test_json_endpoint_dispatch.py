@@ -421,3 +421,52 @@ def test_a_schedule_entirely_after_maturity_names_the_schedule_too():
         call_schedule=[{"date": "2020-04-01", "price_per_100": 100.0}])))
     assert err["field"] == "bond.call_schedule"
     assert "straight bond" in err["message"]
+
+
+# --------------------------------------- what the EXCEL bridge can actually build, pinned
+#
+# The engine and the contract support seven instrument types. The VBA builder does not, and
+# an earlier draft of the client report blurred the two. This guard makes the claim in the
+# documents falsifiable: if someone adds the missing cells, the test fails and says so.
+
+def test_the_excel_bridge_emits_only_the_documented_fields():
+    """Four types are TESTED from Excel, five are constructible, seven are supported by the
+    engine. `stepped` and `fixed_to_floating` cannot be built from cells at all, because the
+    bridge has nowhere to read a coupon table, a switch date or a quoted margin from.
+
+    If this test fails because the bridge grew those fields, that is good news — update the
+    weekly report, the walkthrough, the interface reference and the Excel README, all of
+    which currently state the narrower coverage.
+    """
+    import pathlib
+
+    text = pathlib.Path("integrations/excel_vba/RysePricingBridge.bas").read_text(
+        encoding="utf-8", errors="replace")
+    # code only: VBA comments start with an apostrophe, and the module header names several
+    # of these fields in prose.
+    code = "\n".join(line for line in text.splitlines()
+                     if not line.lstrip().startswith("'"))
+
+    for field in ("instrument_type", "call_schedule", "put_schedule", "sinking_schedule",
+                  "sinking_fraction_basis"):
+        assert f'"{field}"' in code, f"the bridge no longer emits {field}"
+
+    for absent in ("coupon_schedule", "switch_date", "quoted_margin_bp",
+                   "current_coupon_pct", "float_frequency"):
+        assert f'"{absent}"' not in code, (
+            f"the bridge now emits bond.{absent}, so its instrument-type coverage has "
+            f"changed. The documents say four types are tested from Excel and five are "
+            f"constructible — update them before relaxing this test.")
+
+
+def test_a_floating_request_from_excel_can_only_be_the_margin_absent_case():
+    """Consequence of the above, and the reason it matters beyond a count: the sheet has no
+    cell for the quoted margin or the already-fixed current coupon, so Excel can only ever
+    send a floating note in its least informative form — a discount margin rather than a
+    credit spread."""
+    request = payload("floating", coupon_pct=9.5)      # exactly what the bridge can build
+    response = ok(analyze_payload(request))
+    assert response["results"]["quoted_margin_source"] == "absorbed_into_the_calibrated_spread"
+    assert "discount margin" in response["results"]["spread_interpretation"]
+    warned = {w["field"] for w in response["warnings"]}
+    assert {"bond.coupon_pct", "bond.quoted_margin_bp"} <= warned

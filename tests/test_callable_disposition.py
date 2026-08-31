@@ -206,3 +206,77 @@ def test_the_short_gap_callable_reports_the_grid_blocker_not_a_data_gap():
     assert excinfo.value.right == "call"
     assert excinfo.value.first_exercise == _dt.date(2011, 12, 2)
     assert excinfo.value.maturity == _dt.date(2012, 3, 1)
+
+
+# ------------------------------------------------- CI coverage of the disposition guarantee
+#
+# The runtime check inside the drivers cannot go stale, but it also does not run under
+# pytest. These add the CI half WITHOUT reading a git-ignored output file: the reconciliation
+# primitive is unit-tested directly, and one integration test runs the real driver into a
+# fresh temporary destination.
+
+def test_reconcile_accepts_a_terminal_reason():
+    """A terminal reason IS a disposition: the bond is not priced, and here is why."""
+    table = reconcile({"A", "B"}, priced={"A"},
+                      skipped={"B": ("terms-unavailable", "terms in neither sheet")})
+    row = table[table["asset_id"] == "B"].iloc[0]
+    assert row["status"] == "skipped"
+    assert row["reason_code"] == "terms-unavailable"
+    assert row["reason"]
+
+
+def test_reconcile_rejects_an_undischarged_routing_reason():
+    """The shape of the TNTD04920858 defect, at the primitive.
+
+    A ROUTING reason ("the lattice driver handles this") is not a disposition. The driver
+    proves it discharged by naming the bond; if the destination never honoured it, the bond
+    reaches reconcile in neither set and must be named, not absorbed.
+    """
+    with pytest.raises(DispositionError, match="undisposed"):
+        reconcile({"routed-away"}, priced=set(),
+                  skipped={})                       # nobody claimed it
+    # discharged properly, it passes
+    table = reconcile({"routed-away"}, priced=set(),
+                      skipped={"routed-away": ("routed-to-callable",
+                                               "priced by the lattice driver")})
+    assert table.iloc[0]["reason_code"] == "routed-to-callable"
+
+
+def test_the_callable_driver_emits_a_complete_disposition(tmp_path):
+    """The integration half: run the REAL driver into a fresh destination and check the
+    sets it produced. Deliberately not reading outputs/, which is git-ignored and can be
+    stale on a machine that has not re-run — which is the whole failure mode being guarded.
+    """
+    import subprocess
+    import sys
+
+    import pandas as pd
+
+    wb = os.path.join("data", "URS Fixed Income Mar 2009 - FI Positions V Mainak.xlsx")
+    if not os.path.exists(wb):
+        pytest.skip("URS workbook not present")
+
+    out = tmp_path / "callable_risk.csv"
+    disposition = tmp_path / "callable_disposition.csv"
+    env = {**os.environ, "PYTHONPATH": "src", "FIP_VAL_DATE": VAL,
+           "FIP_OUT": str(out), "FIP_DISPOSITION_OUT": str(disposition)}
+    run = subprocess.run([sys.executable, os.path.join("scripts", "callable_risk.py")],
+                         env=env, capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr[-2000:]
+    assert disposition.exists(), "the driver produced no disposition file"
+
+    table = pd.read_csv(disposition, dtype={"asset_id": str})
+    candidates = set(_callable_candidates()["asset_id"].astype(str))
+
+    # exhaustive and disjoint, over identifiers rather than counts
+    assert set(table["asset_id"]) == candidates
+    assert len(table) == len(candidates)
+    priced = set(table.loc[table["status"] == "priced", "asset_id"])
+    skipped = set(table.loc[table["status"] == "skipped", "asset_id"])
+    assert priced | skipped == candidates
+    assert not (priced & skipped)
+
+    # every skip carries a machine-readable code AND a sentence
+    for _, row in table[table["status"] == "skipped"].iterrows():
+        assert str(row["reason_code"]).strip(), row.to_dict()
+        assert str(row["reason"]).strip(), row.to_dict()

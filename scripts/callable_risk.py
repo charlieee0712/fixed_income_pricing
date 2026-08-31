@@ -69,8 +69,11 @@ SIGMA = float(os.environ.get("FIP_VOL", "0.15"))     # Mario v1 flat short-rate 
 SCHED = os.environ.get("FIP_CALL_SCHED", os.path.join(DATA_DIR, "call_schedules.csv"))
 MW_CSV = os.environ.get("FIP_MAKE_WHOLE", os.path.join(DATA_DIR, "make_whole_overrides.csv"))
 OUT = os.environ.get("FIP_OUT", "outputs/callable_risk.csv")
+# ⚠️ dated, like implied_oas_<date>.csv. An undated default meant running 3-31 and then
+# 6-10 left only the 6-10 file: the evidence artifact built to prove nothing is silently
+# lost was itself silently losing a run.
 DISPOSITION_OUT = os.environ.get("FIP_DISPOSITION_OUT",
-                                 "outputs/callable_disposition.csv")
+                                 f"outputs/callable_disposition_{VAL}.csv")
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
 pd.set_option("display.width", 240)
 
