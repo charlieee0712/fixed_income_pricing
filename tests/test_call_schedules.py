@@ -53,4 +53,28 @@ def test_to_lattice_schedule_relative_and_clamped():
     out = to_lattice_schedule(entries, val)
     assert out[0] == (0.0, 101.0)                                  # clamped + sorted first
     assert out[1][1] == 100.0
-    assert out[1][0] == pytest.approx((pd.Timestamp("2014-08-16") - pd.Timestamp(val)).days / 365.25)
+    assert out[1][0] == pytest.approx((pd.Timestamp("2014-08-16") - pd.Timestamp(val)).days / 364.0)
+
+
+def test_the_day_count_is_act_364_and_is_not_a_caller_choice():
+    """This assertion used to read 365.25, and that was the defect.
+
+    The coupon grid runs on ACT/364. While this converter defaulted to 365.25, an exercise
+    date and a coupon date sat on different axes unless the caller remembered to say
+    otherwise — both drivers did, so no shipped number was wrong, but nothing would have
+    reported it if one had forgotten. The argument no longer exists, so the two functions
+    below cannot disagree.
+    """
+    from pricer.core.pricing import tree
+    from pricer.core.utils.dates import YEAR_DAYS
+
+    assert YEAR_DAYS == 364.0
+    with pytest.raises(TypeError):
+        to_lattice_schedule([(pd.Timestamp("2014-08-16"), 100.0)], "2009-03-31",
+                            days_per_year=365.25)
+
+    # a span containing two leap days, where 364 and 365.25 differ by over a month
+    schedule = [(pd.Timestamp("2020-02-29"), 100.0), (pd.Timestamp("2014-08-16"), 102.0)]
+    assert to_lattice_schedule(schedule, "2009-03-31") == tree.schedule_times("2009-03-31", schedule)
+    assert to_lattice_schedule(schedule, "2009-03-31")[1][0] == pytest.approx(
+        (pd.Timestamp("2020-02-29") - pd.Timestamp("2009-03-31")).days / 364.0)

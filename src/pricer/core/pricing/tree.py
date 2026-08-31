@@ -73,7 +73,7 @@ from pricer.errors import CalibrationError
 import numpy as np
 
 from pricer.core.pricing.cashflows import lattice_inputs
-from pricer.core.utils.dates import as_date, year_fraction
+from pricer.core.utils.dates import exercise_schedule_times, as_date, year_fraction
 
 
 def _root_decreasing(f, lo, hi, xtol=1e-12, maxiter=200):
@@ -294,7 +294,7 @@ class ShortRateLattice:
 
 
 def schedule_times(valuation_date, schedule):
-    """Convert a dated exercise schedule to the tree's time axis.
+    """Convert a dated exercise schedule to the tree's time axis (ACT/364).
 
     Inputs
     ------
@@ -306,17 +306,12 @@ def schedule_times(valuation_date, schedule):
     Returns: the same tuples with the date replaced by a time in years, sorted by time and
     clamped at 0 (a right already exercisable today sits on the valuation node).
 
-    THE day count here is the project's ACT/364, the same one the coupon grid uses, so an
-    exercise date and a coupon date land on one axis. ``dataio.call_schedules
-    .to_lattice_schedule`` performs the identical conversion — both production drivers call
-    it with ``days_per_year=364.0`` — but its *default* is still 365.25, a stale value that
-    would silently put exercise dates on a different axis than coupons. New code routes
-    through here so that default can never be reached by accident; a test pins the two
-    against each other.
+    The conversion itself lives in :func:`pricer.core.utils.dates.exercise_schedule_times`,
+    which is also what ``dataio.call_schedules.to_lattice_schedule`` calls. One
+    implementation, one day count; this name is kept because it reads correctly at the tree
+    call sites and is what the structure tests pin.
     """
-    val = as_date(valuation_date)
-    return sorted((max(0.0, year_fraction(val, entry[0])),
-                   *(float(x) for x in entry[1:])) for entry in schedule)
+    return exercise_schedule_times(valuation_date, schedule)
 
 
 def bond_tree(valuation_date, maturity, coupon_rate, curve, freq: int = 2,

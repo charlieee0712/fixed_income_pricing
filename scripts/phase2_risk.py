@@ -157,7 +157,7 @@ def main():
                 rows.append(row); continue
             # exercise times at 364 d/y = the real ACT/364 coupon-grid units; tree PV = dirty and
             # OAS solves tree PV - ai == BT (clean vs clean) — Liping code-review fix 2026-08-04
-            sched = to_lattice_schedule(schedules[aid], VAL, days_per_year=364.0)
+            sched = to_lattice_schedule(schedules[aid], VAL)
             cpn = float(b["coupon"])
             times, ai = lattice_inputs(VAL, mat, cpn, freq=fr)
             lat = ShortRateLattice(curve, freq=fr, sigma=SIGMA, coupon_times=times)

@@ -134,7 +134,7 @@ def main():
         if aid not in schedules:                                 # every genuine callable must be in the table
             skipped[aid] = ("schedule-unavailable", f"no call-schedule row in {SCHED}"); continue
         # exercise times at 364 d/y — the SAME units as the real ACT/364 coupon-time grid below
-        sched = to_lattice_schedule(schedules[aid], VAL, days_per_year=364.0)
+        sched = to_lattice_schedule(schedules[aid], VAL)
 
         T = (b["maturity"] - pd.Timestamp(VAL)).days / 365.25    # display ttm only (grid is ACT/364)
         try:

@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-DAYS_PER_YEAR = 365.25
+from pricer.core.utils.dates import exercise_schedule_times
+
 REQUIRED_COLUMNS = ("asset_id", "call_date", "call_price")
 
 
@@ -42,11 +43,18 @@ def load_call_schedules(path):
     return out
 
 
-def to_lattice_schedule(date_entries, val_date, days_per_year=DAYS_PER_YEAR):
-    """Convert ``[(call_date, price), ...]`` -> ``[(time_years, price), ...]`` relative to ``val_date``
-    (times clamped at 0 = already callable at the valuation date), sorted by time — the form
-    :meth:`pricing.lattice.ShortRateLattice.call_array` consumes. Centralises the day-count convention
-    so the lattice stays date-agnostic (it already works purely in years from t0)."""
-    val_ts = pd.Timestamp(val_date)
-    entries = [(max(0.0, (pd.Timestamp(d) - val_ts).days / days_per_year), float(p)) for d, p in date_entries]
-    return sorted(entries)
+def to_lattice_schedule(date_entries, val_date):
+    """Convert ``[(call_date, price), ...]`` -> ``[(time_years, price), ...]`` relative to
+    ``val_date``: times clamped at 0 (already callable today), sorted by time — the form
+    ``pricing.lattice.ShortRateLattice.call_array`` consumes. The lattice stays date-agnostic;
+    it works purely in years from t0.
+
+    The conversion is :func:`pricer.core.utils.dates.exercise_schedule_times`, shared with
+    ``core.pricing.tree.schedule_times``. This signature USED to carry a ``days_per_year``
+    argument defaulting to 365.25 while the coupon grid ran on ACT/364. Both production
+    drivers passed ``364.0`` explicitly, so no shipped number was ever wrong — but a new
+    caller taking the default would have silently placed exercise dates on a different axis
+    than the coupons they are compared against, with no error and no visible symptom. The
+    argument is gone rather than re-defaulted: the convention is not a caller's choice.
+    """
+    return exercise_schedule_times(val_date, date_entries)

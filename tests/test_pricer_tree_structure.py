@@ -55,7 +55,7 @@ def test_wrapper_reproduces_the_production_driver_path_exactly():
     curve = usd_curve()
     coupon_times, accrued = lattice_inputs(VAL, MAT, COUPON / 100.0, freq=FREQ)
     lattice = tree.ShortRateLattice(curve, freq=FREQ, sigma=0.15, coupon_times=coupon_times)
-    call_array = lattice.call_array(to_lattice_schedule(CALL, VAL, days_per_year=364.0))
+    call_array = lattice.call_array(to_lattice_schedule(CALL, VAL))
 
     driver_oas = lattice.implied_oas(PRICE, COUPON / 100.0, call_array, None,
                                      accrued=accrued) * 1e4
@@ -71,8 +71,7 @@ def test_core_schedule_times_matches_the_data_layer_conversion():
     why new code goes through the core helper — the two must agree when it is asked for
     the project convention."""
     schedule = [(dt.date(2011, 6, 15), 100.0), (dt.date(2010, 1, 4), 102.0)]
-    assert tree.schedule_times(VAL, schedule) == to_lattice_schedule(schedule, VAL,
-                                                                    days_per_year=364.0)
+    assert tree.schedule_times(VAL, schedule) == to_lattice_schedule(schedule, VAL)
 
 
 def test_no_schedule_degenerates_to_the_straight_bond():
