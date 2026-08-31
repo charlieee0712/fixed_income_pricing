@@ -22,9 +22,10 @@ pricing/coupon_schedule.py -> pricer/core/pricing/coupon_schedule.py  + assets/c
 ```
 
 Plus one contract change covering all seven instrument types at the JSON endpoint, and the
-Excel bridge extended to send the three tree products. `302` pytest checks (from 223 at the
-start of the round), `48`/`50` real-Excel checks (from 23), and every production driver CSV
-byte-identical to a pre-change baseline within its own environment.
+Excel bridge extended to send the three tree products. **302** pytest checks — 223 before the
+floating/hybrid round, 287 before this week's hardening pass — **48**/**50** real-Excel checks
+from 23, and every production driver CSV byte-identical to a pre-change baseline within its
+own environment.
 
 The migration itself is the least interesting part — it is a move, and it is proven by
 hashing whole output files rather than by argument. What follows is what the move exposed.
@@ -133,9 +134,11 @@ Ordered by how much I would change my mind if you pushed.
 on no exercise node. The two ways out are both deferred:
 
 - **give the lattice an exercise-only node** between the last coupon and maturity — a real
-  change to the time grid, short-rate calibration and coupon/ex-coupon interaction. QuantLib
-  treats callability dates as mandatory lattice times, which suggests this is a model design
-  rather than a patch;
+  change to the time grid, short-rate calibration and coupon/ex-coupon interaction. It was
+  put to me in review that QuantLib treats callability dates as mandatory lattice times,
+  alongside coupon and redemption times, which would make this a model design rather than a
+  patch. **I have not verified that against QuantLib's source**, and I am flagging it as
+  second-hand rather than repeating it as fact;
 - **adopt a documented rule** that a sub-year par call is economically non-callable and route
   it to vanilla — but that is a *new modelling threshold*, and it is right for this deep
   discount and wrong in general (a bond above par with an 11-month call has real option
@@ -190,12 +193,60 @@ Two exact regimes, and the sign flips:
 
 Both are within one coupon period. A third regime applies to a deep discount, where price ≈
 par minus a spread annuity, so a rate rise shrinks the gap and the price rises — that one
-grows with maturity (a 57-year note near 50 shows ≈ −10.6).
+grows with maturity and with the discount. On the current book the widest is **−1.85**
+(`TNTD04882955`, maturing 2016, marked 67.04), against **+6.09** for a same-maturity fixed
+bond.
+
+*(`frn.py`'s docstring still cites ≈ −10.6 for a 57-year floater marked near 50. That was
+true of the June-2026 routing; those 2066/2067 names are fixed-to-float and have since moved
+to the hybrid engine, so no floater that long remains on this route. I quoted the docstring
+here before checking the output — the third time this week that rule has caught me, which is
+why it is the last paragraph of this note.)*
 
 I am confident in the arithmetic. What I am less sure of is whether **projecting** the
 current period's coupon is the right default at all, given that in reality the running coupon
 *is* fixed and known. We do it because most of this book's cells give no reset history. It
 makes the reported duration point the wrong way for the majority of holdings.
+
+### 4.6 A stale default on the same axis as 3.3
+
+`dataio/call_schedules.to_lattice_schedule` still defaults to **365.25 days per year**, while
+the coupon grid it feeds is **ACT/364**:
+
+```python
+DAYS_PER_YEAR = 365.25
+def to_lattice_schedule(date_entries, val_date, days_per_year=DAYS_PER_YEAR):
+```
+
+Production is safe — both drivers pass `days_per_year=364.0` explicitly — so this is latent,
+not live. But it is the **same failure as 3.3 in a different place**: an exercise date landing
+on the wrong point of the time axis, silently, with a plausible number out the other end. A
+new caller taking the default gets it.
+
+I left it alone because the round forbade unrelated changes, and because "it is only a
+default" was how the short-gap callable survived too. **My inclination is to delete the
+default outright** and make the day count a required argument, so the question cannot be
+answered by omission. That is a one-line change with a handful of call-site edits. Is there a
+reason to keep a default at all?
+
+### 4.7 Pricing on provisional call terms
+
+The three callable bonds that *do* price use schedules seeded from the custodian's own
+first-call-date column, at **par@100** — a v1 convention, approved as such, and explicitly
+not Bloomberg-confirmed. `data/call_schedules.csv` now carries that provenance per row.
+
+The precedent that worries me is Sempra: its `AB` column turned out to be a first-coupon
+date, and the bond was make-whole-only with no par call at all. We priced it on the lattice
+until the ISIN lookup caught it, and the "par-call conflicts with the mark" symptom was
+visible the whole time and was read as a data oddity rather than as a wrong assumption.
+
+So the question is not whether the convention is reasonable — it is whether **pricing on
+unverified exercise terms and labelling the output provisional** is better than **flagging
+those bonds until real terms arrive**. We currently do the former for three securities. I
+think that is right, because the alternative flags a bond whose option is demonstrably
+near-worthless and loses a number for no gain — but the Sempra case is a real
+counter-example, and one of the three is `TNTD04115619`, whose implied spread is 1993.6 bp,
+which is the kind of number that should make anyone check the terms behind it.
 
 ## 5. Where I think the remaining risk is
 
@@ -209,6 +260,18 @@ makes the reported duration point the wrong way for the majority of holdings.
   this round — but it is the most fragile seam in the migrated code.
 - **Two thresholds, one decision.** 3.2 was that shape. I have not swept the codebase for
   others, and I suspect there are more.
+- **Defaulted bonds are treated two ways.** Four securities carry `primary_reason =
+  defaulted`. Two get a `recovery` row in the output at the custodian mark; two do not appear
+  at all. `TNTD03044683` — par 1,450,000, marked 11.25 — is one of the absent ones, while
+  `TNTD03037967` — par 1,625,000, marked 12.00 — gets a row. Both are named in the exclusion
+  log, so neither is invisible in the 3.2 sense, but the treatments should not differ for two
+  bonds in the same situation. I found this during the reconciliation and recorded it rather
+  than changing it, because "make the table tidy" is not a reason to move a route.
+- **Five layers are still unmigrated:** `pricing/ilb.py`, `pricing/mbs.py`, `curves/`,
+  `credit/` and `dataio/` are reached through their original paths. The shims are all still
+  in place and nothing has been retired. Worth a view on the order, and on whether the shim
+  layer is permanent or has an end date — it is currently open-ended, which is how a
+  "temporary" compatibility layer becomes the architecture.
 
 ## 6. Checking any of this yourself
 
@@ -219,6 +282,13 @@ python scripts/calibrate_risk.py                             prints the disposit
 powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1                48 checks
 powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1 -PythonExe …   50, live engine
 ```
+
+⚠️ **One reproduction trap.** Full driver CSVs are byte-identical *within* an environment but
+not across one: Windows and the Linux server differ by up to **3.6e-8 relative, entirely in
+the convexity column** — a second difference over the square of a 1 bp bump amplifies a
+last-bit rounding by 10⁸. Text columns match exactly and prices, spreads and durations agree
+to ~1e-12. If you diff a CSV produced on 47 against one produced on Windows you will see a
+difference that is **not** a regression. Compare within one machine.
 
 The most load-bearing files for a review:
 
@@ -236,4 +306,8 @@ docs/column_f_delivery_matrix_2026-08-31.md      the per-security evidence, gene
 fixtures, I wrote the expected spreads into the test harness from an earlier single-call test
 instead of from the fixtures I had just generated with a two-date schedule. Three checks
 failed at ~1e-5 until I read the values out of the files. *Quote from the run, not from
-memory* — I wrote that rule down last month and still broke it this week.
+memory* — I wrote that rule down last month and broke it **three times this week**: the
+harness expectations above, the `F13` row/security count that stood in four documents, and
+the −10.6 duration figure in §4.5 that I lifted from a docstring describing a routing we no
+longer use. Each was caught by re-deriving before publishing rather than by anyone reading
+it. That is an argument for the checking, not for the writing.

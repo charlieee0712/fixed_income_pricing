@@ -190,8 +190,8 @@ same request and answer format, same error reporting.
 
 We made this change **once**, covering all seven, rather than twice. And a request that
 does not name a type is still treated as a plain bond, so **nothing that works today
-stops working** — including the spreadsheet as it stands, whose 23 automated Excel checks
-all still pass untouched.
+stops working** — including the spreadsheet as it stands, whose original 23 automated
+Excel checks all still pass untouched.
 
 Each type reports the one or two extra numbers only it has: the next reset date for a
 floating note, the switch date for a fixed-then-floating one, and — for the three types
@@ -249,7 +249,7 @@ them that way everywhere they appear.
 The automated spreadsheet checks went from 23 to **50**.
 
 **What is still not built is the layout** — the daily-use sheet with all seven bond types
-on it. That is question 1 in section 8, and it is genuinely yours to answer: what exists
+on it. That is the question in section 8, and it is genuinely yours to answer: what exists
 today is an engineering test surface, not a sheet we would ask anyone to work in.
 
 ## 5. What we deliberately did not do
@@ -284,7 +284,7 @@ retained as an alias.
 
 | | |
 |---|---|
-| Automated checks | **300**, in about 24 seconds (223 at the start of the week) |
+| Automated checks | **302**, in about 24 seconds (223 when this round began) |
 | Population accounting | enforced at run time — every bond leaves with a number or a named reason, checked as a SET of identifiers, not as a total |
 | Production outputs after each migration step | byte-identical to a pre-change baseline, all five driver files |
 | Endpoint vs direct function call | asserted equal with `==`, per instrument type, not a tolerance |
@@ -306,9 +306,10 @@ Two details worth knowing before you run it:
   and both are correct; only the interpretation differs. It is pinned by tests.
 
 ```text
-python -m pytest -q                                              300 checks, ~24 s
+python -m pytest -q                                              302 checks, ~24 s
 python scripts/price_json.py --input request.json --output response.json
-powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  23 Excel checks
+powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  48 Excel checks
+powershell -File ...\Run-BridgeTests.ps1 -PythonExe <python.exe>   50, against a live engine
 ```
 
 ## 7. Next
