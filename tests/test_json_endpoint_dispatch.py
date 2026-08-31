@@ -350,3 +350,31 @@ def test_refusals_never_leak_a_path_or_a_traceback():
         message = error_of(analyze_payload(request))["message"]
         assert "/" not in message and "\\" not in message
         assert "Traceback" not in message and ".py" not in message
+
+
+# ------------------------------- a schedule the grid cannot place is a SCHEDULE error
+
+def test_an_unplaceable_call_schedule_is_a_validation_error_not_a_calibration_failure():
+    """The guard fires inside the engine, and the engine's exception is a ValueError — so
+    without explicit handling it would be caught by the spread solver's own `except
+    ValueError` and reported as "no spread reprices this bond - check the price, the coupon
+    and the maturity". Three fields, none of them the problem.
+
+    This is the same mistake the sinking-basis refusal used to make, and it is the reason
+    the response must name `bond.call_schedule`.
+    """
+    request = payload("callable", price=85.1226, coupon_pct=5.0,
+                      call_schedule=[{"date": "2011-12-02", "price_per_100": 100.0}])
+    request["bond"]["maturity_date"] = "2012-03-01"     # call lands in the final coupon period
+    err = error_of(analyze_payload(request))
+    assert err["code"] == contracts.VALIDATION_ERROR
+    assert err["field"] == "bond.call_schedule"
+    assert "coupon" in err["message"] and "2011-12-02" in err["message"]
+    assert "no spread reprices" not in err["message"]
+
+
+def test_an_unplaceable_put_schedule_names_the_put_field():
+    request = payload("puttable", price=85.1226, coupon_pct=5.0,
+                      put_schedule=[{"date": "2011-12-02", "price_per_100": 100.0}])
+    request["bond"]["maturity_date"] = "2012-03-01"
+    assert error_of(analyze_payload(request))["field"] == "bond.put_schedule"

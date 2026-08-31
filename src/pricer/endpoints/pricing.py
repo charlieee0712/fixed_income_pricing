@@ -30,6 +30,7 @@ vocabulary or any caller.
 from __future__ import annotations
 
 from pricer.assets.corporate import embedded_option, floating, hybrid, stepped, vanilla
+from pricer.assets.corporate.embedded_option import ExerciseScheduleNotRepresentable
 from pricer.assets.corporate.bonds_input import (PRICING_CONVENTION, VANILLA_NOT_APPLICABLE,
                                                  VOLATILITY_NOT_APPLICABLE,
                                                  validate_vanilla_inputs)
@@ -304,6 +305,12 @@ def _spread(request: dict, calibrate):
     target = request["clean_price_per_100"]
     try:
         return calibrate(target), CALIBRATED
+    except ExerciseScheduleNotRepresentable:
+        # A contract the model grid cannot represent is NOT a calibration failure. Letting
+        # it fall through would report "no spread reprices this bond - check the price, the
+        # coupon and the maturity", sending the reader to the wrong three fields entirely.
+        # (The same mistake the sinking-basis refusal used to make.)
+        raise
     except ValueError as exc:
         raise contracts.RequestError(
             contracts.CALIBRATION_FAILED,
@@ -332,6 +339,8 @@ class _pricing_errors:
         return self
 
     def __exit__(self, exc_type, exc, tb):
+        if exc_type is not None and issubclass(exc_type, ExerciseScheduleNotRepresentable):
+            return False                    # a contract problem, not a pricing failure
         if exc_type is None or not issubclass(exc_type, (ValueError, ArithmeticError)):
             return False
         raise contracts.RequestError(

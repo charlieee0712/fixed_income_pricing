@@ -1,10 +1,24 @@
 """v2 callable pricing: implied OAS + effective duration for the GENUINE fixed callables, on the
 BDT-style short-rate lattice (``pricing.lattice``). @ a valuation date, own-currency curve.
 
-Scope (WORKLOG 2026-07-02 decisions 3 & 5): the lattice is applied ONLY to genuine fixed callables —
-callable bucket, ``coupon_type == fixed``, and a real call gap (maturity - call_date > GAP_DAYS). The
-make-whole majority (gap <= 7d, option value ~ 0) route to the vanilla calibrator and are only counted
-here. Structured/floating callables stay excluded (v1).
+Scope: this driver consumes **every** callable candidate the universe routes to it, and disposes of
+each one — priced, or skipped with a named reason. It does **not** apply a maturity threshold of its
+own.
+
+⚠️ It used to. Until 2026-08-31 the universe routed a call gap <= 7 days to vanilla and excluded the
+rest as ``callable``, while this driver priced only gaps > 366 days. Anything in between was excluded
+from the vanilla output AND never seen here, with no message anywhere: ``TNTD04920858`` (gap 90 days,
+a held 850k position) sat in that hole. It had even been written down once, in the WORKLOG, as "1
+short-gap callable (32-180d) still unpriced ... minor loose end", and then fell out of every count.
+
+Two thresholds in two files, each owning half of one decision, is the defect. The responsibilities
+are now separated:
+
+    routing layer (dataio.universe)  decides WHETHER a bond is a callable candidate
+    this driver                      consumes EVERY candidate; it does not re-classify
+    tree / wrapper                   decides whether the contract is REPRESENTABLE on the grid
+
+so a bond can only leave here priced or named.
 
 ASSUMPTIONS (Mario v1, 2026-07-03 — replaceable, NOT market-sourced):
   * call schedule <- ``data/call_schedules.csv`` (asset_id | call_date | call_price), read via
@@ -39,10 +53,13 @@ from openpyxl.utils import column_index_from_string
 
 from curves.zero_curve import ZeroCurve
 from dataio.call_schedules import load_call_schedules, to_lattice_schedule
+from dataio.dispositions import reconcile
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.term_overrides import load_make_whole_overrides
 from dataio.universe import build_universe
 from pricing.bond_price import lattice_inputs
+from pricer.assets.corporate.embedded_option import (ExerciseScheduleNotRepresentable,
+                                                     check_representable)
 from pricing.lattice import ShortRateLattice
 
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
@@ -52,7 +69,8 @@ SIGMA = float(os.environ.get("FIP_VOL", "0.15"))     # Mario v1 flat short-rate 
 SCHED = os.environ.get("FIP_CALL_SCHED", os.path.join(DATA_DIR, "call_schedules.csv"))
 MW_CSV = os.environ.get("FIP_MAKE_WHOLE", os.path.join(DATA_DIR, "make_whole_overrides.csv"))
 OUT = os.environ.get("FIP_OUT", "outputs/callable_risk.csv")
-GAP_DAYS = 366                                        # > this -> genuine call gap (else make-whole)
+DISPOSITION_OUT = os.environ.get("FIP_DISPOSITION_OUT",
+                                 "outputs/callable_disposition.csv")
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual"}
 pd.set_option("display.width", 240)
 
@@ -86,28 +104,31 @@ def main():
     cb["call_date"] = pd.to_datetime(cb["call_date"], errors="coerce")
     cb["maturity"] = pd.to_datetime(cb["maturity"], errors="coerce")
     cb["gap_days"] = (cb["maturity"] - cb["call_date"]).dt.days
-    genuine = cb[cb["gap_days"] > GAP_DAYS].copy()
-    makewhole = cb[cb["gap_days"] <= 7]
+    candidates = cb.copy()                 # EVERY candidate the routing layer sent here
+    stray_make_whole = cb[cb["gap_days"] <= 7]
     print(f"# callable_risk @ {VAL}  sigma={SIGMA:.2%} (Mario v1)  call schedule <- {SCHED} ({len(schedules)} asset(s))")
-    print(f"# callable bucket={len(cb)}  genuine(gap>{GAP_DAYS}d)={len(genuine)}  make-whole(<=7d, ->vanilla)={len(makewhole)}")
+    print(f"# callable candidates={len(candidates)} (consumed in full; this driver applies no gap threshold)")
+    if len(stray_make_whole):              # the routing layer should have sent these to vanilla
+        print(f"# WARNING {len(stray_make_whole)} make-whole candidate(s) reached the lattice driver: "
+              f"{sorted(stray_make_whole['asset_id'].astype(str))}")
 
-    rows, skip = [], []
-    for _, b in genuine.iterrows():
+    rows, skipped = [], {}
+    for _, b in candidates.iterrows():
         aid = str(b["asset_id"])
         cpn = pd.to_numeric(b["coupon"], errors="coerce")
         ccy = str(b.get("currency")).strip().upper() if b.get("currency") is not None else "USD"
         try:
             fr = int(b["freq"])
         except (TypeError, ValueError):
-            skip.append((aid, f"freq={b['freq']!r}")); continue
+            skipped[aid] = ("terms-incomplete", f"unreadable coupon frequency {b['freq']!r}"); continue
         if pd.isna(cpn) or pd.isna(b["maturity"]) or pd.isna(b["call_date"]) or fr not in FREQ_VARIANT:
-            skip.append((aid, f"cpn={cpn} mat={b['maturity']} call={b['call_date']} fr={fr}")); continue
+            skipped[aid] = ("terms-incomplete", f"coupon={cpn} maturity={b['maturity']} call_date={b['call_date']} freq={fr}"); continue
         bt = pd.to_numeric(recon.loc[aid, "gold_price"], errors="coerce") if aid in recon.index else np.nan
         if pd.isna(bt) or bt <= 0:
-            skip.append((aid, f"bt={bt}")); continue
+            skipped[aid] = ("mark-unavailable", f"no usable custodian price (BT={bt})"); continue
 
         if aid not in schedules:                                 # every genuine callable must be in the table
-            skip.append((aid, f"no row in {SCHED}")); continue
+            skipped[aid] = ("schedule-unavailable", f"no call-schedule row in {SCHED}"); continue
         # exercise times at 364 d/y — the SAME units as the real ACT/364 coupon-time grid below
         sched = to_lattice_schedule(schedules[aid], VAL, days_per_year=364.0)
 
@@ -115,13 +136,18 @@ def main():
         try:
             curve = ZeroCurve.from_currency(DATA_DIR, ccy, VAL, freq=FREQ_VARIANT[fr])
         except Exception as e:                                   # GBP non-arb node, unmapped ccy, ...
-            skip.append((aid, f"curve {ccy}: {e}")); continue
+            skipped[aid] = ("curve-unavailable", f"{ccy} curve: {e}"); continue
 
         # real coupon dates + the SHARED vanilla accrued (Liping fix 2026-08-04): tree PV = dirty,
         # OAS solves tree PV - ai == BT (clean vs clean, the vanilla calibrator's equation)
         times, ai = lattice_inputs(VAL, b["maturity"], float(cpn), freq=fr)
         lat = ShortRateLattice(curve, freq=fr, sigma=SIGMA, coupon_times=times)
         carr = lat.call_array(sched)                             # exercise schedule driven by the CSV, not hard-coded
+        try:                                                     # the SAME rule the wrapper applies
+            check_representable("call", schedules[aid], bool(np.isfinite(carr).any()),
+                                VAL, b["maturity"], fr)
+        except ExerciseScheduleNotRepresentable as e:
+            skipped[aid] = ("call-schedule-not-representable-on-current-grid", str(e)); continue
         # option value at OAS=0 (raw dirty PVs; the difference is accrual-free), then calibrate
         px_str0 = lat.price_bond(float(cpn), 0.0)
         px_cal0 = lat.price_bond(float(cpn), 0.0, call_price=carr)
@@ -129,7 +155,7 @@ def main():
             oas_cal = lat.implied_oas(float(bt), float(cpn), call_price=carr, accrued=ai)
             oas_str = lat.implied_oas(float(bt), float(cpn), accrued=ai)
         except ValueError as e:
-            skip.append((aid, f"no-bracket bt={bt:.2f}: {e}")); continue
+            skipped[aid] = ("oas-not-bracketed", f"no spread brackets BT={bt:.2f}: {e}"); continue
         rm_cal = lat.risk_metrics(float(cpn), oas_cal, call_price=carr, accrued=ai)
         rm_str = lat.risk_metrics(float(cpn), oas_str, accrued=ai)
         if oas_cal < 0:                       # BT above the scheduled call value -> assumption conflicts w/ the mark
@@ -159,9 +185,20 @@ def main():
     df = pd.DataFrame(rows)
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     df.to_csv(OUT, index=False)
-    print(f"\npriced={len(df)}  skipped={len(skip)}")
-    for aid, why in skip:
-        print("  skip", aid, why)
+    # Every candidate leaves here priced or named. reconcile() raises if that is not
+    # true, over SETS of identifiers - a count check (3 + 2 == 5) would pass even with
+    # the wrong bond in the wrong set, which is how TNTD04920858 stayed invisible.
+    disposition = reconcile(candidates["asset_id"].astype(str),
+                            df["asset_id"].astype(str) if len(df) else [], skipped)
+    disposition.insert(1, "valuation_date", VAL)
+    os.makedirs(os.path.dirname(DISPOSITION_OUT) or ".", exist_ok=True)
+    disposition.to_csv(DISPOSITION_OUT, index=False)
+    
+    print("")
+    print(f"candidates={len(candidates)}  priced={len(df)}  skipped={len(skipped)}")
+    for aid, (code, why) in sorted(skipped.items()):
+        print(f"  skip {aid}  [{code}]  {why}")
+    print(f"wrote {DISPOSITION_OUT}")
     if len(df):
         cols = ["asset_id", "ccy", "rating", "coupon", "maturity", "call_date", "call_price", "n_call_rows",
                 "gap_yrs", "ttm", "bt", "px_straight_oas0", "px_callable_oas0", "opt_val_oas0",

@@ -27,9 +27,11 @@ from __future__ import annotations
 
 import warnings
 
+import numpy as np
+
 from pricer.assets.corporate.bonds_input import validate_vanilla_inputs
 from pricer.core.pricing.tree import bond_tree, schedule_times
-from pricer.core.utils.dates import as_date
+from pricer.core.utils.dates import as_date, coupon_dates
 
 _BP = 1e-4              # one basis point, in decimal
 SIGMA_DEFAULT = 0.15    # Mario's v1 short-rate volatility (2026-07-03)
@@ -199,11 +201,91 @@ def check_sinking_overlap(sinking_schedule, call_schedule, put_schedule) -> None
             f"yet — split the dates or price the features separately.")
 
 
+class ExerciseScheduleNotRepresentable(ValueError):
+    """A right that was accepted and then could not be placed on the model's time grid.
+
+    The lattice exercises on the bond's **coupon dates**, and by construction never at the
+    root or at maturity — you do not exercise at issue or at redemption. So an exercise
+    date falling between the last interior coupon and maturity lands on no node at all,
+    and the exercise array comes back entirely inactive.
+
+    Without this exception that case is silent: the bond prices as a **straight bond**
+    while the caller believes an option was applied, and the option's value reads as
+    exactly zero — which looks like "the right is worthless" and is really "the right was
+    never evaluated". That distinction cost a real finding: ``TNTD04920858``'s call sits 90
+    days before maturity, inside its final coupon period.
+
+    The exception carries the dates a reader needs (``right``, ``first_exercise``,
+    ``last_exercisable``, ``maturity``) as attributes, so the layer that *does* know which
+    security this is — an endpoint, a driver — can name it when reporting. The engine
+    deliberately does not take an instrument id it has no other use for.
+    """
+
+    def __init__(self, right, first_exercise, last_exercisable, maturity):
+        self.right = right
+        self.first_exercise = first_exercise
+        self.last_exercisable = last_exercisable
+        self.maturity = maturity
+        super().__init__(
+            f"the {right} schedule cannot be represented on this bond's model grid: its "
+            f"earliest exercise date {first_exercise} falls after the last exercisable "
+            f"coupon date {last_exercisable} and before maturity {maturity}. The lattice "
+            f"exercises on coupon dates only, and never at maturity, so there is no node "
+            f"at which this right could be taken. It is refused rather than ignored — "
+            f"ignoring it prices a straight bond and reports the option as worth zero.")
+
+
+def _exercisable_dates(valuation_date, maturity, cpn_freq):
+    """The coupon dates the lattice can actually exercise on: future coupons except maturity."""
+    dates, _last, _step = coupon_dates(valuation_date, maturity, cpn_freq)
+    val = as_date(valuation_date)
+    future = [d for d in dates if (d - val).days > 0]
+    return future[:-1]                       # the terminal step is never exercisable
+
+
+def check_representable(right, schedule, active, valuation_date, maturity, cpn_freq):
+    """Refuse a non-empty schedule that reaches no exercise node.
+
+    Inputs
+    ------
+    1. right          : str — ``"call"``, ``"put"`` or ``"sinking"``; named in the message.
+    2. schedule       : the normalised schedule, or ``None``/empty.
+    3. active         : bool — whether the built array has at least one step the schedule
+       actually reached. This is a question about the GRID, not about economics: a sinking
+       entry with fraction 0, or a call priced so high it never binds, is representable and
+       must price normally. Only "the date reached no node" is refused.
+    4-6. valuation_date / maturity / cpn_freq — to name the grid in the message.
+
+    Returns: None. Raises :class:`ExerciseScheduleNotRepresentable`.
+
+    ⚠️ **Each right is checked on its own.** A guard written as "at least one of the arrays
+    is active" would pass a bond whose put is live and whose call is dead, and lose the
+    call — the original defect wearing a different hat.
+    """
+    if not schedule or active:
+        return
+    exercisable = _exercisable_dates(valuation_date, maturity, cpn_freq)
+    raise ExerciseScheduleNotRepresentable(
+        right=right,
+        first_exercise=as_date(min(entry[0] for entry in schedule)),
+        last_exercisable=exercisable[-1] if exercisable else "none (the bond has one period left)",
+        maturity=as_date(maturity))
+
+
+def _has_finite(array) -> bool:
+    """Whether an exercise-price array has at least one live step (inactive is +/-inf)."""
+    return array is not None and bool(np.isfinite(array).any())
+
+
 def _prepare(coupon, cpn_freq, maturity, valuation_date, curve, volatility,
              call_schedule, put_schedule, sinking_schedule=None, fraction_basis=None):
     """Validate inputs, build the calibrated tree, and return everything pricing needs.
 
     Returns ``(lattice, accrued, call_array, put_array, sink_fraction, sink_price)``.
+
+    Every refusal in this function fires **before** any spread solving, so a bad contract
+    is reported as a contract problem rather than surfacing from inside the root finder as
+    "no spread reprices this bond".
     """
     validate_vanilla_inputs(coupon, cpn_freq)
     if not (0.0 < float(volatility) <= 2.0):
@@ -225,6 +307,18 @@ def _prepare(coupon, cpn_freq, maturity, valuation_date, curve, volatility,
             schedule_times(valuation_date, sinks))
     else:
         sink_fraction = sink_price = None
+
+    # Each right is checked SEPARATELY: a live put must not license a dead call.
+    # Inactive steps are +inf (call) / -inf (put) / fraction 0 (sinking), so "active"
+    # means at least one finite price, or at least one non-zero fraction.
+    grid = (valuation_date, maturity, cpn_freq)
+    check_representable("call", calls, _has_finite(call_array), *grid)
+    check_representable("put", puts, _has_finite(put_array), *grid)
+    # For sinking the test is the PRICE array, not the fraction: a fraction of 0 is a
+    # legitimate contract ("a scheduled date on which nothing is retired") that prices as a
+    # straight bond, and must not be confused with a date that reached no node at all.
+    # Inactive steps carry price +inf; a placed entry carries its real price.
+    check_representable("sinking", sinks, _has_finite(sink_price), *grid)
     return lattice, accrued, call_array, put_array, sink_fraction, sink_price
 
 

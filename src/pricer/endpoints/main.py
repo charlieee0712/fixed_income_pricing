@@ -20,6 +20,7 @@ file, knows a path, or computes a price.
 """
 from __future__ import annotations
 
+from pricer.assets.corporate.embedded_option import ExerciseScheduleNotRepresentable
 from pricer.core.market.curves import CurveUnavailable
 from pricer.endpoints import contracts, pricing
 
@@ -44,6 +45,13 @@ def analyze_payload(payload) -> dict:
 
     except contracts.RequestError as err:
         return contracts.error_response(err.code, err.message, err.field, request, warnings)
+
+    except ExerciseScheduleNotRepresentable as err:
+        # The caller sent a right the model's time grid cannot place. Name the field they
+        # sent it in, so the answer points at the schedule rather than at the price.
+        return contracts.error_response(
+            contracts.VALIDATION_ERROR, str(err), f"bond.{err.right}_schedule",
+            request, warnings)
 
     except CurveUnavailable as err:
         code = (contracts.CURVE_NOT_FOUND if err.reason == "not_found"
