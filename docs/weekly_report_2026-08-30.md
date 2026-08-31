@@ -203,12 +203,61 @@ bond is sent without its post-switch margin, we do not price it with a zero. A g
 margin produces a confident-looking number for a bond that is half-modelled, and nothing
 in the output would say so.
 
+## 4.1 Additional integration follow-through — embedded-option bonds through Excel
+
+*Separate from your six cells, and reported separately on purpose: this is follow-through
+on the interface promise in the last report, not part of the floating-rate work.*
+
+The spreadsheet can now send the three bond types with early-repayment rights — callable,
+puttable and sinking-fund — and show their results. This was already true of the engine;
+what was missing was the spreadsheet side, and it is now built and tested on real Excel.
+
+Exercise schedules are entered as ordinary Excel **tables**, one row per date:
+
+```text
+FIP_CallSchedule      Date | Price per 100
+FIP_PutSchedule       Date | Price per 100
+FIP_SinkingSchedule   Date | Fraction of the amount outstanding | Price per 100
+```
+
+Tables rather than fixed blocks of cells, for two practical reasons: a schedule can be any
+length, and a table can sit on any sheet — so none of this commits you to a layout before
+you have chosen one.
+
+Two behaviours are worth knowing because they are deliberate:
+
+- **A blank row is ignored; a half-filled row is refused**, in Excel, before anything is
+  sent, naming the table and the row number. We do not fill in a missing exercise price or
+  redemption fraction. Those are contractual terms, and a plausible guess is worse than a
+  stop.
+- **Your existing sheet is untouched.** A request that does not name a bond type is treated
+  exactly as it was before, which is why every one of the original spreadsheet checks still
+  passes without modification.
+
+**Your volatility question, now answerable from the spreadsheet.** Changing the volatility
+cell on a callable bond and re-running gives, on our test bond, a spread of 639.58, 635.78
+and 629.83 basis points at 10%, 15% and 20% volatility — the same tightening the last
+report described, now driven from Excel rather than from Python. That is three ordinary
+runs, not a special feature.
+
+**One caveat we want stated rather than buried.** The portfolio holds callable bonds, so
+that type is tested against real holdings. It holds **no** puttable and **no** sinking-fund
+bonds — those two are tested on invented examples. Those tests prove the model and the
+connection behave correctly; they prove nothing about your portfolio, and we have labelled
+them that way everywhere they appear.
+
+The automated spreadsheet checks went from 23 to **50**.
+
+**What is still not built is the layout** — the daily-use sheet with all seven bond types
+on it. That is question 1 in section 8, and it is genuinely yours to answer: what exists
+today is an engineering test surface, not a sheet we would ask anyone to work in.
+
 ## 5. What we deliberately did not do
 
-- **The demonstration spreadsheet still asks for plain bonds only.** The engine and the
-  message format handle all seven types, but putting seven bond types on a worksheet is a
-  layout question, and we would rather do it once with you than guess. The interface
-  document lists exactly which fields each type adds.
+- **We did not design the daily-use worksheet.** The spreadsheet can now send every bond
+  type (section 4.1), but putting seven of them on one sheet — or on seven small sheets —
+  is a layout question we would rather settle with you than guess at. What exists is an
+  engineering test surface, clearly labelled as such.
 - **No bond was re-classified to make a count look better.** The six unpriced bonds stay
   unpriced and named.
 - **We did not touch the holdings workbook.** Your column F is your marking; section 1 is

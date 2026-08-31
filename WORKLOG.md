@@ -5,6 +5,103 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-31 (second wave) — Workstream B: the Excel bridge sends the tree products
+**Commits:** `a4cd9c5` (bridge + tests + fixtures) · this entry's commit (report, records,
+package)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Follow-through on the interface promise in the 2026-08-25 report, started only after
+Workstream A reached its mandatory checkpoint. Scope held exactly: no second bridge, parser,
+endpoint, JSON contract, engine or workbook design.
+
+### Compatibility was the design constraint, not an afterthought
+
+`PriceBond` / `BuildRequest` / `PopulateOutputs` are the generic path; `PriceVanillaBond` /
+`BuildVanillaRequest` / `PopulateVanillaOutputs` survive as thin wrappers. A sheet that names
+no `FIP_InstrumentType` builds the **byte-identical v1.0 vanilla request**, which is why the
+original 23 real-Excel checks pass **unmodified** — including the `"not used by vanilla"`
+wording. That sentence now names whichever type the engine echoed back, which happens to
+leave the vanilla case character-for-character identical.
+
+### Schedules are named Excel Tables
+
+`FIP_CallSchedule` · `FIP_PutSchedule` · `FIP_SinkingSchedule`, so a schedule can be any
+length and live on any sheet. That is the point: **the bridge does not depend on a worksheet
+layout Mario has not chosen.** A wholly blank row is ignored; a **partly filled row is an
+error naming the table and the row, raised in Excel before Python is invoked**; dates become
+ISO strings and no serial reaches the JSON; row order is preserved; nothing is sorted,
+deduped, inferred or defaulted; an empty optional table is omitted rather than sent.
+
+`FIP_OASBp` is read **only** for `price_at_oas`, because `calibrate_and_risk` refuses a
+supplied spread — sending one anyway would turn a good sheet into an error response.
+
+### ⭐ A whole class of misleading errors, found by generating the fixtures
+
+The call/put conflict fixture came back as `CALIBRATION_FAILED` blaming
+`market.clean_price_per_100`. The terms were contradictory; the price was fine. Every
+exercise-terms refusal is raised inside the engine as a `ValueError`, so the spread solver's
+own `except ValueError` caught all of them and reported *"no spread reprices this bond —
+check the price, the coupon and the maturity"*: three fields, all correct, and the reader
+sent to the wrong file. The **third** time this pattern has appeared (after the sinking
+basis and the schedule guard).
+
+They are now one named family, `ExerciseTermsError`, each carrying the JSON path a caller
+can act on, mapped by the endpoint to `VALIDATION_ERROR` with that field:
+
+```text
+put priced above a call on one date   -> bond.put_schedule
+sinking date colliding with a call    -> bond.sinking_schedule
+two prices on one date                -> bond.call_schedule
+schedule entirely after maturity      -> bond.call_schedule
+call the grid cannot place            -> bond.call_schedule
+original-face sinking basis           -> bond.sinking_fraction_basis
+```
+
+### Real-Excel tests: 23 → 48 / 50
+
+48 checks with no Python installed at all; 50 with a live interpreter. The two live-only
+checks are a full callable round trip — Excel → JSON → Python → JSON → Excel, reproducing
+the endpoint's number exactly — and **the volatility direction driven from the sheet**:
+as volatility rises 10% → 15% → 20% the calibrated spread tightens
+**639.58 → 635.78 → 629.83 bp**. Mario's volatility question, answered from Excel, as three
+ordinary single-bond calls rather than a new scenario operation.
+
+Also covered: instrument type serialised, multi-row schedules as ordered arrays, ISO dates,
+no numeric date anywhere in the generated JSON, blank rows ignored, empty optional tables
+omitted, combined call+put in one request, row order preserved, the partly-filled row
+refused in Excel, the sinking triple and its basis transmitted, and all three structured
+refusals displayed with stale numbers cleared.
+
+### ⚠️ Two honesty markers
+
+**The puttable and sinking fixtures are synthetic**, and labelled so in the harness output,
+the fixtures, the README, the interface reference and the report. No URS holding is a
+puttable or a sinking-fund bond. Those tests validate the model and the connection; they say
+nothing about the portfolio.
+
+**My first harness expectations were wrong.** I transcribed the expected OAS values from an
+earlier single-call dispatch test instead of from the fixtures I had just generated (which
+use a two-date schedule), and three checks failed at ~1e-5. The project's own rule — quote
+from the run, not from memory — catching me directly. Values now read out of the fixture
+files.
+
+### Documentation
+
+The interface reference §14.6 gains a **four-layer** support table that separates "the bridge
+can send this" from "the daily-use worksheet exists" — only the first is true for the tree
+types — plus a live-cohort row making the synthetic caveat structural rather than a footnote.
+The Excel README gains the named cells, the table rules and the fixture list. The report
+gains **§4.1 as a separate section**, never folded into the six-cell table, per the
+instruction's requirement that Workstream B must not be presented as proof of the column-F
+reconstruction.
+
+**302 pytest checks; production CSVs untouched.** The final worksheet layout remains Mario's
+open question, and the report says what exists today is an engineering test surface rather
+than a sheet anyone should work in.
+
+---
+
 ## 2026-08-31 — Round 2b delivery-quality pass: two more silent omissions, closed
 **Commits:** `271a42b` (plan + Gate-0 revision) · `aa186ed` (callable routing + exercise guard)
 · `2974e73` (full-population invariant + column-F audit) · this entry's commit (evidence docs)
