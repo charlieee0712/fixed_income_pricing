@@ -20,7 +20,7 @@ file, knows a path, or computes a price.
 """
 from __future__ import annotations
 
-from pricer.assets.corporate.embedded_option import ExerciseTermsError
+from pricer.errors import ContractTermsError
 from pricer.core.market.curves import CurveUnavailable
 from pricer.endpoints import contracts, pricing
 
@@ -46,10 +46,11 @@ def analyze_payload(payload) -> dict:
     except contracts.RequestError as err:
         return contracts.error_response(err.code, err.message, err.field, request, warnings)
 
-    except ExerciseTermsError as err:
-        # Exercise terms that cannot be priced as described: a right the model's grid
+    except ContractTermsError as err:
+        # The instrument's terms, as described, cannot be priced: a right the model's grid
         # cannot place, two contradictory prices on one date, a put above a call, a
-        # sinking date colliding with a call. Every one of these names the field the
+        # sinking date colliding with a call, an unimplemented fraction basis. Each names
+        # the field the
         # caller sent it in, so the answer points at the schedule rather than at the
         # price. Left to fall through, they surface from the spread solver as "no spread
         # reprices this bond - check the price, the coupon and the maturity", which sends

@@ -9,6 +9,8 @@ factor is), so the root is unique and bracketing (Brent) is robust.
 """
 from __future__ import annotations
 
+from pricer.errors import CalibrationError
+
 import pandas as pd
 from scipy.optimize import brentq
 
@@ -48,7 +50,7 @@ def solve_spread_to_price(price_at_spread, target_price: float,
         fhi = f(hi)
         n += 1
     if flo * fhi > 0:
-        raise ValueError(
+        raise CalibrationError(
             f"cannot bracket implied spread for target_price={target_price}: "
             f"f({lo:.3f})={flo:.4f}, f({hi:.3f})={fhi:.4f}"
         )

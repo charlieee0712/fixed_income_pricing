@@ -248,10 +248,18 @@ def test_unknown_operation_and_batch_payloads_are_refused_clearly():
 
 def test_an_unreachable_price_is_reported_as_a_calibration_failure(monkeypatch):
     """The solver widens its own bracket, so an unbracketable price is hard to build
-    from real inputs — what matters here is that its ValueError becomes a structured
-    CALIBRATION_FAILED and never a traceback."""
+    from real inputs — what matters here is that a genuine root-finding failure becomes a
+    structured CALIBRATION_FAILED and never a traceback.
+
+    The fixture raises `CalibrationError` because that is what the solvers now raise. It
+    used to raise a bare ValueError, and the endpoint used to catch bare ValueError — which
+    is precisely how every contract refusal in the engine was also being reported as a
+    calibration failure. A plain ValueError reaching here now IS an internal error, and is
+    reported as one."""
+    from pricer.errors import CalibrationError
+
     def refuses(*args, **kwargs):
-        raise ValueError("cannot bracket implied spread for target_price=...")
+        raise CalibrationError("cannot bracket implied spread for target_price=...")
 
     monkeypatch.setattr(endpoint_pricing.vanilla, "implied_oas", refuses)
     error = error_of(analyze_vanilla_payload(request_payload()))

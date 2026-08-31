@@ -37,6 +37,7 @@ from pricing.calibrate import implied_oas, near_maturity
 from pricing.ilb import ilb_risk_metrics, implied_spread_ilb
 from pricing.lattice import ShortRateLattice
 from pricing.risk import risk_metrics
+from pricer.errors import CalibrationError
 
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
 WB = os.environ.get("FIP_URS_WB", os.path.join(DATA_DIR, "URS Fixed Income Mar 2009 - FI Positions V Mainak.xlsx"))
@@ -134,7 +135,7 @@ def main():
             try:
                 sp = implied_spread_ilb(float(bt), VAL, mat, rc, curve, index_ratio=ratio0,
                                         inflation=INFL, freq=fr)
-            except ValueError as e:
+            except (CalibrationError, ValueError) as e:
                 row.update(route="ilb-no-bracket", clean=float(bt), flag=f"spread not bracketable ({e})")
                 rows.append(row); continue
             rm = ilb_risk_metrics(VAL, mat, rc, curve, sp, index_ratio=ratio0, inflation=INFL, freq=fr)
@@ -164,7 +165,7 @@ def main():
             try:
                 oas_cal = lat.implied_oas(float(bt), cpn, call_price=carr, accrued=ai)
                 oas_str = lat.implied_oas(float(bt), cpn, accrued=ai)
-            except ValueError as e:
+            except (CalibrationError, ValueError) as e:
                 row.update(route="callable-no-bracket", clean=float(bt), flag=f"no bracket ({e})")
                 rows.append(row); continue
             rm_cal = lat.risk_metrics(cpn, oas_cal, call_price=carr, accrued=ai)
@@ -193,7 +194,7 @@ def main():
         cpn = float(b["coupon"])
         try:
             oas = implied_oas(float(bt), VAL, mat, cpn, curve, freq=fr)
-        except ValueError as e:
+        except (CalibrationError, ValueError) as e:
             row.update(route=f"{route}-no-bracket", clean=float(bt), flag=f"no bracket ({e})")
             rows.append(row); continue
         rm = risk_metrics(VAL, mat, cpn, curve, oas, freq=fr)

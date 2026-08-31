@@ -27,6 +27,7 @@ import pandas as pd
 
 from credit.oas import oas_on
 from curves.zero_curve import ZeroCurve
+from pricer.errors import CalibrationError
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.dispositions import reconcile
 from dataio.universe import build_universe
@@ -130,14 +131,14 @@ def _hybrid_route(row, hb, bt, ccy, get_curve):
                                  float_freq=fr_flt)
         rm = hybrid_risk_metrics(VAL, mat, curve, oas, fixed_rate=hb["fixed_rate"], switch_date=sw,
                                  spread=hb["margin"], fixed_freq=fr_fix, float_freq=fr_flt)
-    except ValueError as e:
+    except (CalibrationError, ValueError) as e:
         row.update(route="hybrid-no-bracket", clean=float(bt), flag=f"hybrid OAS not bracketable ({e})")
         return
     oas_tc, dur_tc = np.nan, np.nan
     try:
         oas_tc = implied_oas(float(bt), VAL, sw, hb["fixed_rate"], curve, freq=fr_fix)
         dur_tc = risk_metrics(VAL, sw, hb["fixed_rate"], curve, oas_tc, freq=fr_fix)["eff_duration"]
-    except ValueError:
+    except (CalibrationError, ValueError):
         pass
     ttm = np.nan if perp else round((pd.Timestamp(mat) - pd.Timestamp(VAL)).days / 365.25, 3)
     row.update(route="hybrid", coupon=hb["fixed_rate"], freq=fr_fix,
@@ -170,7 +171,7 @@ def _apply_schedule_override(row, sched, bt, mat, fr, curve):
                    convexity=rm["convexity"], near_maturity=nm,
                    flag=("near-maturity" if nm else
                          f"coupon path from data/coupon_schedules.csv ({eff * 100:.3f}% at VAL; ISIN lookup 2026-07-20)"))
-    except ValueError as e:
+    except (CalibrationError, ValueError) as e:
         row.update(route="schedule-unavailable", clean=float(bt), flag=f"override schedule price failed ({e})")
 
 
@@ -228,7 +229,7 @@ def main():
 
         try:
             oas = implied_oas(float(bt), VAL, mat, float(cpn), curve, freq=fr)
-        except ValueError as e:
+        except (CalibrationError, ValueError) as e:
             skipped.append((aid, f"no-bracket bt={bt:.2f}: {e}")); continue
         rm = risk_metrics(VAL, mat, float(cpn), curve, oas, freq=fr)
 
@@ -317,7 +318,7 @@ def main():
                            implied_bp=oas * 1e4, eff_dur=rm["eff_duration"], dv01=rm["dv01"],
                            convexity=rm["convexity"],
                            flag="zero-structured: BT inconsistent with a pure-discount zero (structured payoff) -> OAS not a clean spread; excluded from medians")
-            except ValueError as e:
+            except (CalibrationError, ValueError) as e:
                 row.update(route="zero-structured", clean=float(bt), flag=f"zero: OAS not bracketable ({e})")
             rows.append(row); continue
 
@@ -336,7 +337,7 @@ def main():
                        implied_bp=oas * 1e4, eff_dur=rm["eff_duration"], dv01=rm["dv01"],
                        convexity=rm["convexity"], near_maturity=nm,
                        flag=("near-maturity" if nm else f"coupon schedule: {len(sched)} step(s), {eff * 100:.3f}% from {VAL}"))
-        except ValueError as e:
+        except (CalibrationError, ValueError) as e:
             row.update(route="schedule-unavailable", clean=float(bt), flag=f"schedule price failed ({e})")
         rows.append(row)
 
@@ -435,7 +436,7 @@ def main():
                        eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
                        next_reset_t=rm["next_reset_t"],
                        flag=f"FRN; {note}" + ("" if cur is not None else "; current coupon 'Variable'->forward"))
-        except ValueError as e:
+        except (CalibrationError, ValueError) as e:
             row.update(route="frn-no-bracket", clean=float(bt), flag=f"FRN OAS not bracketable ({e})")
         rows.append(row)
 
@@ -507,7 +508,7 @@ def main():
         try:
             oas = implied_oas(float(bt), VAL, cont_mat, float(cur), curve, freq=fr)
             rm = risk_metrics(VAL, cont_mat, float(cur), curve, oas, freq=fr)
-        except ValueError as e:
+        except (CalibrationError, ValueError) as e:
             row.update(route="reset-terms-unavailable", clean=float(bt), flag=f"continuation price failed ({e})")
             rows.append(row); continue
 
@@ -516,7 +517,7 @@ def main():
             try:
                 oas_call = implied_oas(float(bt), VAL, call, float(cur), curve, freq=fr)
                 eff_call = risk_metrics(VAL, call, float(cur), curve, oas_call, freq=fr)["eff_duration"]
-            except ValueError:
+            except (CalibrationError, ValueError):
                 pass
         trunc = (f"; perp truncated at {PERP_TRUNC_YEARS}y (face PV~{100 * curve.discount_factor(float(PERP_TRUNC_YEARS), oas):.2f})"
                  if perp else "")

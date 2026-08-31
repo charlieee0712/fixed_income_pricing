@@ -30,6 +30,7 @@ import warnings
 import numpy as np
 
 from pricer.assets.corporate.bonds_input import validate_vanilla_inputs
+from pricer.errors import ExerciseTermsError
 from pricer.core.pricing.tree import bond_tree, schedule_times
 from pricer.core.utils.dates import as_date, coupon_dates
 
@@ -40,24 +41,6 @@ DEFAULT_VOL_SCENARIOS = (0.10, 0.15, 0.20)
 
 SINKING_MODE = "issuer_optional_redemption"
 OUTSTANDING = "outstanding"     # the only fraction basis a recombining tree can represent
-
-
-class ExerciseTermsError(ValueError):
-    """The exercise terms as described cannot be priced — a CONTRACT problem.
-
-    Every refusal in this module is one of these, and they exist as a family for one
-    reason: without it they surface from inside the spread solver, which reports "no
-    spread reprices this bond — check the price, the coupon and the maturity". Three
-    fields, none of them the problem. The caller is sent to look at the mark when the
-    actual fault is two contradictory dates in a schedule.
-
-    ``field`` is the JSON path the caller can act on; the endpoint uses it verbatim.
-    Subclasses ``ValueError`` so existing callers that catch ValueError still behave.
-    """
-
-    def __init__(self, message, field="bond"):
-        super().__init__(message)
-        self.field = field
 
 
 class ExerciseScheduleNotRepresentable(ExerciseTermsError):
@@ -168,16 +151,18 @@ def normalize_sinking_schedule(schedule, valuation_date, maturity, fraction_basi
     if schedule is None:
         return None
     if fraction_basis is None:
-        raise ValueError("fraction_basis is required for a sinking schedule; this engine "
-                         f"implements {OUTSTANDING!r} (a fraction of the amount still "
-                         f"outstanding on each date)")
+        raise ExerciseTermsError(
+            "fraction_basis is required for a sinking schedule; this engine implements "
+            f"{OUTSTANDING!r} (a fraction of the amount still outstanding on each date)",
+            field="bond.sinking_fraction_basis")
     if str(fraction_basis).strip().lower() != OUTSTANDING:
-        raise ValueError(
+        raise ExerciseTermsError(
             f"fraction_basis={fraction_basis!r} is not implemented. This engine redeems a "
             f"fraction of the OUTSTANDING amount, which is what keeps the value per unit "
             f"path-independent on a recombining tree. An original-face schedule needs a "
             f"strip decomposition (one callable sub-bond per sink date) and is not in v1 — "
-            f"convert the schedule or wait for that engine rather than relabelling it.")
+            f"convert the schedule or wait for that engine rather than relabelling it.",
+            field="bond.sinking_fraction_basis")
 
     mat = as_date(maturity)
     by_date, dropped = {}, 0

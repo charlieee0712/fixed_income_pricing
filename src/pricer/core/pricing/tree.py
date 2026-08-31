@@ -68,6 +68,8 @@ Conventions / simplifications (v2 — assumption-driven, NOT a golden port; docu
 """
 from __future__ import annotations
 
+from pricer.errors import CalibrationError
+
 import numpy as np
 
 from pricer.core.pricing.cashflows import lattice_inputs
@@ -87,7 +89,7 @@ def _root_decreasing(f, lo, hi, xtol=1e-12, maxiter=200):
         span = (hi - lo) or 1.0
         hi += span; fhi = f(hi); it += 1
     if flo < 0 or fhi > 0:
-        raise ValueError(f"cannot bracket root: f({lo})={flo}, f({hi})={fhi}")
+        raise CalibrationError(f"cannot bracket root: f({lo})={flo}, f({hi})={fhi}")
     for _ in range(maxiter):
         mid = 0.5 * (lo + hi)
         if f(mid) > 0:

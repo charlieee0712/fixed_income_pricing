@@ -46,6 +46,8 @@ the switch) is returned on every result for per-bond verification.
 """
 from __future__ import annotations
 
+from pricer.errors import CalibrationError
+
 import datetime as dt
 from dataclasses import dataclass
 
@@ -142,7 +144,7 @@ def implied_oas_hybrid(target_clean, valuation_date, maturity, curve, *, fixed_r
     while fhi > 0 and n < max_expand:
         hi += 1.0; fhi = f(hi); n += 1
     if flo * fhi > 0:
-        raise ValueError(f"cannot bracket hybrid OAS for target={target_clean}: "
+        raise CalibrationError(f"cannot bracket hybrid OAS for target={target_clean}: "
                          f"f({lo:.3f})={flo:.4f}, f({hi:.3f})={fhi:.4f}")
     return brentq(f, lo, hi, xtol=xtol)
 

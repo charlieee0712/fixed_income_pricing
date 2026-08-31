@@ -49,6 +49,8 @@ spread-independent; once a real spread is supplied it can be separated back out 
 """
 from __future__ import annotations
 
+from pricer.errors import CalibrationError
+
 import datetime as dt
 import math
 import re
@@ -171,7 +173,7 @@ def implied_oas_frn(target_clean, valuation_date, maturity, curve, *, current_co
     while fhi > 0 and n < max_expand:
         hi += 1.0; fhi = f(hi); n += 1
     if flo * fhi > 0:
-        raise ValueError(f"cannot bracket FRN OAS for target={target_clean}: "
+        raise CalibrationError(f"cannot bracket FRN OAS for target={target_clean}: "
                          f"f({lo:.3f})={flo:.4f}, f({hi:.3f})={fhi:.4f}")
     return brentq(f, lo, hi, xtol=xtol)
 

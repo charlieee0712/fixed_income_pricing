@@ -54,6 +54,7 @@ from openpyxl.utils import column_index_from_string
 from curves.zero_curve import ZeroCurve
 from dataio.call_schedules import load_call_schedules, to_lattice_schedule
 from dataio.dispositions import reconcile
+from pricer.errors import CalibrationError
 from dataio.loaders import load_corporate_terms, load_master
 from dataio.term_overrides import load_make_whole_overrides
 from dataio.universe import build_universe
@@ -157,7 +158,7 @@ def main():
         try:
             oas_cal = lat.implied_oas(float(bt), float(cpn), call_price=carr, accrued=ai)
             oas_str = lat.implied_oas(float(bt), float(cpn), accrued=ai)
-        except ValueError as e:
+        except (CalibrationError, ValueError) as e:
             skipped[aid] = ("oas-not-bracketed", f"no spread brackets BT={bt:.2f}: {e}"); continue
         rm_cal = lat.risk_metrics(float(cpn), oas_cal, call_price=carr, accrued=ai)
         rm_str = lat.risk_metrics(float(cpn), oas_str, accrued=ai)

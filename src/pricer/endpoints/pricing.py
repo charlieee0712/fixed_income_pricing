@@ -30,7 +30,7 @@ vocabulary or any caller.
 from __future__ import annotations
 
 from pricer.assets.corporate import embedded_option, floating, hybrid, stepped, vanilla
-from pricer.assets.corporate.embedded_option import ExerciseTermsError
+from pricer.errors import CalibrationError, PricingDomainError
 from pricer.assets.corporate.bonds_input import (PRICING_CONVENTION, VANILLA_NOT_APPLICABLE,
                                                  VOLATILITY_NOT_APPLICABLE,
                                                  validate_vanilla_inputs)
@@ -305,13 +305,12 @@ def _spread(request: dict, calibrate):
     target = request["clean_price_per_100"]
     try:
         return calibrate(target), CALIBRATED
-    except ExerciseTermsError:
-        # Exercise terms that cannot be priced as described are NOT a calibration failure.
-        # Letting them fall through would report "no spread reprices this bond - check the
-        # price, the coupon and the maturity", sending the reader to three fields that are
-        # all correct. (The same mistake the sinking-basis refusal used to make.)
-        raise
-    except ValueError as exc:
+    except CalibrationError as exc:
+        # ONLY a genuine root-finding failure is reported as a calibration failure. This
+        # used to catch bare ValueError, which swallowed every contract refusal in the
+        # engine and reported it as "check the price, the coupon and the maturity" - three
+        # fields, all of them correct. The domain family (pricer.errors) now sits outside
+        # ValueError entirely, so that cannot recur even if this catch widens again.
         raise contracts.RequestError(
             contracts.CALIBRATION_FAILED,
             f"no spread reprices this bond to a clean price of {target:g} per 100 on the "
@@ -339,8 +338,8 @@ class _pricing_errors:
         return self
 
     def __exit__(self, exc_type, exc, tb):
-        if exc_type is not None and issubclass(exc_type, ExerciseTermsError):
-            return False                    # a contract problem, not a pricing failure
+        if exc_type is not None and issubclass(exc_type, PricingDomainError):
+            return False           # a contract or calibration problem, not an arithmetic one
         if exc_type is None or not issubclass(exc_type, (ValueError, ArithmeticError)):
             return False
         raise contracts.RequestError(
@@ -408,7 +407,7 @@ def _reference_to_switch(request: dict, curve, warnings: list):
         value = hybrid.reference_implied_oas_to_switch(
             request["coupon_pct"], request["coupon_frequency"], request["valuation_date"],
             request["clean_price_per_100"], curve, request["switch_date"])
-    except (ValueError, ArithmeticError):
+    except (CalibrationError, ValueError, ArithmeticError):
         warnings.append({"code": contracts.NON_FINITE_RESULT,
                          "field": "reference_oas_to_switch_bp",
                          "message": "the price-to-the-switch reference could not be "
@@ -492,7 +491,7 @@ def _volatility_block(request: dict, curve, vol, rights, warnings) -> dict:
     try:
         slopes = embedded_option.volatility_sensitivity(
             coupon, freq, mat, val, price, curve, baseline_volatility=vol, **rights)
-    except (ValueError, ArithmeticError):
+    except (CalibrationError, ValueError, ArithmeticError):
         out.update({"price_effect_per_1pct_vol": None, "oas_effect_bp_per_1pct_vol": None,
                     "reason": "the volatility experiments could not be solved for this "
                               "bond; the priced result above is unaffected"})

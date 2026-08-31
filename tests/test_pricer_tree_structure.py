@@ -25,6 +25,7 @@ from dataio.call_schedules import to_lattice_schedule
 from pricer.assets.corporate import callable as callable_bond
 from pricer.assets.corporate import embedded_option, puttable, sinking
 from pricer.core.market.curves import flat_zero_curve
+from pricer.errors import ExerciseTermsError
 from pricer.core.pricing import tree
 from pricing.bond_price import lattice_inputs, price_bond
 
@@ -124,7 +125,7 @@ def test_widening_and_tightening_bracket_the_base():
 def test_put_above_call_on_the_same_date_is_refused():
     """The core applies min(call) then max(put): a contradiction would silently resolve
     in the holder's favour, so it must never reach the core."""
-    with pytest.raises(ValueError, match="put price"):
+    with pytest.raises(ExerciseTermsError, match="put price"):
         embedded_option.calculated_price(
             COUPON, FREQ, MAT, VAL, FLAT, oas=150.0,
             call_schedule=[(dt.date(2011, 6, 15), 99.0)],
@@ -141,13 +142,13 @@ def test_put_below_call_on_the_same_date_is_allowed():
 
 def test_entirely_post_maturity_schedule_is_refused():
     """Otherwise the caller believes they priced a callable and got a straight bond."""
-    with pytest.raises(ValueError, match="entirely inert"):
+    with pytest.raises(ExerciseTermsError, match="entirely inert"):
         callable_bond.calculated_price(COUPON, FREQ, MAT, VAL, FLAT,
                                        [(dt.date(2030, 1, 1), 100.0)], 150.0)
 
 
 def test_same_date_two_prices_is_refused_but_an_exact_duplicate_is_absorbed():
-    with pytest.raises(ValueError, match="two different prices"):
+    with pytest.raises(ExerciseTermsError, match="two different prices"):
         callable_bond.calculated_price(
             COUPON, FREQ, MAT, VAL, FLAT,
             [(dt.date(2011, 6, 15), 100.0), (dt.date(2011, 6, 15), 101.0)], 150.0)
@@ -271,23 +272,23 @@ def test_sinking_price_falls_with_volatility():
 
 def test_original_face_basis_is_refused_not_reinterpreted():
     """Relabelling a basis the engine does not implement would silently change the number."""
-    with pytest.raises(ValueError, match="strip decomposition"):
+    with pytest.raises(ExerciseTermsError, match="strip decomposition"):
         sinking.calculated_price(COUPON, FREQ, MAT, VAL, FLAT, SINK, 150.0,
                                  fraction_basis="original")
-    with pytest.raises(ValueError, match="fraction_basis is required"):
+    with pytest.raises(ExerciseTermsError, match="fraction_basis is required"):
         embedded_option.calculated_price(COUPON, FREQ, MAT, VAL, FLAT, oas=150.0,
                                          sinking_schedule=SINK)
 
 
 def test_out_of_range_fraction_is_refused():
-    with pytest.raises(ValueError, match="must be in"):
+    with pytest.raises(ExerciseTermsError, match="must be in"):
         sinking.calculated_price(COUPON, FREQ, MAT, VAL, FLAT,
                                  [(dt.date(2011, 6, 15), 1.5, 100.0)], 150.0)
 
 
 def test_sinking_date_colliding_with_a_call_is_refused():
     """Two rights on one node need a defined order; none is tested, so refuse."""
-    with pytest.raises(ValueError, match="coincides with a call/put date"):
+    with pytest.raises(ExerciseTermsError, match="coincides with a call/put date"):
         embedded_option.calculated_price(
             COUPON, FREQ, MAT, VAL, FLAT, oas=150.0, call_schedule=CALL,
             sinking_schedule=[(dt.date(2011, 6, 15), 0.3, 100.0)], **BASIS)
@@ -305,3 +306,28 @@ def test_two_redemptions_in_one_coupon_period_are_refused():
 def test_mode_diagnostic_names_the_product():
     assert sinking.describe_mode() == {"sinking_mode": "issuer_optional_redemption",
                                        "fraction_basis": "outstanding"}
+
+
+def test_the_exercise_refusals_are_not_ValueErrors():
+    """The regression that matters most here, because it is the one that kept recurring.
+
+    Every refusal above describes the CONTRACT. While they were ValueErrors, the spread
+    solver's own `except ValueError` swallowed them and reported "no spread reprices this
+    bond - check the price, the coupon and the maturity" - three fields, all correct. They
+    now sit outside ValueError entirely, so no generic numeric handler can absorb one.
+    """
+    from pricer.errors import CalibrationError, ContractTermsError, PricingDomainError
+
+    assert not issubclass(ExerciseTermsError, ValueError)
+    assert not issubclass(CalibrationError, ValueError)
+    assert issubclass(ExerciseTermsError, ContractTermsError)
+    assert issubclass(ContractTermsError, PricingDomainError)
+    assert issubclass(CalibrationError, PricingDomainError)
+    assert not issubclass(PricingDomainError, ValueError)
+
+    # and every exercise refusal carries the field a caller can act on
+    with pytest.raises(ExerciseTermsError) as excinfo:
+        embedded_option.calculated_price(COUPON, FREQ, MAT, VAL, FLAT,
+                                         call_schedule=[(dt.date(2011, 6, 15), 100.0)],
+                                         put_schedule=[(dt.date(2011, 6, 15), 103.0)])
+    assert excinfo.value.field == "bond.put_schedule"
