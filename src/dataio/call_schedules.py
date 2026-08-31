@@ -23,6 +23,16 @@ from pricer.core.utils.dates import exercise_schedule_times
 
 REQUIRED_COLUMNS = ("asset_id", "call_date", "call_price")
 
+#: Provenance columns. OPTIONAL, so an older table still loads — but a row that omits them is
+#: reported as unconfirmed rather than silently assumed good, because the failure this guards
+#: against is a seeded convention being read as a real term. See `load_call_provenance`.
+PROVENANCE_COLUMNS = ("exercise_terms_status", "exercise_terms_source",
+                      "exercise_price_source", "exercise_terms_as_of")
+UNKNOWN_PROVENANCE = {"exercise_terms_status": "provisional",
+                      "exercise_terms_source": "unspecified",
+                      "exercise_price_source": "unspecified",
+                      "exercise_terms_as_of": ""}
+
 
 def load_call_schedules(path):
     """Read the call-schedule table.
@@ -58,3 +68,38 @@ def to_lattice_schedule(date_entries, val_date):
     argument is gone rather than re-defaulted: the convention is not a caller's choice.
     """
     return exercise_schedule_times(val_date, date_entries)
+
+
+def load_call_provenance(path):
+    """Where each asset's exercise terms came from, and whether they are confirmed.
+
+    Inputs
+    ------
+    1. path : str — the same ``data/call_schedules.csv`` :func:`load_call_schedules` reads.
+
+    Returns: ``{asset_id: {exercise_terms_status, exercise_terms_source,
+    exercise_price_source, exercise_terms_as_of, exercise_terms_note}}``.
+
+    Every schedule in the table today is a custodian col-AB date with the par-call convention
+    applied on top, approved by Mario for v1 and confirmed against Bloomberg for none of them.
+    The prices are therefore a MODELLING ASSUMPTION wearing the shape of a contract term, and
+    a downstream reader has no way to tell from a price of 100.0 alone. These fields let the
+    driver, the endpoint and the delivery matrix all say so in the same words.
+
+    The default for a missing column is ``provisional`` / ``unspecified``, never ``confirmed``:
+    an absent statement of provenance is not evidence of good provenance.
+    """
+    df = pd.read_csv(path, dtype=str)
+    out = {}
+    for aid, g in df.groupby("asset_id", sort=False):
+        row = g.iloc[0]
+        rec = {c: (str(row[c]).strip() if c in df.columns and pd.notna(row.get(c)) else
+                   UNKNOWN_PROVENANCE[c]) for c in PROVENANCE_COLUMNS}
+        rec = {c: (v or UNKNOWN_PROVENANCE[c]) for c, v in rec.items()}
+        if rec["exercise_terms_status"] not in ("confirmed", "provisional"):
+            raise ValueError(f"{path}: {aid} has exercise_terms_status="
+                             f"{rec['exercise_terms_status']!r}; expected confirmed|provisional")
+        rec["exercise_terms_note"] = (str(row["source"]).strip()
+                                      if "source" in df.columns and pd.notna(row.get("source")) else "")
+        out[str(aid)] = rec
+    return out

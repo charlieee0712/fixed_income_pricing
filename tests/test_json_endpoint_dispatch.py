@@ -470,3 +470,61 @@ def test_a_floating_request_from_excel_can_only_be_the_margin_absent_case():
     assert "discount margin" in response["results"]["spread_interpretation"]
     warned = {w["field"] for w in response["warnings"]}
     assert {"bond.coupon_pct", "bond.quoted_margin_bp"} <= warned
+
+
+# ------------------------------------------------------- provenance / confidence labelling
+
+def callable_request():
+    """A callable request whose schedule is a plain par call inside the bond's life."""
+    return payload("callable", coupon_pct=COUPON,
+                   call_schedule=[{"date": "2012-04-01", "price_per_100": 100.0}])
+
+
+def test_an_unconfirmed_exercise_schedule_is_reported_as_provisional():
+    """An exercise price of 100.0 looks identical whether it came from a prospectus or from
+    a convention someone applied to a custodian date. Every schedule this project prices
+    today is the second kind. The response has to say so, because the number cannot."""
+    request = callable_request()
+    response = ok(analyze_payload(request))
+    codes = [w["code"] for w in response["warnings"]]
+    assert contracts.PROVISIONAL_TERMS in codes
+    warning = next(w for w in response["warnings"] if w["code"] == contracts.PROVISIONAL_TERMS)
+    assert warning["field"] == "bond.exercise_terms_status"
+    assert "PROVISIONAL" in warning["message"]
+
+    # a caller who HAS confirmed the terms says so, and is not nagged
+    request["bond"]["exercise_terms_status"] = "confirmed"
+    confirmed = ok(analyze_payload(request))
+    assert contracts.PROVISIONAL_TERMS not in [w["code"] for w in confirmed["warnings"]]
+
+    # ... and the numbers are identical either way: the label is a statement about the
+    # INPUTS, and must never quietly change the arithmetic
+    assert confirmed["results"] == response["results"]
+
+
+def test_an_unrecognised_terms_status_is_refused_rather_than_assumed_good():
+    """"verified", "final" and a typo must not be read as confirmation."""
+    for bad in ("maybe", "verified", "TRUE", "1"):
+        request = callable_request()
+        request["bond"]["exercise_terms_status"] = bad
+        error = error_of(analyze_payload(request))
+        assert error["code"] == contracts.VALIDATION_ERROR
+        assert error["field"] == "bond.exercise_terms_status"
+
+
+def test_a_floater_without_its_running_coupon_reports_provisional_risk():
+    """The coupon already running was fixed at the last reset and is an observable. When it
+    is not supplied we estimate it and freeze it — the right treatment, still an estimate."""
+    request = payload("floating", quoted_margin_bp=45.0)
+    response = ok(analyze_payload(request))
+    codes = [w["code"] for w in response["warnings"]]
+    assert contracts.PROVISIONAL_RISK in codes
+    warning = next(w for w in response["warnings"] if w["code"] == contracts.PROVISIONAL_RISK)
+    assert "sensitivities are PROVISIONAL" in warning["message"]
+
+    # supplying the fixing removes the caveat, and the price is unchanged by it
+    request["bond"]["current_coupon_pct"] = 5.0
+    supplied = ok(analyze_payload(request))
+    assert contracts.PROVISIONAL_RISK not in [w["code"] for w in supplied["warnings"]]
+    assert supplied["results"]["model_clean_price_per_100"] == pytest.approx(
+        response["results"]["model_clean_price_per_100"], abs=5.0)

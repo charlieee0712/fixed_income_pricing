@@ -280,3 +280,49 @@ def test_the_callable_driver_emits_a_complete_disposition(tmp_path):
     for _, row in table[table["status"] == "skipped"].iterrows():
         assert str(row["reason_code"]).strip(), row.to_dict()
         assert str(row["reason"]).strip(), row.to_dict()
+
+
+# ------------------------------------------------------------------ terms provenance
+
+def test_the_shipped_call_schedule_table_declares_every_row_provisional():
+    """Not a style check. Nobody has confirmed a single exercise term in this project.
+
+    Each row is a custodian col-AB date with the par-call convention laid on top, approved
+    by Mario for v1 and verified against Bloomberg for none of them. A price of 100.0 in
+    the output carries no trace of that, so the statement has to live in the data and be
+    carried into every report. If a row is ever promoted to `confirmed`, this test should
+    fail and force whoever did it to say what confirmed it.
+    """
+    from dataio.call_schedules import load_call_provenance
+
+    provenance = load_call_provenance(
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     "data", "call_schedules.csv"))
+    assert provenance, "the schedule table must not be empty"
+    for asset, record in provenance.items():
+        assert record["exercise_terms_status"] == "provisional", asset
+        assert record["exercise_terms_source"] == "custodian_AB_seed", asset
+        assert record["exercise_price_source"] == "par_call_convention", asset
+        assert record["exercise_terms_as_of"], f"{asset} must date its terms"
+        assert "NOT Bloomberg-confirmed" in record["exercise_terms_note"], asset
+
+
+def test_missing_provenance_columns_default_to_provisional_never_to_confirmed(tmp_path):
+    """An absent statement of provenance is not evidence of good provenance."""
+    from dataio.call_schedules import load_call_provenance
+
+    old = tmp_path / "call_schedules.csv"
+    old.write_text("asset_id,call_date,call_price\nAAA,2012-06-15,100.0\n", encoding="utf-8")
+    record = load_call_provenance(str(old))["AAA"]
+    assert record["exercise_terms_status"] == "provisional"
+    assert record["exercise_terms_source"] == "unspecified"
+
+
+def test_an_unrecognised_status_in_the_table_is_refused(tmp_path):
+    from dataio.call_schedules import load_call_provenance
+
+    bad = tmp_path / "call_schedules.csv"
+    bad.write_text("asset_id,call_date,call_price,exercise_terms_status\n"
+                   "AAA,2012-06-15,100.0,verified\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="exercise_terms_status"):
+        load_call_provenance(str(bad))

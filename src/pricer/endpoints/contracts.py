@@ -70,6 +70,8 @@ INTERNAL_ERROR = "INTERNAL_ERROR"
 UNUSED_FIELD = "UNUSED_FIELD"
 FACE_VALUE_NOT_APPLIED = "FACE_VALUE_NOT_APPLIED"
 NON_FINITE_RESULT = "NON_FINITE_RESULT"
+PROVISIONAL_TERMS = "PROVISIONAL_TERMS"        # priced on terms nobody has confirmed
+PROVISIONAL_RISK = "PROVISIONAL_RISK"          # priced on an estimated already-fixed coupon
 
 _KNOWN_TOP = {"schema_version", "request_id", "operation",
               "bond", "market", "analysis", "model", "metadata"}
@@ -79,7 +81,7 @@ _KNOWN_BOND = {"instrument_id", "instrument_type", "currency", "coupon_pct",
                "coupon_schedule", "quoted_margin_bp", "current_coupon_pct",
                "switch_date", "float_frequency",
                "call_schedule", "put_schedule", "sinking_schedule",
-               "sinking_fraction_basis"}
+               "sinking_fraction_basis", "exercise_terms_status"}
 _KNOWN_MARKET = {"valuation_date", "clean_price_per_100"}
 _KNOWN_ANALYSIS = {"oas_bp", "spread_shift_bp", "volatility_scenarios"}
 _KNOWN_MODEL = {"yield_volatility_decimal"}
@@ -288,6 +290,16 @@ def _product_inputs(bond: dict, analysis: dict, instrument_type: str, valuation_
         out["current_coupon_pct"] = _number(bond.get("current_coupon_pct"),
                                             "bond.current_coupon_pct",
                                             minimum=0.0, maximum=40.0)
+        if out["current_coupon_pct"] is None:
+            # The coupon now running was fixed at the last reset and is a KNOWN amount. Without
+            # it we estimate one off the curve and hold it fixed through the risk bumps, which
+            # is the right treatment but is still an estimate of an observable.
+            warnings.append(_warning(
+                PROVISIONAL_RISK, "bond.current_coupon_pct",
+                "the coupon already running was not supplied, so it is estimated from the "
+                "curve and held fixed while the risk is measured. The price is unaffected; "
+                "the sensitivities are PROVISIONAL until the actual fixing is supplied.",
+            ))
 
     if instrument_type == FIXED_TO_FLOATING:
         switch = _iso_date(bond.get("switch_date"), "bond.switch_date")
@@ -315,6 +327,26 @@ def _product_inputs(bond: dict, analysis: dict, instrument_type: str, valuation_
             _check_sinking_basis(out["sinking_fraction_basis"])
         out["volatility_scenarios"] = _volatility_scenarios(
             analysis.get("volatility_scenarios"))
+
+        # An exercise price is a CONTRACT TERM, and 100.0 looks the same whether it came from
+        # a prospectus or from a convention someone applied to a custodian date. Every schedule
+        # this project prices today is the latter. A caller who has confirmed terms says so;
+        # anyone who does not gets told, in the response, what they are looking at.
+        status = _text(bond.get("exercise_terms_status"), "bond.exercise_terms_status")
+        status = (status or "provisional").strip().lower()
+        if status not in ("confirmed", "provisional"):
+            raise RequestError(VALIDATION_ERROR,
+                               f"exercise_terms_status must be 'confirmed' or 'provisional', "
+                               f"not {status!r}.", "bond.exercise_terms_status")
+        out["exercise_terms_status"] = status
+        if status != "confirmed":
+            warnings.append(_warning(
+                PROVISIONAL_TERMS, "bond.exercise_terms_status",
+                "the exercise schedule is not marked as confirmed, so these results are "
+                "PROVISIONAL: an exercise date or price taken from a convention rather than "
+                "from the documents changes the option value and the risk. Send "
+                "exercise_terms_status='confirmed' once the terms are verified.",
+            ))
 
     return out
 

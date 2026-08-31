@@ -225,6 +225,14 @@ def frn_risk_metrics(valuation_date, maturity, curve, oas, *, current_coupon=Non
         return price_frn(valuation_date, maturity, curve, oas=oas, current_coupon=frozen,
                          spread=spread, face=face, freq=freq, curve_shift=shift)
 
+    # provenance: a reader must be able to tell an OBSERVED fixing from one we estimated,
+    # because the second is a modelling choice and the first is a fact about the note.
+    provenance = {
+        "current_coupon": frozen,
+        "current_coupon_source": "supplied" if current_coupon is not None else "base_curve_proxy",
+        "risk_status": "final" if current_coupon is not None else "provisional",
+    }
+
     base = priced(0.0)
     p0 = base.dirty
     p_up = priced(bump).dirty        # curve up -> price down
@@ -232,7 +240,7 @@ def frn_risk_metrics(valuation_date, maturity, curve, oas, *, current_coupon=Non
     if p0 == 0:
         return {"dirty": p0, "clean": base.clean, "dv01": float("nan"),
                 "eff_duration": float("nan"), "convexity": float("nan"),
-                "next_reset_t": base.next_reset_t}
+                "next_reset_t": base.next_reset_t, **provenance}
     return {
         "dirty": p0,
         "clean": base.clean,
@@ -240,4 +248,5 @@ def frn_risk_metrics(valuation_date, maturity, curve, oas, *, current_coupon=Non
         "eff_duration": (p_dn - p_up) / (2.0 * bump * p0),
         "convexity": (p_up + p_dn - 2.0 * p0) / (bump * bump * p0),
         "next_reset_t": base.next_reset_t,
+        **provenance,
     }

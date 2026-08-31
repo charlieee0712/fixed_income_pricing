@@ -52,7 +52,8 @@ import openpyxl
 from openpyxl.utils import column_index_from_string
 
 from curves.zero_curve import ZeroCurve
-from dataio.call_schedules import load_call_schedules, to_lattice_schedule
+from dataio.call_schedules import (load_call_provenance, load_call_schedules,
+                                   to_lattice_schedule)
 from dataio.dispositions import reconcile
 from pricer.errors import CalibrationError
 from dataio.loaders import load_corporate_terms, load_master
@@ -103,6 +104,27 @@ def main():
     recon.index = recon.index.astype(str)
     aq = load_aq(WB)
     schedules = load_call_schedules(SCHED)   # {asset_id: [(call_date, call_price), ...]} — the ONLY call-terms source
+    # Where those terms came from, and whether anyone has confirmed them. Every row in the table
+    # today is a custodian col-AB date wearing the par-call convention on top, so a price of
+    # 100.0 in the output is a MODELLING ASSUMPTION and must not read as a contract term.
+    provenance = load_call_provenance(SCHED)
+    UNCONFIRMED = {"exercise_terms_status": "provisional", "exercise_terms_source": "unspecified",
+                   "exercise_price_source": "unspecified", "exercise_terms_as_of": ""}
+
+    # Standing internal review notes, by asset. These are recorded observations, NOT a rule the
+    # code applies: no threshold rejects a bond here, and nothing is filtered on this column.
+    # A number can be arithmetically right and still be the wrong number to quote, and the only
+    # honest place to say so is beside the number itself.
+    REVIEW_NOTES = {
+        "TNTD04115619":
+            "REVIEW: implied OAS ~1994bp on a 3.9y BBB at BT 60.65. The arithmetic is sound -- "
+            "that price on those cash flows really does imply this spread -- but a spread that "
+            "wide is the market pricing default risk, not a term premium, so reading it as a "
+            "credit spread over the curve overstates what it means. The exercise terms are a "
+            "custodian-date par-call SEED (see exercise_terms_status), and the call is not "
+            "binding at this price, so the callable and straight answers coincide: the number "
+            "does not depend on the seeded schedule. Quote it with the price beside it.",
+    }
 
     cb = excl[excl["primary_reason"] == "callable"].copy()      # fixed, rated, matched, callable
     cb["call_date"] = pd.to_datetime(cb["call_date"], errors="coerce")
@@ -172,6 +194,9 @@ def main():
             asset_id=aid, ccy=ccy, rating=b["rating_bucket"], coupon=float(cpn), freq=fr,
             maturity=b["maturity"].date(), call_date=schedules[aid][0][0].date(), call_price=schedules[aid][0][1],
             n_call_rows=len(schedules[aid]), gap_yrs=round(b["gap_days"] / 365.25, 2),
+            **{k: provenance.get(aid, UNCONFIRMED)[k] for k in
+               ("exercise_terms_status", "exercise_terms_source",
+                "exercise_price_source", "exercise_terms_as_of")},
             ttm=round(T, 2), bt=float(bt), px_straight_oas0=round(px_str0, 3), px_callable_oas0=round(px_cal0, 3),
             opt_val_oas0=round(px_str0 - px_cal0, 3),
             implied_oas_bp_callable=round(oas_cal * 1e4, 1), implied_oas_bp_straight=round(oas_str * 1e4, 1),
@@ -184,6 +209,7 @@ def main():
             aq_custodian=aq.get(aid), dur_vs_aq=(round(rm_cal["eff_duration"] - aq[aid], 3)
                                                  if aq.get(aid) not in (None, "") else None),
             note=note,
+            review_note=REVIEW_NOTES.get(aid, ""),
         ))
 
     df = pd.DataFrame(rows)
@@ -205,6 +231,7 @@ def main():
     print(f"wrote {DISPOSITION_OUT}")
     if len(df):
         cols = ["asset_id", "ccy", "rating", "coupon", "maturity", "call_date", "call_price", "n_call_rows",
+                "exercise_terms_status", "exercise_terms_source",
                 "gap_yrs", "ttm", "bt", "px_straight_oas0", "px_callable_oas0", "opt_val_oas0",
                 "implied_oas_bp_straight", "implied_oas_bp_callable", "oas_cost_of_call_bp",
                 "eff_dur_straight", "eff_dur_callable", "aq_custodian", "dur_vs_aq", "note"]

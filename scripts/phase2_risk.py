@@ -30,7 +30,8 @@ import numpy as np
 import pandas as pd
 
 from curves.zero_curve import ZeroCurve
-from dataio.call_schedules import load_call_schedules, to_lattice_schedule
+from dataio.call_schedules import (load_call_provenance, load_call_schedules,
+                                   to_lattice_schedule)
 from dataio.phase2 import build_phase2_from_path
 from pricing.bond_price import lattice_inputs
 from pricing.calibrate import implied_oas, near_maturity
@@ -69,6 +70,13 @@ def main():
     recon = recon.drop_duplicates("asset_id").set_index("asset_id")
     recon.index = recon.index.astype(str)
     schedules = load_call_schedules(SCHED)
+    # The five agency par-call schedules are custodian col-AB dates with the par-call
+    # convention applied, exactly like the corporate three. Nothing here is Bloomberg-confirmed,
+    # and a call price of 100.0 in the output must not read as a contract term.
+    sched_provenance = load_call_provenance(SCHED)
+    UNCONFIRMED_TERMS = {"exercise_terms_status": "provisional",
+                         "exercise_terms_source": "unspecified",
+                         "exercise_price_source": "unspecified", "exercise_terms_as_of": ""}
     get_curve = _curve_cache()
 
     print(f"# phase2_risk @ {VAL}  sigma={SIGMA:.2%}  FIP_INFL={INFL:.2%}  classes:",
@@ -98,6 +106,8 @@ def main():
             implied_bp_straight=np.nan, eff_dur_straight=np.nan, call_date=None,
             accrued=np.nan, eff_dur_cleanden=np.nan,
             aq_custodian=b.get("dur_eff_custodian"), flag="",
+            exercise_terms_status="", exercise_terms_source="", exercise_price_source="",
+            exercise_terms_as_of="",
         )
         if pd.notna(mat) and pd.Timestamp(mat) < pd.Timestamp(VAL):
             row.update(route="matured", flag=f"matured before {VAL}")
@@ -185,6 +195,9 @@ def main():
                        dv01=rm_cal["dv01"], convexity=rm_cal["convexity"],
                        implied_bp_straight=oas_str * 1e4, eff_dur_straight=rm_str["eff_duration"],
                        call_date=schedules[aid][0][0].date(),
+                       **{k: sched_provenance.get(aid, UNCONFIRMED_TERMS)[k] for k in
+                          ("exercise_terms_status", "exercise_terms_source",
+                           "exercise_price_source", "exercise_terms_as_of")},
                        accrued=round(ai, 4),
                        eff_dur_cleanden=rm_cal["eff_duration"] * rm_cal["dirty"] / rm_cal["clean"],
                        flag=f"lattice sigma={SIGMA:.0%}, Bermudan par@100 from AB; {note}")

@@ -435,7 +435,11 @@ def main():
             row.update(route="floating", clean=rm["clean"], implied_oas=oas, implied_bp=oas * 1e4,
                        eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
                        next_reset_t=rm["next_reset_t"],
-                       flag=f"FRN; {note}" + ("" if cur is not None else "; current coupon 'Variable'->forward"))
+                       current_coupon_source=rm["current_coupon_source"],
+                       risk_status=rm["risk_status"],
+                       flag=f"FRN; {note}" + ("" if cur is not None else
+                            "; running coupon not in the custodian file -> base-curve proxy, "
+                            "frozen under the risk bumps; sensitivities PROVISIONAL"))
         except (CalibrationError, ValueError) as e:
             row.update(route="frn-no-bracket", clean=float(bt), flag=f"FRN OAS not bracketable ({e})")
         rows.append(row)
