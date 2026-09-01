@@ -53,11 +53,14 @@ Engine paths are now `pricer/core/pricing/{floating,hybrid,coupon_schedule}` (th
 `pricing.*` names are shims). Term-override background: `docs/isin_lookup_2026-07-20.md`.
 
 - **550 priced end-to-end @6-10 (555 @3-31)** (implied OAS + effective duration / DV01 /
-  convexity): vanilla 475 (480 @3-31), make-whole 47 (incl. Sempra), vanilla-schedule 9
-  (stepped 1 + the 8 override paths + the GBP 7.50% whose curve was blocked), floating 7,
-  **hybrid 10** (fixed-then-float main column +
+  convexity): vanilla **476** (**481** @3-31), make-whole 47 (incl. Sempra),
+  vanilla-schedule **10** (stepped 1 + the 8 override paths + the GBP 7.50% whose curve was
+  blocked), floating 7, **hybrid 10** (fixed-then-float main column +
   price-to-call reference; perps truncated at 90y; `next_switch_t` output per bond; kept OUT of
   the by-rating medians — jr-sub/T1 capital spreads, same policy as the floating route).
+  *(Sums: 476+47+10+7+10 = **550** @6-10 · 481+47+10+7+10 = **555** @3-31. Stated so the
+  breakdown checks against its own headline — the previous version summed to 548 against a
+  headline of 550 and nothing said so. Source: `outputs/implied_oas*.csv` route census.)*
 - **11 flagged / BT-mark @3-31 (11 @6-10)**: **hybrid-margin-unavailable 8** (structure documented
   in `hybrid_switch_terms.csv`, post-switch margin on the Mario/Bloomberg list — incl. the
   previously FRN-priced BTMU/Resona-EUR and continuation-priced Chuo/Resona, deliberately not
