@@ -17,20 +17,26 @@ Section 6 is for the engineering team and the finance reader can skip it.
 
 ## 1. Your six cells, answered
 
-A word on the counts first, because three different denominators are easy to confuse. The
-pivot counts **rows on the Corporate Bonds sheet** (676 of them). Not every row is a
-position the fund actually holds and rates. So each row below shows the pivot count, how
-many of those are live holdings, and how many now produce a full set of numbers.
+A word on the counts first, because several different denominators are easy to confuse. The
+pivot counts **rows on the Corporate Bonds sheet** (676 of them). That sheet lists some
+securities more than once — 60 of them — so 676 rows are 616 distinct bonds. Each row below
+therefore shows the pivot count, the number of distinct securities behind it, how many are
+live holdings, and how many now produce a full set of numbers.
 
-| Cell | Coupon type | Pivot rows | Held | Priced | Not priced |
-|---|---|---|---|---|---|
-| **F12** | Fixed → Floating | 5 | 5 | 4 | 1 |
-| **F13** | 7.00% before 01-Mar-2006, 7.50% after | 2 | 1 | 1 | — |
-| **F14** | GBP LIBOR + Spread | 1 | 1 | **1** | — |
-| **F15** | Reference Rate + Spread | 12 | 12 | 11 | 1 |
-| **F16** | EURIBOR + Spread | 9 | 9 | 5 | 4 |
-| **F20** | Step-up schedule | 1 | 1 | 1 | — |
-| | **total** | **30** | **29** | **23** | **6** |
+| Cell | Coupon type | Pivot rows | Securities | Held | Priced | Not priced |
+|---|---|---|---|---|---|---|
+| **F12** | Fixed → Floating | 5 | 5 | 5 | 4 | 1 |
+| **F13** | 7.00% before 01-Mar-2006, 7.50% after | 2 | **1** | 1 | 1 | — |
+| **F14** | GBP LIBOR + Spread | 1 | 1 | 1 | **1** | — |
+| **F15** | Reference Rate + Spread | 12 | 12 | 12 | 11 | 1 |
+| **F16** | EURIBOR + Spread | 9 | 9 | 9 | 5 | 4 |
+| **F20** | Step-up schedule | 1 | 1 | 1 | 1 | — |
+| | **total** | **30** | **29** | **29** | **23** | **6** |
+
+**A correction to how we put this to you.** An earlier draft of this table showed F13 as
+"2 rows, 1 held", which reads as though one of those two is not a holding. It is not: your
+sheet lists the *same* bond twice. One bond, held, priced. Every one of the 29 distinct
+securities behind your six cells is a live holding — none of them is missing from the book.
 
 **The six that do not price are not a modelling gap.** Five are bonds that pay a fixed
 coupon for some years and then switch to a floating one, and the *margin they pay after
@@ -50,11 +56,30 @@ those six now price; the other three are waiting on the same missing margins.
 Four families sit behind your six cells, and they need genuinely different treatment:
 
 - **Floating-rate note** (F14, F15, F16) — the coupon is not fixed at all. It resets
-  periodically to a market interest rate plus a contractual margin. This has a
-  consequence worth knowing: such a bond keeps re-setting its own interest-rate risk away,
-  so a thirty-year floating note behaves, for rate purposes, like a bond maturing at its
-  next reset. Our numbers show exactly that, and the module reports the next reset date
-  beside the risk figure so the two can be checked against each other.
+  periodically to a market interest rate plus a contractual margin. The consequence worth
+  knowing: such a bond keeps re-setting its own interest-rate risk away, so a thirty-year
+  floating note carries the rate risk of **a single coupon period**, not of thirty years.
+
+  Two cautions on reading those risk figures, because the usual shorthand — "a floater's
+  risk is the time to its next reset" — is only true in one of three cases.
+
+  *First*, whether it is the time to the **next** reset or the time **since the last** one
+  depends on whether we know the coupon that is currently running. If we do, the figure is
+  the time forward to the next reset; if that coupon has to be estimated from the market
+  curve, the figure is the same length of time but pointing **backwards**, and therefore
+  negative. Both are correct and both are less than one coupon period. *Second*, a bond
+  trading well below face value carries an additional, genuinely negative figure that grows
+  with maturity — that is the discount itself unwinding, not a sign error. The module reports
+  the next reset date beside every risk figure so the two can be checked against each other,
+  and section 6 gives the exact numbers.
+
+  A third caution, about the **spread** rather than the risk. Most of these notes are
+  described in the workbook only as "... + Spread", with no number: the contractual margin is
+  not recorded anywhere we can read. For those, the spread we report absorbs that unknown
+  margin **as well as** the borrower's credit, so it should be read as a total discount
+  margin and not as a clean credit spread. Where a margin is documented, it is used and the
+  spread is a credit spread. The output says which of the two it is for every bond, rather
+  than leaving it to be assumed.
 - **Fixed → Floating** (F12) — fixed for some years, then floating. Priced as one bond
   with one credit spread across both halves, because it is one borrower's one promise.
   Splitting the spread in two would be inventing a second borrower.
@@ -84,12 +109,15 @@ years, 2.34% at five, 3.16% at ten and 4.16% at thirty — the actual gilt marke
 
 **What this changes:**
 
-| | Before | Now |
+| | Before this fix | After it |
 |---|---|---|
 | France Télécom 7.50% of 2011 (GBP) — your F14 | not priced | spread **205.3 bp**, rate sensitivity 1.86 years |
 | A UK 5.50% bond of 2033 (GBP) | **missing from the output entirely** | spread **197.3 bp**, rate sensitivity 12.55 years |
 | Corporate bonds in the output | 564 | **565** |
 | Of those, fully priced | 553 | **555** |
+
+*(A later review this week found one more bond in the same condition and raised the output to
+**566**; section 4.5 has that one.)*
 
 The second bond is the part that matters beyond this week. It was not flagged, it was
 silently **skipped** — and it is a plain fixed-coupon bond, which is to say it belongs to
@@ -112,16 +140,86 @@ about the market.
 **Action for you: the request for a replacement UK curve can be withdrawn.** Nothing else
 on the outstanding Bloomberg list changes.
 
+### 3.1 A second one of the same kind — caught before it reached you
+
+Having found one bond that had gone missing without a trace, we went looking for others of
+the same shape. There was one, and this time we found it **before** it affected any number
+we have shown you.
+
+Five bonds in the portfolio are callable — the borrower may repay early. Three are priced on
+the option model, and one is waiting for its call terms, which are on the outstanding data
+request. That accounts for four. **The fifth had fallen between two rules.** One part of the
+code treated a call less than a week before maturity as economically irrelevant and priced
+the bond normally; another part only sent bonds to the option model when the call was more
+than a year before maturity. A bond whose call sits 90 days before maturity satisfied
+neither, so it was priced by nothing — and, unlike a flagged bond, it produced no message
+anywhere. It is a real holding: 850,000 nominal, marked at 85.12.
+
+It had even been written down, once, in our own work log, as a "minor loose end" — and then
+it fell out of every count that followed. That is the lesson rather than the bond: a
+completeness figure can be wrong in a direction no report shows you, and the same failure
+had now happened twice.
+
+Two things changed, neither of which moves a price:
+
+- **the counting is now mechanical.** Every bond in the portfolio must leave the calculation
+  either with a number or with a named reason. That is checked as a set — not as a total,
+  because a total of "3 priced + 2 skipped = 5" balances perfectly even with the wrong bond
+  in the wrong place, which is exactly how this one stayed hidden. The check runs on every
+  production run and stops it if any bond is unaccounted for.
+- **the two rules became one.** Deciding *whether* a bond is callable now happens in one
+  place only; the option model simply prices everything it is sent.
+
+And a third thing, which is the part worth knowing about the model itself. When we sent that
+bond to the option model to see what it was worth, it returned a value for the early-repayment
+right of **exactly zero** — which looks like "the right is worthless". It was not. The option
+model makes its decisions on the bond's coupon dates, and this bond's call date falls in the
+final three months, after the last coupon. There was no date on which the model could
+consider it, so it never did. The number was not an answer; it was the absence of a question.
+
+The model now **refuses** such a bond rather than pricing it as an ordinary one — which is
+why the fifth callable bond is still not priced, and is now named and explained instead. We
+checked all eight bonds that carry call terms today: none of them is affected, so no number
+you have been given is wrong. Deciding what that bond should ultimately be worth needs
+either a change to the option model's calendar or a documented rule about very short call
+windows; both are real decisions and we have not taken either quietly.
+
 ## 4. One change to the Excel connection
 
-Last week the spreadsheet could ask for one kind of bond. It can now ask for any of seven
-— plain, stepped, floating, fixed-then-floating, callable, puttable and sinking-fund — by
-naming the type in the request. Everything else is identical: same single entry point,
-same request and answer format, same error reporting.
+The pricing engine now accepts **seven kinds of bond** by name — plain, stepped, floating,
+fixed-then-floating, callable, puttable and sinking-fund — through the same single entry
+point, the same request and answer format, and the same error reporting as before.
 
-We made this change **once**, covering all seven, rather than twice. And a request that
-does not name a type is still treated as a plain bond, so **nothing that works today
-stops working** — including the spreadsheet as it stands, whose 23 automated Excel checks
+**Three different numbers matter here, and it is worth being exact about which is which**,
+because saying "the spreadsheet can ask for any of seven" would overstate what we have
+actually put in front of you:
+
+| | how many | which |
+|---|---:|---|
+| the **engine** prices, and the request format covers | **7** | all of the above |
+| the **spreadsheet** can currently build a request for | **5** | all except stepped and fixed-then-floating — no cells exist yet for a coupon table, a margin or a switch date |
+| we have **verified end-to-end from real Excel** | **5** | plain, callable, puttable, sinking-fund, floating |
+
+The two the spreadsheet cannot send are deliberate rather than unfinished. Adding cells for
+them would put a sixth and seventh bond type on a sheet whose layout you have not chosen yet
+(section 8), and we would rather you decided that first.
+
+**The floating note closed a gap worth describing.** Until this week the spreadsheet had
+nowhere to put two things a floating-rate note actually has: the margin it pays over its
+reference rate, and the coupon it is paying right now, which was fixed at the last reset. The
+sheet could technically send a floater, but only in its least informative form — the spread
+that came back absorbed the contractual margin instead of isolating credit, and the running
+coupon had to be estimated. Two cells fixed both, and if either is left blank the answer says
+so in plain words rather than quietly assuming a value.
+
+We then ran a real floating note from a real spreadsheet through the real engine. It returned
+**397.3304715128111 bp** for one of your holdings — the same number, digit for digit, as the
+row in the delivered file. That is the strongest form of the claim: not that the spreadsheet
+*could* work, but that it produces the figure you already have.
+
+We made the engine change **once**, covering all seven, rather than twice. A request that
+does not name a type is still treated as a plain bond, so **nothing that works today stops
+working** — including the spreadsheet as it stands, whose original 23 automated Excel checks
 all still pass untouched.
 
 Each type reports the one or two extra numbers only it has: the next reset date for a
@@ -134,12 +232,138 @@ bond is sent without its post-switch margin, we do not price it with a zero. A g
 margin produces a confident-looking number for a bond that is half-modelled, and nothing
 in the output would say so.
 
+## 4.1 Additional integration follow-through — embedded-option bonds through Excel
+
+*Separate from your six cells, and reported separately on purpose: this is follow-through
+on the interface promise in the last report, not part of the floating-rate work.*
+
+The spreadsheet can now send the three bond types with early-repayment rights — callable,
+puttable and sinking-fund — and show their results. This was already true of the engine;
+what was missing was the spreadsheet side, and it is now built and tested on real Excel.
+
+Exercise schedules are entered as ordinary Excel **tables**, one row per date:
+
+```text
+FIP_CallSchedule      Date | Price per 100
+FIP_PutSchedule       Date | Price per 100
+FIP_SinkingSchedule   Date | Fraction of the amount outstanding | Price per 100
+```
+
+Tables rather than fixed blocks of cells, for two practical reasons: a schedule can be any
+length, and a table can sit on any sheet — so none of this commits you to a layout before
+you have chosen one.
+
+Two behaviours are worth knowing because they are deliberate:
+
+- **A blank row is ignored; a half-filled row is refused**, in Excel, before anything is
+  sent, naming the table and the row number. We do not fill in a missing exercise price or
+  redemption fraction. Those are contractual terms, and a plausible guess is worse than a
+  stop.
+- **Your existing sheet is untouched.** A request that does not name a bond type is treated
+  exactly as it was before, which is why every one of the original spreadsheet checks still
+  passes without modification.
+
+**Your volatility question, now answerable from the spreadsheet.** Changing the volatility
+cell on a callable bond and re-running gives, on our test bond, a spread of 639.58, 635.78
+and 629.83 basis points at 10%, 15% and 20% volatility — the same tightening the last
+report described, now driven from Excel rather than from Python. That is three ordinary
+runs, not a special feature.
+
+**One caveat we want stated rather than buried.** The portfolio holds callable bonds, so
+that type is tested against real holdings. It holds **no** puttable and **no** sinking-fund
+bonds — those two are tested on invented examples. Those tests prove the model and the
+connection behave correctly; they prove nothing about your portfolio, and we have labelled
+them that way everywhere they appear.
+
+The automated spreadsheet checks went from 23 to **61**.
+
+**What is still not built is the layout** — the daily-use sheet, whether that is one sheet
+with a type dropdown or a small sheet per type. That is the question in section 8, and it is
+genuinely yours to answer: what exists today is an engineering test surface, not a sheet we
+would ask anyone to work in. The two bond types the sheet cannot yet send are waiting on the
+same answer.
+
+## 4.5 A review pass over everything above — three corrections
+
+Before sending this we reviewed the week's work against the live outputs rather than against
+our own notes. Three things came out of it. All are corrections to work described earlier in
+this report, and we would rather you saw them here than found them later.
+
+### One more bond that was invisible — the output is 566, not 565
+
+This is the **third** instance of the same shape as sections 3 and 3.1, and it is the largest
+position of the three: **8.78 million nominal**, held across three lots.
+
+The word "defaulted" was doing two jobs in our code. It is a description of a bond's *coupon*
+— your workbook records some as "N/A (Defaulted)" — and it is separately a *credit rating* of
+D. A bond can have one without the other, and this one does: its rating is in default, while
+its coupon formula is an ordinary fixed rate. Two different pieces of code handled defaulted
+bonds, one keyed on each meaning, and a bond with this combination matched neither. It is now
+handled **once, by the rating**, and appears as a named recovery line at your custodian's mark
+— we do not compute a spread for a defaulted bond, because the number would describe expected
+recovery rather than credit.
+
+A fourth defaulted holding stays out of the output, correctly, but its stated reason was also
+wrong: it was reported as excluded for being in default, when what actually excludes it is its
+coupon type, one of the categories you told us in July to leave out permanently. It now says so.
+
+### Floating-rate risk: one number per bond, not two answers depending on a data field
+
+The coupon a floating-rate note is paying *right now* was set at its last reset date, in the
+past. It is a known amount, and a change in today's interest rates cannot alter it.
+
+Our model held it fixed whenever your file recorded the number, and re-estimated it from the
+curve whenever your file left it blank — and in that second case, moving rates moved a coupon
+that had already been decided. The effect was not small: it reversed the sign of the reported
+rate sensitivity. Two notes with the same economics could receive opposite-signed answers, and
+which one you got depended on whether a field in the custodian file happened to be filled in.
+
+Both cases now hold the coupon fixed. Six of the seven floating notes moved, all in the same
+direction, and **no price and no spread changed at all** — the correction touches only the
+rate-sensitivity columns:
+
+| bond | market price | sensitivity before | after |
+|---|---:|---:|---:|
+| TNTD04955876 | 69.62 | −1.13 | −0.43 |
+| TNTD04259874 | 72.64 | −1.37 | −0.69 |
+| TNTD03035014 | 92.92 | −0.33 | **+0.20** |
+| TNTD04882955 | 67.04 | −1.85 | −1.48 |
+| TNTD04131505 | 81.34 | −0.47 | −0.17 |
+| TNTD03027773 | 98.54 | −0.20 | **+0.05** |
+
+Each move equals one coupon period scaled by how far below par the bond trades, to within 3% —
+which is the size the correction should be, and is how we checked it rather than eyeballing.
+
+Four remain negative, and that is genuine rather than left-over error. A floating note trading
+in the 60s does so because its credit spread is wide, and a wide spread behaves like a fixed
+annuity sitting on top of the floating coupon, carrying ordinary fixed-income sensitivity. The
+two notes closest to par cross into small positive numbers, which is the textbook result for a
+floater and is the clearest sign the fix does what it should.
+
+### Numbers now say what they rest on
+
+Two things were true, documented, and invisible at the point where somebody reads a number.
+
+**No call schedule in this project has been confirmed.** All nine are a date from your
+custodian file with a repayment price of 100 assumed on top — a convention you approved for
+version 1, not a term anyone has read out of a document. A "100.00" in a spreadsheet cell
+looks the same either way. Every affected row now carries `provisional`, names where the terms
+came from, and dates them; the count of confirmed exercise terms in this project is **zero**,
+and the output says so. These are on the existing confirmation-only list and we are **not**
+asking you for them now — every one of those bonds prices today.
+
+**Six of the seven floating notes are priced on an estimated current coupon** (the fix above),
+and those rows now say `base_curve_proxy` and mark their sensitivities provisional.
+
+Neither label changes any number. They describe the inputs, and we test that a labelled result
+equals an unlabelled one exactly.
+
 ## 5. What we deliberately did not do
 
-- **The demonstration spreadsheet still asks for plain bonds only.** The engine and the
-  message format handle all seven types, but putting seven bond types on a worksheet is a
-  layout question, and we would rather do it once with you than guess. The interface
-  document lists exactly which fields each type adds.
+- **We did not design the daily-use worksheet.** The engine takes every bond type and the
+  spreadsheet can send five of them (section 4), but putting seven on one sheet — or on seven small sheets —
+  is a layout question we would rather settle with you than guess at. What exists is an
+  engineering test surface, clearly labelled as such.
 - **No bond was re-classified to make a count look better.** The six unpriced bonds stay
   unpriced and named.
 - **We did not touch the holdings workbook.** Your column F is your marking; section 1 is
@@ -166,30 +390,34 @@ retained as an alias.
 
 | | |
 |---|---|
-| Automated checks | **287**, in about 21 seconds (223 at the start of the week) |
+| Automated checks | **390**, in about 35 seconds (223 when this round began) |
+| Population accounting | enforced at run time — every bond leaves with a number or a named reason, checked as a SET of identifiers, not as a total |
 | Production outputs after each migration step | byte-identical to a pre-change baseline, all five driver files |
 | Endpoint vs direct function call | asserted equal with `==`, per instrument type, not a tolerance |
 | Compatibility shims | asserted to re-export the *same object*, not an equivalent one |
 
 Two details worth knowing before you run it:
 
-- **Cross-platform determinism has a limit worth writing down.** Full 565-bond driver
+- **Cross-platform determinism has a limit worth writing down.** Full 566-bond driver
   outputs from Windows and from the Linux server differ by up to **3.6e-8 relative**, and
   entirely in the convexity column — a second difference divided by the square of a
   one-basis-point bump amplifies a last-bit rounding difference by 10⁸. Prices, spreads
   and durations agree to about 1e-12, and every text column is identical. A byte-for-byte
   comparison across platforms will therefore show a difference that is not a regression;
   compare on one platform, or compare with a tolerance.
-- **The floating-rate duration has two exact regimes**, and the sign flips between them.
-  Supply the already-fixed current coupon and the answer is *plus* the time to the next
-  reset; omit it and the coupon is projected off the curve, the bump reprices it too, and
-  the answer is *minus* the time since the last reset. Both are within one coupon period
-  and both are correct; only the interpretation differs. It is pinned by tests.
+- **The floating-rate duration used to have two regimes with opposite signs. It now has
+  one.** An earlier draft of this report described the two as both correct, differing only
+  in interpretation. On review that was wrong, and section 4.5 explains what changed: the
+  coupon a floating note is *currently* paying was fixed at its last reset, so a move in
+  today's interest rates cannot change it. We were holding it fixed when your file recorded
+  it and re-estimating it when your file did not, which is what produced the second sign.
+  Both cases now hold it fixed and both give *plus* the time to the next reset.
 
 ```text
-python -m pytest -q                                              287 checks, ~21 s
+python -m pytest -q                                              390 checks, ~35 s
 python scripts/price_json.py --input request.json --output response.json
-powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  23 Excel checks
+powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  57 Excel checks
+powershell -File ...\Run-BridgeTests.ps1 -PythonExe <python.exe>   61, against a live engine
 ```
 
 ## 7. Next

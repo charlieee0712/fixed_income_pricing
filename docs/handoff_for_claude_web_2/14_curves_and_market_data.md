@@ -112,15 +112,17 @@ Note a historical quirk: `scripts/calibrate_risk.py`'s vanilla path uses a **two
 (annual and semiannual only) and skips bonds with other frequencies — that is a driver-level
 universe restriction, not an engine limit. `phase2_risk.py` uses the full four-way map.
 
-## 4. TRAP — two day counts for the exercise-time axis
+## 4. ~~TRAP — two day counts for the exercise-time axis~~ ✅ CLOSED 2026-08-31
 
-`dataio.call_schedules.to_lattice_schedule` defaults to **365.25** days per year while every
-coupon grid is **ACT/364**. Both production drivers pass `days_per_year=364.0` explicitly,
-so production has always been consistent. A new caller taking the default would silently put
-exercise dates on a different axis than coupons.
+`dataio.call_schedules.to_lattice_schedule` used to default to **365.25** days per year while
+every coupon grid is **ACT/364**. Both production drivers passed `days_per_year=364.0`
+explicitly, so production was always consistent, but a new caller taking the default would
+silently have put exercise dates on a different axis than coupons.
 
-New code uses `core.pricing.tree.schedule_times`, which is ACT/364 by construction, and a
-test pins the two conversions against each other. The stale default is still there.
+There is now **one** implementation, `core/utils/dates.exercise_schedule_times`, which both
+`core.pricing.tree.schedule_times` and `dataio.call_schedules.to_lattice_schedule` delegate
+to, and the `days_per_year` argument has been **deleted** — passing it raises `TypeError`.
+The day count is project law, not a parameter.
 
 ## 5. Valuation dates and where the data came from
 

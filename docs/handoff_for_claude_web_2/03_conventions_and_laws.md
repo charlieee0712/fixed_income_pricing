@@ -164,20 +164,42 @@ guarded: any scaled row above 100% raises `ParYieldUnitError` **before** the boo
 Detection was considered and rejected — DKK's median value is 0.543, so a threshold rule
 would have been right about GBP by luck. See `14` §1a and `05` §1.9.
 
-### Floating-rate duration has two exact regimes, and the sign flips
+### Floating-rate duration has ONE regime (it had two until 2026-08-31, and that was a bug)
+
+⚠️ **This law was stated backwards in the 2026-08-30 bundle and in the client report.** The
+two regimes were not a property of floating notes; the second was the engine repricing a
+coupon that had already been fixed.
 
 Measured on a flat 4% curve, a 30-year note:
 
 | `current_coupon` | effective duration |
 |---|---|
 | supplied | **+0.104396** = +time to the **next** reset (independent of the coupon's level) |
-| projected | **−0.395604** = −time **since** the last reset (the bump reprices that coupon too) |
+| projected | **+0.104396** — identical, since 2026-08-31 |
+| *(what "projected" gave before the fix)* | *−0.395604 = −time since the last reset* |
 | *same-maturity fixed bond* | *17.44* |
 
-Both are within one coupon period. A **third** regime applies to a deep-discount note —
+The running coupon was set at the last reset, in the past, so no shift of today's curve can
+change it. `frn_risk_metrics` now freezes it across the bumps either way: supplied, it always
+was; unobserved, it freezes a **base-curve proxy** read off `FrnResult.cashflows[0][2]`,
+which is the stub rate the *unshifted* curve implies and already carries the quoted margin.
+Because the proxy comes from the unshifted curve, at zero shift it reproduces the old value
+exactly — **price and calibrated OAS cannot move**, only the sensitivities.
+
+The freeze lives in `frn_risk_metrics`, deliberately **not** in `price_frn`, so `price_frn`
+stays a plain scenario repricer and the par-under-any-shift telescoping invariant that anchors
+the whole floating engine is untouched.
+
+Six of the seven production floaters moved, all positive, each equal to one coupon period
+scaled by 100/P to within 3%. Full table: `docs/frn_current_coupon_freeze_2026-08-31.md`.
+
+A **third** regime applies to a deep-discount note —
 price ≈ par − spread annuity, so a rate rise shrinks the gap and the price rises, giving a
 negative duration of order spread × annuity duration that **grows with maturity** (a 57-year
-note near 50 shows ≈ −10.6). Universal law: `|duration| ≪` a same-maturity fixed bond.
+note near 50 shows ≈ −10.6). This one is real economics and survives the fix: four of the six
+corrected floaters are still negative afterwards, and the two nearest par cross to small
+positives, which is the textbook floater result. Universal law: `|duration| ≪` a
+same-maturity fixed bond.
 
 ### A schedule crossing the JSON boundary carries units at the boundary, not inside
 
@@ -199,7 +221,7 @@ audit line that does not match the cell it came from is worse than useless.)
 ### Parity protocol
 
 Windows and server 47 agree for the test suite and the single-bond endpoint JSON, but **full
-565-bond driver CSVs differ by up to 3.6e-8 relative, entirely in `convexity`** (a second
+566-bond driver CSVs differ by up to 3.6e-8 relative, entirely in `convexity`** (a second
 difference ÷ bump² amplifies a last-bit rounding by 10⁸). Text columns identical; prices,
 spreads and durations agree to ~1e-12. Two local runs are byte-identical to each other, so
 **parity is asserted local-fresh vs local-fresh** — byte-exact, and stricter than the

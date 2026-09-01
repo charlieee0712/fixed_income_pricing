@@ -71,9 +71,10 @@ The workbook knows exactly **one** thing about the engine: a command that accept
 and `--output`. Pointing that at a packaged executable or an HTTP wrapper changes nothing
 else — no field, no cell, no VBA.
 
-**Tested on real Excel**: `integrations/excel_vba/tests/Run-BridgeTests.ps1`, 23 checks, in
-two modes — a stand-in runner (no Python needed) and `-PythonExe` (Excel calls Python for
-real). Both pass.
+**Tested on real Excel**: `integrations/excel_vba/tests/Run-BridgeTests.ps1`, in two modes — a
+stand-in runner (no Python needed) and `-PythonExe` (Excel calls Python for real). Both pass.
+**23 checks at v1.0, 48/50 once the tree products reached the bridge, 57/61 since `floating`
+closed the last untested type on 2026-08-31.**
 
 That test found a genuine defect on its first run: JSON `null` arrives in VBA as `Null`, not
 `Nothing`, so `Set x = Field(response, "applicability")` raised "Object required" on **every
@@ -104,9 +105,12 @@ numbers **cleared** rather than left on screen.
 
 ## 6. Current limits
 
-- **vanilla only through Excel.** Callable, puttable and sinking price in Python today;
-  connecting them to this interface is Round 2b. The demo therefore shows the volatility
-  story from a terminal (`scripts/demo_volatility.py`).
+- ~~**vanilla only through Excel.**~~ **NO LONGER TRUE — this limit was lifted on 2026-08-31.**
+  The bridge now constructs five of the seven types (vanilla, callable, puttable, sinking,
+  floating) and all five are verified by real-Excel round trips, including the volatility
+  direction driven from the sheet. What remains is the *worksheet layout*, not the plumbing;
+  the visible demo workbook is still vanilla-only, and `scripts/demo_volatility.py` still
+  exists. See the 08-31 update at the end of this file.
 - **one bond per call.** A portfolio is a loop over the same function, not a different
   design — but the sheet does not do it.
 - **Windows-only bridge** (`WScript.Shell`, `ADODB.Stream`). A Mac or Office-Script version
@@ -193,9 +197,31 @@ post-switch margin** (a placeholder zero would report a half-modelled bond as wh
 **sinking schedule with no fraction basis** (which used to surface as "no spread reprices this
 bond — check the price, the coupon and the maturity").
 
-### ⚠️ The demo workbook still sends plain bonds only
+### ⚠️ Three different numbers: 7 / 5 / 5 (corrected 2026-08-31)
 
-The engine and the message contract handle all seven types. The **worksheet** does not yet
-have cells for the per-type fields, and that is a layout decision, not a technical one — it is
-the open question in the 08-30 report (`04` §2). The bridge writes whatever named cells it is
-given, so nothing blocks it once Mario answers.
+**Do not write "the spreadsheet can ask for any of seven".** That reads a number off the
+engine and attaches it to Excel, and it is the single most repeated error in this project's
+own documents. Measured by driving `BuildRequest` and running the result through the live
+endpoint:
+
+| | count | which |
+|---|---:|---|
+| supported by the engine and the contract | **7** | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
+| constructible from cells by the VBA bridge | **5** | all but `stepped` (no coupon-table cells) and `fixed_to_floating` (no switch-date cell) |
+| verified by a real-Excel round trip | **5** | vanilla · callable · puttable · sinking · floating |
+
+`floating` was the last of the five to be driven from a real spreadsheet (08-31). Two optional
+cells were added for it — `FIP_QuotedMarginBp` and `FIP_CurrentCouponPct`, read only when the
+type is `floating`, neither defaulted. Blank margin ⇒ `UNUSED_FIELD` and the spread is a
+discount margin; blank running coupon ⇒ `PROVISIONAL_RISK` and a base-curve proxy. The live
+round trip returns **397.3304715128111 bp** for `TNTD03080834`, bit-identical to the
+production CSV row.
+
+**The two remaining types are unconstructible on purpose.** Adding a coupon-schedule table or
+a switch-date cell would make a sixth type reachable from a worksheet whose layout Mario has
+not decided — see `04` §1.
+
+**Separately: the visible DEMO workbook (`DemoBuilder.bas`) is still vanilla-only.** It has no
+type or schedule cells. The engineering test harness drives the named cells directly, which is
+how five types are exercised without a designed sheet existing. Keep these two facts apart:
+"the bridge can send this" and "a worksheet exists that a person would use to send it".

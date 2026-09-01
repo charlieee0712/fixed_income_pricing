@@ -190,3 +190,56 @@ bond worth 96 is worthless, and the callable prices identically to the straight 
 is correct, and asserts nothing. The dispatch tests use a 9.5% coupon marked at 104 against a
 par call, where the price falls 104.0772 → 104.0000 → 103.8615 and the spread tightens
 639.58 → 635.78 → 629.83 bp across 10/15/20% volatility.
+
+---
+
+## Update 2026-08-31 — refusals are a named family, and one bond is refused by design
+
+### The refusals stopped being `ValueError`
+
+Every refusal in section 6 used to be a `ValueError`, and the spread solver's own
+`except ValueError` swallowed them. A contradictory pair of exercise dates came back as
+*"no spread reprices this bond — check the price, the coupon and the maturity"*: three fields,
+all correct, and the reader sent to the wrong file. See `05` §1.15 for the full account.
+
+They are now `ExerciseTermsError`, under `ContractTermsError` → `PricingDomainError` →
+`Exception`, each carrying the JSON path of the field at fault. **Only `CalibrationError` may
+become `CALIBRATION_FAILED`.** The endpoint maps a `ContractTermsError` to `VALIDATION_ERROR`
+plus `err.field`, so `bond.put_schedule`, `bond.sinking_schedule`, `bond.call_schedule` and
+`bond.sinking_fraction_basis` each name themselves.
+
+### A schedule the grid cannot place is refused BEFORE any spread solving
+
+The lattice exercises on **coupon dates only**, never at the root or at maturity. A call inside
+the FINAL coupon period therefore lands on no node: `call_array` comes out all-`inf` and the
+bond prices as a straight bond, reporting an option worth exactly `0.000000`.
+
+That number is not a valuation — it is the absence of a question, and no reader can tell it
+apart from a genuine zero. `ExerciseScheduleNotRepresentable` + `check_representable` now refuse
+it, from both `embedded_option._prepare` and the driver's hand-built path — one rule, two
+callers — and **each right is checked separately**, because a live put must not license a dead
+call.
+
+⚠️ **The guard tests REPRESENTABILITY, not economic activity.** A sinking `fraction = 0` on a
+date is a legitimate contract. A first version conflated the two and correctly broke two
+Round-2a tests. The rule: refuse *"the model cannot express this"*, never *"this right happens
+to be worth nothing"*.
+
+`TNTD04920858` is the bond this concerns — 850,000 nominal, marked 85.12, callable at par 90
+days before maturity. It stays **refused and named** in
+`outputs/callable_disposition_<date>.csv`, and
+`docs/short_gap_callable_design_note_2026-08-31.md` sets out the three things an off-coupon
+exercise node must settle before it can be production code: irregular-step BDT calibration
+(inserting a node splits one 182-day step into 92 + 90, and the two fragments must jointly
+reproduce what the single step did, or **every** callable moves), off-coupon accrued and call
+price (the exercise comparison is clean-against-clean, which is correct only because every node
+is currently a coupon date — worth about half a coupon here), and explicit event ordering where
+no coupon is paid.
+
+**All eight bonds with call schedules were verified unaffected: latent, not live.**
+
+### The exercise-date conversion is now single-sourced
+
+`schedule_times` delegates to `core/utils/dates.exercise_schedule_times`, as does
+`dataio.to_lattice_schedule`. `days_per_year` is deleted — see `05` §1.2, which is now a closed
+trap rather than an open one.

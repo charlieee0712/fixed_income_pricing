@@ -1,6 +1,6 @@
 # START HERE — handoff 2 (the deep bundle)
 
-**Stamped 2026-08-30 · repo `fixed_income_pricing` main at `a5f7c81` · 287 tests green
+**Stamped 2026-08-31 · repo `fixed_income_pricing` main at `44e65fe` · 390 tests green
 (local Windows ~21 s, server 47 ~34 s) · working tree clean, origin and 47 in sync.**
 
 Client-confidential: this Project references a private US pension portfolio (URS). Keep the
@@ -94,6 +94,8 @@ reconciliation · `20` environment and execution mechanics · `21` comms and cou
 
 ## What changed since this bundle was created (2026-08-25)
 
+*Refreshed 2026-08-31. The two most recent rounds are at the end of this section; `01` §8 carries them in full, and the traps in `05` §1.12–1.17 are new.*
+
 **Round 2b, 2026-08-30 — the ask came from Mario's spreadsheet, not from a plan.**
 
 1. **Mario annotated column F** of the workbook's `Pivot of Corp Bonds` sheet, marking six
@@ -109,7 +111,7 @@ reconciliation · `20` environment and execution mechanics · `21` comms and cou
    price; **one of them had been absent from the output rather than flagged**. This is the
    most instructive thing in the refresh: `05` §1.9–1.10, `14` §1a, `06` §5.
 
-Test count 223 → **287**. Every pre-existing production number byte-identical, with the two
+Test count 223 → 287 → **390**. Every pre-existing production number byte-identical, with the two
 GBP bonds as the single itemised exception.
 
 ## Not in this bundle
@@ -124,3 +126,23 @@ Refreshed **only when the user explicitly asks** ("更新handoff") — not autom
 milestones. Curated files are updated in place; `30`–`40` are re-copied verbatim; the
 bundle is re-zipped as `handoff2_<date>.zip`. The user replaces the files in this Project's
 knowledge.
+
+---
+
+## Refresh 2026-08-31 — read this before quoting any earlier number here
+
+Two rounds landed after the 08-30 stamp. **Three claims in the previous version of this bundle
+were wrong, not merely stale**, and are corrected throughout:
+
+1. **Floating-rate duration does NOT have two regimes with opposite signs.** It has one. The
+   negative one was the engine repricing a coupon that had already been fixed at the last
+   reset. `03` and `13` are rewritten; the old wording is kept alongside, labelled as the bug.
+2. **The Excel bridge is not vanilla-only, and it is not "all seven" either.** It is
+   **7 / 5 / 5** — supported / constructible / verified by a real-Excel round trip. L35 is
+   superseded by L36 in `02`; `04` §1 and `17` are restated.
+3. **F13 is not "2 rows, 1 held".** Its two rows are the SAME bond listed twice, and it is
+   held. The tab has 676 ROWS but only **616 unique SECURITIES**. `01`, `11` and `15` corrected.
+
+Also new: corporate output **566** @3-31 / **561** @6-10 (a third invisible security recovered),
+tests **390**, Excel checks **57 / 61**, and six new silent-failure entries at `05` §1.12–1.17 —
+including the two that closed the 365.25 trap and the `ValueError`-swallowing-refusals trap.

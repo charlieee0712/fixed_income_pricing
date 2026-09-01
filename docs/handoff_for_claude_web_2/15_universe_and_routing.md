@@ -11,7 +11,7 @@ common source of wrong counts in a plan.
 |---|---|---|
 | **Monthly workbook rows** | 2,642 | the legacy run-sheet's saved outputs, ~2,600 bonds across several valuation dates. **Not** the client portfolio. |
 | **URS corporate universe** | 732 unique → **523 / 528 canonical** | the actual holdings after the exclusion funnel (6-10 / 3-31) |
-| **Priced output** | **565** = 555 priced + 10 flagged | what the corporate driver emits at 3-31 (was 564 = 553 + 11 before the 08-30 GBP units fix; see the update at the end of this file) |
+| **Priced output** | **566** = 555 priced + 11 flagged | what the corporate driver emits at 3-31. 564 = 553 + 11 before the 08-30 GBP units fix; 565 = 555 + 10 after it; 566 = 555 + **11** after the 08-31 defaulted-disposition rule recovered `TNTD03067251` as a third `recovery` row |
 
 A number quoted without its population is a number that will be wrong somewhere. "FLOATING
 426" is the cautionary example: it is a URS production count that a plan attributed to the
@@ -116,8 +116,9 @@ cmo-tranche · recovery
 
 ## Update 2026-08-30 — counts, and a bond that was in none of them
 
-**Corporate output @3-31 is now 565 rows** (was 564): **555 priced + 10 flagged** (was
-553 + 11).
+**Corporate output @3-31 is now 566 rows** (was 564): **555 priced + 11 flagged**.
+The GBP units fix took it to 565 = 555 + 10; the 08-31 defaulted rule added the eleventh
+flagged row, `TNTD03067251`. @6-10 the same chain reads 559 → 560 → **561**.
 
 | route | @3-31 |
 |---|---|
@@ -143,6 +144,13 @@ Two things follow for any coverage reasoning:
    been shown as *finished*. **A completeness statement can be wrong for a class you have
    already signed off.**
 
-The three denominators, for any plan quoting a number: **676** tab rows · **565** held /
-rated / matched positions @3-31 (560 @6-10) · **555** fully priced. Row F13 is the standing
-illustration that they differ — 2 tab rows, 1 held position.
+**FOUR** denominators, for any plan quoting a number: **676** tab ROWS · **616** unique
+SECURITIES on the tab · **566** held / rated / matched positions @3-31 (**561** @6-10) ·
+**555** fully priced.
+
+⚠️ The 676 → 616 step was missing from the earlier version of this file: **60 asset IDs are
+listed more than once**, because the pivot counts rows. Row F13 was cited here as "2 tab rows,
+1 held position", which is wrong in a way worth remembering — its two rows are the SAME bond
+(`TNTD04283895`) listed twice, and it IS held. Reading a duplicate listing as an unheld
+security understates coverage and invents a gap. `scripts/column_f_audit.py` prints all four
+populations; quote it rather than a memory.

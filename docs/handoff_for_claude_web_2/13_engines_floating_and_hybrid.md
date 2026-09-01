@@ -36,23 +36,47 @@ input at all**. It is replaced by two:
 
 That difference *is* the instrument, and it is the first thing to point at in a walkthrough.
 
-### ⚠️ Duration: two exact regimes, and the sign flips
+### ⚠️ Duration: ONE regime since 2026-08-31 — the second one was a bug
 
-The old docstring described only one of these, and two tests were written wrong against it
-before the engine was checked. Both regimes are exact, measured on a flat 4% curve, a
-30-year note:
+**Read this before quoting the 2026-08-30 bundle, which had it wrong.** That bundle, this
+file's previous version, and section 6 of the client report all described two exact regimes
+with opposite signs and called both correct, differing "only in interpretation". They were
+not. The negative one came from the bump repricing a coupon that had already been fixed at
+the last reset — an event in the past that a move in today's curve cannot touch.
+
+The deciding factor was not economics but a data field: two notes with the same issuer,
+maturity and exposure got opposite-signed risk depending on whether the custodian file
+happened to record the running coupon.
+
+Measured on a flat 4% curve, a 30-year note:
 
 | `current_coupon_pct` | effective duration | why |
 |---|---|---|
 | supplied (e.g. 4% or 6%) | **+0.104396** = +time to the **next** reset | the running coupon is genuinely fixed, so the bump cannot move it |
-| omitted (projected) | **−0.395604** = −time **since** the last reset | the bump reprices that period's coupon too, so the note behaves like a claim struck at the last reset |
-| — | *same-maturity fixed bond: 17.44* | the comparison that makes both look small |
+| omitted (projected) | **+0.104396** — the same | it is frozen too, via a base-curve proxy |
+| *(before the fix, omitted)* | *−0.395604 = −time since the last reset* | *the defect* |
+| — | *same-maturity fixed bond: 17.44* | the comparison that makes them look small |
 
-Both are within one coupon period, and the "supplied" case is independent of the coupon's
-level. A **third**, different regime exists for a deep-discount note: price ≈ par minus a
+**Implementation, and why it is where it is.** The freeze is in `frn_risk_metrics`, not in
+`price_frn`. `price_frn` stays a plain scenario repricer, so the par-under-any-shift
+telescoping invariant — the anchor test of this whole engine — is untouched. When the coupon
+is unobserved, the proxy is read back off the engine's own grid (`FrnResult.cashflows[0][2]`),
+which is automatically the true stub start (before the valuation date) and already includes
+the quoted margin; rebuilding it by hand would risk dropping the margin or mis-dating the
+period. At zero shift the proxy equals the old value, so **price and OAS cannot move** — only
+duration, DV01 and convexity, which is exactly what the production diff showed.
+
+`frn_risk_metrics` also returns `current_coupon_source` (`supplied` | `base_curve_proxy`) and
+`risk_status` (`final` | `provisional`), and the driver writes both columns. Production reads
+6 proxy / 1 supplied at 3-31.
+
+Both are within one coupon period, and the answer is independent of the coupon's level. A
+**third**, different regime exists for a deep-discount note: price ≈ par minus a
 spread annuity, so a rate rise shrinks the gap to par and the price *rises*, giving a negative
 duration of order spread × annuity duration — and this one **grows with maturity**, unlike the
-two above. A 57-year note marked near 50 shows ≈ −10.6.
+two above. A 57-year note marked near 50 shows ≈ −10.6. This is real economics and SURVIVES
+the freeze: four of the six corrected floaters remain negative, and the two nearest par cross
+to small positives.
 
 Universal check: `|duration| ≪` a same-maturity fixed bond. That is the reliability test to
 run when a floater's number looks surprising.
@@ -134,7 +158,7 @@ No numeric golden exists for these families — every relevant Monthly row is in
   holds to 1e-12 at every curve level, the margin-0 telescoping is exact on any curve, and the
   two degenerate limits are bit-exact.
 
-## 6. Route census (source: `outputs/implied_oas_2009-03-31.csv`, 565 rows)
+## 6. Route census (source: `outputs/implied_oas_2009-03-31.csv`, 566 rows)
 
 Rows 12/14/15/16 = 27 tab rows, all 27 held: **7 FRN + 8 hybrid + 6 vanilla-schedule
 re-routes = 21 priced**; 5 `hybrid-margin-unavailable` + 1 defaulted floater. Rows 6–11

@@ -16,16 +16,32 @@ on the wrong day, on the wrong curve, and every output would look reasonable. Da
 must be ISO **strings**; a numeric date is refused. This is the single most dangerous input
 error available in the whole interface.
 
-### 1.2 Two different day counts for exercise dates
+### 1.2 Two different day counts for exercise dates — ✅ CLOSED 2026-08-31
 
-`dataio.call_schedules.to_lattice_schedule` still **defaults to 365.25** days per year,
-while the coupon grid is ACT/364. Both production drivers pass `days_per_year=364.0`
-explicitly, so production has always been consistent — but a new caller taking the default
-would put exercise dates on a different time axis than coupons, shifting every option date
-slightly. New code routes through `core.pricing.tree.schedule_times`, and a test pins the
-two conversions against each other. The stale default has deliberately not been changed
-(touching a validated data module for no production benefit is exactly what a migration
-round must not do), so **it is still there waiting**.
+**This trap is gone; the entry is kept because the shape of it recurs.**
+`dataio.call_schedules.to_lattice_schedule` used to default to **365.25** days per year while
+the coupon grid ran on ACT/364. Both production drivers passed `days_per_year=364.0`
+explicitly, so no shipped number was ever wrong — but a new caller taking the default would
+have placed exercise dates on a different axis than the coupons they must be compared against,
+producing a plausible price, no error and no symptom.
+
+The fix was NOT to change the default. **The duplication itself was the defect**, so there is
+now one implementation and the argument is deleted:
+
+```text
+core/utils/dates.exercise_schedule_times      the conversion (ACT/364, clamp, sort)
+  <- core/pricing/tree.schedule_times         engine-facing name, delegates
+  <- dataio.call_schedules.to_lattice_schedule  data-facing name, delegates
+```
+
+Passing `days_per_year` is now a `TypeError`. A day count is a modelling convention, not a
+caller's choice. `tests/test_call_schedules.py` pins 364, pins the TypeError, and checks the
+two public names agree over a span containing two leap days — where the old and new
+conventions differ by more than a month.
+
+**The generalisable lesson:** when the same decision has two owners, aligning their constants
+is the weaker fix. Give it one owner and delete the other. The same shape appears at §1.12
+(routing vs driver thresholds) and §1.13 (`defaulted` meaning two things).
 
 ### 1.3 A put silently beating a call
 
@@ -130,7 +146,7 @@ When you next reason about coverage, the question is not "how many are flagged" 
 
 ### 1.11 Cross-platform CSV comparison showing a difference that is not a regression
 
-Full 565-bond driver outputs from Windows and from server 47 are **not byte-identical**. They
+Full 566-bond driver outputs from Windows and from server 47 are **not byte-identical**. They
 differ by up to **3.6e-8 relative, and entirely in the `convexity` column** — convexity is a
 second difference divided by the square of a one-basis-point bump, so it amplifies a last-bit
 floating-point difference by 10⁸. Prices, spreads and durations agree to about 1e-12, and every
@@ -141,6 +157,114 @@ regression and is not one. And the correct parity protocol is **local-fresh vs l
 which is byte-exact and therefore a *stricter* test than the cross-platform comparison it
 replaces. (Two local runs of the same driver are byte-identical — that was verified before
 relying on it.)
+
+### 1.12 ⭐ A security priced by NOTHING, because two files each owned half a decision
+
+`TNTD04920858` — 850,000 nominal, marked 85.12, callable at par 90 days before maturity — was
+in no output, no document and no message for weeks.
+
+`universe.py` sent callables with a call/maturity gap ≤ 7 days to the vanilla engine as
+economically-irrelevant make-wholes, and excluded the rest with reason `callable`.
+`callable_risk.py` then priced only those with a gap **> 366 days**. A bond at 90 days
+satisfied neither rule. It was not flagged, because neither file thought it owned it.
+
+It had even been written down once, in the work log, as a "minor loose end", and then fell out
+of every count that followed.
+
+**The fix was NOT to align the two thresholds.** Responsibilities were separated instead:
+routing decides candidacy, the driver consumes ALL candidates (`GAP_DAYS` deleted), and the
+tree decides representability. One decision, one owner.
+
+**How to catch this class:** a count that balances is not evidence. `dataio/dispositions.py`
+reconciles over SETS of identifiers — every candidate has exactly one named outcome — and both
+drivers run it at run time. A count check balances happily with the wrong bond in the wrong
+set, which is how two omissions survived.
+
+### 1.13 ⭐ One word naming two different things, with a handler for each
+
+`defaulted` is a **coupon class** (the workbook cell reads "N/A (Defaulted)") *and* an
+**exclusion reason** (the rating maps to D/SD). They are independent. Two recovery paths had
+grown up, one keyed on each:
+
+```text
+the special-coupon loop   filtered on coupon_class in (zero, stepped, step-up, defaulted)
+the floating loop         tested primary_reason == "defaulted" or BT <= 1.0
+```
+
+`TNTD03067251` — **8.78 million nominal across three lots** — has a defaulted rating and an
+ordinary fixed coupon formula, so it matched neither. Invisible, like 1.12, and larger.
+
+Now the **rating decides once**, before any coupon-class routing, unless one of Mario's
+permanent coupon-class exclusions outranks it. Output 565 → 566 @3-31, 560 → 561 @6-10.
+
+A fourth defaulted name stays excluded correctly but had the **wrong reason** attached: it was
+reported as excluded for default when what actually keeps it out is its `na` coupon class.
+Naming the wrong owner hides a decision somebody made.
+
+### 1.14 ⭐ An option value of exactly 0.000000 that was never computed
+
+The same bond as 1.12 reported `opt_val_oas0 = 0.000000`. That was not a valuation. The
+lattice exercises on **coupon dates only**, and never at the root or at maturity. A call inside
+the FINAL coupon period lands on no node, so `call_array` came out all-`inf` and the bond
+priced as a straight bond — with the option silently absent rather than worthless.
+
+A reader cannot tell "we evaluated the right and it is worth nothing" from "we never asked".
+`ExerciseScheduleNotRepresentable` + `check_representable` now refuse it **before any spread
+solving**, from both the wrapper and the driver's hand-built path, and each right is checked
+**separately** — a live put must not license a dead call.
+
+⚠️ The guard tests **representability, not economic activity**. A sinking `fraction = 0` on a
+date is a legitimate contract, and a first version that conflated the two broke two Round-2a
+tests. Refuse "the model cannot express this", never "this right happens to be worth nothing".
+
+### 1.15 ⭐ Contract refusals reported as "no spread reprices this bond"
+
+A spread solver must catch something around its pricing callback, because a bond that reprices
+at no spread is a real outcome. While the engine's deliberate refusals were also `ValueError`,
+that catch swallowed them: a contradictory pair of exercise dates came back as
+
+> no spread reprices this bond — check the price, the coupon and the maturity
+
+three fields, every one of them correct, and the reader sent to the wrong file. It happened
+with the sinking-fund basis, then a schedule the grid could not place, then a put above a
+call. Each was fixed where it surfaced and the next arrived anyway, because **being a
+`ValueError` was the defect**, not any single raise site.
+
+`src/pricer/errors.py` now roots the family at `Exception`:
+
+```text
+PricingDomainError
+  ContractTermsError(message, field)   the terms cannot be priced as described
+    ExerciseTermsError                 call / put / sinking rights specifically
+  CalibrationError                     the ONLY thing that may become CALIBRATION_FAILED
+```
+
+`ValueError` keeps its ordinary meaning: a malformed argument at the call site.
+
+**A second bug fell out of this.** `scripts/phase2_risk.py` named `CalibrationError` in three
+`except` clauses **without importing it** — valid Python until an exception passes through, and
+all five drivers ran green because no bond happened to fail calibration that day. The first one
+that did would have got a `NameError` where a flagged row belonged.
+`tests/test_exception_wiring.py` now parses every file in `src/` and `scripts/` and requires
+each name in an `except` clause to be bound, plus a lock proving the checker detects that exact
+shape rather than passing vacuously.
+
+### 1.16 The evidence artifact that was itself losing a run
+
+`outputs/corporate_disposition.csv` and `callable_disposition.csv` defaulted to **undated**
+filenames, unlike `implied_oas_<date>.csv`. Running 3-31 and then 6-10 left only the 6-10 file.
+The artifact built to prove nothing is silently lost was silently losing a run. Both are dated
+now, and the release-facts file records all four.
+
+### 1.17 Redirected stdout encoded as GBK
+
+`python scripts/x.py > out.md` encodes with the **system codec** on this machine (GBK), so
+every em dash becomes mojibake while the script exits 0. The first release-facts file was
+produced that way. `scripts/release_facts.py` now writes with `encoding="utf-8"` explicitly.
+Same family as 1.5 (`pytest.ini` read with the system codec).
+
+⚠️ The **console** shows the same mojibake for a file that is perfectly good UTF-8. Check the
+bytes before concluding a file is broken — `raw.decode("utf-8")` succeeding is the test.
 
 ## 2. Environment traps
 

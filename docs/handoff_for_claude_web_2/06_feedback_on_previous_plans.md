@@ -77,7 +77,7 @@ plans already have an alignment gate — put the assumption in it:
 ### Habit 4 — name the silent-failure modes
 
 Both rounds' worst risks were things that fail by producing a plausible number or nothing at
-all: the date serial, the 365.25-vs-364 axis, `null` in VBA, Edge writing no PDF. A short
+all: the date serial, the 365.25-vs-364 axis (since closed), `null` in VBA, Edge writing no PDF. A short
 "what could fail quietly here?" pass over a draft plan is high yield, because loud failures
 get caught by tests anyway.
 

@@ -5,6 +5,148 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-08-31 (fourth wave) — Excel closes at 7 / 5 / 5, and the obsolete zips leave the branch
+**Commits:** `630a554` (zips) · `44e65fe` (floating through Excel)
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Two small, separately auditable pieces of work, both decided by the user.
+
+**The four `fixed_income_code_v*.zip` snapshots were removed from the branch.** They were
+whole-tree deliverables from June and July; their contents are in the history, they are not a
+runtime dependency or golden data, and at the repo root they read as the *current* delivery
+package, which is `code_structure_sample/`. History was not rewritten and nothing was
+force-pushed, so `git show 4e6ef6a^:fixed_income_code_v3.zip` still recovers any of them —
+verified, 72,758 bytes intact. `.gitignore` gained one rule anchored at the root,
+`/fixed_income_code_v*.zip`, checked not to match the tracked `data/*.zip` source archives.
+
+**The Excel scope closed from 7 / 5 / 4 to 7 / 5 / 5.** `floating` was constructible from cells
+and had never been driven from a real spreadsheet, and the sheet had nowhere to carry the two
+things a floating note actually has. Two optional named cells, read only when the type is
+`floating`: `FIP_QuotedMarginBp` (the contractual margin over the index, in bp) and
+`FIP_CurrentCouponPct` (the coupon already fixed at the last reset, in percent).
+
+Neither is defaulted. Blank margin gives `UNUSED_FIELD`, and the calibrated spread is then a
+discount margin rather than clean credit; blank running coupon gives `PROVISIONAL_RISK` and a
+base-curve proxy frozen through the bumps.
+
+Scope was held deliberately. `stepped` and `fixed_to_floating` remain unconstructible, because
+adding a coupon-schedule table or a switch-date cell would put a sixth type on a worksheet
+whose layout Mario has not chosen. The user set an explicit stop condition — halt and keep
+7 / 5 / 4 if this needed pricing mathematics, JSON schema or new serializer logic — and it was
+never approached: the bridge diff is **37 added lines, 0 deleted**, and
+`git diff 4e6ef6a -- src scripts data` is empty, so no production number could move.
+
+Excel checks **48 to 57** in fixture mode and **50 to 61** live, on real Excel. The live
+floating round trip returns **397.3304715128111 bp** for `TNTD03080834` — bit-identical to the
+delivered `implied_oas_2009-03-31.csv` row, produced from a spreadsheet. The second live case
+is Morgan Stanley `TNTD04882955` at its documented L+45 quarterly, 618.06 bp. Both new fixture
+pairs use REAL URS terms; neither is synthetic.
+
+`test_the_excel_bridge_emits_only_the_documented_fields` did exactly what its docstring
+promised: it failed on this change and named the four documents to update. It now pins the new
+fields as emitted and `coupon_schedule` / `switch_date` / `float_frequency` as absent, so
+7 / 5 / 5 cannot go stale silently. The Excel README had claimed outright that "the bridge
+sends any of the engine's seven products"; that is corrected, along with the weekly report,
+the walkthrough, interface section 14.8 (plus a new 14.8.1) and CLAUDE.md.
+
+390 tests. Handoff bundle 2 refreshed in the same session on the user's instruction.
+
+---
+
+## 2026-08-31 (third wave) — post-Round-2b hardening and release
+**Commits:** `044a58e` (directive + Gate-0 revision) · `6cf5ede` · `a09df33` · `3bc007d` ·
+`7c43faa` · `06d693b` · `c7e4866` · `303bef1` · `49f99c8` · `04086cd` · `e619a3b` · `ab51e36` ·
+`9b551b6` · `c98a028` · `4e6ef6a`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Executed against `docs/cc_post_round2b_review_hardening_and_release_instruction_2026-08-31.md`,
+with a Gate-0 revision recorded in its section 14 **before** any implementation (six
+adjustments, two of which changed what a workstream had to do). 302 to **390** tests.
+
+### The one intentional numerical change
+
+An FRN's running coupon was fixed at its last reset, in the past, so a shift of today's curve
+cannot change it. The engine already knew that when the custodian file recorded the number;
+when the field was blank it projected the coupon and the bump moved it too. That **reversed
+the sign** of the reported duration, and which answer a bond got depended on whether a data
+field happened to be numeric — not on any economics.
+
+`frn_risk_metrics` now freezes it either way, using a **base-curve proxy** read off
+`FrnResult.cashflows[0][2]` when unobserved, so the proxy carries the true stub start and the
+quoted margin without rebuilding either. Placed in the risk function and deliberately **not**
+in `price_frn`, which stays a plain scenario repricer — that keeps the par-under-any-shift
+telescoping invariant, the anchor of the whole floating engine. Because the proxy comes off the
+*unshifted* curve, at zero shift it reproduces the old value exactly, so **price and calibrated
+OAS cannot move**.
+
+Six of seven floaters moved, all positive, each equal to one coupon period times 100/P to
+within 3%. Four remain negative afterwards, correctly: a floater deep below par carries a wide
+spread that behaves like a fixed annuity. The two nearest par cross to small positives, the
+textbook result. Acceptance was mechanical — the moved set is exactly the floating rows that
+had been negative, and no other column or file moved. Note:
+`docs/frn_current_coupon_freeze_2026-08-31.md`.
+
+### A third security that was invisible
+
+`defaulted` names a **coupon class** and an **exclusion reason**, independently, and a recovery
+path had grown up keyed on each. `TNTD03067251` — 8.78M nominal across three lots, defaulted
+rating, ordinary fixed coupon — matched neither, so it appeared in no count and produced no
+message. The rating now decides once, unless a permanent Mario coupon-class exclusion outranks
+it. Corporate output **565 to 566** at 3-31 and **560 to 561** at 6-10. A fourth defaulted name
+stays excluded correctly, but its reason now reads `excluded-structured` rather than
+`defaulted` — naming the wrong owner hid a decision Mario had made.
+
+This was the third instance of the same shape, after the GBP units bug and the callable routing
+hole.
+
+### Structural work, every commit numerically inert
+
+- **`src/pricer/errors.py`** — `PricingDomainError` to `ContractTermsError(.field)` to
+  `ExerciseTermsError`, plus `CalibrationError`, rooted at `Exception` rather than
+  `ValueError`. The solvers' own `except ValueError` had been swallowing contract refusals and
+  reporting them as "no spread reprices this bond — check the price, the coupon and the
+  maturity": three fields, all correct, reader sent to the wrong file. It had been fixed three
+  times at three raise sites before the *type* was recognised as the defect.
+  `tests/test_exception_wiring.py` parses every file in `src/` and `scripts/` and requires each
+  name in an `except` clause to be bound — a static check, because a runtime one is worthless
+  here. It immediately caught a live `NameError` in `scripts/phase2_risk.py`, which named
+  `CalibrationError` in three handlers without importing it and had been green only because no
+  bond had failed calibration.
+- **One ACT/364 exercise conversion.** `core/utils/dates.exercise_schedule_times`;
+  `tree.schedule_times` and `dataio.to_lattice_schedule` both delegate, and `days_per_year` is
+  deleted rather than re-defaulted. The duplication was the defect, not the value.
+- **The private-helper seam closed.** `hybrid` no longer imports `floating._as_date` or `._df`;
+  `discounting` gains `curve_rate` and `curve_discount_factor`, and floating's privates are
+  `is`-asserted aliases so the legacy shim's documented re-export contract still holds.
+- **Provenance labelling.** All nine exercise schedules are `provisional` in the data and in
+  every output; **zero are confirmed against Bloomberg**. Floaters carry
+  `current_coupon_source` and `risk_status` (6 proxy, 1 supplied). The endpoint raises
+  `PROVISIONAL_TERMS` and `PROVISIONAL_RISK`; a missing column defaults to `provisional`, never
+  `confirmed`, and an unrecognised status is refused. Labels never change a number — asserted
+  with `==`.
+- **Dated disposition sidecars.** The undated defaults let the 6-10 run overwrite 3-31: the
+  artifact built to prove nothing is silently lost was itself losing a run.
+- **`scripts/release_facts.py`** writing `docs/release_facts_<date>.md`, UTF-8 explicitly,
+  because redirected stdout encodes as GBK on this machine.
+
+### Documents
+
+Corrected from fresh runs rather than from memory: the weekly report (new section 4.5), the
+walkthrough, interface section 14.8 and a new section 15, `COVERAGE.md`, `missing_data.md` G5.
+Two new memos: `short_gap_callable_design_note_2026-08-31.md` and
+`shim_exit_policy_2026-08-31.md` (four exit criteria, all required; criterion 1 UNMET — all
+three drivers still import `pricing.*`).
+
+A final review found the per-route breakdown in `COVERAGE.md` summing to 548 under its own
+headline of 550; corrected, and the sums are now written on the page.
+
+No new Mario or Liping request was opened, by instruction. Excel gate re-run: 48/48 fixture and
+50/50 live at the time. Local and 47 both clean at `4e6ef6a`.
+
+---
+
 ## 2026-08-31 (second wave) — Workstream B: the Excel bridge sends the tree products
 **Commits:** `a4cd9c5` (bridge + tests + fixtures) · this entry's commit (report, records,
 package)

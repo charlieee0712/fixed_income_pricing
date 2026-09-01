@@ -26,7 +26,7 @@ repo must stay private. `data/` is the canonical location; `.gitattributes` mark
 
 | File | Holds | Consumed by |
 |---|---|---|
-| `call_schedules.csv` | `asset_id, call_date, call_price` — one row per call date, multiple rows = a step schedule | `dataio.call_schedules`; the lattice's **only** source of exercise terms |
+| `call_schedules.csv` | `asset_id, call_date, call_price` + **since 08-31** `exercise_terms_status, exercise_terms_source, exercise_price_source, exercise_terms_as_of, source`. One row per call date; multiple rows = a step schedule | `dataio.call_schedules` (`load_call_schedules` + `load_call_provenance`); the lattice's **only** source of exercise terms |
 | `coupon_schedules.csv` | documented coupon paths; an entry routes ANY class to `vanilla-schedule` | `dataio.term_overrides` |
 | `frn_spreads.csv` | quoted margins (+ a `freq` column, so quarterly resets use the quarterly curve variant) | `dataio.term_overrides` |
 | `make_whole_overrides.csv` | documented make-whole-only bonds the 7-day heuristic misses | `dataio.term_overrides` |
@@ -120,3 +120,37 @@ the curve built.
 declares that `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt` store par yields in percent
 while the other 24 exports store decimals. Treat it as part of the data layer: adding a new
 currency file means checking it against the market on a verifiable date and adding a line.
+
+---
+
+## Update 2026-08-31 — exercise terms now carry their own provenance
+
+`data/call_schedules.csv` gained four columns, and every one of its **nine rows** reads
+`provisional / custodian_AB_seed / par_call_convention`. **Not one exercise term in this
+project has been confirmed against Bloomberg.**
+
+That was already true and already written down in `docs/missing_data.md`. What changed is that
+it is now visible **at the number**: a call price of `100.0` in an output column looks
+identical whether it came from a prospectus or from a convention someone applied to a
+custodian date, and every one of ours is the second.
+
+`dataio.call_schedules.load_call_provenance` reads them. Two rules that matter for any plan
+touching this file:
+
+- **A missing column defaults to `provisional`, never `confirmed`.** An absent statement of
+  provenance is not evidence of good provenance.
+- **An unrecognised status is REFUSED**, not coerced. `verified`, `final`, `TRUE` and a typo
+  must not be read as confirmation.
+
+Both drivers write `exercise_terms_status | _source | exercise_price_source | _as_of` on all
+eight lattice-priced bonds, and the endpoint raises `PROVISIONAL_TERMS` when a tree request
+does not declare confirmed terms. Labels never change a number — asserted with `==`.
+
+`TNTD04115619` additionally carries a named `review_note` in `callable_risk.csv` (≈1994 bp on a
+3.9y BBB marked 60.65). It is a **recorded observation, not a threshold**: nothing is filtered
+on it, and the arithmetic is sound — the note says that a spread that wide is the market
+pricing default risk rather than a term premium, and that the call is not binding at that
+price, so the figure does not depend on the seeded schedule.
+
+**The three corporate schedules joined the existing confirmation-only deferred queue. No new
+request was opened**, by instruction. Every one of those bonds prices today.

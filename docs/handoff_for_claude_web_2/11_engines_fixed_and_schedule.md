@@ -95,7 +95,8 @@ about what would unblock it.
 
 `pricing/coupon_schedule.py` → **`pricer/core/pricing/coupon_schedule.py`** (verbatim; the old
 path is a shim), with a thin wrapper at **`assets/corporate/stepped.py`**. This serves Mario's
-pivot rows **F13** (7.00%/7.50% date-segmented, 2 rows) and **F20** (step-up, 1 row).
+pivot rows **F13** (7.00%/7.50% date-segmented, 2 rows = ONE security listed twice,
+`TNTD04283895`) and **F20** (step-up, 1 row).
 
 **The point worth making to anyone reading it: these are not a new model.** The coupon varies
 over time but every future payment is known today — no option, no projection, no volatility.

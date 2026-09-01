@@ -16,10 +16,16 @@ Who owes what to whom, and what must **not** be re-asked yet.
 
 1. ⭐ **How should the extra bond types appear on the demonstration spreadsheet?** One sheet
    with a bond-type dropdown that shows and hides the fields each type needs, or one small
-   sheet per type. **This is the only live blocker on our side**: the engine and the message
-   contract already handle all seven types, so it is purely a layout decision — a couple of
-   hours either way — and it is his team's daily view, so it is his call. Until he answers,
-   the bridge deliberately sends plain bonds only.
+   sheet per type. It is purely a layout decision — a couple of hours either way — and it is
+   his team's daily view, so it is his call.
+
+   ⚠️ **Restated 08-31; the earlier wording overstated the blockage.** This is no longer "the
+   only live blocker", and the bridge no longer "sends plain bonds only". The bridge now
+   constructs **five** of the seven types and five are verified by real-Excel round trips.
+   What is missing is the *worksheet*, not the plumbing: the engineering test surface drives
+   named cells directly, and the visible demo workbook (`DemoBuilder.bas`) is still
+   vanilla-only. Two types (`stepped`, `fixed_to_floating`) are deliberately left
+   unconstructible so that answering this question does not arrive pre-empted.
 
 **Answered by the 08-27 meeting, no longer open:**
 

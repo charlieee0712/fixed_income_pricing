@@ -32,7 +32,7 @@ Working rules derived:
 | G2 | pass-through amortization | 13 uniques (16 tab rows) | 13 corporate securities (out of output) | new schedule table + amortizing-vanilla engine on arrival | ⏳ Mario 07-20 · Liping 07-30 |
 | G3 | FRN/hybrid terms | 11 (3 all-terms + 8 margins) | 8 BT-marked hybrids; 3 FRNs priced imprecisely | `frn_spreads.csv` / `hybrid_switch_terms.csv` — one cell each | ⏳ Mario 07-20 · Liping 07-30 |
 | G4 | call schedule | 1 (AssuredGty US04622DAA90) | the unpriced 5th corporate callable | one `call_schedules.csv` row | ⏳ Liping 07-30 (first ask) |
-| G5 | deferred / confirmation-only | KTBi · ~~GBP~~+KRW curves · 5 AGY confirms · 1 rating quirk · FHR 3122 ZB | 1 ILB; rest = confirmation | curve txt rows / `call_schedules.csv` / master fix | ⏳ Liping 07-30 (opportunistic); standing plan = Mario MBS touchpoint. **GBP WITHDRAWN 2026-08-30 — see below** |
+| G5 | deferred / confirmation-only | KTBi · ~~GBP~~+KRW curves · **3 corp + 5 AGY call-schedule confirms** · 1 rating quirk · FHR 3122 ZB | 1 ILB; rest = confirmation | curve txt rows / `call_schedules.csv` / master fix | ⏳ Liping 07-30 (opportunistic); standing plan = Mario MBS touchpoint. **GBP WITHDRAWN 2026-08-30 — see below** |
 
 Channels: **Mario** (client side, owns G1/G2/G3 since 07-20/07-22, no reply yet) and **Liping**
 (colleague, occasional campus Bloomberg access; full request incl. BDP template sent 2026-07-30).
@@ -136,13 +136,29 @@ Lands via: one CSV row → the BDT lattice prices it, zero code change.
 
 Standing plan (2026-07-22): these wait for **Mario's** MBS-data touchpoint — do NOT re-ask him
 before then. Asked **opportunistically of Liping 2026-07-30** (different channel, zero marginal
-cost); the Mario-side deferral discipline is unchanged.
+cost); the Mario-side deferral discipline is unchanged. **No new request was opened in the
+2026-08-31 round, by instruction.**
+
+**Every exercise schedule is now labelled `provisional` in the outputs themselves**
+(2026-08-31) — all nine rows of the table, the eight bonds that price and the one
+(`TNTD04920858`) whose call date the model grid cannot place. `data/call_schedules.csv` carries `exercise_terms_status` / `_source` /
+`exercise_price_source` / `_as_of`, and every row reads `provisional / custodian_AB_seed /
+par_call_convention`. Not one exercise term in this project has been confirmed against
+Bloomberg. That was already true and already written down here; what changed is that a reader
+of `callable_risk.csv` or of a JSON response can now see it beside the number, instead of
+having to know to come and look. The endpoint raises `PROVISIONAL_TERMS` on any tree request
+that does not declare confirmed terms.
+
+These are **confirmation-only**: every one of the eight bonds prices today, and the numbers do
+not wait on the answer. A confirmation would replace a convention we applied with a term
+somebody documented — worth having, worth nobody's phone call on its own.
 
 | item | ids | unlocks | lands via |
 |---|---|---|---|
 | KTBi indexation terms (index ratio / base CPI @2009-03-31) | TNTG673976U / KR1035027T36 | the 1 BT-marked ILB (`ilb-indexation-unverified`, $1.2M) | ratio_0 input to `pricing/ilb.py` |
 | KRW govt par curve, 2009-03-31 row | — | KTBi at the 3-31 baseline (file has 06-10 only) | row in the KRW curve txt |
 | ~~UK Gilt par curve @2009-03-31 & 06-10~~ **WITHDRAWN 2026-08-30** | — | ~~FT-GBP + 2 GBP bonds~~ — both now priced | ✅ **not a data gap: a units bug on our side.** The GBP file stores par yields in PERCENT while 24 of the 26 files store decimals; the loader scaled everything by 100, making the gilt curve 73%-415%, which the bootstrap correctly refused as "not arbitrage-free". We read that as a fact about the data. Fixed in `curves.bootstrap.PAR_YIELD_UNITS` + a units guard. **Do not ask Mario or Liping for a GBP curve.** |
+| **Corporate call schedules (confirmation)** — ADDED 2026-08-31 | TNTD04115619 · TNTD04441873 · TNTG701850W | none — all three are priced today; confirmation would replace a convention with a term | `call_schedules.csv` rows if they differ |
 | Agency call schedules (confirmation) | US3133XKKW43 · US3128X4BE02 · US3128X4UZ20 · US31359ML849 · US31359M2B87 | none — par@100-from-AB lattice already matches custodian AQ 4/5 | `call_schedules.csv` rows if they differ |
 | FNMA 6.25 2011 rating quirk | TNTD04366584 / US31359MGT45 | senior-vs-sub identity behind the master's A/Aa2 | note / master correction |
 | FHR 3122 ZB (REMIC Z, misfiled as AGY debenture) | TNTD04733316 | CMO-phase input (BT-marked now, no force-pricing) | DES terms for the future CMO engine |

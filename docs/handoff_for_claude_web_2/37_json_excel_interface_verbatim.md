@@ -223,8 +223,16 @@ failures are genuinely different situations and are reported as such:
 ```
 CHF 2009-03-31   no curve file configured for that currency   -> CURVE_NOT_FOUND
 KRW 2009-03-31   file exists, that date is not in it          -> CURVE_NOT_FOUND
-GBP 2009-03-31   file and date exist, par curve not arb-free  -> CURVE_BUILD_FAILED
 ```
+
+⚠️ **`CURVE_BUILD_FAILED` has no live example.** GBP used to be the third line here — until
+2026-08-30, when the GBP par file turned out to be stored in percent while 24 of the 26
+files store decimals. Our loader scaled it by 100 and the bootstrap correctly refused the
+resulting 73%-415% curve; we had recorded that as a fact about the market data. GBP now
+builds in all four variants and both GBP bonds price. The code path is still there and still
+tested — by monkeypatching the loader, which is the right way round: the subject of that
+test is the error MAPPING, not the state of any file. A test whose fixture is "this real
+thing happens to be broken" fails the day the thing is fixed, and looks like a regression.
 
 There is **no silent USD fallback**. A bond whose currency we cannot price is
 refused, because a EUR bond quietly discounted on a USD curve is a wrong number that
@@ -449,9 +457,164 @@ somewhere unhelpful.
   refused, with the reason: a fixed share of the *original* face works against a shrinking
   base, which a recombining tree cannot represent.
 
-### 14.6 Not yet done
+### 14.6 What each layer supports
 
-**The Excel bridge still sends plain bonds.** The engine and the message format handle all
-seven types; the worksheet does not yet have cells for the per-type fields. That is a
-layout decision for Mario's team, and it is the open question in the 2026-08-30 report.
-Nothing blocks it technically: the bridge writes whatever named cells it is given.
+Updated 2026-08-31, after the Excel bridge was extended to the tree products.
+
+| Layer | vanilla | stepped | floating | fixed→float | callable | puttable | sinking |
+|---|---|---|---|---|---|---|---|
+| Python wrapper | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| JSON endpoint | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Real Excel bridge** | ✅ | via the same fields | via the same fields | via the same fields | **✅ tested** | **✅ tested** | **✅ tested** |
+| Final customer layout | complete | pending Mario | pending Mario | pending Mario | pending Mario | pending Mario | pending Mario |
+| Live URS cohort | 481 bonds | 10 | 7 | 10 | 3 | **none** | **none** |
+
+Two rows deserve reading together. The **bridge** row says the adapter can send and display
+these products; the **layout** row says the polished daily-use worksheet has not been
+designed, because that is Mario's decision and the open question in the 2026-08-30 report.
+What exists today for the tree types is an engineering/QA surface, not a customer sheet.
+
+And the **live cohort** row is the honest caveat on the puttable and sinking evidence: no
+URS holding is a puttable or a sinking-fund bond. Those are validated on **synthetic
+fixtures**, which prove the model and interface behave, and prove nothing about a portfolio.
+They are labelled synthetic wherever they appear.
+
+### 14.7 Excel-side inputs for the tree products
+
+All optional. A sheet that names no `FIP_InstrumentType` sends exactly the v1.0 vanilla
+request it always did — which is what keeps the existing workbook and its original checks
+working untouched.
+
+| named cell | meaning |
+|---|---|
+| `FIP_InstrumentType` | the dispatch value; absent → vanilla |
+| `FIP_Operation` | `calibrate_and_risk` (default) or `price_at_oas` |
+| `FIP_OASBp` | read **only** for `price_at_oas` — the calibrating operation refuses a supplied spread, so sending one would turn a good sheet into an error |
+| `FIP_SinkingFractionBasis` | `outstanding`; never defaulted by the bridge |
+
+Schedules are **named Excel Tables**, so they can be any length and live on any sheet —
+which is what keeps the bridge independent of the layout Mario has yet to choose:
+
+```text
+FIP_CallSchedule      Date | PricePer100
+FIP_PutSchedule       Date | PricePer100
+FIP_SinkingSchedule   Date | FractionOutstanding | PricePer100
+```
+
+The rules, and they are deliberately strict in one direction only:
+
+1. a **wholly blank row is ignored** — a table can be laid out with spare rows;
+2. a **partly filled row is an error** naming the table and the row number, raised in Excel
+   before Python is called. Nothing is defaulted: an assumed exercise price or redemption
+   fraction would be a contractual term nobody agreed to;
+3. every date becomes an **ISO string**; a numeric Excel serial never reaches the JSON;
+4. **row order is preserved** — the bridge does not sort, dedupe, infer or fill;
+5. an **absent or empty table is omitted**, not sent as an empty schedule. A required one
+   that is missing comes back as the engine's own named refusal.
+
+### 14.8 What Excel can actually send — three different numbers, corrected 2026-08-31
+
+An earlier version of this section said the bridge "handles all seven types". That reads one
+number off the engine and attaches it to the spreadsheet, and the two are not the same. The
+honest statement has three parts, and each was measured by driving `BuildRequest` and running
+the result through the live endpoint:
+
+| | count | which |
+|---|---:|---|
+| **supported by the engine and the contract** | **7** | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
+| **constructible by the VBA builder** | **5** | the above minus `stepped` (no cells for a coupon table) and `fixed_to_floating` (no cell for the switch date) |
+| **verified by real-Excel round trips** | **5** | vanilla · callable · puttable · sinking · **floating** |
+
+**Updated 2026-08-31: this was 7 / 5 / 4.** `floating` was constructible but had never been
+driven from a real spreadsheet, and the sheet had no cell for the quoted margin or the running
+coupon — so Excel could only send a floater in its least informative form. Two optional cells
+closed both gaps at once (§14.8.1). The remaining two types are unconstructible **on purpose**:
+adding a switch-date cell or a coupon-schedule table would make a sixth type reachable from a
+worksheet whose layout Mario has not chosen.
+
+#### 14.8.1 The two floating cells
+
+| cell | meaning | left blank |
+|---|---|---|
+| `FIP_QuotedMarginBp` | the contractual margin over the index, in bp | `UNUSED_FIELD`: the calibrated spread absorbs the margin as well as the credit, so it is a **discount margin**, not a clean credit spread |
+| `FIP_CurrentCouponPct` | the coupon already fixed at the last reset, in percent | `PROVISIONAL_RISK`: estimated from the curve and frozen through the risk bumps (§15.5). Price unaffected; sensitivities provisional |
+
+Neither is defaulted and neither is required. Both are read **only** when
+`FIP_InstrumentType` is `floating`.
+
+Two example pairs in `integrations/excel_vba/examples/` carry real URS terms rather than
+invented ones: `floating_*` is a note whose running coupon the custodian recorded, and
+`floating_margin_*` is Morgan Stanley's L+45 quarterly note, whose margin is documented but
+whose running coupon is not. Each proves one cell, and their warnings are complementary.
+
+The live round trip is the evidence that matters: driven from Excel through real Python, the
+first returns **397.3304715128111 bp**, which is bit-for-bit the value in the production
+`implied_oas_2009-03-31.csv` row for that holding.
+
+### 14.9 Not yet done
+
+**The polished customer worksheet.** What does not exist is the daily-use layout — one adaptive
+sheet with a type dropdown, or one small sheet per type. That is the open question in the
+2026-08-30 report, and it is deliberately Mario's to answer rather than ours to assume.
+
+---
+
+## 15. v1.1 — confidence labelling (2026-08-31)
+
+Additive: **`schema_version` stays `"1.1"`**. Nothing here is required, nothing here is
+removed, and no result changes. A caller who ignores this section gets exactly the numbers
+they got before, plus one warning telling them what the numbers rest on.
+
+### 15.1 The problem
+
+An exercise price of `100.0` in a response looks identical whether it came from a prospectus
+or from a convention somebody applied to a custodian date. Every exercise schedule in this
+project is the second kind. Likewise a floating-rate note's *running* coupon — the one already
+fixed at the last reset — is an observable, and when the custodian file does not record it we
+estimate it from the curve. Both facts were true and written down, and neither was visible at
+the point where a person reads a number.
+
+### 15.2 New request field
+
+| field | where | values | default |
+|---|---|---|---|
+| `exercise_terms_status` | `bond` | `"confirmed"` \| `"provisional"` | `"provisional"` |
+
+Only for the tree types (`callable`, `puttable`, `sinking`). **Anything else is refused** with
+`VALIDATION_ERROR` on `bond.exercise_terms_status` — `"verified"`, `"final"`, `"TRUE"` and a
+typo must not be read as confirmation. The default is `provisional`, never `confirmed`: an
+absent statement of provenance is not evidence of good provenance.
+
+### 15.3 New warning codes
+
+| code | field | raised when |
+|---|---|---|
+| `PROVISIONAL_TERMS` | `bond.exercise_terms_status` | a tree request whose exercise terms are not declared confirmed |
+| `PROVISIONAL_RISK` | `bond.current_coupon_pct` | a `floating` request with no running coupon, so it is estimated |
+
+Both are **warnings on an `ok` response**, not errors. The bond prices; the response says what
+the price rests on.
+
+### 15.4 The labels never change a number
+
+`PROVISIONAL_TERMS` describes the *inputs*. Sending `exercise_terms_status: "confirmed"`
+suppresses the warning and returns a `results` block equal to the unlabelled one — asserted
+with `==` in `tests/test_json_endpoint_dispatch.py`. A label that quietly altered arithmetic
+would be worse than no label.
+
+### 15.5 What a floating response now guarantees
+
+The running coupon is held **fixed** across the risk bumps whether it was supplied or
+estimated, because it was set in the past and a move in today's curve cannot change it.
+Before 2026-08-31 an estimated coupon was re-projected on the bumped curve, which flipped the
+sign of the reported duration. Supplied and estimated now travel one code path and return the
+same sensitivities for the same coupon. See `docs/frn_current_coupon_freeze_2026-08-31.md`.
+
+### 15.6 Excel
+
+The bridge sends vanilla only, and neither warning fires on a vanilla request, so the
+committed v1.0 fixtures and all 23 worksheet checks are unaffected. The six v1.1 tree example
+responses in `integrations/excel_vba/examples/` were regenerated: only their `warnings` array
+changes. Excel gate re-run on real Excel — 48/48 fixture mode and 50/50 live-Python mode at
+the time of that change, and **57/57 and 61/61** after the floating round trips of §14.8.1
+were added the same day.
