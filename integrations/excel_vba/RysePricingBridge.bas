@@ -32,6 +32,22 @@ Attribute VB_Name = "RysePricingBridge"
 '                        supplied spread, so sending one would turn a good sheet into an error
 '   FIP_SinkingFractionBasis   "outstanding" — never defaulted here
 '
+' Floating-rate inputs (2026-08-31), read ONLY when the type is "floating":
+'
+'   FIP_QuotedMarginBp    the contractual margin over the index, in basis points. Leave it
+'                         blank and the calibrated spread ABSORBS the margin as well as the
+'                         credit, which the response says out loud (UNUSED_FIELD) — the price
+'                         is still exact, but the spread is then a discount margin.
+'   FIP_CurrentCouponPct  the coupon already fixed at the last reset, in percent. Leave it
+'                         blank and it is estimated from the curve and frozen through the
+'                         risk bumps, which the response also says out loud
+'                         (PROVISIONAL_RISK): the price is unaffected, the sensitivities
+'                         are provisional.
+'
+' Both are OPTIONAL and neither is defaulted silently. `fixed_to_floating` needs a switch
+' date as well and has no cell for one, so it remains unconstructible from a sheet on
+' purpose: the worksheet layout is Mario's decision, not this module's.
+'
 ' Exercise schedules are named Excel TABLES, so they can be any length and can sit
 ' anywhere on any sheet:
 '
@@ -63,6 +79,8 @@ Private Const NAME_INSTRUMENT_TYPE As String = "FIP_InstrumentType"
 Private Const NAME_OPERATION As String = "FIP_Operation"
 Private Const NAME_OAS_BP As String = "FIP_OASBp"
 Private Const NAME_SINK_BASIS As String = "FIP_SinkingFractionBasis"
+Private Const NAME_QUOTED_MARGIN As String = "FIP_QuotedMarginBp"
+Private Const NAME_CURRENT_COUPON As String = "FIP_CurrentCouponPct"
 
 ' Named Excel Tables (ListObjects) holding variable-length exercise schedules.
 Private Const TABLE_CALL As String = "FIP_CallSchedule"
@@ -178,6 +196,7 @@ Public Function BuildRequest() As Object
     bond("maturity_date") = IsoDate(NamedValue(NAME_MATURITY))
 
     AddExerciseSchedules bond, instrumentType
+    AddFloatingTerms bond, instrumentType
 
     market("valuation_date") = IsoDate(NamedValue(NAME_VALUATION))
     If HasValue(NAME_CLEAN_PRICE) Then
@@ -227,6 +246,24 @@ Private Sub AddExerciseSchedules(ByVal bond As Object, ByVal instrumentType As S
                 bond("sinking_fraction_basis") = Trim$(CStr(NamedValue(NAME_SINK_BASIS)))
             End If
     End Select
+End Sub
+
+Private Sub AddFloatingTerms(ByVal bond As Object, ByVal instrumentType As String)
+    ' The two terms only a floating-rate note has. Both OPTIONAL, neither defaulted: the
+    ' engine reports what it did without either, and a guessed margin or a guessed reset
+    ' would be a contractual term nobody agreed to — the same rule the schedules follow.
+    '
+    ' Gated on "floating" alone, deliberately. `fixed_to_floating` uses the margin too, but
+    ' it also needs a switch date, and adding a cell for that would make a SIXTH type
+    ' constructible from a sheet whose layout has not been decided. That is Mario's call.
+    If instrumentType <> "floating" Then Exit Sub
+
+    If HasValue(NAME_QUOTED_MARGIN) Then
+        bond("quoted_margin_bp") = CDbl(NamedValue(NAME_QUOTED_MARGIN))
+    End If
+    If HasValue(NAME_CURRENT_COUPON) Then
+        bond("current_coupon_pct") = CDbl(NamedValue(NAME_CURRENT_COUPON))
+    End If
 End Sub
 
 Private Sub AddSchedule(ByVal bond As Object, ByVal fieldName As String, _

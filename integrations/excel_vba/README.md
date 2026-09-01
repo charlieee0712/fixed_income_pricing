@@ -188,10 +188,24 @@ never opened for writing, never given macros, and never used as the demo workboo
 
 ## Instrument types (2026-08-31)
 
-The bridge sends any of the engine's seven products. **A sheet that names no instrument
-type sends exactly the vanilla request it always did**, so an existing workbook keeps
-working with no change at all — that compatibility is asserted by the original checks,
-which run unmodified.
+**Be exact here: the engine supports SEVEN products, this bridge can construct FIVE of
+them, and five have been verified by a real-Excel round trip.**
+
+| | count | which |
+|---|---:|---|
+| supported by the engine and the contract | 7 | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
+| constructible from cells by this bridge | 5 | all but `stepped` (no coupon-table cells) and `fixed_to_floating` (no switch-date cell) |
+| verified by a real-Excel round trip | 5 | vanilla · callable · puttable · sinking · floating |
+
+The two missing ones are deliberate. Adding a coupon-schedule table or a switch-date cell
+would make a sixth product reachable from a worksheet whose layout has not been decided, and
+that layout is the client's call. `test_the_excel_bridge_emits_only_the_documented_fields`
+greps this module and fails if the emitted field set changes, so the table above cannot
+quietly go stale.
+
+**A sheet that names no instrument type sends exactly the vanilla request it always did**,
+so an existing workbook keeps working with no change at all — that compatibility is asserted
+by the original checks, which run unmodified.
 
 ### Extra named cells (all optional)
 
@@ -201,6 +215,8 @@ which run unmodified.
 | `FIP_Operation` | `calibrate_and_risk` (default) or `price_at_oas` |
 | `FIP_OASBp` | read **only** for `price_at_oas` |
 | `FIP_SinkingFractionBasis` | `outstanding` — never defaulted here |
+| `FIP_QuotedMarginBp` | **floating only.** The contractual margin over the index, in bp. Blank ⇒ `UNUSED_FIELD`: the calibrated spread absorbs the margin as well as the credit, making it a discount margin rather than a clean credit spread |
+| `FIP_CurrentCouponPct` | **floating only.** The coupon already fixed at the last reset, in percent. Blank ⇒ `PROVISIONAL_RISK`: it is estimated from the curve and frozen through the risk bumps. The price is unaffected; the sensitivities are provisional |
 
 Optional extra outputs, useful on a QA surface: `FIP_Engine`,
 `FIP_InstrumentTypeUsed`, `FIP_VolatilityUsed`.
@@ -233,8 +249,8 @@ calibrating is harmless — it is simply not sent.
 ### Tests
 
 ```text
-powershell -File tests\Run-BridgeTests.ps1                          48 checks, no Python needed
-powershell -File tests\Run-BridgeTests.ps1 -PythonExe <python.exe>  50 checks, live engine
+powershell -File tests\Run-BridgeTests.ps1                          57 checks, no Python needed
+powershell -File tests\Run-BridgeTests.ps1 -PythonExe <python.exe>  61 checks, live engine
 ```
 
 The two extra checks in live mode are a full callable round trip (Excel → JSON → Python →

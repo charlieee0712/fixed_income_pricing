@@ -198,13 +198,24 @@ actually put in front of you:
 |---|---:|---|
 | the **engine** prices, and the request format covers | **7** | all of the above |
 | the **spreadsheet** can currently build a request for | **5** | all except stepped and fixed-then-floating — no cells exist yet for a coupon table, a margin or a switch date |
-| we have **tested end-to-end from real Excel** | **4** | plain, callable, puttable, sinking-fund |
+| we have **verified end-to-end from real Excel** | **5** | plain, callable, puttable, sinking-fund, floating |
 
-The gap is a matter of cells on a sheet, not of engineering: adding the missing four cells
-and one small table is straightforward, and we have deliberately left it until you have told
-us what the sheet should look like (section 8). One consequence worth flagging: a floating
-note sent from Excel today has nowhere to carry its margin, so the spread that comes back
-absorbs the margin rather than isolating credit. From the engine directly, it does not.
+The two the spreadsheet cannot send are deliberate rather than unfinished. Adding cells for
+them would put a sixth and seventh bond type on a sheet whose layout you have not chosen yet
+(section 8), and we would rather you decided that first.
+
+**The floating note closed a gap worth describing.** Until this week the spreadsheet had
+nowhere to put two things a floating-rate note actually has: the margin it pays over its
+reference rate, and the coupon it is paying right now, which was fixed at the last reset. The
+sheet could technically send a floater, but only in its least informative form — the spread
+that came back absorbed the contractual margin instead of isolating credit, and the running
+coupon had to be estimated. Two cells fixed both, and if either is left blank the answer says
+so in plain words rather than quietly assuming a value.
+
+We then ran a real floating note from a real spreadsheet through the real engine. It returned
+**397.3304715128111 bp** for one of your holdings — the same number, digit for digit, as the
+row in the delivered file. That is the strongest form of the claim: not that the spreadsheet
+*could* work, but that it produces the figure you already have.
 
 We made the engine change **once**, covering all seven, rather than twice. A request that
 does not name a type is still treated as a plain bond, so **nothing that works today stops
@@ -264,7 +275,7 @@ bonds — those two are tested on invented examples. Those tests prove the model
 connection behave correctly; they prove nothing about your portfolio, and we have labelled
 them that way everywhere they appear.
 
-The automated spreadsheet checks went from 23 to **50**.
+The automated spreadsheet checks went from 23 to **61**.
 
 **What is still not built is the layout** — the daily-use sheet, whether that is one sheet
 with a type dropdown or a small sheet per type. That is the question in section 8, and it is
@@ -405,8 +416,8 @@ Two details worth knowing before you run it:
 ```text
 python -m pytest -q                                              390 checks, ~35 s
 python scripts/price_json.py --input request.json --output response.json
-powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  48 Excel checks
-powershell -File ...\Run-BridgeTests.ps1 -PythonExe <python.exe>   50, against a live engine
+powershell -File integrations/excel_vba/tests/Run-BridgeTests.ps1  57 Excel checks
+powershell -File ...\Run-BridgeTests.ps1 -PythonExe <python.exe>   61, against a live engine
 ```
 
 ## 7. Next

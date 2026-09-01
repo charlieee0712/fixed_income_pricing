@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "operation": "calibrate_and_risk",
+  "bond": {
+    "instrument_id": "DEMO-FLOATING-002",
+    "instrument_type": "floating",
+    "currency": "USD",
+    "coupon_frequency": 4,
+    "maturity_date": "2016-10-18",
+    "quoted_margin_bp": 45.0
+  },
+  "market": {
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 67.0421
+  },
+  "analysis": {
+    "spread_shift_bp": 10.0
+  },
+  "model": {
+    "yield_volatility_decimal": 0.15
+  },
+  "metadata": {
+    "source": "excel_bridge",
+    "workbook": "fixture"
+  }
+}

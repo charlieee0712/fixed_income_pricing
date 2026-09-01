@@ -430,13 +430,19 @@ def test_a_schedule_entirely_after_maturity_names_the_schedule_too():
 # documents falsifiable: if someone adds the missing cells, the test fails and says so.
 
 def test_the_excel_bridge_emits_only_the_documented_fields():
-    """Four types are TESTED from Excel, five are constructible, seven are supported by the
-    engine. `stepped` and `fixed_to_floating` cannot be built from cells at all, because the
-    bridge has nowhere to read a coupon table, a switch date or a quoted margin from.
+    """FIVE types are constructible from cells and five are TESTED from real Excel; seven
+    are supported by the engine and the contract.
 
-    If this test fails because the bridge grew those fields, that is good news — update the
-    weekly report, the walkthrough, the interface reference and the Excel README, all of
-    which currently state the narrower coverage.
+    `stepped` and `fixed_to_floating` cannot be built from a sheet at all, because the bridge
+    has nowhere to read a coupon table or a switch date from. That is deliberate, not an
+    oversight: adding either would make a sixth type constructible from a worksheet whose
+    layout Mario has not decided.
+
+    Updated 2026-08-31, when `quoted_margin_bp` and `current_coupon_pct` were added so a
+    floating note could be sent in full. If this test fails because the bridge grew
+    `coupon_schedule` or `switch_date`, that is good news — update the weekly report, the
+    walkthrough, the interface reference and the Excel README, all of which state the
+    current coverage.
     """
     import pathlib
 
@@ -448,28 +454,33 @@ def test_the_excel_bridge_emits_only_the_documented_fields():
                      if not line.lstrip().startswith("'"))
 
     for field in ("instrument_type", "call_schedule", "put_schedule", "sinking_schedule",
-                  "sinking_fraction_basis"):
+                  "sinking_fraction_basis", "quoted_margin_bp", "current_coupon_pct"):
         assert f'"{field}"' in code, f"the bridge no longer emits {field}"
 
-    for absent in ("coupon_schedule", "switch_date", "quoted_margin_bp",
-                   "current_coupon_pct", "float_frequency"):
+    for absent in ("coupon_schedule", "switch_date", "float_frequency"):
         assert f'"{absent}"' not in code, (
             f"the bridge now emits bond.{absent}, so its instrument-type coverage has "
-            f"changed. The documents say four types are tested from Excel and five are "
-            f"constructible — update them before relaxing this test.")
+            f"changed. The documents say five types are constructible from cells and five "
+            f"are tested from real Excel — update them before relaxing this test.")
 
 
-def test_a_floating_request_from_excel_can_only_be_the_margin_absent_case():
-    """Consequence of the above, and the reason it matters beyond a count: the sheet has no
-    cell for the quoted margin or the already-fixed current coupon, so Excel can only ever
-    send a floating note in its least informative form — a discount margin rather than a
-    credit spread."""
-    request = payload("floating", coupon_pct=9.5)      # exactly what the bridge can build
-    response = ok(analyze_payload(request))
-    assert response["results"]["quoted_margin_source"] == "absorbed_into_the_calibrated_spread"
-    assert "discount margin" in response["results"]["spread_interpretation"]
-    warned = {w["field"] for w in response["warnings"]}
-    assert {"bond.coupon_pct", "bond.quoted_margin_bp"} <= warned
+def test_a_floating_request_from_excel_can_now_carry_its_own_terms():
+    """The consequence of adding those two cells, and the reason it mattered beyond a count.
+
+    Until 2026-08-31 the sheet had nowhere to put the quoted margin or the already-fixed
+    running coupon, so Excel could only ever send a floating note in its least informative
+    form: the calibrated spread absorbed the contractual margin, and the running coupon had
+    to be estimated. Both are now cells, and the response says which case it is either way —
+    the point being that the sheet can express the note, not that either case is hidden.
+    """
+    absorbed = ok(analyze_payload(payload("floating", coupon_pct=9.5)))["results"]
+    assert absorbed["quoted_margin_source"] == "absorbed_into_the_calibrated_spread"
+    assert "discount margin" in absorbed["spread_interpretation"]
+
+    supplied = ok(analyze_payload(payload("floating", quoted_margin_bp=45.0,
+                                          current_coupon_pct=1.2425)))["results"]
+    assert supplied["quoted_margin_source"] == "supplied_by_caller"
+    assert "credit spread" in supplied["spread_interpretation"]
 
 
 # ------------------------------------------------------- provenance / confidence labelling

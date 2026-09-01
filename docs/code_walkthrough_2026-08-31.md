@@ -184,10 +184,10 @@ to run. Point it at a packaged executable or an HTTP service and nothing else ch
 |---|---|
 | Automatic checks | **390** in ~35 s (223 before this round) |
 | Behaviour change from the restructuring | **zero** — production CSVs hash-identical |
-| Excel bridge | **48/48** fixture mode, **50/50** against a live Python engine, on real Excel |
+| Excel bridge | **57/57** fixture mode, **61/61** against a live Python engine, on real Excel |
 | Cross-platform | response file **byte-identical** on Windows and Linux |
 | Volatility, call-active bond | ~10 cents of price, or ~1 bp of spread, per vol point |
-| Bond types — **three different numbers** | **7** the engine and request format cover · **5** the spreadsheet can build · **4** tested end-to-end from real Excel |
+| Bond types — **three different numbers** | **7** the engine and request format cover · **5** the spreadsheet can build · **5** verified by a real-Excel round trip |
 | Corporate output | **566** @3-31 (555 with a model spread + 11 at the custodian mark) · **561** @6-10 |
 | Bonds added by the GBP units fix | **2** — one blocked, one silently skipped |
 | Bonds added by the defaulted-rule fix | **1** — 8.78M par, matched neither of two recovery paths |

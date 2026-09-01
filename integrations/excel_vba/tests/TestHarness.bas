@@ -119,6 +119,13 @@ Public Sub Harness_SetupTypes()
     AddName "FIP_OASBp", ws.Range("B14")
     AddName "FIP_SinkingFractionBasis", ws.Range("B15")
 
+    ' The two floating-rate inputs. Optional, like the schedules: a blank cell means the
+    ' engine says what it did without the value, never that it guessed one.
+    ws.Range("A16").Value = "quoted margin bp"
+    ws.Range("A17").Value = "current coupon pct"
+    AddName "FIP_QuotedMarginBp", ws.Range("B16")
+    AddName "FIP_CurrentCouponPct", ws.Range("B17")
+
     ' Extra engineering outputs.
     AddName "FIP_Engine", ws.Range("E15")
     AddName "FIP_InstrumentTypeUsed", ws.Range("E16")

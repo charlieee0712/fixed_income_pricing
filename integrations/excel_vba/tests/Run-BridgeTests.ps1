@@ -367,6 +367,97 @@ try {
         $excel.Run("Harness_SetNumber", "FIP_YieldVolatility", "0.15") | Out-Null
     }
 
+    # --- 4.9 floating: the fifth type, now actually driven from Excel -------------------
+    # This section exists to close the last "the code says it can build this, but real
+    # Excel has never run it" seam. Both new cells are optional and complementary, and each
+    # fixture below proves one of them: supply the running coupon and the response stops
+    # calling the risk provisional; supply the margin and the spread stops absorbing it.
+    # The terms are two REAL URS floaters, so the numbers are checkable against production.
+    $excel.Run("Harness_SetText", "FIP_InstrumentType", "floating") | Out-Null
+    $excel.Run("Harness_SetText", "FIP_Operation", "calibrate_and_risk") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_CouponPct", "") | Out-Null      # a floater has none
+    $excel.Run("Harness_SetNumber", "FIP_CouponFrequency", "2") | Out-Null
+    $excel.Run("Harness_SetDate", "FIP_MaturityDate", "2010-01-21") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_CleanMarketPrice", "97.0735") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_CurrentCouponPct", "1.2425") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_QuotedMarginBp", "") | Out-Null
+    # all three exercise tables left deliberately FULL, to prove a floater ignores them
+    $excel.Run("Harness_SetSchedule", "FIP_CallSchedule", "2011-04-01|100") | Out-Null
+    $excel.Run("Harness_SetSchedule", "FIP_PutSchedule", "2012-04-01|100") | Out-Null
+    $excel.Run("Harness_SetSchedule", "FIP_SinkingSchedule", "2011-04-01|0.25|100") | Out-Null
+
+    $fReq = Get-Request (Join-Path $temp "ryse_floating_request.json")
+    Check "floating request names its type and carries the running coupon" `
+        (($fReq.bond.instrument_type -eq "floating") -and `
+         ($fReq.bond.current_coupon_pct -eq 1.2425)) `
+        "bond.current_coupon_pct = $($fReq.bond.current_coupon_pct), the coupon fixed at the last reset"
+    Check "an empty margin cell is omitted, never sent as zero" `
+        (-not ($fReq.bond.PSObject.Properties.Name -contains "quoted_margin_bp")) `
+        "a zero margin is a CLAIM about the contract; a blank cell makes none"
+    Check "no coupon is sent for a note that has none" `
+        (-not ($fReq.bond.PSObject.Properties.Name -contains "coupon_pct")) `
+        "the coupon cell is blank, so the field is omitted, not sent as a fixed rate"
+    Check "a floating request ignores the exercise tables" `
+        ((-not ($fReq.bond.PSObject.Properties.Name -contains "call_schedule")) -and `
+         (-not ($fReq.bond.PSObject.Properties.Name -contains "put_schedule")) -and `
+         (-not ($fReq.bond.PSObject.Properties.Name -contains "sinking_schedule"))) `
+        "all three tables are full and none is sent; a sheet may keep them lying around"
+
+    $excel.Run("Harness_SetNumber", "FIP_CurrentCouponPct", "") | Out-Null
+    $excel.Run("Harness_SetNumber", "FIP_QuotedMarginBp", "45") | Out-Null
+    $fReq2 = Get-Request (Join-Path $temp "ryse_floating_margin_request.json")
+    Check "floating request carries the quoted margin" `
+        (($fReq2.bond.quoted_margin_bp -eq 45) -and `
+         (-not ($fReq2.bond.PSObject.Properties.Name -contains "current_coupon_pct"))) `
+        "bond.quoted_margin_bp = 45, the contractual margin priced instead of absorbed"
+
+    # response mapping, in BOTH modes: the engine's own answers on the two real floaters
+    $excel.Run("Harness_Populate", (Join-Path $examples "floating_response_v1_1.json")) | Out-Null
+    $fOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+    $fDur = $excel.Run("Harness_Get", "FIP_EffectiveDuration")
+    $fWarn = $excel.Run("Harness_Get", "FIP_Warnings")
+    $fVol = $excel.Run("Harness_Get", "FIP_VolatilityApplicability")
+    Check "floating response mapped" `
+        ((Near $fOas 397.3304715128111 1e-6) -and (Near $fDur 0.313186813238306 1e-9)) `
+        "OAS $fOas bp, duration $fDur y - one coupon period, not the maturity"
+    Check "a floater with no margin says the spread absorbs it" `
+        ($fWarn -like "*UNUSED_FIELD*") `
+        "the sheet is told the spread is a discount margin, not clean credit"
+    Check "volatility reported as NOT used, naming the product" `
+        (($fVol -like "*not used*") -and ($fVol -like "*floating*")) `
+        "$($fVol.Substring(0, [math]::Min(58, $fVol.Length)))..."
+
+    $excel.Run("Harness_Populate", (Join-Path $examples "floating_margin_response_v1_1.json")) | Out-Null
+    $mOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+    $mWarn = $excel.Run("Harness_Get", "FIP_Warnings")
+    Check "a floater with no running coupon marks its risk provisional" `
+        (($mWarn -like "*PROVISIONAL_RISK*") -and (Near $mOas 618.0573955292592 1e-6)) `
+        "estimated from the curve and frozen through the bumps; the price is unaffected"
+
+    # --- 4.10 the fifth type, end to end through a real interpreter ---------------------
+    if ($PythonExe) {
+        $excel.Run("Harness_SetNumber", "FIP_QuotedMarginBp", "") | Out-Null
+        $excel.Run("Harness_SetNumber", "FIP_CurrentCouponPct", "1.2425") | Out-Null
+        $rcF = $excel.Run("Harness_TypedRoundTrip", (Join-Path $temp "ryse_floating_live_request.json"), `
+                          (Join-Path $temp "ryse_floating_live_response.json"))
+        $lfOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+        Check "LIVE floating round trip through Python" `
+            (($rcF -eq 0) -and (Near $lfOas 397.3304715128111 1e-6)) `
+            "exit $rcF, OAS $lfOas bp - the production value for this holding, from a spreadsheet"
+
+        $excel.Run("Harness_SetNumber", "FIP_CurrentCouponPct", "") | Out-Null
+        $excel.Run("Harness_SetNumber", "FIP_QuotedMarginBp", "45") | Out-Null
+        $excel.Run("Harness_SetNumber", "FIP_CouponFrequency", "4") | Out-Null
+        $excel.Run("Harness_SetDate", "FIP_MaturityDate", "2016-10-18") | Out-Null
+        $excel.Run("Harness_SetNumber", "FIP_CleanMarketPrice", "67.0421") | Out-Null
+        $rcM = $excel.Run("Harness_TypedRoundTrip", (Join-Path $temp "ryse_floating_margin_live_request.json"), `
+                          (Join-Path $temp "ryse_floating_margin_live_response.json"))
+        $lmOas = $excel.Run("Harness_Get", "FIP_ImpliedOASBp")
+        Check "LIVE floating with a documented margin" `
+            (($rcM -eq 0) -and (Near $lmOas 618.0573955292592 1e-6)) `
+            "exit $rcM, OAS $lmOas bp - Morgan Stanley L+45 priced, not absorbed"
+    }
+
     ""
     $passed = ($results | Where-Object Result -eq 'PASS').Count
     "$passed/$($results.Count) checks passed"

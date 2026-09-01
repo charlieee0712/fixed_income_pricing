@@ -522,18 +522,34 @@ the result through the live endpoint:
 | | count | which |
 |---|---:|---|
 | **supported by the engine and the contract** | **7** | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
-| **constructible by the VBA builder** | **5** | the above minus `stepped` (no cells for a coupon table) and `fixed_to_floating` (no cells for the margin or the switch date) |
-| **tested from real Excel** | **4** | vanilla · callable · puttable · sinking |
+| **constructible by the VBA builder** | **5** | the above minus `stepped` (no cells for a coupon table) and `fixed_to_floating` (no cell for the switch date) |
+| **verified by real-Excel round trips** | **5** | vanilla · callable · puttable · sinking · **floating** |
 
-`floating` is constructible but only in its margin-absent form: the sheet has no cell for the
-quoted margin or for the running coupon, so the spread it gets back is a discount margin rather
-than a clean credit spread, and the running-coupon input of §15.5 cannot be exercised from Excel
-at all.
+**Updated 2026-08-31: this was 7 / 5 / 4.** `floating` was constructible but had never been
+driven from a real spreadsheet, and the sheet had no cell for the quoted margin or the running
+coupon — so Excel could only send a floater in its least informative form. Two optional cells
+closed both gaps at once (§14.8.1). The remaining two types are unconstructible **on purpose**:
+adding a switch-date cell or a coupon-schedule table would make a sixth type reachable from a
+worksheet whose layout Mario has not chosen.
 
-Closing that asymmetry is small — one named table for the coupon schedule and three cells
-(`FIP_SwitchDate`, `FIP_QuotedMarginBp`, `FIP_CurrentCouponPct`) — and layout-neutral in the way
-§14.7 already established. It is **deliberately not done**, because the worksheet design is
-Mario's to answer.
+#### 14.8.1 The two floating cells
+
+| cell | meaning | left blank |
+|---|---|---|
+| `FIP_QuotedMarginBp` | the contractual margin over the index, in bp | `UNUSED_FIELD`: the calibrated spread absorbs the margin as well as the credit, so it is a **discount margin**, not a clean credit spread |
+| `FIP_CurrentCouponPct` | the coupon already fixed at the last reset, in percent | `PROVISIONAL_RISK`: estimated from the curve and frozen through the risk bumps (§15.5). Price unaffected; sensitivities provisional |
+
+Neither is defaulted and neither is required. Both are read **only** when
+`FIP_InstrumentType` is `floating`.
+
+Two example pairs in `integrations/excel_vba/examples/` carry real URS terms rather than
+invented ones: `floating_*` is a note whose running coupon the custodian recorded, and
+`floating_margin_*` is Morgan Stanley's L+45 quarterly note, whose margin is documented but
+whose running coupon is not. Each proves one cell, and their warnings are complementary.
+
+The live round trip is the evidence that matters: driven from Excel through real Python, the
+first returns **397.3304715128111 bp**, which is bit-for-bit the value in the production
+`implied_oas_2009-03-31.csv` row for that holding.
 
 ### 14.9 Not yet done
 
@@ -599,4 +615,6 @@ same sensitivities for the same coupon. See `docs/frn_current_coupon_freeze_2026
 The bridge sends vanilla only, and neither warning fires on a vanilla request, so the
 committed v1.0 fixtures and all 23 worksheet checks are unaffected. The six v1.1 tree example
 responses in `integrations/excel_vba/examples/` were regenerated: only their `warnings` array
-changes. Excel gate re-run on real Excel — **48/48 fixture mode, 50/50 live-Python mode**.
+changes. Excel gate re-run on real Excel — 48/48 fixture mode and 50/50 live-Python mode at
+the time of that change, and **57/57 and 61/61** after the floating round trips of §14.8.1
+were added the same day.

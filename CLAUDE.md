@@ -247,13 +247,23 @@ checks — those are decided here, from the repo.
 - **223 → 287 tests** (390 after the 08-31 hardening). New: `test_pricer_floating_structure` (31), `test_json_endpoint_dispatch`
   (29), +4 bootstrap. Production parity re-run after EVERY code-bearing commit: all five driver
   CSVs byte-identical, except the deliberate GBP delta below.
-- **⚠️ Excel scope = THREE different numbers, never "the spreadsheet can ask for any of seven"
-  (measured 08-31 by driving `BuildRequest`):** **7** supported by the engine + contract · **5**
-  constructible by the VBA builder (not `stepped` — no coupon-table cells; not
-  `fixed_to_floating` — no margin/switch cells) · **4** tested from real Excel (vanilla,
-  callable, puttable, sinking). `floating` is constructible only margin-absent, so the
-  current-coupon input is unreachable from the sheet. Closing it = 1 named table + 3 cells,
-  layout-neutral — deliberately NOT done, the worksheet design is Mario's to answer.
+- **⚠️ Excel scope = 7 / 5 / 5 since 2026-08-31, never "the spreadsheet can ask for any of
+  seven":** **7** supported by the engine + contract · **5** constructible by the VBA builder ·
+  **5** verified by real-Excel round trips (vanilla, callable, puttable, sinking, **floating**).
+  `stepped` (no coupon-table cells) and `fixed_to_floating` (no switch-date cell) stay
+  unconstructible ON PURPOSE — adding either makes a SIXTH type reachable from a worksheet
+  whose layout Mario has not decided. Pinned by
+  `test_json_endpoint_dispatch.test_the_excel_bridge_emits_only_the_documented_fields`, which
+  greps the .bas and fails if the emitted field set changes.
+- **Floating closed the last 7/5/4 seam (2026-08-31):** two optional cells `FIP_QuotedMarginBp`
+  + `FIP_CurrentCouponPct`, read ONLY when the type is `floating` (37 added lines in the .bas,
+  zero deleted; no engine, contract, schema or serializer change). Neither is defaulted: blank
+  margin → `UNUSED_FIELD` + the spread is a discount margin; blank running coupon →
+  `PROVISIONAL_RISK` + base-curve proxy. **Excel checks 48/50 → 57 fixture / 61 live**, and the
+  LIVE floating round trip returns **397.3304715128111 bp for `TNTD03080834` — bit-identical to
+  the production `implied_oas_2009-03-31.csv` row**, from a spreadsheet. Second live case =
+  Morgan Stanley `TNTD04882955` documented L+45 → 618.06bp. 2 new fixture pairs
+  (`floating_*`, `floating_margin_*`), REAL URS terms, not synthetic.
 
 ## Round 2b delivery-quality pass (2026-08-31) — two more silent omissions, closed
 - **Plan** `docs/cc_next_instruction_round2b_delivery_quality_and_tree_excel_bridge_2026-08-30.md`;
@@ -385,7 +395,8 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   criteria, ALL required; **criterion 1 is UNMET** — all three drivers still import `pricing.*`;
   retire nothing now). Corrected: weekly report **§4.5** (new), walkthrough, interface §14.8/§15,
   `COVERAGE.md`, `missing_data.md` G5 (+3 corporate schedules, confirmation-only).
-- **Excel gate re-run on real Excel: 48/48 fixture + 50/50 live.** 6 v1.1 tree fixtures
+- **Excel gate re-run on real Excel: 48/48 fixture + 50/50 live** [superseded same day by the
+  floating work above: now **57 / 61**]. 6 v1.1 tree fixtures
   regenerated (warnings array only); the 2 vanilla `_v1` fixtures deliberately LEFT at schema
   1.0 — being 1.0 is what they exist to prove.
 - **NO new Mario/Liping request opened** (by instruction). The 3 corporate + 5 agency schedules

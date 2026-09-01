@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.1",
+  "request_id": "XL-FIXTURE",
+  "status": "ok",
+  "engine": "corporate_floating",
+  "operation": "calibrate_and_risk",
+  "inputs_used": {
+    "instrument_id": "DEMO-FLOATING-002",
+    "instrument_type": "floating",
+    "currency": "USD",
+    "coupon_pct": null,
+    "coupon_frequency": 4,
+    "maturity_date": "2016-10-18",
+    "valuation_date": "2009-03-31",
+    "clean_price_per_100": 67.0421,
+    "oas_bp_supplied": null,
+    "spread_shift_bp": 10.0,
+    "face_value_supplied": null,
+    "face_value_per_quote": 100.0,
+    "quoted_margin_bp": 45.0,
+    "current_coupon_pct": null
+  },
+  "market_data": {
+    "pricing_currency": "USD",
+    "valuation_date": "2009-03-31",
+    "curve_id": "USD|2009-03-31|Quarterly"
+  },
+  "results": {
+    "model_clean_price_per_100": 67.0421000058362,
+    "model_dirty_price_per_100": 67.14456154429773,
+    "accrued_interest_per_100": 0.10246153846153037,
+    "implied_oas_bp": 618.0573955292592,
+    "oas_source": "calibrated_from_clean_price",
+    "effective_duration_years": -1.4814319056983971,
+    "dv01_per_100": -0.00994700957658523,
+    "convexity": -7.450264804053195,
+    "price_spread_tighter_per_100": 67.50681937115056,
+    "price_spread_wider_per_100": 66.58074892490055,
+    "calibration_residual_per_100": 5.83619907956745e-09,
+    "next_reset_years": 0.07692307692307693,
+    "quoted_margin_source": "supplied_by_caller",
+    "spread_interpretation": "credit spread over the note's index"
+  },
+  "applicability": {
+    "day_count": {
+      "input_value_label": null,
+      "used": false,
+      "convention_used": "ACT/364 with a 182-day coupon grid",
+      "reason": "The validated engine prices on the legacy ACT/364 convention with a 182-day coupon grid; the day-count label is carried as data only."
+    },
+    "yield_volatility": {
+      "input_value_decimal": 0.15,
+      "used": false,
+      "price_effect_per_1pct_vol": null,
+      "oas_effect_bp_per_1pct_vol": null,
+      "reason": "A plain floating-rate note carries no early-repayment right. Its coupons are projected from the curve, and rate volatility enters neither the projection nor the discounting of a spread-calibrated note."
+    }
+  },
+  "warnings": [
+    {
+      "code": "PROVISIONAL_RISK",
+      "field": "bond.current_coupon_pct",
+      "message": "the coupon already running was not supplied, so it is estimated from the curve and held fixed while the risk is measured. The price is unaffected; the sensitivities are PROVISIONAL until the actual fixing is supplied."
+    }
+  ],
+  "errors": []
+}
