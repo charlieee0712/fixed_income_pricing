@@ -18,6 +18,16 @@ code_structure_sample/
 code_structure_sample_*.zip
 handoff_for_claude_web_*.zip
 
+# ---- Obsolete root code-delivery zips (removed from the branch 2026-08-31) ----
+# fixed_income_code_v1/v2/v3/v3.1.zip were whole-tree snapshots handed over in June and
+# July. Their contents are already in this repository's history, they are not a runtime
+# dependency and not golden data, and sitting at the root they read as the CURRENT delivery
+# package -- which is `code_structure_sample/`. Removed from the branch (history untouched,
+# so `git show <old-commit>:fixed_income_code_v3.zip > out.zip` still recovers any of them),
+# and ignored here so a stray rebuild cannot re-add one. Anchored to the root on purpose:
+# data/*.zip are TRACKED source data and must never match this.
+/fixed_income_code_v*.zip
+
 # ---- OS / editor ----
 .DS_Store
 Thumbs.db
