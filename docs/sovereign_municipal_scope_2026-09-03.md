@@ -310,7 +310,7 @@ work.
 FIP_VAL_DATE=2009-03-31 PYTHONPATH=src python scripts/sovereign_risk.py
 FIP_VAL_DATE=2009-06-10 PYTHONPATH=src python scripts/sovereign_risk.py
 PYTHONPATH=src python scripts/release_facts.py
-python -m pytest -q                     # 423 passed
+python -m pytest -q                     # 424 passed
 ```
 
 | what | where |
@@ -319,7 +319,7 @@ python -m pytest -q                     # 423 passed
 | currency → curve file | `src/curves/zero_curve.py` (`CURVE_FILE`, 6 → 14 entries) |
 | driver | `scripts/sovereign_risk.py` |
 | callable Treasury terms | `data/call_schedules.csv`, row `TNTD03978845`, **provisional** |
-| locks | `tests/test_sovereign_universe.py` (32) |
+| locks | `tests/test_sovereign_universe.py` (33) |
 | outputs | `outputs/sovereign_risk_<date>.csv`, `outputs/sovereign_disposition_<date>.csv` |
 | hashes | `docs/release_facts_2026-09-03.md` |
 
