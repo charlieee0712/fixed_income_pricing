@@ -120,7 +120,7 @@ through bit-identically** (asserted with `==`).
 
 | security | ccy | recorded BT | used per 100 |
 |---|---|---:|---:|
-| `TNTD04664855`, `TNTG412489W`, `TNTG621447U`, `TNTG746992U`, `TNTG753165U` | MXN | 99.46 – 117.79 | unchanged |
+| `TNTD04664855`, `TNTG412489W`, `TNTG621447U`, `TNTG746992U`, `TNTG753165U` | MXN | 99.455 – 117.793 | unchanged |
 | `TNTG630781W` NOTA DO TESOURO NACIONAL 10% 2017 | BRL | **916.73** | **91.673** |
 
 **The custodian made this same mistake.** Its own yield for the Brazilian bond is
@@ -236,7 +236,7 @@ spread from this table must be read as a liquidity number.
 | Belvoir Land LLC military housing | USD | 5.270 % | 2047-12-15 | 61.70 | **546** | 11.02 | 11.13 |
 
 Australian semi-governments at 64–106 bp over the Commonwealth curve and a wide Illinois
-pension bond are both textbook for 2009. Model durations sit within 0.23 y of the custodian's
+pension bond are both textbook for 2009. Model durations sit within 0.24 y of the custodian's
 on six of seven. The exception is the Ontario samurai: it matures in 0.82 years, so a duration
 cannot exceed that, and the custodian's 2.33 cannot be right — flagged on the row as
 *reported, not acted on*.

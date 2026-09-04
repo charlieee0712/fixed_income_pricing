@@ -456,9 +456,32 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   linker **by evidence** (all 63 = `currency-face`, test-asserted). **All 5 production CSVs + 4
   sidecars byte-identical** to the 08-31 record. **390 → 423 tests.** **NO new Mario/Liping
   request opened** — 4 gaps recorded as `missing_data.md` **G6**; KRW 3-31 row stays in G5.
-- **⚠️ This closes the CASH-BOND side, not "corporate bonds".** Corporate was already complete.
-  Remaining: the securitised block (Govt MBS 882 · non-govt CMO 264 · ABS · CMBS) + derivatives,
-  all still gated on Mario's Bloomberg pull. Say that plainly rather than "basically done".
+- **⭐ BOOK STRUCTURE — the `Summary` sheet is a FLAT pivot of `Asset sub category`; there is no
+  "corporate bonds" parent group.** `Corporate Bonds` is a SIBLING of `Government Bonds` and
+  `Municipal/Provincial Bonds`, and the master has exactly ONE `super_category` (`Fixed Income`).
+  So "these two finish the corporate 大类" is not how the sheet is built — they are two more
+  categories. ⚠️ **Corporate has THREE different totals and they are easy to confuse:**
+  master sub-category **811 rows / 732 unique** · the `Corporate Bonds` TAB **676 rows / 616
+  unique** (60 ids listed twice — the F13 trap) · our output **566** @3-31.
+
+  | sub-category | rows | uniq | status |
+  |---|---:|---:|---|
+  | Corporate Bonds | 811 | 732 | done — 566 in output @3-31 |
+  | Government Bonds | 153 | 147 | **done 2026-09-03** |
+  | Government Agencies | 42 | 39 | done (phase 2) |
+  | Index Linked Government Bonds | 16 | 15 | done (phase 2) |
+  | Guaranteed Fixed Income | 11 | 9 | done (phase 2) |
+  | Municipal/Provincial Bonds | 7 | 7 | **done 2026-09-03** |
+  | **six non-securitised classes** | **1,040** | **949** | **COMPLETE** |
+  | Government MBS | 888 | 882 | skeleton, awaiting Bloomberg |
+  | Non-Government CMOs | 265 | 264 | not started |
+  | Asset Backed Securities | 79 | 79 | not started |
+  | Commercial Mortgage-Backed | 73 | 69 | not started |
+  | FI Derivatives (futures+options) + Other | 21 | 17 | out of scope |
+  | **Grand Total** | **2,366** | **2,260** | |
+
+  **The accurate sentence: "all six non-securitised classes are complete — 1,040 of 2,366 rows."**
+  MBS was never inside the corporate category, so do NOT list it as what "remains in corporate".
 - **⚠️ A driver flag was leaking a FILESYSTEM PATH — fixed, both drivers.** The curve-blocked
   flag interpolated the raw exception, so it carried `data\KRW_Yield_Curve.txt` on Windows and
   `data/…` on 47 ⇒ the same failure produced two different strings, breaking cross-platform text

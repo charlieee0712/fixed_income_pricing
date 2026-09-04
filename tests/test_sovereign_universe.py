@@ -44,6 +44,13 @@ def _find_urs():
 
 URS = _find_urs()
 DATA = str(_ROOT / "data")
+# The curve exports are client data and are git-ignored, so they are absent from the
+# delivery package. Tests that read them SKIP there rather than fail, the same way the
+# workbook-dependent tests do -- a red result in a package that simply has no data is
+# noise a reader has to learn to discount.
+HAS_CURVES = (_ROOT / "data" / "USD_Yield_Curve.txt").exists()
+_needs_curves = pytest.mark.skipif(not HAS_CURVES,
+                                   reason="curve exports not found (git-ignored data)")
 
 
 @pytest.fixture(scope="module")
@@ -125,6 +132,7 @@ def test_a_documented_sinking_fund_is_noted_but_does_not_block():
 
 
 # --------------------------------------------------------------- curve registry
+@_needs_curves
 def test_every_mapped_currency_points_at_a_file_that_exists():
     for ccy, fname in CURVE_FILE.items():
         assert (pathlib.Path(DATA) / fname).exists(), f"{ccy} -> {fname} missing"
@@ -137,6 +145,7 @@ def test_malaysia_is_deliberately_absent_so_the_driver_names_the_gap():
 
 
 @pytest.mark.parametrize("ccy", ["BRL", "CAD", "ILS", "MXN", "NOK", "SEK", "SGD"])
+@_needs_curves
 def test_the_currencies_added_for_this_class_really_do_store_decimals(ccy):
     # The registry claim, reproduced against the RAW file -- the standing rule after the GBP
     # units bug. A file storing percent would come back ~100x larger.
