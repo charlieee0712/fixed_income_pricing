@@ -402,6 +402,67 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
 - **NO new Mario/Liping request opened** (by instruction). The 3 corporate + 5 agency schedules
   went onto the existing **confirmation-only deferred** queue.
 
+## Government + Municipal/Provincial (Mario Summary!K23 + K55, 2026-09-03) — DONE
+- **The ask:** the ONLY two `no` marks in the Summary sheet's **K column**. They map 1:1 onto
+  master sub-categories: `Government Bonds` **153 rows → 147 securities**, `Municipal/Provincial
+  Bonds` **7 → 7**. **154 unique; 147 priced @3-31, 150 @6-10** (KRW gains a curve at 6-10).
+  Driver `scripts/sovereign_risk.py` → `outputs/sovereign_risk_<date>.csv` +
+  `sovereign_disposition_<date>.csv`. Evidence `docs/sovereign_municipal_scope_2026-09-03.md`.
+- **⭐ CURVE CONVENTION LOCKED — discount on the OWN-CURRENCY curve, never per-country.**
+  Matches legacy `zeroyield4(ccy)`, `from_currency`, and the corporate book. The decider was
+  coverage, not taste: **Ireland has no curve file**, so a per-country rule splits 2 Irish
+  holdings from 28 euro peers. Per-country stays the CROSS-CHECK (Bund **+1.34bp** on
+  `Germany_Yield_Curve.txt` vs **−44.88bp** on EUR). Fable consulted before any code.
+- **⚠️ `EUR_Yield_Curve.txt` is a euro-area sovereign COMPOSITE, not a swap curve** (verified:
+  strictly between Germany and Italy at every tenor; a debt-weighted 6-country average
+  reproduces it to **7bp mean / 18bp max**). So a euro sovereign's number is **relative value vs
+  the euro average**, NEVER an asset-swap spread. Column `spread_meaning` per row:
+  `own-curve-anchor` 110 · `relative-to-euro-composite` 30 · `spread-over-government` 14.
+- **`CURVE_FILE` 6 → 14** (+BRL CAD DKK ILS MXN NOK SEK SGD; CAD→`CAN_Yield_Curve.txt`). Units
+  **reproduced against each raw file** — all decimals, so NO `PAR_YIELD_UNITS` entry needed
+  (GBP+DKK stay the only percent files). **MYR deliberately ABSENT** (no file at all) so
+  `from_currency` raises and the driver names it.
+- **⭐ QUOTATION: par-as-titles, and one price per-1,000.** 6 of 154 fail `BT == MV_base*fx/par*100`
+  at a ratio of **exactly 0.01**. The identity CANNOT say the denomination (it holds for MXN 100
+  and BRL 1000 alike) ⇒ `dataio.phase2.TITLE_FACE` is an **explicit per-currency registry, never a
+  price sniff** (the `PAR_YIELD_UNITS` lesson, applied in advance). `bt_per_100 = BT / (F/100)`
+  — written that way round so F=100 divides by exactly **1.0** and the 5 MXN prices are
+  bit-identical (`==` asserted). Only **`TNTG630781W` rescales: 916.73 → 91.673**. Registry
+  corroborated IN the data (`MXN100` / `BRL1000` tokens in desc_long; test-asserted).
+  ⚠️ **The custodian made the same error** — its `DI` for that bond is **−23.1%** vs 6.45–8.41%
+  for the MXN five, so DI is not a usable cross-check there.
+- **Four names read individually:** ① `TNTD03978845` = a genuine **callable US Treasury** (12.5%
+  2014, call 2009-08-15) → BDT lattice **with `check_representable`** (which `phase2_risk.py`
+  still lacks); read its two columns together — **122bp callable vs 950bp straight**, dur 0.39y
+  vs 4.05y — the 950 is option value, NOT a sovereign spread. ② `TNTD03983600` "STRIPPED CALL"
+  has call date **== maturity** → the `zero` rule claims it FIRST (it would survive the exercise
+  branch too, but for the wrong reason). ③ `TNTD04437091` Russia 2030 = `coupon-schedule-
+  unavailable` (desc says STEP UP; custodian dur **4.08** vs a 21y bullet's ~10 ⇒ it amortises).
+  ④ `TNTG630227U` Japan FRN = `floating-reference-unverified` — **NOT a missing-margin ask**:
+  the 15y series resets off the **10y JGB auction yield**, which the simple-forward engine
+  cannot represent (custodian dur −0.475 confirms).
+- **⚠️ Custodian duration (AQ) is EVIDENCE IN FLAG TEXT, never a router.** It means different
+  things per class (missed the call on corporate callables; option-adjusted on agencies), so a
+  rule keyed on it would have priced the corporate callables as bullets. Divergence >1.5y is
+  reported with both numbers.
+- **Results validate the pipeline more than they inform:** JGB median **0.0bp**, gilts **4.4**,
+  SEK 3.1 / SGD 8.0 / MXN 10.3. Euro hierarchy right unprompted — Germany −70…−52, Spain +39,
+  Belgium +40, **Ireland +156/+164**. AUD semis 64–106bp; Mexico 341–409 / Brazil 366 over UST;
+  Illinois pension 296; Belvoir 546. **USD Treasury anchors median +40.6 = the OFF-THE-RUN
+  LIQUIDITY PREMIUM, not model error** — at the SAME maturity 2019-02-15: on-the-run 10y
+  **+3.9bp**, STRIPS +38.7/+41.0, old off-the-run **+42.8bp**. Recent issues median 2.7bp.
+- **Discipline:** `build_phase2_universe(master, classes=None)` defaults to the original four ⇒
+  `phase2_risk.py` untouched; quotation resolution made UNIVERSAL and inert for agency/guaranteed/
+  linker **by evidence** (all 63 = `currency-face`, test-asserted). **All 5 production CSVs + 4
+  sidecars byte-identical** to the 08-31 record. **390 → 423 tests.** **NO new Mario/Liping
+  request opened** — 4 gaps recorded as `missing_data.md` **G6**; KRW 3-31 row stays in G5.
+- **⚠️ This closes the CASH-BOND side, not "corporate bonds".** Corporate was already complete.
+  Remaining: the securitised block (Govt MBS 882 · non-govt CMO 264 · ABS · CMBS) + derivatives,
+  all still gated on Mario's Bloomberg pull. Say that plainly rather than "basically done".
+- **Carry-over noticed, NOT fixed (out of scope):** `outputs/callable_risk.csv` is still
+  **undated**, so running 6-10 after 3-31 overwrites it — the same trap the 08-31 work fixed for
+  the sidecars. And `phase2_risk.py`'s lattice block has no `check_representable` guard.
+
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
   store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied

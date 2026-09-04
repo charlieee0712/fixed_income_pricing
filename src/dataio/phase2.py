@@ -67,7 +67,16 @@ SUBCATS = {
     "guaranteed": "Guaranteed Fixed Income",
     "linker": "Index Linked Government Bonds",
     "govt_mbs": "Government Mortgage Backed Securities",   # counted only; engine awaits Bloomberg
+    "government": "Government Bonds",                      # Summary!K23, Mario 2026-09-03
+    "municipal": "Municipal/Provincial Bonds",             # Summary!K55, Mario 2026-09-03
 }
+
+# Which driver owns which class. ``build_phase2_universe`` defaults to PHASE2_CLASSES so
+# ``scripts/phase2_risk.py`` and its committed CSV are untouched by the sovereign work;
+# ``scripts/sovereign_risk.py`` passes SOVEREIGN_CLASSES.
+PHASE2_CLASSES = ("agency", "guaranteed", "linker", "govt_mbs")
+SOVEREIGN_CLASSES = ("government", "municipal")
+COUNT_ONLY = frozenset({"govt_mbs"})       # inventoried; the engine awaits the Bloomberg pull
 
 FREQ_FROM_TEXT = {"Semi-Annually": 2, "Annually": 1, "Quarterly": 4, "Monthly": 12}
 
@@ -83,6 +92,63 @@ _DECIMAL = re.compile(r"\d+\.\d+")
 # "05-12-2020/05-12-2010" — the agency maturity/call date-pair notation
 _DATE_PAIR = re.compile(r"\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s*/\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}")
 _CMO_CLASS = re.compile(r"\bSER\b.{0,12}\bCL\b", re.I)     # "SER 3122 CL ZB" = a REMIC class
+
+
+# sovereign / municipal description tokens. Each fires on a holding that was read and
+# identified individually (evidence: docs/sovereign_municipal_scope_2026-09-03.md), so these
+# route by a documented contract feature, never by a guess at the price.
+_FRN_TOKEN = re.compile(r"\bFRN\b|\bFLOAT", re.I)
+_STEP_UP_TOKEN = re.compile(r"\bSTEP\s*-?\s*UP\b", re.I)
+_SINKING_TOKEN = re.compile(r"\bSINKING\b|\bSINK\s*FD\b", re.I)
+
+# ------------------------------------------------------------------- price quotation
+# For a few local-market sovereigns the custodian records ``par_value`` as a COUNT OF TITLES
+# rather than a currency face amount, and quotes the price per title. The detector is the
+# custodian's own identity -- BT against market value / par -- and NOT the price level:
+#
+#     currency face   BT  ==  MV_base * fx / par * 100      (148 of the 154 govt+muni)
+#     titles of F     BT  ==  MV_base * fx / par            (5 MXN + 1 BRL, ratio exactly 0.01)
+#
+# The identity alone cannot say what F is -- it holds for MXN (F=100) and BRL (F=1000)
+# alike -- so F comes from an explicit per-currency registry and never from a sniff at the
+# price. That is the PAR_YIELD_UNITS lesson: no threshold separates a 916.73 per-1000 quote
+# from a per-100 one. Both registry values are corroborated inside the data itself: every MXN
+# long description carries the token "MXN100" and the BRL carries "BRL1000", which
+# ``tests/test_sovereign_universe.py`` asserts so the registry cannot drift from the source.
+#
+# Once F is known:   bt_per_100 = BT / (F / 100)      par_face = par * F
+# so the five MXN prices (99.46-117.79) pass through unchanged and only the BRL is rescaled,
+# 916.73 -> 91.673. The custodian's own yield made exactly this mistake -- DI = -23.1% on that
+# bond against 6.45-8.41% for the five MXN -- so DI is not a usable cross-check there.
+TITLE_FACE = {"MXN": 100.0, "BRL": 1000.0}
+QUOTATION_TOL = 0.02          # the identity holds to ~1e-4 in practice; 2% is a loose fence
+
+# Which issuer is the currency's OWN sovereign. This decides what a calibrated spread MEANS,
+# never what it is. Patterns are per-currency, so a match cannot leak across currencies (the
+# AUD "QUEENSLAND TREASURY CORP" holdings cannot match the GBP gilt pattern).
+SOVEREIGN_ISSUER = {
+    "USD": r"UNITED STATES TREAS|US TREAS|UTD STATES TREAS",
+    "GBP": r"UK\(GOVT|UNITED KINGDOM\(GOVERNMENT",
+    "JPY": r"\bJAPAN\b",
+    "MXN": r"MEXICO|UTD MEX",
+    "KRW": r"KOREA",
+    "NOK": r"NORWAY",
+    "SEK": r"SWEDEN",
+    "SGD": r"SINGAPORE",
+    "CAD": r"\bCDA\b|CANADA",
+    "ILS": r"ISRAEL",
+    "BRL": r"NOTA DO TESOURO|BRAZIL",
+    "MYR": r"MALAYSIA",
+    "DKK": r"DENMARK",
+    "AUD": r"AUSTRALIA",
+}
+# EUR has many sovereign issuers and EUR_Yield_Curve.txt is a euro-area COMPOSITE (verified
+# 2026-09-03: strictly between Germany and Italy at every tenor, and a debt-weighted
+# six-country average reproduces it to 7bp mean / 18bp max), so a euro sovereign priced on it
+# shows relative value against the euro-area average, not a spread over its own government.
+_EURO_AREA = re.compile(
+    r"GERMANY|BUNDERSREPUBLIK|FRANCE|NETHERLANDS|BELGIUM|IRELAND|BONOS Y OBLIG|SPAIN|"
+    r"ITALY|AUSTRIA|PORTUGAL|GREECE|FINLAND", re.I)
 
 
 def parse_desc_coupon(*texts):
@@ -148,7 +214,127 @@ def _route_agency(r):
     return "vanilla"
 
 
-def build_phase2_universe(master):
+def _resolve_quotation(u):
+    """Resolve the custodian's price / par quotation for one class frame.
+
+    Inputs
+    ------
+    1. u : DataFrame -- one row per unique asset id, still carrying the golden columns
+       ``gold_price`` / ``gold_mkt_value`` alongside ``par_value``, ``fx_rate``, ``currency``.
+
+    Returns ``(quotation, par_face, bt_per_100)``, three Series aligned to ``u``:
+
+    * ``quotation``  -- ``"currency-face"``, ``"titles-of-<F>"``, or a refusal label:
+      ``"quotation-unregistered"`` (the identity says titles but the currency has no
+      :data:`TITLE_FACE` entry), ``"quotation-unresolved"`` (neither form fits), or
+      ``"quotation-underivable"`` (no par / price / market value to test with).
+    * ``par_face``   -- the position restated as a CURRENCY FACE amount.
+    * ``bt_per_100`` -- the custodian price restated per 100 of face, the only form any
+      engine here accepts.
+
+    A refusal is a LABEL, not an exception. The driver turns it into a named disposition, so
+    a security whose quotation we cannot read appears in the output with a reason rather than
+    disappearing -- the failure mode ``dataio.dispositions`` exists to prevent.
+    """
+    par = pd.to_numeric(u["par_value"], errors="coerce")
+    mv = pd.to_numeric(u["gold_mkt_value"], errors="coerce")
+    fx = pd.to_numeric(u["fx_rate"], errors="coerce").fillna(1.0)
+    bt = pd.to_numeric(u["gold_price"], errors="coerce")
+    face = u["currency"].astype("string").str.strip().str.upper().map(TITLE_FACE).astype(float)
+
+    # market value is base-USD and fx is local-per-USD, so local MV = MV_base * fx
+    implied = (mv * fx / par * 100.0).where(par.notna() & (par != 0))
+    ratio = bt / implied
+
+    as_face = (ratio - 1.0).abs() < QUOTATION_TOL
+    as_titles = (ratio * 100.0 - 1.0).abs() < QUOTATION_TOL
+
+    quotation = pd.Series("quotation-unresolved", index=u.index, dtype=object)
+    quotation[ratio.isna()] = "quotation-underivable"
+    quotation[as_face] = "currency-face"
+    quotation[as_titles & face.isna()] = "quotation-unregistered"
+    titles = as_titles & face.notna()
+    quotation[titles] = "titles-of-" + face.where(titles).astype("Int64").astype(str)
+
+    # ``face / 100`` first, then divide: for F=100 the divisor is exactly 1.0, so a price
+    # already quoted per 100 passes through BIT-IDENTICALLY rather than picking up a
+    # last-ulp wobble from multiplying and dividing by 100. Asserted with ``==`` in
+    # tests/test_sovereign_universe.py, so the five MXN numbers are provably untouched.
+    return quotation, par.where(~titles, par * face), bt.where(~titles, bt / (face / 100.0))
+
+
+def _spread_meaning(currency, *texts):
+    """What a spread calibrated on the currency's curve MEANS for this issuer.
+
+    Returns ``"own-curve-anchor"`` (the issuer IS the currency's sovereign, so the number is a
+    validation anchor and should sit near zero), ``"relative-to-euro-composite"`` (a euro-area
+    sovereign against the composite EUR curve -- relative value, not credit), or
+    ``"spread-over-government"`` (a foreign sovereign, a province or a municipality against the
+    local government curve -- a genuine spread). A label, never an input: it cannot move a
+    number, which ``tests/test_sovereign_universe.py`` asserts with ``==``.
+    """
+    ccy = str(currency).strip().upper()
+    blob = " ".join(str(t) for t in texts if t is not None)
+    if ccy == "EUR":
+        return "relative-to-euro-composite" if _EURO_AREA.search(blob) else "spread-over-government"
+    pattern = SOVEREIGN_ISSUER.get(ccy)
+    if pattern and re.search(pattern, blob, re.I):
+        return "own-curve-anchor"
+    return "spread-over-government"
+
+
+def _terms_note(*texts):
+    """A documented contract feature the vanilla engine does not represent, or ``""``.
+
+    This is a NOTE, not a route: the bond still prices. It exists so a feature we know about
+    and deliberately did not model is stated on the row rather than left for a reader to
+    notice from a duration that looks slightly wrong.
+    """
+    blob = " ".join(str(t) for t in texts if t is not None)
+    if _SINKING_TOKEN.search(blob):
+        return ("description documents a sinking fund; no schedule in our data, so priced as "
+                "a bullet to maturity")
+    return ""
+
+
+def _route_sovereign(r):
+    """Engine route for one government / municipal holding.
+
+    Order matters and each step is a documented contract feature:
+
+    1. **zero** -- BG below :data:`ZERO_COUPON_MAX_PCT`. This claims all 31 US Treasury STRIPS,
+       including ``TNTD03983600`` "TREAS BD STRIPPED CALL", whose master call date EQUALS its
+       maturity. That row would also survive step 3, but for the wrong reason, so it is
+       claimed here where the reason is true.
+    2. **floating-reference-unverified** -- the description says FRN and no reference rate or
+       margin exists anywhere in our data. Not priced: see the driver's flag text.
+    3. **coupon-schedule-unavailable** -- the description says STEP UP and we hold no coupon
+       path. Same treatment the corporate book gives a step-up with no schedule.
+    4. exercise rights -- a call strictly after maturity is a DATA ERROR and is named as one;
+       a call on or within :data:`MAKE_WHOLE_MAX_GAP_DAYS` of maturity is the redemption
+       itself, not an option, so the bond is a bullet; anything earlier is a real Bermudan.
+    5. **vanilla** otherwise.
+    """
+    cpn = r["coupon_pct"]
+    if pd.notna(cpn) and cpn < ZERO_COUPON_MAX_PCT:
+        return "zero"
+    desc = f"{r['desc_short']} {r['desc_long']}"
+    if _FRN_TOKEN.search(desc):
+        return "floating-reference-unverified"
+    if _STEP_UP_TOKEN.search(desc):
+        return "coupon-schedule-unavailable"
+    if r["has_call"]:
+        gap = (pd.Timestamp(r["maturity"]) - pd.Timestamp(r["call_date"])).days \
+            if _present(r["call_date"]) and pd.notna(r["maturity"]) else None
+        if gap is not None and gap < 0:
+            return "call-after-maturity"
+        if gap is not None and gap <= MAKE_WHOLE_MAX_GAP_DAYS:
+            return "vanilla"
+        return "callable-lattice"
+    return "vanilla"
+
+
+def build_phase2_universe(master, classes=None):
     """Per-class mini-universe for the three phase-2 classes (MBS counted only).
 
     Returns ``(bonds, recon, counts)``:
@@ -163,12 +349,17 @@ def build_phase2_universe(master):
     m = master.copy()
     m["sub"] = m["sub_category"].astype("string").str.strip()
 
+    classes = tuple(PHASE2_CLASSES if classes is None else classes)
+    unknown = [c for c in classes if c not in SUBCATS]
+    if unknown:
+        raise ValueError(f"unknown asset class(es) {unknown}; known: {sorted(SUBCATS)}")
+
     frames, counts = [], {}
-    for cls, sub in SUBCATS.items():
-        rows = m[m["sub"] == sub]
+    for cls in classes:
+        rows = m[m["sub"] == SUBCATS[cls]]
         counts[cls] = {"rows": int(len(rows)), "unique": int(rows["asset_id"].nunique()),
                        "negative_par_rows": int((pd.to_numeric(rows["par_value"], errors="coerce") < 0).sum())}
-        if cls == "govt_mbs":                      # inventoried; engine awaits the Bloomberg pull
+        if cls in COUNT_ONLY:                      # inventoried; engine awaits the Bloomberg pull
             continue
         u = _uniques(rows)
         u["asset_class"] = cls
@@ -189,6 +380,14 @@ def build_phase2_universe(master):
             u["route"] = "vanilla"
             u["real_coupon_pct"] = float("nan")
             u["index_ratio0"] = float("nan")
+        elif cls in SOVEREIGN_CLASSES:
+            # Sovereign and sub-sovereign paper both price on the CURRENCY curve, which for
+            # every mapped file is that currency's government curve (EUR being a euro-area
+            # composite). ``group`` separates the two for reporting only.
+            u["group"] = cls
+            u["route"] = u.apply(_route_sovereign, axis=1)
+            u["real_coupon_pct"] = float("nan")
+            u["index_ratio0"] = float("nan")
         else:                                      # linker
             u["group"] = "linker"
             u["real_coupon_pct"] = [parse_desc_coupon(t, q) for t, q in zip(u["desc_long"], u["desc_short"])]
@@ -199,21 +398,34 @@ def build_phase2_universe(master):
             u.loc[u["real_coupon_pct"].notna() & ~u["index_ratio0"].between(*RATIO_SANITY),
                   "route"] = "ilb-ratio-implausible"
         u["real_coupon"] = pd.to_numeric(u["real_coupon_pct"], errors="coerce") / 100.0
+        # Quotation is resolved for EVERY class, while the golden columns are still here. The
+        # three original phase-2 classes all resolve to "currency-face", which
+        # tests/test_sovereign_universe.py asserts -- so this is inert for them by evidence
+        # rather than by assumption.
+        u["price_quotation"], u["par_face"], u["bt_per_100"] = _resolve_quotation(u)
+        u["spread_meaning"] = [_spread_meaning(c, a, b) for c, a, b
+                               in zip(u["currency"], u["desc_short"], u["desc_long"])]
+        u["terms_note"] = [_terms_note(a, b) for a, b in zip(u["desc_short"], u["desc_long"])]
         frames.append(u)
 
     bonds = pd.concat(frames, ignore_index=True)
     bonds["coupon"] = bonds["coupon_pct"] / 100.0                    # decimal
     bonds.loc[bonds["route"] == "zero", "coupon"] = 0.0              # the 1e-5 strips are zeros
 
-    for cls in ("agency", "guaranteed", "linker"):
+    for cls in classes:
+        if cls in COUNT_ONLY:
+            continue
         sel = bonds[bonds["asset_class"] == cls]
         counts[cls]["routes"] = {k: int(v) for k, v in sel["route"].value_counts().items()}
         counts[cls]["shorts"] = int(sel["is_short"].sum())
 
-    recon = bonds[["asset_id", "asset_class"] + [c for c in GOLDEN_FIELDS if c in bonds.columns]].copy()
-    bonds = bonds.drop(columns=[c for c in GOLDEN_FIELDS if c in bonds.columns])
+    # ``bt_per_100`` is a custodian mark restated, so it travels with the golden columns and
+    # OUT of the pricing inputs -- the same input / truth separation the corporate universe keeps.
+    truth = [c for c in list(GOLDEN_FIELDS) + ["bt_per_100"] if c in bonds.columns]
+    recon = bonds[["asset_id", "asset_class", "price_quotation"] + truth].copy()
+    bonds = bonds.drop(columns=truth)
     return bonds, recon, counts
 
 
-def build_phase2_from_path(path):
-    return build_phase2_universe(load_master_phase2(path))
+def build_phase2_from_path(path, classes=None):
+    return build_phase2_universe(load_master_phase2(path), classes=classes)

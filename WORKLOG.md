@@ -5,6 +5,141 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-09-03 — Government and Municipal/Provincial bonds: the cash-bond side closes
+**Commits:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario marked two cells `no` in the **K column of the `Summary` sheet** — `K23` against
+`Government Bonds`, `K55` against `Municipal/Provincial Bonds Total`. They are the only two
+annotations on the sheet, and they map one-to-one onto master sub-categories: **153 rows → 147
+securities** and **7 → 7**. 154 unique securities, of which **147 price at the 3-31 baseline**
+and 150 at the 6-10 control.
+
+### One convention decided, with evidence, before any code
+
+Everything discounts on its **own currency's curve** — what `zeroyield4(ccy, date)` did in the
+legacy system, what `ZeroCurve.from_currency` already implemented, and what the corporate book
+does. The alternative was live: a German Bund reprices at **+1.34 bp** on
+`Germany_Yield_Curve.txt` but **−44.88 bp** on `EUR_Yield_Curve.txt`, so the choice moves every
+euro number. It went to the advisor before anything was written, and the deciding argument was
+neither elegance nor convention but coverage: **Ireland has no curve file**, so a per-country
+rule would have put 2 Irish holdings on a different footing from their 28 peers — the "two
+owners of one decision" shape again, prevented rather than found. Per-country curves stay as
+the cross-check.
+
+That left the question of what the number is *called*, which needed the EUR file's identity.
+It is a **euro-area sovereign composite, not a swap curve**: it sits strictly between Germany
+and Italy at every tenor, and a debt-weighted six-country average reproduces it to **7 bp mean,
+18 bp max**. So a Bund at −44.88 bp is rich to the euro-area average — relative value inside
+the sovereign sector, and emphatically not an asset-swap spread. The CSV carries
+`spread_meaning` per row (`own-curve-anchor` 110 · `relative-to-euro-composite` 30 ·
+`spread-over-government` 14) because the same arithmetic means three different things, and a
+reader who takes a −45 bp Bund and a +1 bp Bund as contradictory has been failed by the label,
+not the model.
+
+Eight currencies joined `CURVE_FILE` (6 → 14). Every units claim was **reproduced against the
+raw file** rather than assumed — the standing rule since the GBP bug — and all eight read as
+decimals, so no `PAR_YIELD_UNITS` entry was needed. MYR is deliberately *absent*: it has no
+file at all, so `from_currency` raises and the driver names the gap instead of quietly
+discounting a Malaysian bond on someone else's curve.
+
+### A quotation trap, caught before shipping rather than after
+
+Six holdings record **par as a count of titles**, not a currency face amount. The detector is
+the custodian's own identity — `BT == market value / par`, which fails at a ratio of exactly
+0.01 for these six — but the identity **cannot say what the denomination is**: it holds for
+Mexico at 100 and Brazil at 1,000 alike. So the denomination comes from an explicit
+per-currency registry and never from the price level, because no threshold separates a 916.73
+per-1000 quote from a per-100 one. That is the `PAR_YIELD_UNITS` lesson applied in advance
+instead of in hindsight.
+
+The five Mexican prices pass through untouched; only `TNTG630781W` rescales, **916.73 →
+91.673**. Priced as recorded it would have produced a spread of several thousand basis points.
+Both registry values are corroborated *inside the data* — every Mexican long description
+carries `MXN100`, the Brazilian carries `BRL1000` — and a test asserts that agreement so the
+registry cannot drift from its source. The conversion is written `BT / (F/100)` rather than
+`BT * 100 / F` so that `F`=100 divides by exactly 1.0 and the Mexican numbers are provably
+bit-identical; the first version was not, and the test caught it.
+
+The **custodian made the same mistake**: its own yield for that bond is −23.1%, against
+6.45–8.41% for the five Mexican bonds. A golden column is only golden where its own convention
+holds.
+
+### Four securities read one at a time
+
+A genuine **callable US Treasury** (12.5% of 2014, callable from 2009-08-15) goes on the BDT
+lattice with `check_representable` — the guard `phase2_risk.py` still lacks. Its two columns
+must be read together: **122 bp** with the call against **950 bp** straight, effective duration
+**0.39 y** against 4.05 y. A 12.5% coupon against a par call four months out is called with
+near certainty, so nearly all of that gap is option value; the flag says so in words, because
+950 bp is a number someone could otherwise lift out of the CSV and quote as a sovereign spread.
+
+`TNTD03983600` "TREAS BD STRIPPED CALL" carries a call date **equal to** its maturity. The zero
+rule claims it first — it would also have survived the exercise branch, but for the wrong
+reason, and a right answer reached by a wrong rule is a defect waiting for different data.
+
+Two are refused. The **Russian Federation 2030** says `STEP UP` in its description and we hold
+no coupon path; independently, the custodian's duration of 4.08 against roughly 10 for a 21-year
+7.5% bullet says the notional amortises, which we also cannot represent. The **Japanese
+floating-rate JGB** looked at first like the corporate pattern — an FRN missing its margin,
+i.e. a one-cell data ask. It is not: the 15-year series resets off the **10-year JGB auction
+yield**, so the *reference* is what the simple-forward engine cannot represent, and the
+custodian's −0.475 duration is inconsistent with a short-rate floater at 97.64. Filling a
+margin would not have made it right. Naming the gap correctly turned a request into an
+engine limitation — habit 5, on the other side of the ledger.
+
+Custodian duration was used as **evidence in the flag text and never as a router**. It means
+different things by class — it missed the call on corporate callables and was option-adjusted
+on agencies — so a rule keyed on it would have told us to price the corporate callables as
+bullets. A divergence beyond 1.5 y is reported with both numbers and acted on by nobody.
+
+### The results validate the framework more than they inform
+
+Anchors land where they must: JGBs at a median of **0.0 bp** (−3.9 to 12.0), gilts **4.4**,
+SEK 3.1, SGD 8.0, MXN 10.3. A sovereign on its own government curve *should* come out near
+zero; that is the pipeline checking itself.
+
+The euro hierarchy is right without being told anything about credit: Germany richest at −70
+to −52 bp, Spain +39, Belgium +40, **Ireland +156 and +164**. Australian semi-governments come
+in at 64–106 bp over the Commonwealth curve, Mexico 341–409 and Brazil 366 over Treasuries,
+Illinois taxable pension 296, a military-housing revenue bond 546.
+
+The one result needing explanation is the USD Treasury anchor, median +40.6 rather than ~0.
+It is not model error. Three securities maturing on **the same day**, 2019-02-15: the
+on-the-run 10-year auctioned that February prices at **+3.9 bp**, STRIPS at +38.7/+41.0, and an
+old off-the-run bond at **+42.8**. Same issuer, same maturity, same day, 39 bp apart. Our USD
+curve is built from on-the-run yields, so on a Treasury the calibrated number is the
+**off-the-run liquidity premium**, historically extreme in March 2009. Recent issues anchor at
+a median of 2.7 bp; everything older sits 40–55 bp cheap.
+
+### Discipline
+
+`build_phase2_universe` gained an explicit `classes` argument defaulting to the original four,
+so `phase2_risk.py` and its CSV are untouched; the sovereign work went into its own driver and
+its own dated outputs rather than spending the five-CSV invariant. The quotation resolution was
+made **universal across every asset class** and is inert for agency/guaranteed/linker **by
+evidence** — all 63 resolve to `currency-face`, asserted by a test, not assumed.
+
+All **five production CSVs and four disposition sidecars regenerated byte-identical** to the
+2026-08-31 release record. `reconcile()` proves the 154 over sets: 147 priced + 7 named at
+3-31, 150 + 4 at 6-10. **390 → 423 tests** (32 new, plus one because `test_exception_wiring`
+parametrises over every source file and picked up the new driver on its own).
+
+**No new Mario or Liping request was opened.** Four gaps are recorded in `missing_data.md` as
+G6 and the KRW 3-31 curve row stays where it was, in the G5 deferred queue.
+
+### What this actually closes
+
+The **cash-bond side of the book**. Corporate bonds were already complete; these are sovereign
+and sub-sovereign, a different branch. What remains after this is the securitised block —
+Government MBS 882, Non-Government CMOs 264, ABS and CMBS — plus the derivative rows, all
+gated on the Bloomberg pull Mario has not returned. Nothing here unblocks any of it.
+
+Evidence: `docs/sovereign_municipal_scope_2026-09-03.md`.
+
+---
+
 ## 2026-08-31 (fourth wave) — Excel closes at 7 / 5 / 5, and the obsolete zips leave the branch
 **Commits:** `630a554` (zips) · `44e65fe` (floating through Excel)
 **Hours:** `[TO FILL]`

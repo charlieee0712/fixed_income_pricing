@@ -33,6 +33,7 @@ Working rules derived:
 | G3 | FRN/hybrid terms | 11 (3 all-terms + 8 margins) | 8 BT-marked hybrids; 3 FRNs priced imprecisely | `frn_spreads.csv` / `hybrid_switch_terms.csv` — one cell each | ⏳ Mario 07-20 · Liping 07-30 |
 | G4 | call schedule | 1 (AssuredGty US04622DAA90) | the unpriced 5th corporate callable | one `call_schedules.csv` row | ⏳ Liping 07-30 (first ask) |
 | G5 | deferred / confirmation-only | KTBi · ~~GBP~~+KRW curves · **3 corp + 5 AGY call-schedule confirms** · 1 rating quirk · FHR 3122 ZB | 1 ILB; rest = confirmation | curve txt rows / `call_schedules.csv` / master fix | ⏳ Liping 07-30 (opportunistic); standing plan = Mario MBS touchpoint. **GBP WITHDRAWN 2026-08-30 — see below** |
+| G6 | sovereign curve rows + 2 term gaps | 4 securities (+3 KRW under G5) | 4 Government Bonds unpriced @3-31 | curve txt rows / a coupon-path table | **no request opened (2026-09-03)** |
 
 Channels: **Mario** (client side, owns G1/G2/G3 since 07-20/07-22, no reply yet) and **Liping**
 (colleague, occasional campus Bloomberg access; full request incl. BDP template sent 2026-07-30).
@@ -163,6 +164,32 @@ somebody documented — worth having, worth nobody's phone call on its own.
 | FNMA 6.25 2011 rating quirk | TNTD04366584 / US31359MGT45 | senior-vs-sub identity behind the master's A/Aa2 | note / master correction |
 | FHR 3122 ZB (REMIC Z, misfiled as AGY debenture) | TNTD04733316 | CMO-phase input (BT-marked now, no force-pricing) | DES terms for the future CMO engine |
 
+## G6 — Government / Municipal classes (2026-09-03)
+
+Four securities out of 154 cannot be priced, each for a different and named reason. **No
+request was opened for any of them**, consistent with the standing instruction; they are
+recorded so a future data drop can be matched against them.
+
+| item | securities | effect | landing place |
+|---|---|---|---|
+| DKK par-curve row for 2009 | 1 (`TNTG701488W`, Denmark 5% 2013) | unpriced at both dates | one row in `data/DKK_Yield_Curve.txt` |
+| MYR par-curve file | 1 (`TNTG632668U`, Malaysia 3.718% 2012) | unpriced at both dates | a `MYR_Yield_Curve.txt`, then one `CURVE_FILE` entry |
+| JGB floating-rate reference + margin | 1 (`TNTG630227U`, Japan FRN 2021) | custodian mark | the reference index and margin; the engine also needs a CMS-style reset, so this is **not** a one-cell fill |
+| Russia 2030 coupon path + amortisation | 1 (`TNTD04437091`) | custodian mark | `data/coupon_schedules.csv` for the steps, plus an amortisation table the engines do not yet have |
+
+The **KRW 2009-03-31 curve row** already sits in G5 as confirmation-only. It now blocks three
+Government Bonds at the baseline in addition to the KTBi linker. They all price at the 6-10
+control, so the gap is a single missing row rather than a missing file. **Still not re-asked**
+— the G5 deferral discipline is unchanged.
+
+The Japanese floater deserves a note against habit 5. Our first read was "an FRN with a
+missing margin", which is the corporate-book pattern and would have been a one-cell data ask.
+It is not: the 15-year JGB series resets off the **10-year JGB auction yield**, so the
+*reference* is what our simple-forward engine cannot represent, and the custodian's own
+effective duration of −0.475 is inconsistent with a short-rate floater priced at 97.64.
+Filling a margin would not have made it right. Naming the gap correctly changed it from a
+request into an engine limitation.
+
 ## Closed by us, not by data (2026-08-30)
 
 One entry left this registry without anyone sending us anything, and the reason is worth
@@ -183,6 +210,25 @@ Here that check took minutes — the raw GBP row for 2009-03-31 reads
 A guard now enforces the check: any par-yield row that scales above 100% raises
 `ParYieldUnitError` naming the units, instead of surfacing later as a statement about
 arbitrage. It catches DKK too, which nothing in this portfolio uses yet.
+
+**The same class of problem, caught before shipping this time (2026-09-03).** Six Government
+Bonds record par as a count of titles rather than a currency face amount, and one of them —
+the Brazilian `TNTG630781W` — is quoted per R$1,000, so its recorded price of 916.73 is
+91.673 per 100. Priced as recorded it would have produced a spread of several thousand basis
+points, and the temptation is to read that as a data problem with the price.
+
+It is not a gap and no one was asked for anything. The detector is the custodian's own
+identity (`BT == market value / par`, which fails at a ratio of exactly 0.01 for these six),
+and the denomination comes from an explicit per-currency registry, `dataio.phase2.TITLE_FACE`
+— never from the price level, because no threshold separates a 916.73 per-1000 quote from a
+per-100 one. That is the GBP lesson stated as a rule and applied in advance. Both registry
+values are corroborated **inside the data**: every Mexican long description carries the token
+`MXN100` and the Brazilian carries `BRL1000`, and a test asserts that agreement so the
+registry cannot drift from the source.
+
+Worth recording: the **custodian made this same mistake**. Its own yield for that bond is
+−23.1%, against 6.45–8.41% for the five Mexican bonds. `DI` is not a usable cross-check
+there — a reminder that a golden column is only golden where its own convention holds.
 
 ## Provisional (web-sourced) values — Bloomberg confirmation queue
 

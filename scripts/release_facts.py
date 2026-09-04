@@ -34,9 +34,11 @@ FACTS = pathlib.Path(os.environ.get(
     "FIP_FACTS", f"docs/release_facts_{dt.date.today():%Y-%m-%d}.md"))
 
 PRODUCTION = ("implied_oas_2009-03-31.csv", "implied_oas.csv", "callable_risk.csv",
-              "phase2_risk_2009-03-31.csv", "phase2_risk_2009-06-10.csv")
+              "phase2_risk_2009-03-31.csv", "phase2_risk_2009-06-10.csv",
+              "sovereign_risk_2009-03-31.csv", "sovereign_risk_2009-06-10.csv")
 DISPOSITIONS = ("corporate_disposition_2009-03-31.csv", "corporate_disposition_2009-06-10.csv",
-                "callable_disposition_2009-03-31.csv", "callable_disposition_2009-06-10.csv")
+                "callable_disposition_2009-03-31.csv", "callable_disposition_2009-06-10.csv",
+                "sovereign_disposition_2009-03-31.csv", "sovereign_disposition_2009-06-10.csv")
 
 
 def sha256(path) -> str:

@@ -22,6 +22,27 @@ from curves.bootstrap import FREQUENCIES, bootstrap
 # but the URS holdings use ISO codes; extend as needed. JPY/AUD/KRW added for the phase-2 classes
 # (KfW-JPY + EIB-AUD agencies, JGBi/KTBi linkers); all three files carry the 2009 dates
 # (KRW lacks 2009-03-31 — its bootstrap raises there, which the drivers flag, not mask).
+#
+# The eight below were added 2026-09-03 for the Government / Municipal classes. Each was
+# checked against the RAW file before being mapped -- the rule in docs/missing_data.md is that
+# a units claim needs the source, not one of our own error messages. Reading the longest tenor
+# at the earliest usable 2009 date gives BRL 0.1236, MXN 0.0838, NOK 0.0596, ILS 0.0442,
+# SGD 0.0377, CAD 0.0356, SEK 0.0304 -- all DECIMALS, which is the default in
+# ``curves.bootstrap.PAR_YIELD_UNITS``, so none of them needed a units entry (GBP and DKK
+# remain the only two files that store percent).
+#   * CAD maps to CAN_Yield_Curve.txt -- that file is named for the country, not the ISO code.
+#   * DKK is mapped but carries NO 2009-03-31 or 2009-06-10 row, so its single holding is
+#     reported curve-blocked rather than quietly priced off a neighbouring date.
+#   * MYR has no file at all and is deliberately ABSENT here: ``from_currency`` raises, and the
+#     driver turns that into a named disposition instead of a silent skip.
+#
+# What these files ARE matters for reading the calibrated spread. A file named for a country
+# is that sovereign's own curve, so its own bonds reprice to ~0 (Bund +1.34bp, USTs within
+# ~20bp) -- an anchor, not a credit signal. ``EUR_Yield_Curve.txt`` is the exception: it is a
+# euro-area sovereign COMPOSITE, not a swap curve. Verified 2026-09-03 -- it sits strictly
+# between Germany and Italy at every tenor, and a debt-weighted six-country average reproduces
+# it to 7bp mean / 18bp max. So a euro sovereign priced on it shows relative value against the
+# euro-area average (Germany rich, Ireland cheap), NOT an asset-swap spread.
 CURVE_FILE = {
     "USD": "USD_Yield_Curve.txt",
     "EUR": "EUR_Yield_Curve.txt",
@@ -29,6 +50,14 @@ CURVE_FILE = {
     "JPY": "JPY_Yield_Curve.txt",
     "AUD": "AUD_Yield_Curve.txt",
     "KRW": "KRW_Yield_Curve.txt",
+    "BRL": "BRL_Yield_Curve.txt",
+    "CAD": "CAN_Yield_Curve.txt",
+    "DKK": "DKK_Yield_Curve.txt",
+    "ILS": "ILS_Yield_Curve.txt",
+    "MXN": "MXN_Yield_Curve.txt",
+    "NOK": "NOK_Yield_Curve.txt",
+    "SEK": "SEK_Yield_Curve.txt",
+    "SGD": "SGD_Yield_Curve.txt",
 }
 
 
