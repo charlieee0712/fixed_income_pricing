@@ -1,3 +1,29 @@
-# Data files are byte-frozen: no EOL conversion ever (curve txt/csv come from 47 as LF;
-# local autocrlf must not rewrite them — see CLAUDE.md "CRLF blocks pull" trap, 2026-07-18).
+# Line endings — settled 2026-09-04.
+#
+# This repository is developed on Windows and deployed to a Linux host, and every text file
+# is already stored LF in the index. With no rule here, a Windows checkout under
+# core.autocrlf=true wants CRLF in the working tree, so git prints "LF will be replaced by
+# CRLF" on almost every `git add`. Nothing was ever broken by that warning — but the same
+# ambiguity did hide a real defect once: a driver message that embedded a filesystem path
+# read differently on the two platforms, and the difference was only caught by comparing a
+# generated file across them (see WORKLOG 2026-09-03).
+#
+# ⚠️ Rule order matters: LATER lines win.
+
+# 1. Default — text is normalised to LF in the index and checked out as LF.
+* text=auto eol=lf
+
+# 2. Windows-hosted formats keep CRLF in the working tree. The .bas modules are imported by
+#    Excel's VBA editor and the scripts are run by cmd.exe and PowerShell; CRLF is what those
+#    tools expect, and it is what the four files driving the verified Excel gate
+#    (RysePricingBridge.bas, JsonConverter.bas, TestHarness.bas, Run-BridgeTests.ps1)
+#    already carry. Without these lines rule 1 would flip them to LF on the next checkout.
+*.bas text eol=crlf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 3. Data files are byte-frozen: no EOL conversion in either direction. The curve exports and
+#    CSVs come from 47 as LF while the older *_Yield_Curve.txt exports carry CRLF, and local
+#    autocrlf must rewrite neither — see CLAUDE.md, the "CRLF blocks pull" trap of 2026-07-18.
 data/** -text
