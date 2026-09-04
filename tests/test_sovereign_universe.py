@@ -23,7 +23,7 @@ import pandas as pd
 import pytest
 
 from curves.bootstrap import PAR_YIELD_UNITS, load_par_curve
-from curves.zero_curve import CURVE_FILE, ZeroCurve
+from curves.zero_curve import CURVE_FILE, ZeroCurve, curve_failure_reason
 from dataio.phase2 import (PHASE2_CLASSES, SOVEREIGN_CLASSES, SUBCATS, TITLE_FACE,
                            _route_sovereign, _spread_meaning, _terms_note,
                            build_phase2_from_path)
@@ -143,6 +143,21 @@ def test_the_currencies_added_for_this_class_really_do_store_decimals(ccy):
     assert CURVE_FILE[ccy] not in PAR_YIELD_UNITS      # i.e. it takes the decimal default
     _, par = load_par_curve(str(pathlib.Path(DATA) / CURVE_FILE[ccy]), VAL)
     assert 0.05 < float(max(par)) < 30.0, f"{ccy} long-end par yield {max(par)}% is not a market"
+
+
+def test_a_curve_failure_reason_carries_no_filesystem_path():
+    """A driver flag is a deliverable. A path in one is both noise and a cross-platform
+    difference -- it was found by diffing this driver's CSV between Windows and the
+    deployment host, where the same failure produced two different strings."""
+    windows = r"Valuation date 2009-03-31 not found in data\KRW_Yield_Curve.txt. Pick one."
+    posix = windows.replace("\\", "/")
+    assert curve_failure_reason(ValueError(windows)) == curve_failure_reason(ValueError(posix))
+    out = curve_failure_reason(ValueError(windows))
+    assert "KRW_Yield_Curve.txt" in out          # the file NAME still helps the reader
+    assert "data" not in out and "/" not in out and "\\" not in out
+    # a message with no path at all passes through untouched
+    plain = "no par-curve file for currency MYR"
+    assert curve_failure_reason(ValueError(plain)) == plain
 
 
 # --------------------------------------------------------------- counts and routes

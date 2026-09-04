@@ -49,7 +49,7 @@ sys.path.insert(0, "src")
 import numpy as np
 import pandas as pd
 
-from curves.zero_curve import ZeroCurve
+from curves.zero_curve import ZeroCurve, curve_failure_reason
 from dataio.call_schedules import (load_call_provenance, load_call_schedules,
                                    to_lattice_schedule)
 from dataio.dispositions import reconcile
@@ -188,7 +188,8 @@ def main():
         try:
             curve = get_curve(ccy, variant)
         except Exception as e:                      # no file, no row for the date, non-arb node
-            emit(f"{route}-curve-blocked", f"curve {ccy}/{variant} unavailable @ {VAL}: {e}")
+            emit(f"{route}-curve-blocked",
+                 f"curve {ccy}/{variant} unavailable @ {VAL}: {curve_failure_reason(e)}")
             continue
 
         cpn = float(b["coupon"])

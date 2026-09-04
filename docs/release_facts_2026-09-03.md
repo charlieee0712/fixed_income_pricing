@@ -1,6 +1,6 @@
 # Release facts — Round 2b hardening
 
-**Generated from the live repository at `b26dcba` (working tree DIRTY) on 2026-09-03.** Every number below is
+**Generated from the live repository at `113c3e2` (working tree DIRTY) on 2026-09-03.** Every number below is
 read out of a file a driver just wrote. Regenerate with `PYTHONPATH=src python
 scripts/release_facts.py` after any code-bearing change, and re-run the drivers first.
 
@@ -13,8 +13,8 @@ scripts/release_facts.py` after any code-bearing change, and re-run the drivers 
 | `callable_risk.csv` | 3 | `703292d505475b2e63cd495e008a4106` |
 | `phase2_risk_2009-03-31.csv` | 63 | `ea732f0ec3d52e74cbb97113492be71f` |
 | `phase2_risk_2009-06-10.csv` | 63 | `fadd25a09b6d4128f5782bf3d038cc9c` |
-| `sovereign_risk_2009-03-31.csv` | 154 | `dcc9ff7b7a9a3016ee2b358670966210` |
-| `sovereign_risk_2009-06-10.csv` | 154 | `00acfbd70bd952c47ea4747002c57ad3` |
+| `sovereign_risk_2009-03-31.csv` | 154 | `40baf346bbb8afbaf5c29cb195dc8df1` |
+| `sovereign_risk_2009-06-10.csv` | 154 | `d91e3c8ff42724a48ce5e4ceb0855202` |
 
 ## Disposition sidecars — every security accounted for, at both dates
 
@@ -28,8 +28,8 @@ dated because an undated default let the 6-10 run overwrite the 3-31 one.
 | `corporate_disposition_2009-06-10.csv` | 732 | `e53594606bcddbd1c28ff472354bf5d6` |
 | `callable_disposition_2009-03-31.csv` | 5 | `93f4358da4df8bbb4eed0b897db277b2` |
 | `callable_disposition_2009-06-10.csv` | 5 | `7b6e6abc50a735f7b72addb026b8823f` |
-| `sovereign_disposition_2009-03-31.csv` | 154 | `78fc9ef6b79569a50ace5d13888ad990` |
-| `sovereign_disposition_2009-06-10.csv` | 154 | `898b05ebc20f830ea3ccd8ce49613f3b` |
+| `sovereign_disposition_2009-03-31.csv` | 154 | `b00715c838addde12c89d508792f9de8` |
+| `sovereign_disposition_2009-06-10.csv` | 154 | `83bdfbb0af4f63fb4b02f0c141a13a9b` |
 
 ## Corporate coverage
 
@@ -64,5 +64,5 @@ says so in the row it appears in — not only in prose somewhere else.
 
 ## Test suite
 
-`pytest -q` → **423 passed in 44.69s** (local, Python 3.13.5).
+`pytest -q` → **424 passed in 45.29s** (local, Python 3.13.5).
 

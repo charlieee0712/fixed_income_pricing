@@ -129,6 +129,19 @@ parametrises over every source file and picked up the new driver on its own).
 **No new Mario or Liping request was opened.** Four gaps are recorded in `missing_data.md` as
 G6 and the KRW 3-31 curve row stays where it was, in the G5 deferred queue.
 
+### One defect found by the cross-platform check itself
+
+Comparing the new CSV between Windows and 47 showed the numbers agreeing to the documented
+profile but **four text rows differing**. The curve-blocked flag interpolated the raw
+exception, so it carried `data\KRW_Yield_Curve.txt` here and `data/…` there. Two problems in
+one: it broke text parity between the two runs, and a filesystem path in a deliverable message
+is exactly what the endpoint contract already forbids. `curve_failure_reason` in
+`curves/zero_curve.py` now owns the rule for both drivers and keeps the file name while
+dropping the directory. `phase2_risk.py` built the identical string and was only ever
+**latent** — it has no curve-blocked rows — and was fixed anyway; its CSV is byte-identical.
+Worth noting the parity check earned its keep here by catching something that was not a
+number.
+
 ### What this actually closes
 
 The **cash-bond side of the book**. Corporate bonds were already complete; these are sovereign

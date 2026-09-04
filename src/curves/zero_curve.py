@@ -13,6 +13,8 @@ the grid ``np.interp`` clamps to the endpoints (flat extrapolation), matching th
 """
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -59,6 +61,26 @@ CURVE_FILE = {
     "SEK": "SEK_Yield_Curve.txt",
     "SGD": "SGD_Yield_Curve.txt",
 }
+
+
+def curve_failure_reason(exc) -> str:
+    r"""A stable, path-free description of why a curve would not build.
+
+    Inputs
+    ------
+    1. exc : Exception — whatever ``from_currency`` raised (no file mapped for the
+       currency, no row for the valuation date, a units error, a non-arb node).
+
+    Returns: the message with any directory stripped, keeping the file NAME.
+
+    Driver flags and disposition reasons are deliverables, and this project's contract
+    already says an error message carries no filesystem path. A path is also a
+    cross-platform difference — ``data/X.txt`` on the deployment host against
+    ``data\X.txt`` on Windows — which is enough on its own to break a byte-for-byte
+    parity check between the two runs. The file name is kept because it tells the reader
+    which export to go and look at; the directory tells them nothing.
+    """
+    return re.sub(r"\S*[/\\](\S+\.txt)", r"\1", str(exc))
 
 
 class ZeroCurve:

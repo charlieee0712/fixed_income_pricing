@@ -29,7 +29,7 @@ sys.path.insert(0, "src")
 import numpy as np
 import pandas as pd
 
-from curves.zero_curve import ZeroCurve
+from curves.zero_curve import ZeroCurve, curve_failure_reason
 from dataio.call_schedules import (load_call_provenance, load_call_schedules,
                                    to_lattice_schedule)
 from dataio.phase2 import build_phase2_from_path
@@ -135,7 +135,8 @@ def main():
             curve = get_curve(ccy, variant)
         except Exception as e:                     # val date absent for the ccy, non-arb node, ...
             row.update(route=f"{route}-curve-blocked", clean=float(bt),
-                       flag=f"curve {ccy}/{variant} unavailable @ {VAL}: {e}")
+                       flag=f"curve {ccy}/{variant} unavailable @ {VAL}: "
+                            f"{curve_failure_reason(e)}")
             rows.append(row); continue
 
         # ---- ILB: implied spread vs nominal (own column; ~ -breakeven at INFL=0) ----

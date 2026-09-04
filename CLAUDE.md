@@ -459,9 +459,19 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
 - **⚠️ This closes the CASH-BOND side, not "corporate bonds".** Corporate was already complete.
   Remaining: the securitised block (Govt MBS 882 · non-govt CMO 264 · ABS · CMBS) + derivatives,
   all still gated on Mario's Bloomberg pull. Say that plainly rather than "basically done".
+- **⚠️ A driver flag was leaking a FILESYSTEM PATH — fixed, both drivers.** The curve-blocked
+  flag interpolated the raw exception, so it carried `data\KRW_Yield_Curve.txt` on Windows and
+  `data/…` on 47 ⇒ the same failure produced two different strings, breaking cross-platform text
+  parity AND violating the contract rule "no path in any error message". Found by diffing the new
+  CSV local-vs-47. Fix = `curves.zero_curve.curve_failure_reason` (ONE owner, used by
+  `sovereign_risk.py` AND `phase2_risk.py`); keeps the file NAME, drops the directory.
+  phase2's was LATENT (it has no curve-blocked rows) — fixed anyway, CSV byte-identical.
+- **Cross-platform on the sovereign CSV:** convexity 1.7e-7, spreads 4.8e-11, durations 2.7e-13
+  — same profile as the corporate CSVs (this book has 46y bonds + 30 STRIPS, so the convexity
+  amplification is a touch larger than the documented 3.6e-8). Text columns now identical.
 - **Carry-over noticed, NOT fixed (out of scope):** `outputs/callable_risk.csv` is still
   **undated**, so running 6-10 after 3-31 overwrites it — the same trap the 08-31 work fixed for
-  the sidecars. And `phase2_risk.py`'s lattice block has no `check_representable` guard.
+  the sidecars. And `phase2_risk.py`'s lattice block still has no `check_representable` guard.
 
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
