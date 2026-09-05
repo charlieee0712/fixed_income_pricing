@@ -154,7 +154,12 @@ def main():
             skipped[aid] = ("mark-unavailable", f"no usable custodian price (BT={bt})"); continue
 
         if aid not in schedules:                                 # every genuine callable must be in the table
-            skipped[aid] = ("schedule-unavailable", f"no call-schedule row in {SCHED}"); continue
+            # basename, never the path: a delivered message must not carry one, and a path
+            # also reads differently per platform, so the same failure produced two different
+            # strings in this sidecar (data/ on the deploy host, data\ here). Same rule as
+            # curve_failure_reason and as sovereign_risk.py.
+            skipped[aid] = ("schedule-unavailable",
+                            f"no call-schedule row in {os.path.basename(SCHED)}"); continue
         # exercise times at 364 d/y — the SAME units as the real ACT/364 coupon-time grid below
         sched = to_lattice_schedule(schedules[aid], VAL)
 

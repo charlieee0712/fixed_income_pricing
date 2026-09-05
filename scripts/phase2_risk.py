@@ -164,7 +164,8 @@ def main():
         if route == "callable-lattice":
             if aid not in schedules:
                 row.update(route="call-schedule-missing", clean=float(bt),
-                           flag=f"no row in {SCHED} — seed the AB par-call row")
+                           flag=f"no row in {os.path.basename(SCHED)} — seed the AB "
+                                f"par-call row")
                 rows.append(row); continue
             # exercise times at 364 d/y = the real ACT/364 coupon-grid units; tree PV = dirty and
             # OAS solves tree PV - ai == BT (clean vs clean) — Liping code-review fix 2026-08-04
