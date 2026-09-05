@@ -90,6 +90,15 @@ checks — those are decided here, from the repo.
   Same for the handoff bundles: `docs/handoff_for_claude_web_1/` and `_2/` are folders the
   user uploads; their zips are gone too and are only worth rebuilding if claude.ai ever
   needs an archive rather than files.
+- **⭐ THE PACKAGE NOW SHIPS `data/` TOO (user, 2026-09-05: "带客户数据应该没事吧 这是正常的").**
+  It is Mario's OWN material coming back to him — the URS portfolio, the two legacy pricing
+  workbooks, 26 curve exports, our 6 override CSVs. Consequence: the package is
+  **self-contained — `pytest -q` gives the full 424 there, not 290**, and all four drivers run
+  and reproduce the committed hashes. Package ≈ **36 MB / 206 files** (was 1.9 MB). The
+  README's "Running it" section now says so, plus a line asking that distribution stay with
+  people who already hold the data. ⚠️ The old README text "This folder carries the code, not
+  the portfolio" is RETIRED — do not restore it. ⚠️ Still strip `__pycache__` / `.pytest_cache`
+  after any in-package test run, and do NOT ship the generated `outputs/`.
 - **PDF = `python scripts/md_to_pdf.py --input X.md --output Y.pdf`** (2026-08-25). One local
   command; the old pandoc@47 → HTML → local-Edge dance is RETIRED (local Python has `markdown`,
   Edge is installed). The script carries three Edge flags that each fail **silently** —
