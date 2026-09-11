@@ -477,9 +477,9 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   |---|---:|---:|---|
   | Corporate Bonds | 811 | 732 | done — 566 in output @3-31 |
   | Government Bonds | 153 | 147 | **done 2026-09-03** |
-  | Government Agencies | 42 | 39 | done (phase 2) |
-  | Index Linked Government Bonds | 16 | 15 | done (phase 2) |
-  | Guaranteed Fixed Income | 11 | 9 | done (phase 2) |
+  | Government Agencies | 42 | 39 | done; **restructured 2026-09-10** |
+  | Index Linked Government Bonds | 16 | 15 | done; **engine migrated 2026-09-10** |
+  | Guaranteed Fixed Income | 11 | 9 | done; **restructured 2026-09-10** |
   | Municipal/Provincial Bonds | 7 | 7 | **done 2026-09-03** |
   | **six non-securitised classes** | **1,040** | **949** | **COMPLETE** |
   | Government MBS | 888 | 882 | skeleton, awaiting Bloomberg |
@@ -504,6 +504,80 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
 - **Carry-over noticed, NOT fixed (out of scope):** `outputs/callable_risk.csv` is still
   **undated**, so running 6-10 after 3-31 overwrites it — the same trap the 08-31 work fixed for
   the sidecars. And `phase2_risk.py`'s lattice block still has no `check_representable` guard.
+
+## Government book -> the `pricer/` template (Mario 2026-09-10) — DONE, 468 tests
+- **The ask:** next week's delivery = **Government Agencies** + **Index Linked Government
+  Bonds**, restructured onto the approved `core/` + `assets/` + `endpoints/` template.
+  **Guaranteed Fixed Income was included by decision** — the three share ONE loader
+  (`dataio/phase2.py`), ONE driver (`scripts/phase2_risk.py`) and ONE 63-row hashed CSV, so
+  migrating two of three would leave an un-migrated island inside migrated code.
+  **69 master rows -> 63 securities: agency 39 / guaranteed 9 / linker 15. Unchanged by this
+  round — that invariance IS the deliverable.**
+- **Directive doc `docs/cc_next_instruction_government_assets_restructure_2026-09-10.md`.**
+  ⚠️ Written differently on purpose: **Gate 0 is §1 and runs BEFORE any code**. The four
+  previous rounds each needed a revision section written after the fact (§21/§16/§26/§14).
+  All six Gate-0 checks passed with no surprises; the 13 artifact hashes matched
+  `release_facts_2026-09-05` exactly, so the files on disk WERE the record.
+- **⭐ The work is NOT evenly distributed, and the report says so.** Only ILB was an engine
+  migration. **Government Agencies has no engine of its own** — `vanilla 27 / callable-lattice
+  5 / call-passed-vanilla 4 / zero 2 / cmo-tranche 1`, every route already migrated in Rounds
+  2a/2b. Overstating this is the round's one honesty risk.
+- **`pricing/ilb.py` -> `core/pricing/inflation.py`**, body SPLICED not retyped (sha256
+  `ea475752…`, 105 lines). Named for the mathematics, not the product (`core/` = analytical /
+  tree / floating / hybrid; `assets/` = the product). Shim contract = **3 public functions +
+  `IlbResult`**; ⚠️ unlike frn, **nothing imports an ILB private** — `YEAR_DAYS` / `_as_date`
+  are re-exported as a courtesy, not a contract. Shim-vs-core **object identity asserted** for
+  all six names (importability is not enough — a shim that re-implements passes every
+  import-by-name test while production drifts).
+- **NEW `assets/government/`** — `bonds_input` (16 inputs, **its OWN numbering**: govt 9 =
+  `spread_vs_nominal_bp`, corp 9 = `bp_adjust`; a reader cross-referencing the wrong family
+  gets no warning) · `linker` (7 per-metric fns) · `agency` · `guaranteed` · `sovereign`.
+- **⭐ `implied_spread_vs_nominal_bp` is BANNED from being renamed `implied_oas`** — the number
+  is ≈ −breakeven, not credit. A test **injects the banned name and fails**, so the lock is not
+  decorative (mutation-verified). `breakeven_bp` generalises the driver's zero-inflation form to
+  **`ln(1+π) − spread`**, exact at any assumption, agreeing with the driver exactly at π=0.
+- **⚠️ `agency.py` does NOT route.** ⭐ **A correction was recorded in the directive doc rather
+  than quietly fixed:** it had claimed the agency conventions were `if` branches in the driver.
+  They are **not** — `dataio.phase2._route_agency` is already a clean named function with named
+  constants. What WAS unowned: three **unnamed magic numbers** in the driver deciding how a
+  callable result is described. Now `LIE_DETECTOR_BP` 0 / `EXTENSION_PRICING_GAP_BP` 100 /
+  `CALL_NOT_BINDING_GAP_BP` 1 + `option_verdict()`. The driver keeps its inline copy (byte
+  identity), so a test **parses the driver source** and fails if the numbers diverge.
+  A further test forbids the government package from redefining ANY routing constant.
+- **Driver:** ILB import now `pricer.core.pricing.inflation` — **the first driver to take an
+  ENGINE from `pricer.*`** (drivers already imported `pricer.errors`; shim-exit criterion 1
+  stays unmet for the other three, intentionally). **`check_representable` added** to the agency
+  lattice block — the named 09-03 carry-over, the last hand-built lattice path without it.
+  **Result: LATENT, NOT LIVE** — all 5 schedules reach a node at both dates, 0 refused, CSVs
+  byte-identical. Recorded as such, not dressed up as a fix. A refusal would leave a **named
+  route row**, never a missing one.
+- **⭐ THE MODULE MAP WAS A ROUND STALE AND NOTHING COULD CATCH IT.** `pricer/__init__.py` —
+  the walkthrough's first stop — still marked `tree.py`, `callable.py`, `floating.py` as
+  `PLANNED` months after they shipped. Rewritten in full; **3 tests now hold it honest**, and
+  the load-bearing one is **"nothing marked PLANNED may already exist"** — the direction that
+  actually rotted (the entry was present and parsed fine, it was simply untrue). The other two
+  would have missed it. Verified by reverting to the historical map: all three go red.
+- **DECISIONS (user-adopted 2026-09-10, both):** ① **no ILB endpoint type this round** — the
+  sheet has no index-ratio / real-coupon / inflation cells and the **7/5/5** rule keeps a type
+  off a worksheet whose layout Mario has not chosen. `contracts.py`, `schema_version` (1.1) and
+  the `.bas` are **untouched**; every government input's `external` reads `-`, test-pinned to
+  the 7-type contract. ② **`sovereign.py` = a government-side import path, NOT a rewrite** —
+  `embedded_option.py` is **mis-located, not mis-written**; one lattice prices every optioned
+  bond in the book and moving it would touch the corporate hashed CSVs. Relocation = a named
+  follow-up (trigger: a third non-corporate caller, or the securitized layer).
+- **Parity:** all four drivers re-run; **every one of the 22 files in `outputs/` byte-identical**
+  (13 required). Tests **424 -> 468**: +32 government structure locks, +3 map locks, +2 driver
+  wiring locks, **+7 automatic** (`test_exception_wiring` is parametrized per source file, so 7
+  new modules were picked up by the existing guard — an addition, never a new test written).
+- **⭐ THE REPORT'S SUBJECT IS THE BREAKEVEN, NOT THE REFACTOR** (`docs/weekly_report_2026-09-10.md`).
+  This round moves no number, so "we restructured two classes" is a weak thing to present.
+  **Source: `outputs/phase2_risk_<date>.csv`; population: 13 linkers, near-maturity excluded —
+  the driver's own median population** (all 14 gives 82bp, not 85; quote the driver's).
+  Median breakeven **85bp @3-31 -> 215bp @6-10** = the deflation scare unwinding in ten weeks.
+  The **term structure at 3-31 IS the panic**: 2010 **−34bp** (falling prices priced within the
+  year) rising monotonically to 2032 **+139bp**. The **2010 linker flips −33.8 -> +60.0bp**
+  between the two dates. **JGBi breakeven −229bp (−2.3%)** — Japan, sign flips the other way and
+  flips correctly. ⚠️ Re-read these from the CSV at writing time, never from here.
 
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`

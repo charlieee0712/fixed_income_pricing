@@ -5,6 +5,109 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-09-10 — The government book moves into the template, and nothing moves with it
+**Commits:** `479e6a5`, `b07cf2b`, `c37b9e3`, `f365556`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario's ask for next week was **Government Agencies** and **Index Linked Government Bonds**,
+restructured onto the code layout he approved in August. **Guaranteed Fixed Income went in with
+them**, and the reason is structural rather than convenient: the three classes share one loader,
+one driver and one 63-row output file, so restructuring two of the three would have left the
+third as an un-migrated island inside migrated code — one file owning half a decision, the shape
+this project has found and closed five times. Guaranteed is nine plain bonds and one reporting
+rule; it rode along at essentially no cost.
+
+**69 master rows, 63 securities, before and after. That invariance is the deliverable.**
+
+### The alignment gate ran first, for once
+
+Every previous round's plan needed a revision section written after the fact — §21, §16, §26,
+§14, four for four. The cause is structural: a plan written away from the repository always
+drifts from it, and the drift surfaces on contact. So this round's directive document put the
+gate in **§1** and ran it before a line was written: the shim's real contract, the hashes of
+all thirteen production artifacts, the test baseline, whether the landing site was clean, the
+population read from the artifact rather than from the page, and whether the module map was
+still wrong. All six passed, and the thirteen hashes matched the `release_facts` record
+exactly — so the files on disk were the record, and a valid baseline.
+
+### The work is not evenly distributed, and the report has to say so
+
+Only one of the three classes was an engine migration. **Government Agencies has no engine of
+its own**: its five routes — twenty-seven ordinary bonds, five callable debentures, four whose
+call date has passed, two STRIPS and one misfiled REMIC tranche — all run on engines migrated in
+Rounds 2a and 2b. Nothing was ported for it. Saying "we restructured two classes" would imply
+engine work that did not happen, and that is this round's one honesty risk.
+
+`pricing/ilb.py` became `core/pricing/inflation.py` — named for the mathematics, because `core/`
+is named for what the code *is* (analytical, tree, floating, hybrid) while `assets/` is named for
+the product. The body was **spliced, not retyped**, and hashes identically to the source. The
+shim contract turned out narrower than the FRN one: nothing anywhere imports an ILB private, so
+`YEAR_DAYS` and `_as_date` are re-exported as a courtesy rather than as load-bearing structure.
+Shim and core are asserted to be the **same objects** — a shim that quietly re-implements passes
+every import-by-name test while production drifts onto a second copy.
+
+### One function name, defended by a test that fails
+
+An inflation-linked bond's calibrated spread is approximately **minus the breakeven inflation
+rate**, not a credit spread, and it comes out negative for a healthy bond. The wrapper function
+is therefore `implied_spread_vs_nominal_bp` and the name `implied_oas` is **banned from the
+module** — not discouraged in prose. The test was mutation-checked: injecting the banned name
+makes it red.
+
+### A claim in my own directive document was wrong, and is corrected rather than quietly fixed
+
+That document said the agency conventions were `if` branches inside the driver. They are not.
+Routing already has a single well-named owner in `dataio.phase2._route_agency`, with named
+constants, and copying any of it into a wrapper would have created exactly the defect the round
+exists to avoid. What *was* genuinely unowned were three **unnamed magic numbers** in the driver
+deciding how a callable result gets described — negative spread, hundred-basis-point gap,
+one-basis-point gap. Those are now named constants behind one `option_verdict()` function. The
+driver keeps its inline copy so its output stays byte-identical, and the cost of that choice is
+that the rule lives in two places — so a test parses the driver source and fails if they diverge.
+
+### The guard that found nothing, reported as finding nothing
+
+`check_representable` now guards the agency lattice, the last hand-built lattice path without
+it. A call falling inside the final coupon period reaches no exercise node, and the bond then
+prices silently as a bullet and reports an option value of exactly zero — because the option was
+never evaluated. That was the `TNTD04920858` defect on the corporate side.
+
+All five agency schedules reach a node, at both dates. Nothing was refused, both files are
+byte-identical, and the guard is **latent, not live** — which is what it is, and not a fix.
+
+### The map had been wrong for a whole round, and nothing could catch it
+
+`pricer/__init__.py` is the first thing anyone reads on the code walkthrough. It still marked
+the option tree, the callable wrapper and the floating wrapper as `PLANNED`, months after they
+shipped, and described `endpoints/` as a future idea when it has been the live JSON contract
+since August. A docstring cannot go red, so nothing did.
+
+It is rewritten, and three tests now hold it honest. Two of them are the obvious directions — an
+entry naming a file that does not exist, a file missing from the map. Neither would have caught
+this. The one that matters is the third: **nothing marked PLANNED may already exist**. Reverting
+to the historical map turns all three red, which is how I know they bind.
+
+### Where it leaves the numbers
+
+Every one of the twenty-two files in `outputs/` is byte-identical after all four drivers were
+re-run. Tests went **424 → 468**: thirty-two government structure locks, three map locks, two
+driver wiring locks, and seven that nobody wrote — `test_exception_wiring` is parametrised per
+source file, so it picked up the new modules by itself.
+
+### What the report leads with instead of the refactor
+
+Nothing moved, so there is no number to present. The subject is what the inflation-linked output
+*means*, which has never been in an outward report. Reading it off the run: the median breakeven
+inflation rate across thirteen linkers was **85 bp at 31 March 2009 and 215 bp ten weeks later**
+— the deflation scare unwinding. At March the term structure *is* the panic, running from **−34
+bp** on the 2010 maturity, where the market was pricing falling prices within the year, up
+monotonically to **+139 bp** on the 2032. The near-dated linker flips from **−34 to +60 bp**
+between the two dates. And the Japanese linker sits at **−229 bp**, about −2.3% a year: the sign
+goes the other way, and it goes the right way.
+
+---
+
 ## 2026-09-03 — Government and Municipal/Provincial bonds: the cash-bond side closes
 **Commits:** `[TO FILL]`
 **Hours:** `[TO FILL]`
