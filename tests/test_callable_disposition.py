@@ -258,10 +258,16 @@ def test_the_callable_driver_emits_a_complete_disposition(tmp_path):
 
     out = tmp_path / "callable_risk.csv"
     disposition = tmp_path / "callable_disposition.csv"
+    # ⚠️ Both ends pinned to UTF-8. Without this the child encodes its output with the
+    # machine's locale (cp936 here) while the parent decodes with its own, and the two
+    # need not agree: on a GBK console an em dash in a driver flag kills the pipe reader
+    # thread, which loses run.stderr — so the diagnostic below is unavailable exactly
+    # when the driver has failed. Third appearance of this trap (release_facts, pytest.ini).
     env = {**os.environ, "PYTHONPATH": "src", "FIP_VAL_DATE": VAL,
-           "FIP_OUT": str(out), "FIP_DISPOSITION_OUT": str(disposition)}
+           "FIP_OUT": str(out), "FIP_DISPOSITION_OUT": str(disposition),
+           "PYTHONIOENCODING": "utf-8"}
     run = subprocess.run([sys.executable, os.path.join("scripts", "callable_risk.py")],
-                         env=env, capture_output=True, text=True)
+                         env=env, capture_output=True, text=True, encoding="utf-8")
     assert run.returncode == 0, run.stderr[-2000:]
     assert disposition.exists(), "the driver produced no disposition file"
 

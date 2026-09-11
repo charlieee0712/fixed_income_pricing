@@ -353,11 +353,15 @@ def run_cli(tmp_path, payload_text, name="request.json"):
     request_file = tmp_path / name
     request_file.write_text(payload_text, encoding="utf-8")
     response_file = tmp_path / "response.json"
-    env = dict(os.environ, FIP_DATA_DIR=str(_DATA), PYTHONPATH="src")
+    # Both ends pinned to UTF-8 — see the note in test_callable_disposition.py: letting the
+    # child encode by locale and the parent decode by locale is a pipe that breaks on a
+    # non-ASCII character, and takes the captured stderr with it.
+    env = dict(os.environ, FIP_DATA_DIR=str(_DATA), PYTHONPATH="src",
+               PYTHONIOENCODING="utf-8")
     done = subprocess.run(
         [sys.executable, "scripts/price_json.py",
          "--input", str(request_file), "--output", str(response_file)],
-        cwd=str(_ROOT), env=env, capture_output=True, text=True,
+        cwd=str(_ROOT), env=env, capture_output=True, text=True, encoding="utf-8",
     )
     response = json.loads(response_file.read_text(encoding="utf-8"))
     return done, response

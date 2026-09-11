@@ -1,5 +1,8 @@
 # Code walkthrough — 15 minutes
 
+*Updated 2026-09-10 for the government asset layer — the inflation-linked engine,
+the agency and guaranteed wrappers, and a corrected module map.*
+
 *Updated 2026-09-03 for the government and municipal classes.*
 
 *Updated 2026-08-31 (Round 2b: floating, fixed-then-floating and stepped bonds; instrument-type dispatch; the delivery-quality pass).*
@@ -27,6 +30,14 @@ numbers?" The answer is yes, and each line is checked by a test rather than by i
 | `pricing/frn.py` | `core/pricing/floating.py` | shim | `assets/corporate/floating.py` | `floating` |
 | `pricing/hybrid.py` | `core/pricing/hybrid.py` | shim | `assets/corporate/hybrid.py` | `fixed_to_floating` |
 | `pricing/coupon_schedule.py` | `core/pricing/coupon_schedule.py` | shim | `assets/corporate/stepped.py` | `stepped` |
+| `pricing/ilb.py` | `core/pricing/inflation.py` | shim | `assets/government/linker.py` | **none — by decision** |
+
+⚠️ The last row is the one to pause on. The inflation-linked engine moved on 2026-09-10 and
+has a wrapper like every other product, but **deliberately no endpoint type**: the spreadsheet
+has no cells for a real coupon, an index ratio or an inflation assumption, and a type becomes
+reachable from a worksheet only once Mario has chosen that layout. The engine and contract
+support seven types; the Excel bridge can construct five. That gap is a decision, not a
+backlog, and a test pins it so it cannot drift open.
 
 Four claims, each pinned:
 
@@ -41,8 +52,8 @@ And the path a bond actually takes, end to end:
 ```text
 workbook coupon family      Coupon_Formula2 on the Corporate Bonds tab
   -> router / overrides     dataio/coupon_types.py, dataio/term_overrides.py
-  -> core engine            core/pricing/{analytical,tree,floating,hybrid,coupon_schedule}
-  -> asset wrapper          assets/corporate/*.py     units + named inputs, no arithmetic
+  -> core engine            core/pricing/{analytical,tree,floating,hybrid,coupon_schedule,inflation}
+  -> asset wrapper          assets/{corporate,government}/*.py  units + named inputs, no arithmetic
   -> endpoint type          endpoints/  one request in, one response out
   -> driver / JSON output   scripts/*.py
   -> evidence               tests + hashed CSVs + the disposition sidecars
@@ -81,10 +92,17 @@ the government/municipal classes    nothing at all in any existing file — two 
 the curve-failure message fix       no number anywhere; the message had been embedding a
                                     filesystem path, so the same failure read differently on
                                     Windows and on Linux
+the government asset layer          nothing at all, anywhere. The inflation-linked engine
+  (2026-09-10)                      moved, three wrapper modules were added, the driver
+                                    switched to the new import path and gained the
+                                    representability guard -- and all 22 files in outputs/
+                                    regenerate byte-identical after re-running every driver.
+                                    The guard refused nothing: all five agency call schedules
+                                    reach an exercise node, so it is latent, not live.
 ```
 
-Everything above is proven by hashes rather than by inspection: `docs/release_facts_2026-08-31.md`
-carries the sha256 of all five production CSVs and all four disposition sidecars.
+Everything above is proven by hashes rather than by inspection: `docs/release_facts_2026-09-10.md`
+carries the sha256 of all seven production CSVs and all six disposition sidecars.
 
 ## The tour, in order
 
@@ -101,7 +119,7 @@ endpoints/  the outside world: one request in, one result out
 Say: *"If you only remember one thing — a new bond type is a new file in `assets/`, not a
 new engine."*
 
-### 2. `assets/corporate/` — one file per bond type (3 min)
+### 2. `assets/corporate/` and `assets/government/` — one file per bond type (3 min)
 
 Open `vanilla.py`, then `callable.py`, then `floating.py`. They look the same on purpose:
 one simple function per output, the same names the legacy Monthly sheet uses. There are now
