@@ -16,7 +16,8 @@ Routes (built by ``dataio.phase2.build_phase2_universe``; decisions in
   * ilb -> implied spread vs the NOMINAL curve at FIP_INFL (default 0). ⚠️ That spread is
     EXPECTED NEGATIVE ~ -(breakeven) at inflation=0 — it is the market's inflation expectation,
     NOT a credit OAS, and lives in its own column ``implied_spread_vs_nominal_bp`` (companion
-    ``breakeven_bp`` = -spread when FIP_INFL=0). See ``pricing.ilb``.
+    ``breakeven_bp`` = -spread when FIP_INFL=0). See ``pricer.core.pricing.inflation``, and
+    ``pricer.assets.government.linker`` for the per-metric surface with legacy naming.
   * cmo-tranche / ilb-indexation-unverified -> BT mark + flag (Mario/next-phase list).
 
 Run on 47:
@@ -33,9 +34,11 @@ from curves.zero_curve import ZeroCurve, curve_failure_reason
 from dataio.call_schedules import (load_call_provenance, load_call_schedules,
                                    to_lattice_schedule)
 from dataio.phase2 import build_phase2_from_path
+from pricer.assets.government.agency import (ExerciseScheduleNotRepresentable,
+                                             check_representable)
+from pricer.core.pricing.inflation import ilb_risk_metrics, implied_spread_ilb
 from pricing.bond_price import lattice_inputs
 from pricing.calibrate import implied_oas, near_maturity
-from pricing.ilb import ilb_risk_metrics, implied_spread_ilb
 from pricing.lattice import ShortRateLattice
 from pricing.risk import risk_metrics
 from pricer.errors import CalibrationError
@@ -174,6 +177,16 @@ def main():
             times, ai = lattice_inputs(VAL, mat, cpn, freq=fr)
             lat = ShortRateLattice(curve, freq=fr, sigma=SIGMA, coupon_times=times)
             carr = lat.call_array(sched)
+            try:                                    # the SAME rule the wrapper layer applies
+                # A call inside the final coupon period lands on no exercise node, leaving an
+                # all-inf array that prices as a straight bond and reports option value
+                # 0.000000 — the TNTD04920858 defect. Refused BEFORE any spread solving.
+                check_representable("call", schedules[aid], bool(np.isfinite(carr).any()),
+                                    VAL, mat, fr)
+            except ExerciseScheduleNotRepresentable as e:
+                row.update(route="call-schedule-not-representable-on-current-grid",
+                           clean=float(bt), flag=str(e))
+                rows.append(row); continue
             try:
                 oas_cal = lat.implied_oas(float(bt), cpn, call_price=carr, accrued=ai)
                 oas_str = lat.implied_oas(float(bt), cpn, accrued=ai)

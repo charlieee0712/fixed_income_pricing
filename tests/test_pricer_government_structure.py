@@ -297,6 +297,43 @@ def test_the_verdict_thresholds_match_the_ones_the_driver_applies():
     assert literal(r"if oas_cal < ([0-9.e-]+):") * 1e4 == agency.LIE_DETECTOR_BP
 
 
+def test_the_driver_refuses_an_unrepresentable_call_before_solving_a_spread():
+    """⚠️ Wiring lock for the guard added on 2026-09-10.
+
+    A call inside the final coupon period lands on no exercise node: the array is all
+    ``inf``, the bond silently prices as a bullet, and the option value reads 0.000000
+    because the option was never evaluated. That is the ``TNTD04920858`` defect, and
+    ``scripts/phase2_risk.py`` was the last hand-built lattice path without the check.
+
+    Two things must hold, and ORDER is one of them — refusing after the calibration would
+    mean the wrong number had already been computed.
+    """
+    src = (ROOT / "scripts" / "phase2_risk.py").read_text(encoding="utf-8")
+    block = src[src.index("if route == \"callable-lattice\":"):]
+    guard, solve = block.index("check_representable("), block.index("lat.implied_oas(")
+    assert guard < solve, "the guard must run BEFORE any spread is solved"
+    assert "except ExerciseScheduleNotRepresentable" in block
+
+    # A refusal must leave a NAMED row in the output, never a missing one.
+    assert 'route="call-schedule-not-representable-on-current-grid"' in block
+    assert block.index("rows.append(row); continue", guard) > guard
+
+    # And it must come through the government-side path, not by reaching into corporate.
+    assert "from pricer.assets.government.agency import" in src
+
+
+def test_the_driver_takes_the_inflation_engine_from_the_pricer_path():
+    """Step 3a: the first driver to take an ENGINE from ``pricer.*`` rather than a shim.
+
+    The shim still exists and still works; what changed is that new code does not depend
+    on it. Because the shim and the core export the SAME object (pinned above), this
+    import switch cannot move a number — which is why byte-identity was the exit test.
+    """
+    src = (ROOT / "scripts" / "phase2_risk.py").read_text(encoding="utf-8")
+    assert "from pricer.core.pricing.inflation import" in src
+    assert "from pricing.ilb import" not in src
+
+
 def test_volatility_applies_only_to_the_callable_route():
     from pricer.assets.government.agency import volatility_applies
     assert volatility_applies("callable-lattice")
