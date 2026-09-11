@@ -261,7 +261,31 @@ corporate's 1–17. The catalogue mirrors the Monthly sheet's *per-family* input
 and a reader cross-referencing the wrong family is a silent failure (§6.3). Corporate's file
 is not edited, so the 424 cannot move.
 
-**`agency.py` — the conventions to name**, all currently implicit in `scripts/phase2_risk.py`:
+**`agency.py` — the conventions to name.**
+
+⚠️ **Correction, made 2026-09-10 during Step 2 and recorded rather than quietly fixed.** This
+section first said the agency conventions "are `if` branches inside `scripts/phase2_risk.py`".
+They are not. **Routing already has a single, well-named owner** — `dataio/phase2.py`'s
+`_route_agency`, with named constants (`ZERO_COUPON_MAX_PCT`, `MAKE_WHOLE_MAX_GAP_DAYS`,
+`_DATE_PAIR`, `_CMO_CLASS`) — and the TLGP bucket is one commented line in the same loader.
+**None of that may be copied into a wrapper**; duplicating it would create exactly the
+two-owners-one-decision defect this project has closed five times.
+
+What *is* genuinely unowned, and is what `agency.py` takes over, are the driver's inline
+**verdict thresholds** — three unnamed magic numbers deciding how a calibrated result is
+described:
+
+| today, inline in the driver | meaning |
+|---|---|
+| `oas_cal < 0` | the lie detector: a negative callable spread means the par-call-from-AB assumption conflicts with the custodian price |
+| `oas_cal - oas_str > 0.0100` | 100 bp: the market is pricing extension, not the call |
+| `abs(oas_cal - oas_str) < 1e-4` | 1 bp: the call is not binding |
+
+These become named constants and one `option_verdict()` function, tested. The module's
+docstring states plainly that **this module does not route** and names the loader as routing's
+owner, so a reader looking for the routing rules is sent to the one place they live.
+
+The conventions it documents (rather than re-implements):
 
 - **Bermudan par call at 100 from the custodian AB date**, σ = 0.15 — the industry agency
   default, and the reason five debentures reach the lattice at all.
