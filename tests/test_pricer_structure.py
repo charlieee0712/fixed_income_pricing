@@ -82,3 +82,63 @@ def test_input_catalogue_and_validation():
         vanilla.calculated_price(6.5, 3, MAT, VAL, CURVE)   # bad frequency
     with pytest.raises(ValueError):
         vanilla.calculated_price(650.0, 2, MAT, VAL, CURVE)  # bp-looking coupon
+
+
+# --------------------------------------------------------------------------------------
+# The module map (added 2026-09-10).
+#
+# ``pricer/__init__.py`` is the first stop in the code walkthrough, and it had drifted a
+# whole round out of date: tree.py, callable.py and floating.py were still marked PLANNED
+# months after they shipped, so an engineer reading it was told the round-2 work did not
+# exist. Nothing caught that, because a docstring cannot go red. This test makes it.
+# --------------------------------------------------------------------------------------
+def _map_entries():
+    """Parse ``module path -> status`` out of the package docstring's map."""
+    import re
+
+    import pricer
+    out = {}
+    for line in pricer.__doc__.splitlines():
+        m = re.match(r"\s{2}(\S+\.py|\S+/)\s+(DONE|PLANNED)\b", line)
+        if m:
+            out[m.group(1)] = m.group(2)
+    return out
+
+
+def test_every_module_marked_done_in_the_map_actually_exists():
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[1] / "src" / "pricer"
+    entries = _map_entries()
+    assert len(entries) > 20, f"the map stopped parsing — only found {len(entries)} entries"
+    missing = [p for p, status in entries.items()
+               if status == "DONE" and not (root / p).exists()]
+    assert missing == [], f"map says DONE but the file is absent: {missing}"
+
+
+def test_every_module_that_exists_is_named_in_the_map():
+    """The direction that actually rots: a new module lands and the map is never updated."""
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[1] / "src" / "pricer"
+    entries = _map_entries()
+    on_disk = {
+        str(p.relative_to(root)).replace("\\", "/")
+        for p in root.rglob("*.py")
+        if p.name != "__init__.py" and "__pycache__" not in p.parts
+    }
+    unlisted = sorted(on_disk - set(entries))
+    assert unlisted == [], f"module present but missing from the map in pricer/__init__.py: {unlisted}"
+
+
+def test_nothing_marked_planned_has_already_shipped():
+    """⚠️ This is the direction that actually rotted, and the other two would have missed it.
+
+    The map did not go stale by naming a file that was absent, nor by omitting one. It went
+    stale by leaving ``tree.py``, ``assets/corporate/callable.py`` and
+    ``assets/corporate/floating.py`` marked PLANNED for a whole round after they shipped —
+    an entry that is present, parses fine, and is simply untrue.
+    """
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[1] / "src" / "pricer"
+    shipped = [p for p, status in _map_entries().items()
+               if status == "PLANNED" and (root / p).exists()]
+    assert shipped == [], f"map still says PLANNED for something that exists: {shipped}"
