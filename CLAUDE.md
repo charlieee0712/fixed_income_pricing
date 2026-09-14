@@ -665,15 +665,31 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   `C:\Users\cnc\anaconda3\anaconda2025\python.exe` = **3.13.5, numpy 2.3.4 / pandas 2.3.3 /
   scipy 1.16.3 / pytest 8.3.4 / openpyxl 3.1.5 — USE THIS ONE**; `C:\Users\cnc\Documents\Downloads
   \python.exe` = 3.12.4 with the same stack a version older. (`C:\Users\cnc\anaconda3\python.exe`
-  = the 3.8.8 base env, numpy import BROKEN via mkl-service — do not use.) ⚠️ **Local ≡ 47 for the TEST SUITE and the
-  single-bond endpoint JSON, but NOT byte-for-byte for the 565-bond driver CSVs**: they differ by
+  = the 3.8.8 base env, numpy import BROKEN via mkl-service — do not use.) ⚠️ **Local ≡ 47 for the TEST SUITE,
+  but NOT byte-for-byte for the 565-bond driver CSVs**: they differ by
   up to **3.6e-8 relative, entirely in `convexity`** (a second difference ÷ bump² amplifies a
   last-ulp by 1e8); prices/OAS/durations agree to ~1e-12 and every text column matches. So a
   cross-platform `sha256` diff of a driver CSV shows a difference that is NOT a regression —
   **do parity local-fresh vs local-fresh** (byte-exact, and stricter). The whole suite runs
-  locally: `& "C:\Users\cnc\anaconda3\anaconda2025\python.exe" -m pytest -q` → **194 passed in
-  ~19s**, identical to 47, and the endpoint's JSON output is byte-for-byte the same as 47's ⇒
-  quick checks no longer need ssh. 47 remains the deployment target and the parity reference.
+  locally: `& "C:\Users\cnc\anaconda3\anaconda2025\python.exe" -m pytest -q` → identical pass
+  count to 47 ⇒ quick checks no longer need ssh. 47 remains the deployment target and the
+  parity reference.
+- **⚠️ CORRECTED 2026-09-13 — the endpoint's JSON is NOT byte-identical cross-platform either.**
+  This note used to claim it was; that was written 2026-08-25 when the endpoint priced **vanilla
+  only**, and the lattice products arrived 08-31 with nobody re-checking. Found by
+  `tests/test_excel_fixture_parity.py`, whose first version asserted exact equality: green
+  locally, **5 failures on 47**. Measured over the 9 shipped fixtures: strings, codes, fields and
+  structure **identical**; prices/spreads ≤6e-16 rel; durations/dv01 ≤4e-13; **`convexity` up to
+  7.5e-08 absolute** — the same second-difference amplification as the driver CSVs, so the rule
+  above extends to the endpoint unchanged. ⚠️ Two values look huge in RELATIVE terms and are
+  machine epsilon in ABSOLUTE: `calibration_residual_per_100` (≈6.6e-09, Δ 4e-14) and an inactive
+  put's `price_effect_per_1pct_vol` (≈1.1e-11, Δ 7e-15) — near-zero denominators, so scale by
+  `max(1,|x|)`, **never by `|x|`**.
+  **⭐ And ONE tolerance for every quantity was WRONG:** a single 1e-6 bound (sized for convexity)
+  let a deliberate **1e-4 price perturbation** through at 9.6e-07. The amplification belongs to
+  the second-difference formula, not to the endpoint ⇒ per-quantity bounds: **convexity 1e-6,
+  everything else 1e-10**, both mutation-verified. Same lesson as `PAR_YIELD_UNITS`: one rule
+  covering two populations hides the smaller one.
 - **`pytest.ini` (added 2026-08-25) is what makes a bare `pytest` work.** Without
   `testpaths = tests`, a root-level run also walks the git-ignored Drive staging copies
   (`corporate_bond/`, `code_structure_sample/`), which contain duplicates of the test files ⇒
