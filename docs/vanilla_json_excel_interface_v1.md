@@ -614,10 +614,30 @@ regenerating the files to remove it would destroy what they exist to demonstrate
 2026-08-31 and two rounds of restructuring passed without an automated check that the engine
 still answered those requests the same way — the only test touching `excel_vba` grepped the
 .bas for its field set. `tests/test_excel_fixture_parity.py` now holds both standards, and
-running it for the first time found one piece of real drift: the frozen v1.0 error message
-names the configured currencies, and the curve registry grew from six to fourteen on
-2026-09-03. Harmless in a frozen document whose `code` and `field` are unchanged — but
-nothing would have said so.
+running it for the first time found two things.
+
+The small one: the frozen v1.0 error message names the configured currencies, and the curve
+registry grew from six to fourteen on 2026-09-03. Harmless in a frozen document whose `code`
+and `field` are unchanged — but nothing would have said so.
+
+⚠️ **The larger one: a response is not byte-identical across operating systems, and our own
+notes said it was.** That claim dated from 2026-08-25, when this endpoint priced vanilla bonds
+only; the option-tree products arrived a week later and nobody re-checked. Measured on
+2026-09-13 over all nine goldens, Windows against the Linux host:
+
+| | agreement |
+|---|---|
+| every string, error code, field name and structure | **identical** |
+| prices, spreads, accrued interest | within 6e-16 relative — machine precision |
+| durations, DV01 | within 4e-13 |
+| **convexity** | within **7.5e-08** |
+
+Only convexity is visibly affected, and for a known reason: it is a second difference divided
+by the square of a small bump, which multiplies a last-digit rounding by about a hundred
+million. Nothing here is a disagreement between the two machines about what the bond is worth;
+it is the last bit of a floating-point number, amplified by a formula that is supposed to
+amplify. **If you compare a response produced on one machine with one produced on another,
+compare convexity to about seven decimal places and everything else exactly.**
 
 ### 14.9 Not yet done
 
