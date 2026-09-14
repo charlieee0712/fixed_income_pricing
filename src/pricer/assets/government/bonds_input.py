@@ -34,6 +34,12 @@ What is genuinely different about a government book's inputs
 """
 from __future__ import annotations
 
+from pricer.core.market.curves import supported_currencies
+
+# Computed from the curve registry, for the reason spelled out in the corporate catalogue:
+# a hand-written currency list in a docstring is a second owner and goes stale silently.
+_CURRENCY_OPTIONS = " / ".join(supported_currencies())
+
 # One row per input, mirroring the legacy sheet's function dictionary.
 # "used" tells the Google/cloud team which inputs drive the number and which are carried as
 # data only; "external" is the JSON field an Excel/HTTP caller would send — "-" throughout,
@@ -71,7 +77,7 @@ INPUT_CATALOGUE = [
      "used": "all functions"},
     {"n": 6, "field": "currency", "type": "str",
      "external": "-",
-     "options": "USD / JPY / KRW / ...",
+     "options": _CURRENCY_OPTIONS,
      "description": "Pricing currency: selects the bond's OWN-currency curve. A Japanese "
                     "linker discounted on the USD curve is mispriced.",
      "used": "all functions"},

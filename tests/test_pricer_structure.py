@@ -142,3 +142,26 @@ def test_nothing_marked_planned_has_already_shipped():
     shipped = [p for p, status in _map_entries().items()
                if status == "PLANNED" and (root / p).exists()]
     assert shipped == [], f"map still says PLANNED for something that exists: {shipped}"
+
+
+def test_no_input_catalogue_restates_the_currency_list():
+    """⚠️ The currency options are READ from the curve registry, never written out.
+
+    They were written out — six of them — and were wrong from 2026-09-03, the day the
+    registry grew to fourteen. That put "this tool prices six currencies" into the very
+    input catalogue Mario's directive asked for, in the same week we shipped prices for
+    Mexican and Brazilian government bonds.
+
+    Tautological today, by design. It exists to go red the moment someone replaces the
+    computed value with a literal again — the same reason the module-map tests exist.
+    """
+    from pricer.assets.corporate.bonds_input import INPUT_CATALOGUE as corporate
+    from pricer.assets.government.bonds_input import INPUT_CATALOGUE as government
+    from pricer.core.market.curves import supported_currencies
+
+    expected = " / ".join(supported_currencies())
+    assert len(supported_currencies()) >= 14, "the registry shrank — check that first"
+    for name, catalogue in (("corporate", corporate), ("government", government)):
+        rows = [r for r in catalogue if r["field"] == "currency"]
+        assert len(rows) == 1, f"{name}: expected exactly one currency input"
+        assert rows[0]["options"] == expected, f"{name} catalogue restates the currencies"

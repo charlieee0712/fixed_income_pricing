@@ -35,6 +35,15 @@ The template's three input types map onto these fields as:
 """
 from __future__ import annotations
 
+from pricer.core.market.curves import supported_currencies
+
+# ⚠️ COMPUTED, never written out. This was the literal "USD / EUR / GBP / JPY / AUD / KRW"
+# and it was wrong from 2026-09-03, the day the curve registry grew from six currencies to
+# fourteen — so the input catalogue Mario asked for was telling a reader the tool could not
+# price a Mexican or Brazilian bond, in the same week we shipped prices for both. A prose
+# copy of a registry is a second owner and cannot go red; reading the registry cannot rot.
+_CURRENCY_OPTIONS = " / ".join(supported_currencies())
+
 # One row per input, mirroring the legacy sheet's function dictionary.
 # "used" tells the Google/cloud team exactly which inputs drive the number and which
 # are carried as data only (the legacy sheet marks these si / no / "not used");
@@ -64,7 +73,7 @@ INPUT_CATALOGUE = [
      "used": "all functions"},
     {"n": 5, "field": "currency", "type": "str",
      "external": "bond.currency",
-     "options": "USD / EUR / GBP / JPY / AUD / KRW",
+     "options": _CURRENCY_OPTIONS,
      "description": "Pricing currency: selects the bond's OWN-currency par curve "
                     "(a non-USD bond discounted on the USD curve is mispriced). Case and "
                     "blanks are forgiven; an unmapped currency is refused, never silently "

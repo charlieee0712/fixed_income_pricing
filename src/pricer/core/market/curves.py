@@ -93,7 +93,10 @@ def supported_currencies() -> list:
     """Currencies with a configured par-curve file, sorted.
 
     Inputs: none.
-    Returns: list[str] — e.g. ``['AUD', 'EUR', 'GBP', 'JPY', 'KRW', 'USD']``.
+    Returns: list[str] — every currency in :data:`curves.zero_curve.CURVE_FILE`, sorted.
+    ⚠️ Deliberately not enumerated here: this docstring listed six currencies and was
+    wrong within a day of the registry growing to fourteen (2026-09-03). The registry is
+    the answer; a copy of it in prose is a second owner that cannot go red.
     """
     return sorted(CURVE_FILE)
 
