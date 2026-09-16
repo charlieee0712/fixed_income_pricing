@@ -5,6 +5,55 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-09-16 (later) — Azure reproduces the record, and the worst offender moved
+**Commits:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+The parity tooling ran on Azure Cloud Shell with the corrected, standard-library text
+digest. It settles the question that was deliberately left open in the handoff bundle a
+few hours earlier.
+
+| | result |
+|---|---|
+| row counts, 13 production files | identical |
+| **text digests, 13 of 13** | **identical to the Windows-written record** |
+| byte hashes | all 13 differ -- the expected reading |
+| endpoint, 9 fixtures | worst deviation **0.35% of its tolerance** |
+
+So the earlier "all thirteen text digests differ" was the pandas-based check, exactly as
+diagnosed. Every identifier, route, date, flag and reason code is byte-identical across
+Windows and a Linux container running a major version of pandas ahead of ours.
+
+### The finding nobody predicted
+
+The worst-offending QUANTITY changed platform. On the Linux host it is **convexity**
+(2.11e-08, 2.1% of its budget). On Azure it is **duration** (3.5e-13, 0.35% of its), with
+convexity at least six times closer than on 47. Same code, same inputs; different libm,
+different SIMD paths.
+
+⭐ That converts the argument for per-quantity tolerances into evidence. A single bound
+gets calibrated to whichever machine you happened to measure first, and is then wrong for
+the next one -- which is the failure the mutation test caught three days ago, arriving
+again from a direction nobody had predicted. Budget usage across three platforms stays
+under 2.1% against a 10% warning threshold.
+
+### What this does and does not say
+
+It says the production numbers and the endpoint reproduce. It does **not** say the suite
+passes there at 495 -- this run executed the drivers and the endpoint, not `pytest`; the
+last full-suite figure on Azure is 483 at an earlier commit.
+
+The Cloud Shell mount is still unfixed (the storage account is in `eastus` while the
+container runs in `EASTASIA`), so every session remains ephemeral and the setup has to be
+redone each time. That is the next thing, and it matters more for Mario's "everyone in our
+group" than for us.
+
+Three files in handoff bundle 2 carried an explicit UNRESOLVED marker on this; all three
+are now the verdict instead.
+
+---
+
 ## 2026-09-16 — Handoff bundle 2 refreshed: four rounds, and the parts of it that were wrong
 **Commits:** `[TO FILL]`
 **Hours:** `[TO FILL]`

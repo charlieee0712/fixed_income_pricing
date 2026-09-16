@@ -710,6 +710,34 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   the second-difference formula, not to the endpoint ⇒ per-quantity bounds: **convexity 1e-6,
   everything else 1e-10**, both mutation-verified. Same lesson as `PAR_YIELD_UNITS`: one rule
   covering two populations hides the smaller one.
+- **⭐ AZURE = a THIRD platform, and it REPRODUCES THE RECORD (measured 2026-09-16).**
+  Mario wants the code on Azure so "everyone in our group can run and test these codes".
+  Azure Cloud Shell, free tier: **Python 3.12.14 / numpy 2.5.3 / pandas 3.0.5 / scipy
+  1.18.1** — ⭐ **a whole MAJOR version of pandas ahead of this machine, and 483 passed**
+  (at an earlier commit; the suite has NOT been run there at 495). All four drivers run in
+  **40.4 s** total (corporate book 7.0 s) against ~230 s on 47.
+  **`PYTHONPATH=src python3 scripts/platform_parity.py --run` is the one command** — it
+  runs every driver, then compares rows / bytes / **text fingerprint** against the newest
+  `release_facts`, and reports the endpoint tolerance budget. ⚠️ It **exits 0 even when
+  files differ**: a report, not a gate.
+  **Result:** all 13 row counts and ⭐ **all 13 TEXT DIGESTS identical** to the
+  Windows-written record; 13 byte hashes differ (the expected reading); endpoint worst
+  deviation **0.35% of its tolerance, at `effective_duration_years`** (= 3.5e-13 scaled;
+  convexity therefore under 3.5e-9, i.e. ~6x closer than 47's 2.11e-8).
+  ⭐ **The worst-offending QUANTITY changed platform** — convexity on 47, duration on
+  Azure — which is the evidence for per-quantity tolerances rather than the argument: a
+  single bound gets calibrated to whichever machine you measured first.
+  **Azure -> GitHub has NO GFW in the path** (28 MB clone at 18 MB/s) — unlike 47.
+  ⚠️ Cloud Shell traps, all hit: `Microsoft.CloudShell` needs `az provider register` then a
+  **restart** (the mount is established at session start); the storage account must be in
+  the **SAME REGION as the container** (`ACC_LOCATION`, EASTASIA here — a US storage
+  account will not mount); **without a mount the session is EPHEMERAL and wipes after ~20
+  min idle** (it wiped twice); and the browser terminal **mangles multi-line pastes,
+  heredocs worst** ⇒ put the work in a repo script and paste one line.
+  ⚠️ **`requirements.txt` has NO upper version bounds** — meeting pandas 3.0 was luck that
+  paid off. Pinning is an open follow-up. **Client data on Azure: Mario says not sensitive
+  (2026-09-15)**; the open question is WHICH TENANT, since a personal free subscription on
+  a university email is not where a group's shared environment belongs.
 - **`pytest.ini` (added 2026-08-25) is what makes a bare `pytest` work.** Without
   `testpaths = tests`, a root-level run also walks the git-ignored Drive staging copies
   (`corporate_bond/`, `code_structure_sample/`), which contain duplicates of the test files ⇒

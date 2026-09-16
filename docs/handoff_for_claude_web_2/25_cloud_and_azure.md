@@ -41,18 +41,23 @@ numpy 2.5.3 | pandas 3.0.5 | scipy 1.18.1
 483 passed in 40.17s
 ```
 
-Three things worth carrying into any plan:
+Four things worth carrying into any plan:
 
 1. **Everything passed on a materially newer scientific-Python stack** — pandas is a
    whole major version ahead of the development machine. Golden-master bootstrap,
    workbook loaders, the universe funnel's exact counts: all green. For a team about to
    take this to the cloud, that is a strong and cheaply-obtained fact.
-2. **It is fast.** 40 s against ~50 s locally and ~230 s on `47`. The corporate book's
-   driver ran in **7.9 s**.
+2. **It is fast.** 40 s against ~50 s locally and ~230 s on `47`. All four drivers
+   together run in **40.4 s**; the corporate book's takes 7.0 s.
 3. ⭐ **Azure → GitHub has no GFW in the path.** The clone ran at 18 MB/s. The TLS
    resets and crawl-speed fetches documented for `47 → GitHub` simply do not occur,
    because neither end is behind it. That makes an Azure box a *better* GitHub client
    than the deployment host.
+4. ⭐ **And the numbers are right, not merely produced** (measured 2026-09-16). Every
+   identifier, route, date, flag and reason code is **byte-identical** to the
+   Windows-generated record — all thirteen files — and every number agrees to better than
+   one part in 10^12 except convexity, which differs in the ninth decimal for a known and
+   documented reason. **That is the sentence for Mario.** Detail in `24` §2a.
 
 ---
 
@@ -190,5 +195,8 @@ where the curve files live (a mounted share, blob storage, or baked into the ima
    session is ephemeral.
 4. **`requirements.txt` has no upper version bounds** — see `24_determinism_and_cross_platform.md`.
 5. **The 87 unguarded data-dependent tests** — a data-free deployment looks broken.
-6. **The Azure parity result is UNRESOLVED** — the first run used a check that was itself
-   broken (see `24`). Do not record a verdict until the fixed check has run there.
+6. ~~The Azure parity result is unresolved~~ ⭐ **RESOLVED 2026-09-16: Azure reproduces
+   the record.** All thirteen row counts and **all thirteen text digests identical**; byte
+   hashes differ by the documented float noise; the endpoint's worst deviation is 0.35% of
+   its tolerance. ⚠️ `pytest` has not been run there at 495 — the last full-suite figure is
+   483 at an earlier commit.

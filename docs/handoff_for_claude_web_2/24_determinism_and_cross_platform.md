@@ -15,7 +15,9 @@ it were themselves wrong.*
 | numpy | 2.3.4 | — | **2.5.3** |
 | pandas | 2.3.3 | — | ⭐ **3.0.5** |
 | scipy | 1.16.3 | — | **1.18.1** |
-| suite | 495 in ~50 s | 495 in ~230 s | 483 in **40 s** (at that commit) |
+| suite | 495 in ~50 s | 495 in ~230 s | 483 in **40 s** (at an earlier commit) |
+| drivers (all four) | — | — | **40.4 s total**, corporate book 7.0 s |
+| text digests vs the record | (wrote it) | identical | ⭐ **identical, 13 of 13** |
 
 ⭐ **pandas 3.0 is a major version ahead of the development machine and everything
 passed** — including the golden-master bootstrap, the workbook loaders, and the universe
@@ -54,6 +56,39 @@ in a convexity. That is exactly the profile measured, every time.
 Driver CSVs show the same shape: convexity 3.6e-8 relative on the corporate book, 1.7e-7
 on the sovereign book (46-year bonds and 30 STRIPS amplify a little more), spreads
 4.8e-11, durations 2.7e-13, **every text column identical**.
+
+### ⭐ §2a — Measured: Windows against Azure Cloud Shell (2026-09-16)
+
+Third platform, and a materially different numeric stack (Python 3.12.14, numpy 2.5.3,
+pandas **3.0.5**, scipy 1.18.1 — a whole major version of pandas ahead of the machine that
+wrote the record).
+
+| | result |
+|---|---|
+| row counts, all 13 production files | **identical** |
+| **text digests, all 13** | ⭐ **IDENTICAL to the published record** — every identifier, route, date, flag and reason code |
+| byte hashes, all 13 | differ — the expected reading |
+| endpoint, 9 fixtures | worst deviation **0.35% of its tolerance**, at `effective_duration_years` |
+
+Working the endpoint number back: duration's bound is 1e-10, so 0.35% of it is a scaled
+deviation of **3.5e-13** — and convexity must therefore be under 0.35% of its own 1e-6
+bound, i.e. **below 3.5e-9**.
+
+⭐ **The worst-offending QUANTITY changed platform.** On the Linux host it was convexity
+(2.11e-08, 2.1% of budget); on Azure it is **duration** (3.5e-13), with convexity at least
+six times closer than on 47. Same code, same inputs, different libm and different SIMD
+paths.
+
+**That is the argument for per-quantity tolerances restated as evidence rather than as
+reasoning.** A single bound would have been calibrated to whichever platform happened to
+be measured first, and would have been wrong for the next one — which is precisely the
+failure §4 describes, arriving from a direction nobody predicted.
+
+Budget usage across three platforms stays under 2.1% against a 10% warning threshold.
+
+⚠️ **What this run did NOT cover:** it executed the drivers and the endpoint, not `pytest`.
+The last full-suite run on Azure was **483** at an earlier commit; the suite has not been
+run there at 495. Low risk, but it is not measured.
 
 ### ⚠️ Two quantities look alarming in RELATIVE terms and are machine epsilon in ABSOLUTE
 
@@ -204,10 +239,8 @@ record was written from.
 
 ## 8. Open
 
-* **The Azure text-digest question is UNRESOLVED as of 2026-09-15.** The run that raised
-  it used the broken pandas-based check; the standard-library version has been pushed but
-  not yet run there. Until it has, *do not record either "Azure matches" or "Azure
-  differs"*.
+* ⭐ **RESOLVED 2026-09-16 — see §2a. Azure matches.** The earlier "all thirteen text
+  digests differ" was the pandas-based check, exactly as diagnosed.
 * **`requirements.txt` has no upper version bounds.** Meeting pandas 3.0 was luck.
 * **The Excel gate (57 fixture / 61 live) has not been re-run since 2026-08-31.** Nothing
   in its dependency chain changed, and the fixture measurement is stronger evidence for
