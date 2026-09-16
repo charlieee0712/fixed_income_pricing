@@ -15,7 +15,7 @@ it were themselves wrong.*
 | numpy | 2.3.4 | — | **2.5.3** |
 | pandas | 2.3.3 | — | ⭐ **3.0.5** |
 | scipy | 1.16.3 | — | **1.18.1** |
-| suite | 495 in ~50 s | 495 in ~230 s | 483 in **40 s** (at an earlier commit) |
+| suite | 495 in ~50 s | 495 in ~230 s | ⭐ **495 in 38.6 s** — the fastest of the three |
 | drivers (all four) | — | — | **40.4 s total**, corporate book 7.0 s |
 | text digests vs the record | (wrote it) | identical | ⭐ **identical, 13 of 13** |
 
@@ -86,9 +86,10 @@ failure §4 describes, arriving from a direction nobody predicted.
 
 Budget usage across three platforms stays under 2.1% against a 10% warning threshold.
 
-⚠️ **What this run did NOT cover:** it executed the drivers and the endpoint, not `pytest`.
-The last full-suite run on Azure was **483** at an earlier commit; the suite has not been
-run there at 495. Low risk, but it is not measured.
+⭐ **Re-measured 2026-09-16 on a FRESH container, after the storage mount was fixed:
+identical result** — same thirteen text digests, same 0.35% at the same field — plus
+**`pytest` 495 passed in 38.61 s**, which closes the last gap. The measurement is stable
+across containers, not a one-off, and nothing about this platform is now unverified.
 
 ### ⚠️ Two quantities look alarming in RELATIVE terms and are machine epsilon in ABSOLUTE
 

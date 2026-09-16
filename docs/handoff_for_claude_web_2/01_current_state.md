@@ -255,10 +255,11 @@ the par-call lattice already matches custodian AQ); the `TNTD04366584` rating qu
 
 ## 8. Immediate next steps, as they stand
 
-1. ⭐ **The Azure trial is DONE and it passed (2026-09-16).** All thirteen row counts and
-   all thirteen text digests identical to the record; endpoint worst deviation 0.35% of
-   tolerance. ⚠️ Two loose ends: the Cloud Shell **mount is still unfixed** (region
-   mismatch, `25` §5 — every session is ephemeral until it is), and `pytest` has not been
-   run there at 495.
+1. ⭐ **The Azure trial is DONE, and there are no loose ends left in it (2026-09-16).**
+   All thirteen row counts and all thirteen text digests identical to the record; endpoint
+   worst deviation 0.35% of tolerance; **`pytest` 495 passed in 38.61 s** — the fastest of
+   the three platforms; and the storage mount now **persists**, so a later session is
+   `git pull` and run. Re-measured on a fresh container: identical.
+   **What is left is not engineering — it is the two questions for Mario in §7.2.**
 2. **Ask Mario the two questions** in §7.1 and §7.2, with the demo in hand.
 3. **MBS remains the largest single unlock** — 882 securities behind one data pull.

@@ -38,7 +38,7 @@ requirements.txt` → `pytest`:
 ```
 Linux x86_64 | Python 3.12.14
 numpy 2.5.3 | pandas 3.0.5 | scipy 1.18.1
-483 passed in 40.17s
+495 passed in 38.61s          # re-run 2026-09-16 on a fresh, persistent container
 ```
 
 Four things worth carrying into any plan:
@@ -126,12 +126,27 @@ same four.
    It places the container near the user (China → Hong Kong) while the storage account
    was created in the US on our advice — chosen for data residency, which is the wrong
    axis: the same-region requirement is a hard technical constraint and Mario has since
-   said residency is not a concern. **Fix: reset Cloud Shell user settings, restart, and
-   let Cloud Shell create the storage account itself** so it lands in the right region.
-   Delete the orphan.
+   said residency is not a concern. **Fix, applied 2026-09-16 and confirmed working:
+   reset Cloud Shell user settings, restart, and let Cloud Shell create the storage account
+   itself** so it lands in the right region. Delete the orphan.
+
+   ⭐ **The configuration that works** (for anyone repeating this):
+   ```
+   storage account   cs11003200643d04037
+   resource group    cloud-shell-storage-southeastasia   <- Azure names it
+   region            southeastasia                       <- matches ACC_LOCATION
+   share             6.0G, mounted at /usr/csuser/clouddrive
+   ```
+   Note Azure chose the resource-group name itself, so the earlier advice to pre-create one
+   called `rg-cloudshell` was unnecessary. ⚠️ `df -h` shows the SHARE at ~84% because the
+   fixed-size home-directory image lives inside it; that is the normal state, not a warning.
 3. ⚠️ **Without a mount the session is EPHEMERAL and wipes on a ~20-minute idle
    timeout.** It wiped twice during the trial, losing the clone, the venv and the pip
    installs each time. Any back-and-forth with a human easily exceeds 20 minutes.
+   ⭐ **Resolved 2026-09-16.** With the mount working, `$HOME` and the virtualenv persist,
+   so a later session is `git pull` and run — no re-clone, no re-install. **That is the
+   difference between a demo and something a group can use**, and it is the part of the
+   trial that actually answers Mario's ask.
 4. **The browser terminal mangles long multi-line pastes**, especially heredocs — a lost
    newline leaves the heredoc collecting input forever. ⇒ **put the work in a script in
    the repository** and paste one line. That is why `scripts/platform_parity.py` exists.
@@ -154,7 +169,7 @@ The trial answers *can it run*. It does not answer *can the group use it*.
 
 | option | fits which reading | cost | notes |
 |---|---|---|---|
-| **Cloud Shell, per person** | (b) | free + ~$0.3/mo storage each | each person gets their own; needs the mount configured or it is ephemeral; needs a PAT to clone a private repo |
+| **Cloud Shell, per person** | (b) | free + ~$0.3/mo storage each | ⭐ **proven end to end 2026-09-16.** Each person gets their own persistent home; setup is one clone + one `pip install`, and later sessions are `git pull` and run. ⚠️ Needs the mount configured (§5.2) and a PAT to clone a private repo |
 | **App Service / Container App** | (a) | F1 free tier: 1 GB RAM, **60 CPU-min/day** | gives a URL the Excel bridge could POST to instead of shelling out. numpy+pandas+scipy ≈ 250 MB installed — fits, tight. 60 min/day is a real cap for batch driver runs |
 | **Azure Functions (consumption)** | (a) | 1M executions free | the closest fit to "one JSON in, one JSON out" |
 | **A VM / Dev Box** | (b) | real money | shared state; simplest conceptually, least attractive |
@@ -195,8 +210,11 @@ where the curve files live (a mounted share, blob storage, or baked into the ima
    session is ephemeral.
 4. **`requirements.txt` has no upper version bounds** — see `24_determinism_and_cross_platform.md`.
 5. **The 87 unguarded data-dependent tests** — a data-free deployment looks broken.
-6. ~~The Azure parity result is unresolved~~ ⭐ **RESOLVED 2026-09-16: Azure reproduces
-   the record.** All thirteen row counts and **all thirteen text digests identical**; byte
-   hashes differ by the documented float noise; the endpoint's worst deviation is 0.35% of
-   its tolerance. ⚠️ `pytest` has not been run there at 495 — the last full-suite figure is
-   483 at an earlier commit.
+6. ~~The Azure parity result is unresolved~~ ⭐ **CLOSED 2026-09-16. The trial is
+   complete and nothing about this platform is unverified.** All thirteen row counts and
+   **all thirteen text digests identical**; byte hashes differ by the documented float
+   noise; the endpoint's worst deviation 0.35% of its tolerance; **`pytest` 495 passed in
+   38.61 s**; the mount persists. Re-measured on a fresh container with identical results.
+
+   **What remains is not engineering.** It is the two questions for Mario in §6: which
+   tenant, and which shape.

@@ -713,8 +713,8 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
 - **⭐ AZURE = a THIRD platform, and it REPRODUCES THE RECORD (measured 2026-09-16).**
   Mario wants the code on Azure so "everyone in our group can run and test these codes".
   Azure Cloud Shell, free tier: **Python 3.12.14 / numpy 2.5.3 / pandas 3.0.5 / scipy
-  1.18.1** — ⭐ **a whole MAJOR version of pandas ahead of this machine, and 483 passed**
-  (at an earlier commit; the suite has NOT been run there at 495). All four drivers run in
+  1.18.1** — ⭐ **a whole MAJOR version of pandas ahead of this machine, and 495 PASSED in
+  38.61 s** (2026-09-16, the fastest of the three platforms). All four drivers run in
   **40.4 s** total (corporate book 7.0 s) against ~230 s on 47.
   **`PYTHONPATH=src python3 scripts/platform_parity.py --run` is the one command** — it
   runs every driver, then compares rows / bytes / **text fingerprint** against the newest
@@ -730,10 +730,17 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   **Azure -> GitHub has NO GFW in the path** (28 MB clone at 18 MB/s) — unlike 47.
   ⚠️ Cloud Shell traps, all hit: `Microsoft.CloudShell` needs `az provider register` then a
   **restart** (the mount is established at session start); the storage account must be in
-  the **SAME REGION as the container** (`ACC_LOCATION`, EASTASIA here — a US storage
-  account will not mount); **without a mount the session is EPHEMERAL and wipes after ~20
-  min idle** (it wiped twice); and the browser terminal **mangles multi-line pastes,
-  heredocs worst** ⇒ put the work in a repo script and paste one line.
+  the **SAME REGION as the container** (`ACC_LOCATION` — a US storage account will not
+  mount a container running in Asia); **without a mount the session is EPHEMERAL and wipes
+  after ~20 min idle** (it wiped twice); and the browser terminal **mangles multi-line
+  pastes, heredocs worst** ⇒ put the work in a repo script and paste one line.
+  ⭐ **FIXED 2026-09-16 — the working config: reset Cloud Shell user settings and let Azure
+  create the storage account itself.** It lands in the right region and names its own
+  resource group (`cs11003200643d04037` / `cloud-shell-storage-southeastasia` /
+  `southeastasia`, 6 G at `/usr/csuser/clouddrive`; `df` shows ~84% because the fixed-size
+  home image lives in the share — normal). **`$HOME` and the venv now PERSIST**, so a later
+  session is `git pull` and run. That persistence, not the test count, is what makes this
+  usable by a group.
   ⚠️ **`requirements.txt` has NO upper version bounds** — meeting pandas 3.0 was luck that
   paid off. Pinning is an open follow-up. **Client data on Azure: Mario says not sensitive
   (2026-09-15)**; the open question is WHICH TENANT, since a personal free subscription on

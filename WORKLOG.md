@@ -5,6 +5,55 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-09-16 (evening) — The Azure trial closes: 495 there, and the mount persists
+**Commits:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+The storage mount was fixed by resetting Cloud Shell's user settings and letting Azure
+create the storage account itself, which put it in `southeastasia` alongside the
+container instead of in `eastus` where our advice had put it. The orphan was deleted.
+
+On a fresh, persistent container:
+
+```
+495 passed in 38.61s          the fastest of the three platforms
+13 files: rows identical, text digests 13/13 identical, bytes differ
+endpoint: 9 fixtures, worst 0.35% of tolerance at effective_duration_years
+```
+
+Two things worth separating.
+
+**The measurement is stable.** This was a brand-new container and it produced the same
+thirteen digests and the same 0.35% at the same field as yesterday's run. A number that
+reproduces on a fresh machine is a different kind of evidence from one that reproduced
+once.
+
+⭐ **The persistence matters more than the test count.** `$HOME` and the virtualenv now
+survive, so a later session is `git pull` and run -- no re-clone, no re-install. The
+earlier version of this, which wiped every twenty minutes, could demonstrate that the code
+runs but could not have been handed to anyone. Mario's ask is that his whole group be able
+to run and test this; the persistent mount is the part that actually answers it.
+
+### Retired, rather than left standing
+
+Yesterday's entries deliberately carried two caveats -- that `pytest` had not been run at
+495 on Azure, and that the mount was unfixed so sessions were ephemeral. Both were true
+when written and both are now false. They are replaced in `24`, `25`, `01` and CLAUDE.md
+with the verdict and, in `25` §5.2, with the configuration that works, so the next person
+does not repeat the region mistake.
+
+Also recorded: Azure names the resource group itself
+(`cloud-shell-storage-southeastasia`), so the earlier advice to pre-create `rg-cloudshell`
+was unnecessary; and `df` reporting the share at ~84% is normal, because the fixed-size
+home-directory image lives inside it.
+
+**Nothing about this platform is now unverified. What remains is not engineering** -- it
+is the two questions for Mario: which tenant his group can be added to, and whether he
+wants a shell each or a service to call.
+
+---
+
 ## 2026-09-16 (later) — Azure reproduces the record, and the worst offender moved
 **Commits:** `[TO FILL]`
 **Hours:** `[TO FILL]`
