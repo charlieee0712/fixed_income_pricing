@@ -226,3 +226,73 @@ difference ÷ bump² amplifies a last-bit rounding by 10⁸). Text columns ident
 spreads and durations agree to ~1e-12. Two local runs are byte-identical to each other, so
 **parity is asserted local-fresh vs local-fresh** — byte-exact, and stricter than the
 cross-platform comparison it replaces.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+Four numerical laws added, all load-bearing for numbers already published.
+
+### Law — the breakeven identity, and why a linker's spread is negative
+
+Pricing with inflation π at spread s is **exactly** the same as pricing with no inflation
+at spread `s − ln(1+π)`, under this project's exponential discounting. Therefore:
+
+```
+breakeven = ln(1 + inflation) − spread
+```
+
+At the production assumption of zero inflation that is simply **`−spread`**, which is
+what `scripts/phase2_risk.py` publishes as `breakeven_bp`.
+
+⚠️ **So an inflation-linked bond's calibrated spread comes out NEGATIVE for a healthy
+bond, and that is the engine being right.** With cash flows projected at zero inflation
+and the price taken from the market, the spread must absorb exactly the inflation the
+projection omitted. The wrapper function is `implied_spread_vs_nominal_bp` and the name
+`implied_oas` is **banned from the module by a test**. Never average it with credit
+spreads.
+
+### Law — the quotation identity, and what it cannot tell you
+
+```
+BT == MV_base * fx / par * 100
+```
+
+Securities that fail it by a ratio of **exactly 0.01** are quoted with par as a *number of
+titles* rather than a currency face amount.
+
+⚠️ **The identity cannot name the denomination** — it holds for MXN 100 and BRL 1000
+alike. That is why `dataio.phase2.TITLE_FACE` is an explicit registry. And:
+
+```python
+bt_per_100 = BT / (F / 100.0)     # written this way round on purpose
+```
+
+With F = 100 that divides by exactly **1.0**, so prices in already-per-100 currencies are
+**bit-identical** to their input. `==` is asserted in a test.
+
+### Law — how two machines' numbers may differ
+
+| quantity | computed as | amplification | measured |
+|---|---|---:|---|
+| price, spread, accrued | direct | ×1 | ≤ 6e-16 relative |
+| duration, DV01 | bumped difference ÷ bump (1e-4) | ×1e4 | ≤ 4e-13 |
+| **convexity** | second difference ÷ bump² | **×1e8** | ≤ 7.5e-08 |
+
+⚠️ **Scale numeric comparisons by `max(1, |x|)`, never by `|x|`.** Several published
+quantities are near zero by construction — a calibration residual (≈6.6e-09) and an
+inactive put's volatility effect (≈1.1e-11) — and a relative measure on them reports
+enormous differences that are machine epsilon in absolute terms.
+
+⚠️ **A tolerance sized for the noisiest quantity is not a tolerance for the others.**
+
+### Law — text columns carry no arithmetic, so they must match everywhere
+
+A column is **TEXT** if any non-empty value in it fails to parse as a float: identifiers,
+routes, dates, flags, reason codes. Those are decided by logic, not by rounding.
+
+**A differing sha256 with a matching text digest is rounding. A differing text digest is
+a defect.** On 2026-09-03 a driver flag embedded a filesystem path and read
+`data\KRW_Yield_Curve.txt` on Windows against `data/…` on Linux; a human found it by
+diffing two CSVs. `src/dataio/output_digest.py` now finds it automatically, and the
+reference digests are published in `release_facts`.

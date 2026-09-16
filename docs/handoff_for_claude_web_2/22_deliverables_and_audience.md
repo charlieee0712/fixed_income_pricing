@@ -170,3 +170,43 @@ none of which need a bond.
 The pre-upload checks are unchanged and still worth repeating every time: **no handoff files in
 the package**, and refresh the package's document copies after ANY late edit to a source
 document.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### The package now ships `data/`
+
+User's decision, 2026-09-05: it is Mario's own material coming back to him — the URS
+portfolio, the two legacy workbooks, 26 curve exports, our six override tables.
+Consequence: the folder is **self-contained**, `pytest -q` gives the full count there
+rather than a subset, and all four drivers run and reproduce the committed hashes.
+**≈ 35 MB / 215 files.**
+
+⚠️ The old README line *"this folder carries the code, not the portfolio"* is **RETIRED —
+do not restore it.** ⚠️ Still strip `__pycache__` / `.pytest_cache` after any in-package
+test run, and do **not** ship the generated `outputs/`.
+
+### The active Mario-facing report is `docs/weekly_report_2026-09-10.md`
+
+⭐ **Its subject is deliberately not the refactor.** That round moved no number — 63
+securities before, 63 after, every output byte-identical — so "we restructured two
+classes" would have been a weak thing to present in a room. The report leads instead with
+**what the inflation-linked output means**: a deflation curve running from **−34 bp** on
+the 2010 maturity to **+139 bp** on the 2032, a median moving **85 → 215 bp** in ten
+weeks, and a Japanese linker at **−229 bp** whose sign flips the other way and flips
+correctly.
+
+⚠️ **Population matters and the report says so:** 85 bp is over **13 linkers,
+near-maturity excluded — the driver's own median population**. All 14 gives 82.
+
+### Honesty notes that shaped both recent reports
+
+* **"Government Agencies never had an engine of its own."** All five of its routes were
+  already migrated. Saying "we restructured two classes" implies engine work that did not
+  happen — the round's one honesty risk, stated as a table rather than glossed.
+* **A guard that found nothing is reported as having found nothing.** `check_representable`
+  refused no agency bond; the report says *latent, not live*.
+* **The 09-13 package refresh carries its own note** explaining that documentation and
+  tests changed and no number did — including a line for the cloud team on the
+  cross-platform convexity difference they will see on their own hardware.

@@ -44,28 +44,46 @@ checks — those are decided here, from the repo.
   Part A silent failures in cost order, Part B the five habits)**.
   Verbatim (re-copy every refresh): 03←`PROJECT_STATUS.md` · 04←`WORKLOG.md` ·
   05←`COVERAGE.md` · 06←`docs/missing_data.md` · 07←`docs/phase2_methods_2026-07-22.md` ·
-  08←**the ACTIVE Mario-facing report** (now `docs/weekly_report_2026-08-30.md`) · 09←Mario's template txt · 11←`docs/monthly_recon_report_2026-08-17.md`.
+  08←**the ACTIVE Mario-facing report** (now `docs/weekly_report_2026-09-10.md`) · 09←Mario's template txt · 11←`docs/monthly_recon_report_2026-08-17.md`.
   Zip → `handoff1_<date>.zip`. Precedence inside: 01 wins over the verbatim copies.
+  ⚠️ **h1 was NOT refreshed on 2026-09-16 — only h2 was** (the user asked for h2 by name).
+  h1 is therefore current to **2026-08-31** and is four rounds behind: it does not know the
+  government book, the 8/7/5/5 split, the cross-platform correction, or Azure. Say so if
+  anyone plans from it.
 - **`docs/handoff_for_claude_web_2/`** (NEW 2026-08-25) = **the DEEP bundle**: cap **40
-  files**, no length limit per file, the reference web-Claude PLANS FROM. 32 files today.
-  **Last refreshed 2026-08-30** (user: "全面更新handsoff两个包") — h1 3,367 lines /
-  `handoff1_2026-08-30.zip` 110 KB · h2 7,548 lines / `handoff2_2026-08-30.zip` 228 KB.
+  files**, no length limit per file, the reference web-Claude PLANS FROM.
+  **Last refreshed 2026-09-16** (user: "全面更新下handoff_for_claude_web_2") — **38 files /
+  12,089 lines / 848 KB** (was 32 / 8,931 on 08-31). No zip.
   Structure: `00`-`07` orientation (START_HERE · current state · locked decisions ·
   conventions/laws · open asks · **traps & gotchas** · **feedback on previous plans** ·
-  glossary) + `10`-`22` per-domain deep dives (architecture · engines fixed/tree/floating ·
+  glossary) + `10`-`25` per-domain deep dives (architecture · engines fixed/tree/floating ·
   curves · universe · data & overrides · JSON-Excel · testing · Monthly recon · environment ·
-  comms · deliverables) + `30`-`40` verbatim (CLAUDE.md · PROJECT_STATUS · WORKLOG ·
-  COVERAGE · missing_data · weekly report · round-2 report · interface v1 · Monthly mapping ·
-  phase2 methods · Mario's template). Zip → `handoff2_<date>.zip`.
-  **Two files there are the point of the whole bundle:** `05_traps_and_gotchas` (the
-  silent-failure list — Excel serials, the 365.25-vs-364 axis, VBA `Null`, Edge writing no
-  PDF, staging copies breaking pytest, and **since 08-30 §1.9-1.11: the GBP par-yield units
-  bug, the driver's silent `skipped=N`, and the cross-platform convexity noise floor**) and
-  `06_feedback_on_previous_plans` (what the two 2026-08-25 plans got wrong + the four habits:
-  name a count's SOURCE and POPULATION; never leave a modelling choice to "the caller"; never
-  assert code state — schedule a gate check; name the silent-failure modes — **plus habit 5,
-  added 08-30: a claimed data gap needs evidence from the SOURCE, not from our own error
-  message**; §4's five Round-2b carry-overs are now closed and scored).
+  comms · deliverables · **23 government & sovereign book** · **24 determinism &
+  cross-platform** · **25 cloud & Azure** — the last three NEW 09-16) + `30`-`43` verbatim
+  (CLAUDE.md · PROJECT_STATUS · WORKLOG · COVERAGE · missing_data · weekly report ·
+  round-2 report · interface v1 · Monthly mapping · phase2 methods · Mario's template ·
+  **41 release_facts** · **42 sovereign scope** · **43 the 09-10 instruction doc** — the
+  last three NEW 09-16).
+  ⭐ **`41_release_facts_verbatim` outranks prose anywhere, including this file, for any
+  count / hash / test number** — it is machine-written from the files it describes.
+  **Two files are the point of the whole bundle:** `05_traps_and_gotchas` (**29 silent
+  failures** in cost order — Excel serials, the 365.25-vs-364 axis, VBA `Null`, Edge writing
+  no PDF, staging copies breaking pytest, the GBP par-yield units bug, the silent
+  `skipped=N`, the convexity noise floor, and **since 09-16 §1.18-1.29**: a driver flag
+  carrying a filesystem path · the custodian making the SAME units error so the cross-check
+  is poisoned · a curve file that is not the kind of curve its name implies · a module map
+  stale for a round with nothing able to catch it · a hardcoded list the engine outgrew · a
+  living doc with a frozen header · both ends of a pipe guessing the encoding · a
+  cross-platform claim that rotted · one tolerance hiding two populations · **a verification
+  tool built on the thing it cannot control** · **a measurement that cannot say it measured
+  nothing**) and `06_feedback_on_previous_plans` (**eight habits** now: name a count's SOURCE
+  and POPULATION · never leave a modelling choice to "the caller" · never assert code state,
+  schedule a gate check · name the silent-failure modes · a claimed data gap needs evidence
+  from the SOURCE — **plus, added 09-16: 6 a verification tool must not depend on what it
+  verifies · 7 mutation-test every new lock or it may be decorative · 8 do not hand-maintain
+  a number that has an authoritative source**; and §6's measured finding that **four plans in
+  a row needed an after-the-fact revision section while the one that put Gate 0 FIRST did
+  not**).
 - Supersedes the single root `HANDOFF_FOR_CLAUDE_WEB.md` (removed the day it was born,
   2026-08-15). Structure originally copied from the user's csi1000 `handoff_2` pattern.
 
@@ -306,8 +324,10 @@ checks — those are decided here, from the repo.
   listed more than once). `F13`'s "2 rows" are the SAME bond `TNTD04283895` twice. The chain is
   **30 pivot ROWS → 29 SECURITIES → 29 held → 23 priced + 6 named**; the 30→29 step is a
   DUPLICATE LISTING, not an unheld row. The plan, both handoff bundles and the 08-30 report all
-  said "2 tab rows, 1 held" — corrected in the report; **the handoff bundles still carry it**
-  (no auto-refresh) and must be fixed at the next explicit refresh.
+  said "2 tab rows, 1 held" — corrected in the report, and **corrected in BOTH handoff
+  bundles on 2026-08-31** (`h2` files 00, 01, 11, 15). ⚠️ This note used to say the bundles
+  "still carry it and must be fixed at the next explicit refresh"; that instruction was
+  itself stale by the time it was read, and was retired at the 09-16 refresh.
 - **Evidence:** `docs/client_directive_pivot_column_f_2026-08-27.md` (provenance — ⚠️ column F is
   IN the tracked workbook, sheet6, committed `a5f7c81`; a screenshot was not the only evidence)
   + `docs/column_f_delivery_matrix_2026-08-31.md` (four populations · six cells · the 6 unpriced

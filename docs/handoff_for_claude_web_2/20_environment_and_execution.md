@@ -134,3 +134,47 @@ a live interpreter**) drive a
 hidden real Excel instance and take about a minute. They are outside pytest and must be run
 deliberately — this round they were re-run to verify the v1.1 dispatch had not disturbed the
 bridge, rather than assumed from the fact that nothing in the .bas changed.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### A third platform
+
+| | local (Windows) | `47` (deploy target) | Azure Cloud Shell |
+|---|---|---|---|
+| Python | 3.13.5 | repo `.venv` | 3.12.14 |
+| numpy / pandas / scipy | 2.3.4 / 2.3.3 / 1.16.3 | — | **2.5.3 / 3.0.5 / 1.18.1** |
+| suite | 495 in ~50 s | 495 in ~230 s | 483 in **40 s** (at that commit) |
+
+⭐ **pandas 3.0 is a whole major version ahead of the development machine and everything
+passed** — golden-master bootstrap, workbook loaders, the universe funnel's exact counts.
+The code is not pinned to one stack. ⚠️ But `requirements.txt` has **no upper version
+bounds**; meeting 3.0 was luck that paid off. Pinning is an open follow-up.
+
+⭐ **Azure → GitHub has no GFW in the path** (28 MB clone at 18 MB/s). The TLS resets and
+crawl-speed fetches documented for `47 → GitHub` do not occur, because neither end is
+behind it.
+
+### ⚠️ Cross-platform parity — the rule, restated
+
+**For byte-exact parity, compare local-fresh against local-fresh.** A cross-platform
+`sha256` diff of a driver CSV shows a difference that is NOT a regression. Since
+2026-09-13 this extends to the **endpoint JSON** as well — the claim that it was
+byte-identical was written when the endpoint priced vanilla only. Measurements, the
+per-quantity tolerances and the text-fingerprint check are all in **`24`**.
+
+### Running things
+
+```bash
+PYTHONPATH=src python3 scripts/platform_parity.py --run   # does this machine reproduce the record
+PYTHONPATH=src python3 scripts/release_facts.py           # write the record from the files
+python -m pytest -q                                       # 495
+```
+
+⚠️ **Put anything long into a script in the repository.** A browser terminal mangles
+multi-line pastes, heredocs worst of all — a lost newline leaves the heredoc collecting
+input forever. That is why `platform_parity.py` exists as a file rather than a command.
+
+Azure Cloud Shell specifics — provider registration, the region-mismatch mount failure,
+the 20-minute ephemeral wipe — are in **`25` §5**.

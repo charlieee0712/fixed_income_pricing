@@ -214,3 +214,52 @@ names the four documents to update. It did exactly that on 08-31 when the floati
 Local-fresh vs local-fresh, byte-exact. Cross-platform CSV hashes differ by ~3.6e-8, entirely
 in `convexity`, and that is not a regression (`05` §1.11). Every code-bearing commit re-runs
 all five drivers; the only intentional movements this round are listed in `01`.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### 390 → 495
+
+New files: `test_sovereign_universe` (33), `test_pricer_government_structure` (34),
+`test_excel_fixture_parity` (14), `test_output_digest` (10), plus three module-map locks
+in `test_pricer_structure` and a currency anti-rot lock.
+
+⚠️ **`test_exception_wiring` is parametrised per SOURCE file** (83 today), so adding a
+module to `src/` or `scripts/` raises the total by one without anyone writing a test.
+Several "+N tests" lines in the history are that, and the commit messages say so.
+
+### ⭐ Mutation testing became standing practice, and it earned it
+
+Every lock added since 2026-09-10 was verified by **making it fail on purpose** and then
+restoring. Two were weak and were caught that way before shipping:
+
+* the fixture-parity tolerance **passed a deliberate 1e-4 price perturbation** — one
+  bound for every field, sized from convexity's noise (`05` §1.26);
+* a threshold-consistency test had an `or` fallback on a hardcoded string, so half the
+  assertion did not reference the constant it claimed to pin.
+
+The module-map locks were validated the same way: reverting to the historical map turned
+all three red, which is the only reason we know they bind rather than merely pass.
+
+**A test that has never been seen to fail is a hypothesis.**
+
+### New kinds of lock worth copying
+
+| lock | what it does |
+|---|---|
+| **object identity** | `pricing.ilb.price_ilb is pricer.core.pricing.inflation.price_ilb` — a shim that re-implements passes every import-by-name test while production drifts |
+| **banned name** | `implied_oas` must not appear in `assets/government/linker.py`. The test injects it and fails |
+| **source grep across owners** | the driver keeps an inline copy of three thresholds for byte-identity, so a test parses the driver source and fails if it diverges from the named constants |
+| **the direction that rots** | *nothing marked PLANNED may already exist* — the two obvious map checks would both have missed the real failure |
+| **N beside the aggregate** | the parity report prints "9 fixtures compared", because `0.00% at none` is indistinguishable from a loop that never ran |
+
+### `scripts/platform_parity.py` — verification on any machine
+
+Runs every driver, then compares rows / bytes / **text fingerprint** against the newest
+`release_facts`, and reports the endpoint tolerance budget.
+
+⚠️ **It exits 0 even when files differ. It is a report, not a gate** — on another
+processor a differing hash is the expected reading, and an exit code calling that failure
+would train people to ignore the text-column line, which is the one that means something.
+Full detail in `24`.

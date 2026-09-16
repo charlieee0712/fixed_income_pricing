@@ -126,3 +126,21 @@ Existing artifacts: the plan (`docs/monthly_reconciliation_plan_2026-08-15.md`, 
 Gate-0 memo with cell and VBA-line citations
 (`docs/monthly_gate0_memo_2026-08-17.md`), the results
 (`docs/monthly_recon_report_2026-08-17.md`), and this round's mapping memo (file `38`).
+
+---
+
+## Refresh 2026-09-16
+
+⭐ **Verified UNCHANGED this refresh.** `src/recon/`, the two extract/run scripts and
+`tests/test_monthly_curves` (13) have not been touched since 2026-08-31. Every verdict in
+this file still stands, including the `legacy-stale-session` call on the 2010-03-01 batch.
+
+One dependency worth restating, because it is easy to plan around wrongly: ⚠️
+**`tests/test_monthly_curves` is one of the test groups that FAILS rather than skips when
+`data/` is absent** (11 of the 87 failures measured on a data-free deployment). It needs
+`data/h15_pillars_monthly_recon.csv`. Adding skip guards to the unguarded data-dependent
+tests is an open follow-up — see `25` §3.
+
+The remaining scope is unchanged and still tree-gated: callable/NORMAL ~450 · FLOATING
+426 · the V/W/Y/Z volatility columns · T/U (the `SteepFlat` file is a deferred Mario ask,
+⚠️ **not to be re-raised before the MBS data returns**) · mortgage rows at the MBS phase.

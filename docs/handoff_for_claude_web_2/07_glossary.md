@@ -118,3 +118,24 @@ golden to reconcile to.
   `convexity`, because convexity is a second difference divided by bump². Not a regression.
 - **`price_detail`** — `embedded_option.price_detail(...)`, returning clean/dirty/accrued from
   ONE tree build, so a caller reporting a full result set does not build the tree three times.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+Terms that entered the project with the government book, the determinism work and Azure.
+
+| term | meaning here |
+|---|---|
+| **linker** | an inflation-linked government bond (TIPS in the US, JGBi in Japan, KTBi in Korea). Its coupon is a REAL rate; the cash it pays is that coupon times an index ratio |
+| **index ratio** | how much inflation has already accrued on a linker, as a multiplier on every cash flow. Recovered per bond from the custodian's income rate ÷ the description coupon |
+| **breakeven inflation** | the inflation rate at which an investor is indifferent between a linker and an ordinary bond. ⭐ In this project it is read straight off the calibration as `ln(1+π) − spread`, which at π=0 is `−spread` |
+| **real-rate duration** | what this project's ILB duration is, because the index path is static. A real linker's *nominal* duration is shorter. Documented v1 boundary, not a defect |
+| **TLGP** | the FDIC's Temporary Liquidity Guarantee Program. Bank-issued, government-guaranteed. Reports in its own bucket, never a bank rating bucket |
+| **on-the-run / off-the-run** | the most recently auctioned government issue versus older paper. The benchmark curve is built from on-the-run bonds, so older paper prices cheap by the liquidity premium — which is why US Treasury "spreads" in our sovereign output have a median of +40.6 bp and that is not model error |
+| **sovereign composite curve** | a curve that is an average of several countries' government curves rather than one country's or a swap curve. `EUR_Yield_Curve.txt` is one |
+| **`spread_meaning`** | an output column naming which of three readings applies to a sovereign row: `own-curve-anchor`, `relative-to-euro-composite`, `spread-over-government` |
+| **text column / text digest** | a column whose values carry no arithmetic (ids, routes, dates, flags). Its digest must match on every machine; a difference there is a defect, not rounding |
+| **tolerance budget** | how much of a field's allowed deviation an observed difference consumes, as a fraction. Reported set-wide so the noise floor cannot grow unnoticed |
+| **ephemeral session** | an Azure Cloud Shell with no mounted storage: everything is wiped after ~20 minutes idle |
+| **frozen fixture corpus** | the two v1.0 request/response pairs that are never regenerated. They prove a typeless (v1.0-shaped) request is still answered; today's engine answers at schema 1.1, and that divergence is the additive contract working |

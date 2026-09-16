@@ -125,3 +125,25 @@ create two dialects of the same object. `validate_schedule` refuses a percent-lo
 **Behaviour worth knowing:** a step already in the past simply falls out. Row F13's bond
 switched in March 2006, so at a 2009 valuation it is an ordinary 7.50% bond, and a test asserts
 it prices identically to one.
+
+---
+
+## Refresh 2026-09-16
+
+⭐ **Verified UNCHANGED this refresh.** `core/pricing/analytical.py`,
+`core/pricing/cashflows.py` and `core/pricing/coupon_schedule.py` have not been touched
+since 2026-08-31 (`git log` over the four rounds returns nothing for them). Everything in
+this file still holds.
+
+Two things elsewhere that a reader of this file will want:
+
+* **A fourth engine now sits beside these three**: `core/pricing/inflation.py`, moved
+  from `pricing/ilb.py` on 2026-09-10. It prices inflation-linked government bonds on
+  the **nominal** own-currency curve with an explicit index path, and its calibrated
+  number is approximately **minus a breakeven inflation rate**, not a credit spread. It
+  belongs to the government book — see **`23` §7** — and the identity it rests on is a
+  law in **`03`**.
+* **The vanilla engine now serves two asset families.** 36 of the 63 phase-2 securities
+  and 147 of the 154 sovereign securities route to it. ⭐ **Government Agencies has no
+  engine of its own** — all five of its routes were already built here and in the tree.
+  That is why the 2026-09-10 "restructure" moved wrappers and labelling, not mathematics.

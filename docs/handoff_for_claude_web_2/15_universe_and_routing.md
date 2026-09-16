@@ -154,3 +154,49 @@ listed more than once**, because the pivot counts rows. Row F13 was cited here a
 (`TNTD04283895`) listed twice, and it IS held. Reading a duplicate listing as an unheld
 security understates coverage and invents a gap. `scripts/column_f_audit.py` prints all four
 populations; quote it rather than a memory.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### The phase-2 loader now owns two more classes
+
+`dataio/phase2.py` gained `SOVEREIGN_CLASSES = ("government", "municipal")` alongside
+`PHASE2_CLASSES = ("agency", "guaranteed", "linker", "govt_mbs")`.
+`build_phase2_universe(master, classes=None)` **defaults to the original four**, so
+`phase2_risk.py` needed no change when the sovereign classes were added — the discipline
+that kept five production CSVs byte-identical through that round.
+
+### Routing, all of it in one place
+
+`_route_agency` — `zero` (coupon below `ZERO_COUPON_MAX_PCT`), `callable-lattice` (a
+master AB call date, beyond `MAKE_WHOLE_MAX_GAP_DAYS`), `cmo-tranche` (monthly pay +
+`_CMO_CLASS` regex — a REMIC accrual tranche misfiled as an agency debenture, refused
+rather than force-priced), `call-passed-vanilla` (`_DATE_PAIR` in the description, no AB
+— a one-time call already gone), else `vanilla`.
+
+`_route_sovereign` — the same `zero` rule claims a "STRIPPED CALL" whose call date equals
+maturity, **before** the exercise branch would.
+
+⚠️ **Nothing in `assets/government/` may redefine any of these constants**, and a test
+enforces it. The 2026-09-10 instruction document originally claimed these rules were `if`
+branches in the driver; they were not, and the correction is recorded in the document
+rather than quietly fixed.
+
+### Quotation resolution, made universal and proven inert
+
+`_resolve_quotation` runs for every class, and for agency / guaranteed / linker it is
+inert **by evidence** — all 63 resolve to `currency-face`, test-asserted. 6 of the 154
+sovereign securities are `titles-of-<F>`; only `TNTG630781W` actually rescales.
+
+⚠️ A refusal is a **label**, not an exception: `quotation-unregistered`,
+`quotation-unresolved`, `quotation-underivable`. The driver turns each into a named
+disposition, so a security whose quotation we cannot read appears in the output with a
+reason rather than disappearing.
+
+### ⚠️ Custodian duration (AQ) is evidence in flag text, never a router
+
+It means different things per class — it missed the call on corporate callables and it
+**is** option-adjusted on agencies. A rule keyed on it would have priced the corporate
+callables as bullets. Divergence beyond 1.5 years is reported with both numbers and
+decides nothing.

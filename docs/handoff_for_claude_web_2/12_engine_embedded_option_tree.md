@@ -243,3 +243,39 @@ no coupon is paid.
 `schedule_times` delegates to `core/utils/dates.exercise_schedule_times`, as does
 `dataio.to_lattice_schedule`. `days_per_year` is deleted — see `05` §1.2, which is now a closed
 trap rather than an open one.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### `check_representable` now guards BOTH hand-built lattice paths
+
+`scripts/phase2_risk.py` was the last driver building its call array by hand without the
+check. Added 2026-09-10. **Result: latent, not live** — all five agency schedules reach an
+exercise node at both dates, nothing was refused, and both CSVs stayed byte-identical.
+Reported as exactly that rather than dressed up as a fix.
+
+A refusal would leave a **named route row** in the output (`call-schedule-not-
+representable-on-current-grid`), never a missing row.
+
+### ⭐ The three thresholds that decide how a callable result is DESCRIBED
+
+They were unnamed magic numbers inside the driver. Now `assets/government/agency.py`:
+
+| constant | value | meaning |
+|---|---:|---|
+| `LIE_DETECTOR_BP` | 0 | a negative callable spread means the **par-call-from-AB assumption** conflicts with the price — a statement about our assumption, not the bond |
+| `EXTENSION_PRICING_GAP_BP` | 100 | the market is pricing to maturity rather than to the call. 2009 agencies frequently did not call |
+| `CALL_NOT_BINDING_GAP_BP` | 1 | the callable and bullet calibrations agree; the option never binds |
+
+⚠️ The driver keeps its inline copy so its output stays byte-identical, which means the
+rule lives in two places — so **a test parses the driver source** and fails if the numbers
+diverge. At 3-31 all five agency callables read `call-active`.
+
+### One genuinely callable US Treasury
+
+`TNTD03978845` (12.5% 2014, call 2009-08-15), priced on the lattice inside the sovereign
+driver. ⚠️ **Read its two columns together: 122 bp callable against 950 bp straight**,
+duration 0.39y against 4.05y. The 950 is option value, not a sovereign spread. It is also
+why `sovereign.py` exists — a government driver was importing a module named *corporate*
+to price a Treasury.

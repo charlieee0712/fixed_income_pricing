@@ -225,3 +225,59 @@ not decided — see `04` §1.
 type or schedule cells. The engineering test harness drives the named cells directly, which is
 how five types are exercised without a designed sheet existing. Keep these two facts apart:
 "the bridge can send this" and "a worksheet exists that a person would use to send it".
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### ⭐ 7 / 5 / 5 became 8 / 7 / 5 / 5
+
+| | count | which |
+|---|---:|---|
+| products the **engine** prices | **8** | the seven types + **inflation-linked** |
+| types the **contract** can express | **7** | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
+| constructible by the **VBA builder** | **5** | minus stepped and fixed_to_floating |
+| verified by a **real-Excel round trip** | **5** | vanilla · callable · puttable · sinking · floating |
+
+Until 2026-09-10 the first two were the same number; every product the engine priced had
+a type. The inflation-linked migration broke that tie, and interface document **§14.6.1**
+states the eighth product and why it has none.
+
+⚠️ **It is a decision, not a backlog.** The sheet has no cells for a real coupon, an index
+ratio or an inflation assumption, and a type becomes reachable from a spreadsheet only
+once Mario has chosen the layout. Every government input's `external` field reads `-`,
+test-pinned to the 7-type contract.
+
+### The example fixtures are TWO generations, and one is frozen
+
+`integrations/excel_vba/examples/` holds eleven request/response pairs; the Excel harness
+replays them in its no-Python mode.
+
+| | files | standard |
+|---|---:|---|
+| **v1.1 goldens** | 9 | **regenerable** — today's engine must reproduce each exactly |
+| **v1.0 corpus** | 2 | ⚠️ **frozen, never regenerated** — today's answer must be a *superset* |
+
+The frozen pair is the only v1.0 material in the repository. Its job is to prove a
+**typeless** request — the shape a v1.0 spreadsheet sends — is still answered, and that a
+v1.0-shaped response still carries everything the bridge reads. Today's engine answers at
+`schema_version` 1.1 with an added `inputs_used.instrument_type`; **that divergence is the
+additive contract working**, and regenerating the files would destroy what they exist to
+demonstrate. A test pins the divergence so nobody "fixes" it.
+
+### Documentation that was rotting, and how it was fixed
+
+* the header said **"194 automatic checks green"** and **"Scope: vanilla"** while the
+  README beside it in the same delivery folder said 468 and seven types. It now quotes
+  **no count at all** — the authoritative one is the dated `release_facts`;
+* the input catalogue named **six currencies** where fourteen are priced — now computed
+  from the registry.
+
+**Both fixes remove the hand-maintained copy rather than correcting it.** See `06` §7,
+Habit 8.
+
+### ⚠️ The Excel gate has not run since 2026-08-31
+
+57 fixture-mode checks / 61 live. Nothing in its dependency chain has changed, and the
+fixture measurement is stronger evidence for the Python side — but it **must** run before
+the next delivery that touches `endpoints/` or the `.bas`.

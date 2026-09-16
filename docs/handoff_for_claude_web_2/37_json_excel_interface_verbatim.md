@@ -1,7 +1,15 @@
 # Vanilla JSON / Excel interface — v1 reference
 
-**Date:** 2026-08-25 · **Status:** implemented, 194 automatic checks green ·
-**Scope:** vanilla (option-free, fixed-coupon) corporate bonds
+**Started:** 2026-08-25 · **Living reference, last reviewed 2026-09-13** ·
+**Scope:** the seven instrument types of §14, with the confidence labelling of §15
+
+⚠️ This document is amended in place: §14 and §15 are dated additions and they supersede
+the body wherever the two disagree. Until 2026-09-13 this header still read *"194 automatic
+checks green"* and *"Scope: vanilla"* — the count was 468 by then and §14 had covered seven
+types since August. It no longer quotes either number, on purpose: a hand-maintained count
+in prose is a second owner of a fact that has an authoritative source. The count, and the
+sha256 of every output behind it, live in the dated `docs/release_facts_<date>.md`, which a
+script writes from the files themselves.
 
 This is the technical reference for the interface between a spreadsheet — or any
 other caller that cannot import Python — and the validated pricing engine. It is the
@@ -479,6 +487,32 @@ URS holding is a puttable or a sinking-fund bond. Those are validated on **synth
 fixtures**, which prove the model and interface behave, and prove nothing about a portfolio.
 They are labelled synthetic wherever they appear.
 
+#### 14.6.1 The product with no instrument type (2026-09-13)
+
+The table above is indexed by **instrument type**, which is a contract concept, and there
+are seven. Since 2026-09-10 the engine prices an **eighth product** that deliberately has no
+type: **inflation-linked government bonds** (linkers / TIPS / JGBi).
+
+| | inflation-linked |
+|---|---|
+| Python wrapper | ✅ `assets/government/linker.py`, seven per-metric functions |
+| JSON endpoint | **✗ — by decision, not by backlog** |
+| Real Excel bridge | ✗ |
+| Live URS cohort | 15 securities, 14 priced |
+
+The reason is the one that governs the whole of §14.8: the worksheet has no cells for a real
+coupon, an index ratio or an inflation assumption, and a type becomes reachable from a
+spreadsheet only once you have chosen the layout for its inputs. Adding the type first would
+put an eighth product on a sheet nobody has designed.
+
+⚠️ It also changes what a linker's calibrated number *means*, which is why connecting it is a
+layout decision rather than a plumbing one. For every type in the table above, the calibrated
+spread is compensation for credit. For a linker priced on a nominal curve with a zero
+inflation assumption, it is approximately **minus the market's breakeven inflation rate** —
+negative for a healthy bond, and not a credit spread at all. The wrapper therefore names it
+`implied_spread_vs_nominal_bp`, never `implied_oas`, and a test fails if anyone renames it.
+Whatever cells the sheet grows, its output label has to carry that distinction.
+
 ### 14.7 Excel-side inputs for the tree products
 
 All optional. A sheet that names no `FIP_InstrumentType` sends exactly the v1.0 vanilla
@@ -521,9 +555,16 @@ the result through the live endpoint:
 
 | | count | which |
 |---|---:|---|
-| **supported by the engine and the contract** | **7** | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
+| **priced by the engine** | **8** | the seven below, plus **inflation-linked** (§14.6.1) |
+| **expressible in the contract** | **7** | vanilla · stepped · floating · fixed_to_floating · callable · puttable · sinking |
 | **constructible by the VBA builder** | **5** | the above minus `stepped` (no cells for a coupon table) and `fixed_to_floating` (no cell for the switch date) |
 | **verified by real-Excel round trips** | **5** | vanilla · callable · puttable · sinking · **floating** |
+
+**Updated 2026-09-13: three numbers became four.** Until 2026-09-10 the engine and the
+contract agreed — every product the engine could price had a type. The inflation-linked
+migration broke that tie for the first time, so "7 / 5 / 5" is now **8 / 7 / 5 / 5**, and the
+first two rows have to be read separately. The gap between them is a single, named, reversible
+decision (§14.6.1), not a shortfall.
 
 **Updated 2026-08-31: this was 7 / 5 / 4.** `floating` was constructible but had never been
 driven from a real spreadsheet, and the sheet had no cell for the quoted margin or the running
@@ -550,6 +591,53 @@ whose running coupon is not. Each proves one cell, and their warnings are comple
 The live round trip is the evidence that matters: driven from Excel through real Python, the
 first returns **397.3304715128111 bp**, which is bit-for-bit the value in the production
 `implied_oas_2009-03-31.csv` row for that holding.
+
+#### 14.8.2 The example fixtures — two generations, one of them frozen
+
+`integrations/excel_vba/examples/` holds eleven request/response pairs. They are not
+decoration: the Excel harness replays them in its no-Python mode, so they are what the VBA is
+tested against. They come in two kinds and the difference matters.
+
+| | files | standard |
+|---|---:|---|
+| **v1.1 goldens** | 9 | **regenerable** — today's engine must reproduce each one exactly |
+| **v1.0 corpus** | 2 | **frozen** — never regenerated; today's answer must be a *superset* |
+
+The frozen pair (`vanilla_request_v1` / `vanilla_error_request_v1`) is the only v1.0 material
+in the repository, and its job is to prove that a **typeless** request — the shape a v1.0
+spreadsheet sends — is still answered, and that a v1.0-shaped response still carries
+everything the bridge reads. Today's engine answers it at `schema_version` 1.1 with an added
+`inputs_used.instrument_type`; that divergence is the additive contract working, and
+regenerating the files to remove it would destroy what they exist to demonstrate.
+
+⚠️ **Until 2026-09-13 nothing checked any of this.** The fixtures were generated on
+2026-08-31 and two rounds of restructuring passed without an automated check that the engine
+still answered those requests the same way — the only test touching `excel_vba` grepped the
+.bas for its field set. `tests/test_excel_fixture_parity.py` now holds both standards, and
+running it for the first time found two things.
+
+The small one: the frozen v1.0 error message names the configured currencies, and the curve
+registry grew from six to fourteen on 2026-09-03. Harmless in a frozen document whose `code`
+and `field` are unchanged — but nothing would have said so.
+
+⚠️ **The larger one: a response is not byte-identical across operating systems, and our own
+notes said it was.** That claim dated from 2026-08-25, when this endpoint priced vanilla bonds
+only; the option-tree products arrived a week later and nobody re-checked. Measured on
+2026-09-13 over all nine goldens, Windows against the Linux host:
+
+| | agreement |
+|---|---|
+| every string, error code, field name and structure | **identical** |
+| prices, spreads, accrued interest | within 6e-16 relative — machine precision |
+| durations, DV01 | within 4e-13 |
+| **convexity** | within **7.5e-08** |
+
+Only convexity is visibly affected, and for a known reason: it is a second difference divided
+by the square of a small bump, which multiplies a last-digit rounding by about a hundred
+million. Nothing here is a disagreement between the two machines about what the bond is worth;
+it is the last bit of a floating-point number, amplified by a formula that is supposed to
+amplify. **If you compare a response produced on one machine with one produced on another,
+compare convexity to about seven decimal places and everything else exactly.**
 
 ### 14.9 Not yet done
 

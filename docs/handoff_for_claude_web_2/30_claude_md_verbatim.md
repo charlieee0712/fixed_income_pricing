@@ -44,28 +44,46 @@ checks — those are decided here, from the repo.
   Part A silent failures in cost order, Part B the five habits)**.
   Verbatim (re-copy every refresh): 03←`PROJECT_STATUS.md` · 04←`WORKLOG.md` ·
   05←`COVERAGE.md` · 06←`docs/missing_data.md` · 07←`docs/phase2_methods_2026-07-22.md` ·
-  08←**the ACTIVE Mario-facing report** (now `docs/weekly_report_2026-08-30.md`) · 09←Mario's template txt · 11←`docs/monthly_recon_report_2026-08-17.md`.
+  08←**the ACTIVE Mario-facing report** (now `docs/weekly_report_2026-09-10.md`) · 09←Mario's template txt · 11←`docs/monthly_recon_report_2026-08-17.md`.
   Zip → `handoff1_<date>.zip`. Precedence inside: 01 wins over the verbatim copies.
+  ⚠️ **h1 was NOT refreshed on 2026-09-16 — only h2 was** (the user asked for h2 by name).
+  h1 is therefore current to **2026-08-31** and is four rounds behind: it does not know the
+  government book, the 8/7/5/5 split, the cross-platform correction, or Azure. Say so if
+  anyone plans from it.
 - **`docs/handoff_for_claude_web_2/`** (NEW 2026-08-25) = **the DEEP bundle**: cap **40
-  files**, no length limit per file, the reference web-Claude PLANS FROM. 32 files today.
-  **Last refreshed 2026-08-30** (user: "全面更新handsoff两个包") — h1 3,367 lines /
-  `handoff1_2026-08-30.zip` 110 KB · h2 7,548 lines / `handoff2_2026-08-30.zip` 228 KB.
+  files**, no length limit per file, the reference web-Claude PLANS FROM.
+  **Last refreshed 2026-09-16** (user: "全面更新下handoff_for_claude_web_2") — **38 files /
+  12,089 lines / 848 KB** (was 32 / 8,931 on 08-31). No zip.
   Structure: `00`-`07` orientation (START_HERE · current state · locked decisions ·
   conventions/laws · open asks · **traps & gotchas** · **feedback on previous plans** ·
-  glossary) + `10`-`22` per-domain deep dives (architecture · engines fixed/tree/floating ·
+  glossary) + `10`-`25` per-domain deep dives (architecture · engines fixed/tree/floating ·
   curves · universe · data & overrides · JSON-Excel · testing · Monthly recon · environment ·
-  comms · deliverables) + `30`-`40` verbatim (CLAUDE.md · PROJECT_STATUS · WORKLOG ·
-  COVERAGE · missing_data · weekly report · round-2 report · interface v1 · Monthly mapping ·
-  phase2 methods · Mario's template). Zip → `handoff2_<date>.zip`.
-  **Two files there are the point of the whole bundle:** `05_traps_and_gotchas` (the
-  silent-failure list — Excel serials, the 365.25-vs-364 axis, VBA `Null`, Edge writing no
-  PDF, staging copies breaking pytest, and **since 08-30 §1.9-1.11: the GBP par-yield units
-  bug, the driver's silent `skipped=N`, and the cross-platform convexity noise floor**) and
-  `06_feedback_on_previous_plans` (what the two 2026-08-25 plans got wrong + the four habits:
-  name a count's SOURCE and POPULATION; never leave a modelling choice to "the caller"; never
-  assert code state — schedule a gate check; name the silent-failure modes — **plus habit 5,
-  added 08-30: a claimed data gap needs evidence from the SOURCE, not from our own error
-  message**; §4's five Round-2b carry-overs are now closed and scored).
+  comms · deliverables · **23 government & sovereign book** · **24 determinism &
+  cross-platform** · **25 cloud & Azure** — the last three NEW 09-16) + `30`-`43` verbatim
+  (CLAUDE.md · PROJECT_STATUS · WORKLOG · COVERAGE · missing_data · weekly report ·
+  round-2 report · interface v1 · Monthly mapping · phase2 methods · Mario's template ·
+  **41 release_facts** · **42 sovereign scope** · **43 the 09-10 instruction doc** — the
+  last three NEW 09-16).
+  ⭐ **`41_release_facts_verbatim` outranks prose anywhere, including this file, for any
+  count / hash / test number** — it is machine-written from the files it describes.
+  **Two files are the point of the whole bundle:** `05_traps_and_gotchas` (**29 silent
+  failures** in cost order — Excel serials, the 365.25-vs-364 axis, VBA `Null`, Edge writing
+  no PDF, staging copies breaking pytest, the GBP par-yield units bug, the silent
+  `skipped=N`, the convexity noise floor, and **since 09-16 §1.18-1.29**: a driver flag
+  carrying a filesystem path · the custodian making the SAME units error so the cross-check
+  is poisoned · a curve file that is not the kind of curve its name implies · a module map
+  stale for a round with nothing able to catch it · a hardcoded list the engine outgrew · a
+  living doc with a frozen header · both ends of a pipe guessing the encoding · a
+  cross-platform claim that rotted · one tolerance hiding two populations · **a verification
+  tool built on the thing it cannot control** · **a measurement that cannot say it measured
+  nothing**) and `06_feedback_on_previous_plans` (**eight habits** now: name a count's SOURCE
+  and POPULATION · never leave a modelling choice to "the caller" · never assert code state,
+  schedule a gate check · name the silent-failure modes · a claimed data gap needs evidence
+  from the SOURCE — **plus, added 09-16: 6 a verification tool must not depend on what it
+  verifies · 7 mutation-test every new lock or it may be decorative · 8 do not hand-maintain
+  a number that has an authoritative source**; and §6's measured finding that **four plans in
+  a row needed an after-the-fact revision section while the one that put Gate 0 FIRST did
+  not**).
 - Supersedes the single root `HANDOFF_FOR_CLAUDE_WEB.md` (removed the day it was born,
   2026-08-15). Structure originally copied from the user's csi1000 `handoff_2` pattern.
 
@@ -90,6 +108,15 @@ checks — those are decided here, from the repo.
   Same for the handoff bundles: `docs/handoff_for_claude_web_1/` and `_2/` are folders the
   user uploads; their zips are gone too and are only worth rebuilding if claude.ai ever
   needs an archive rather than files.
+- **⭐ THE PACKAGE NOW SHIPS `data/` TOO (user, 2026-09-05: "带客户数据应该没事吧 这是正常的").**
+  It is Mario's OWN material coming back to him — the URS portfolio, the two legacy pricing
+  workbooks, 26 curve exports, our 6 override CSVs. Consequence: the package is
+  **self-contained — `pytest -q` gives the full 424 there, not 290**, and all four drivers run
+  and reproduce the committed hashes. Package ≈ **36 MB / 206 files** (was 1.9 MB). The
+  README's "Running it" section now says so, plus a line asking that distribution stay with
+  people who already hold the data. ⚠️ The old README text "This folder carries the code, not
+  the portfolio" is RETIRED — do not restore it. ⚠️ Still strip `__pycache__` / `.pytest_cache`
+  after any in-package test run, and do NOT ship the generated `outputs/`.
 - **PDF = `python scripts/md_to_pdf.py --input X.md --output Y.pdf`** (2026-08-25). One local
   command; the old pandoc@47 → HTML → local-Edge dance is RETIRED (local Python has `markdown`,
   Edge is installed). The script carries three Edge flags that each fail **silently** —
@@ -297,8 +324,10 @@ checks — those are decided here, from the repo.
   listed more than once). `F13`'s "2 rows" are the SAME bond `TNTD04283895` twice. The chain is
   **30 pivot ROWS → 29 SECURITIES → 29 held → 23 priced + 6 named**; the 30→29 step is a
   DUPLICATE LISTING, not an unheld row. The plan, both handoff bundles and the 08-30 report all
-  said "2 tab rows, 1 held" — corrected in the report; **the handoff bundles still carry it**
-  (no auto-refresh) and must be fixed at the next explicit refresh.
+  said "2 tab rows, 1 held" — corrected in the report, and **corrected in BOTH handoff
+  bundles on 2026-08-31** (`h2` files 00, 01, 11, 15). ⚠️ This note used to say the bundles
+  "still carry it and must be fixed at the next explicit refresh"; that instruction was
+  itself stale by the time it was read, and was retired at the 09-16 refresh.
 - **Evidence:** `docs/client_directive_pivot_column_f_2026-08-27.md` (provenance — ⚠️ column F is
   IN the tracked workbook, sheet6, committed `a5f7c81`; a screenshot was not the only evidence)
   + `docs/column_f_delivery_matrix_2026-08-31.md` (four populations · six cells · the 6 unpriced
@@ -402,6 +431,174 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
 - **NO new Mario/Liping request opened** (by instruction). The 3 corporate + 5 agency schedules
   went onto the existing **confirmation-only deferred** queue.
 
+## Government + Municipal/Provincial (Mario Summary!K23 + K55, 2026-09-03) — DONE
+- **The ask:** the ONLY two `no` marks in the Summary sheet's **K column**. They map 1:1 onto
+  master sub-categories: `Government Bonds` **153 rows → 147 securities**, `Municipal/Provincial
+  Bonds` **7 → 7**. **154 unique; 147 priced @3-31, 150 @6-10** (KRW gains a curve at 6-10).
+  Driver `scripts/sovereign_risk.py` → `outputs/sovereign_risk_<date>.csv` +
+  `sovereign_disposition_<date>.csv`. Evidence `docs/sovereign_municipal_scope_2026-09-03.md`.
+- **⭐ CURVE CONVENTION LOCKED — discount on the OWN-CURRENCY curve, never per-country.**
+  Matches legacy `zeroyield4(ccy)`, `from_currency`, and the corporate book. The decider was
+  coverage, not taste: **Ireland has no curve file**, so a per-country rule splits 2 Irish
+  holdings from 28 euro peers. Per-country stays the CROSS-CHECK (Bund **+1.34bp** on
+  `Germany_Yield_Curve.txt` vs **−44.88bp** on EUR). Fable consulted before any code.
+- **⚠️ `EUR_Yield_Curve.txt` is a euro-area sovereign COMPOSITE, not a swap curve** (verified:
+  strictly between Germany and Italy at every tenor; a debt-weighted 6-country average
+  reproduces it to **7bp mean / 18bp max**). So a euro sovereign's number is **relative value vs
+  the euro average**, NEVER an asset-swap spread. Column `spread_meaning` per row:
+  `own-curve-anchor` 110 · `relative-to-euro-composite` 30 · `spread-over-government` 14.
+- **`CURVE_FILE` 6 → 14** (+BRL CAD DKK ILS MXN NOK SEK SGD; CAD→`CAN_Yield_Curve.txt`). Units
+  **reproduced against each raw file** — all decimals, so NO `PAR_YIELD_UNITS` entry needed
+  (GBP+DKK stay the only percent files). **MYR deliberately ABSENT** (no file at all) so
+  `from_currency` raises and the driver names it.
+- **⭐ QUOTATION: par-as-titles, and one price per-1,000.** 6 of 154 fail `BT == MV_base*fx/par*100`
+  at a ratio of **exactly 0.01**. The identity CANNOT say the denomination (it holds for MXN 100
+  and BRL 1000 alike) ⇒ `dataio.phase2.TITLE_FACE` is an **explicit per-currency registry, never a
+  price sniff** (the `PAR_YIELD_UNITS` lesson, applied in advance). `bt_per_100 = BT / (F/100)`
+  — written that way round so F=100 divides by exactly **1.0** and the 5 MXN prices are
+  bit-identical (`==` asserted). Only **`TNTG630781W` rescales: 916.73 → 91.673**. Registry
+  corroborated IN the data (`MXN100` / `BRL1000` tokens in desc_long; test-asserted).
+  ⚠️ **The custodian made the same error** — its `DI` for that bond is **−23.1%** vs 6.45–8.41%
+  for the MXN five, so DI is not a usable cross-check there.
+- **Four names read individually:** ① `TNTD03978845` = a genuine **callable US Treasury** (12.5%
+  2014, call 2009-08-15) → BDT lattice **with `check_representable`** (which `phase2_risk.py`
+  still lacks); read its two columns together — **122bp callable vs 950bp straight**, dur 0.39y
+  vs 4.05y — the 950 is option value, NOT a sovereign spread. ② `TNTD03983600` "STRIPPED CALL"
+  has call date **== maturity** → the `zero` rule claims it FIRST (it would survive the exercise
+  branch too, but for the wrong reason). ③ `TNTD04437091` Russia 2030 = `coupon-schedule-
+  unavailable` (desc says STEP UP; custodian dur **4.08** vs a 21y bullet's ~10 ⇒ it amortises).
+  ④ `TNTG630227U` Japan FRN = `floating-reference-unverified` — **NOT a missing-margin ask**:
+  the 15y series resets off the **10y JGB auction yield**, which the simple-forward engine
+  cannot represent (custodian dur −0.475 confirms).
+- **⚠️ Custodian duration (AQ) is EVIDENCE IN FLAG TEXT, never a router.** It means different
+  things per class (missed the call on corporate callables; option-adjusted on agencies), so a
+  rule keyed on it would have priced the corporate callables as bullets. Divergence >1.5y is
+  reported with both numbers.
+- **Results validate the pipeline more than they inform:** JGB median **0.0bp**, gilts **4.4**,
+  SEK 3.1 / SGD 8.0 / MXN 10.3. Euro hierarchy right unprompted — Germany −70…−52, Spain +39,
+  Belgium +40, **Ireland +156/+164**. AUD semis 64–106bp; Mexico 341–409 / Brazil 366 over UST;
+  Illinois pension 296; Belvoir 546. **USD Treasury anchors median +40.6 = the OFF-THE-RUN
+  LIQUIDITY PREMIUM, not model error** — at the SAME maturity 2019-02-15: on-the-run 10y
+  **+3.9bp**, STRIPS +38.7/+41.0, old off-the-run **+42.8bp**. Recent issues median 2.7bp.
+- **Discipline:** `build_phase2_universe(master, classes=None)` defaults to the original four ⇒
+  `phase2_risk.py` untouched; quotation resolution made UNIVERSAL and inert for agency/guaranteed/
+  linker **by evidence** (all 63 = `currency-face`, test-asserted). **All 5 production CSVs + 4
+  sidecars byte-identical** to the 08-31 record. **390 → 423 tests.** **NO new Mario/Liping
+  request opened** — 4 gaps recorded as `missing_data.md` **G6**; KRW 3-31 row stays in G5.
+- **⭐ BOOK STRUCTURE — the `Summary` sheet is a FLAT pivot of `Asset sub category`; there is no
+  "corporate bonds" parent group.** `Corporate Bonds` is a SIBLING of `Government Bonds` and
+  `Municipal/Provincial Bonds`, and the master has exactly ONE `super_category` (`Fixed Income`).
+  So "these two finish the corporate 大类" is not how the sheet is built — they are two more
+  categories. ⚠️ **Corporate has THREE different totals and they are easy to confuse:**
+  master sub-category **811 rows / 732 unique** · the `Corporate Bonds` TAB **676 rows / 616
+  unique** (60 ids listed twice — the F13 trap) · our output **566** @3-31.
+
+  | sub-category | rows | uniq | status |
+  |---|---:|---:|---|
+  | Corporate Bonds | 811 | 732 | done — 566 in output @3-31 |
+  | Government Bonds | 153 | 147 | **done 2026-09-03** |
+  | Government Agencies | 42 | 39 | done; **restructured 2026-09-10** |
+  | Index Linked Government Bonds | 16 | 15 | done; **engine migrated 2026-09-10** |
+  | Guaranteed Fixed Income | 11 | 9 | done; **restructured 2026-09-10** |
+  | Municipal/Provincial Bonds | 7 | 7 | **done 2026-09-03** |
+  | **six non-securitised classes** | **1,040** | **949** | **COMPLETE** |
+  | Government MBS | 888 | 882 | skeleton, awaiting Bloomberg |
+  | Non-Government CMOs | 265 | 264 | not started |
+  | Asset Backed Securities | 79 | 79 | not started |
+  | Commercial Mortgage-Backed | 73 | 69 | not started |
+  | FI Derivatives (futures+options) + Other | 21 | 17 | out of scope |
+  | **Grand Total** | **2,366** | **2,260** | |
+
+  **The accurate sentence: "all six non-securitised classes are complete — 1,040 of 2,366 rows."**
+  MBS was never inside the corporate category, so do NOT list it as what "remains in corporate".
+- **⚠️ A driver flag was leaking a FILESYSTEM PATH — fixed, both drivers.** The curve-blocked
+  flag interpolated the raw exception, so it carried `data\KRW_Yield_Curve.txt` on Windows and
+  `data/…` on 47 ⇒ the same failure produced two different strings, breaking cross-platform text
+  parity AND violating the contract rule "no path in any error message". Found by diffing the new
+  CSV local-vs-47. Fix = `curves.zero_curve.curve_failure_reason` (ONE owner, used by
+  `sovereign_risk.py` AND `phase2_risk.py`); keeps the file NAME, drops the directory.
+  phase2's was LATENT (it has no curve-blocked rows) — fixed anyway, CSV byte-identical.
+- **Cross-platform on the sovereign CSV:** convexity 1.7e-7, spreads 4.8e-11, durations 2.7e-13
+  — same profile as the corporate CSVs (this book has 46y bonds + 30 STRIPS, so the convexity
+  amplification is a touch larger than the documented 3.6e-8). Text columns now identical.
+- **Carry-over noticed, NOT fixed (out of scope):** `outputs/callable_risk.csv` is still
+  **undated**, so running 6-10 after 3-31 overwrites it — the same trap the 08-31 work fixed for
+  the sidecars. And `phase2_risk.py`'s lattice block still has no `check_representable` guard.
+
+## Government book -> the `pricer/` template (Mario 2026-09-10) — DONE, 468 tests
+- **The ask:** next week's delivery = **Government Agencies** + **Index Linked Government
+  Bonds**, restructured onto the approved `core/` + `assets/` + `endpoints/` template.
+  **Guaranteed Fixed Income was included by decision** — the three share ONE loader
+  (`dataio/phase2.py`), ONE driver (`scripts/phase2_risk.py`) and ONE 63-row hashed CSV, so
+  migrating two of three would leave an un-migrated island inside migrated code.
+  **69 master rows -> 63 securities: agency 39 / guaranteed 9 / linker 15. Unchanged by this
+  round — that invariance IS the deliverable.**
+- **Directive doc `docs/cc_next_instruction_government_assets_restructure_2026-09-10.md`.**
+  ⚠️ Written differently on purpose: **Gate 0 is §1 and runs BEFORE any code**. The four
+  previous rounds each needed a revision section written after the fact (§21/§16/§26/§14).
+  All six Gate-0 checks passed with no surprises; the 13 artifact hashes matched
+  `release_facts_2026-09-05` exactly, so the files on disk WERE the record.
+- **⭐ The work is NOT evenly distributed, and the report says so.** Only ILB was an engine
+  migration. **Government Agencies has no engine of its own** — `vanilla 27 / callable-lattice
+  5 / call-passed-vanilla 4 / zero 2 / cmo-tranche 1`, every route already migrated in Rounds
+  2a/2b. Overstating this is the round's one honesty risk.
+- **`pricing/ilb.py` -> `core/pricing/inflation.py`**, body SPLICED not retyped (sha256
+  `ea475752…`, 105 lines). Named for the mathematics, not the product (`core/` = analytical /
+  tree / floating / hybrid; `assets/` = the product). Shim contract = **3 public functions +
+  `IlbResult`**; ⚠️ unlike frn, **nothing imports an ILB private** — `YEAR_DAYS` / `_as_date`
+  are re-exported as a courtesy, not a contract. Shim-vs-core **object identity asserted** for
+  all six names (importability is not enough — a shim that re-implements passes every
+  import-by-name test while production drifts).
+- **NEW `assets/government/`** — `bonds_input` (16 inputs, **its OWN numbering**: govt 9 =
+  `spread_vs_nominal_bp`, corp 9 = `bp_adjust`; a reader cross-referencing the wrong family
+  gets no warning) · `linker` (7 per-metric fns) · `agency` · `guaranteed` · `sovereign`.
+- **⭐ `implied_spread_vs_nominal_bp` is BANNED from being renamed `implied_oas`** — the number
+  is ≈ −breakeven, not credit. A test **injects the banned name and fails**, so the lock is not
+  decorative (mutation-verified). `breakeven_bp` generalises the driver's zero-inflation form to
+  **`ln(1+π) − spread`**, exact at any assumption, agreeing with the driver exactly at π=0.
+- **⚠️ `agency.py` does NOT route.** ⭐ **A correction was recorded in the directive doc rather
+  than quietly fixed:** it had claimed the agency conventions were `if` branches in the driver.
+  They are **not** — `dataio.phase2._route_agency` is already a clean named function with named
+  constants. What WAS unowned: three **unnamed magic numbers** in the driver deciding how a
+  callable result is described. Now `LIE_DETECTOR_BP` 0 / `EXTENSION_PRICING_GAP_BP` 100 /
+  `CALL_NOT_BINDING_GAP_BP` 1 + `option_verdict()`. The driver keeps its inline copy (byte
+  identity), so a test **parses the driver source** and fails if the numbers diverge.
+  A further test forbids the government package from redefining ANY routing constant.
+- **Driver:** ILB import now `pricer.core.pricing.inflation` — **the first driver to take an
+  ENGINE from `pricer.*`** (drivers already imported `pricer.errors`; shim-exit criterion 1
+  stays unmet for the other three, intentionally). **`check_representable` added** to the agency
+  lattice block — the named 09-03 carry-over, the last hand-built lattice path without it.
+  **Result: LATENT, NOT LIVE** — all 5 schedules reach a node at both dates, 0 refused, CSVs
+  byte-identical. Recorded as such, not dressed up as a fix. A refusal would leave a **named
+  route row**, never a missing one.
+- **⭐ THE MODULE MAP WAS A ROUND STALE AND NOTHING COULD CATCH IT.** `pricer/__init__.py` —
+  the walkthrough's first stop — still marked `tree.py`, `callable.py`, `floating.py` as
+  `PLANNED` months after they shipped. Rewritten in full; **3 tests now hold it honest**, and
+  the load-bearing one is **"nothing marked PLANNED may already exist"** — the direction that
+  actually rotted (the entry was present and parsed fine, it was simply untrue). The other two
+  would have missed it. Verified by reverting to the historical map: all three go red.
+- **DECISIONS (user-adopted 2026-09-10, both):** ① **no ILB endpoint type this round** — the
+  sheet has no index-ratio / real-coupon / inflation cells and the **7/5/5** rule keeps a type
+  off a worksheet whose layout Mario has not chosen. `contracts.py`, `schema_version` (1.1) and
+  the `.bas` are **untouched**; every government input's `external` reads `-`, test-pinned to
+  the 7-type contract. ② **`sovereign.py` = a government-side import path, NOT a rewrite** —
+  `embedded_option.py` is **mis-located, not mis-written**; one lattice prices every optioned
+  bond in the book and moving it would touch the corporate hashed CSVs. Relocation = a named
+  follow-up (trigger: a third non-corporate caller, or the securitized layer).
+- **Parity:** all four drivers re-run; **every one of the 22 files in `outputs/` byte-identical**
+  (13 required). Tests **424 -> 468**: +32 government structure locks, +3 map locks, +2 driver
+  wiring locks, **+7 automatic** (`test_exception_wiring` is parametrized per source file, so 7
+  new modules were picked up by the existing guard — an addition, never a new test written).
+- **⭐ THE REPORT'S SUBJECT IS THE BREAKEVEN, NOT THE REFACTOR** (`docs/weekly_report_2026-09-10.md`).
+  This round moves no number, so "we restructured two classes" is a weak thing to present.
+  **Source: `outputs/phase2_risk_<date>.csv`; population: 13 linkers, near-maturity excluded —
+  the driver's own median population** (all 14 gives 82bp, not 85; quote the driver's).
+  Median breakeven **85bp @3-31 -> 215bp @6-10** = the deflation scare unwinding in ten weeks.
+  The **term structure at 3-31 IS the panic**: 2010 **−34bp** (falling prices priced within the
+  year) rising monotonically to 2032 **+139bp**. The **2010 linker flips −33.8 -> +60.0bp**
+  between the two dates. **JGBi breakeven −229bp (−2.3%)** — Japan, sign flips the other way and
+  flips correctly. ⚠️ Re-read these from the CSV at writing time, never from here.
+
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
   store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied
@@ -488,15 +685,31 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   `C:\Users\cnc\anaconda3\anaconda2025\python.exe` = **3.13.5, numpy 2.3.4 / pandas 2.3.3 /
   scipy 1.16.3 / pytest 8.3.4 / openpyxl 3.1.5 — USE THIS ONE**; `C:\Users\cnc\Documents\Downloads
   \python.exe` = 3.12.4 with the same stack a version older. (`C:\Users\cnc\anaconda3\python.exe`
-  = the 3.8.8 base env, numpy import BROKEN via mkl-service — do not use.) ⚠️ **Local ≡ 47 for the TEST SUITE and the
-  single-bond endpoint JSON, but NOT byte-for-byte for the 565-bond driver CSVs**: they differ by
+  = the 3.8.8 base env, numpy import BROKEN via mkl-service — do not use.) ⚠️ **Local ≡ 47 for the TEST SUITE,
+  but NOT byte-for-byte for the 565-bond driver CSVs**: they differ by
   up to **3.6e-8 relative, entirely in `convexity`** (a second difference ÷ bump² amplifies a
   last-ulp by 1e8); prices/OAS/durations agree to ~1e-12 and every text column matches. So a
   cross-platform `sha256` diff of a driver CSV shows a difference that is NOT a regression —
   **do parity local-fresh vs local-fresh** (byte-exact, and stricter). The whole suite runs
-  locally: `& "C:\Users\cnc\anaconda3\anaconda2025\python.exe" -m pytest -q` → **194 passed in
-  ~19s**, identical to 47, and the endpoint's JSON output is byte-for-byte the same as 47's ⇒
-  quick checks no longer need ssh. 47 remains the deployment target and the parity reference.
+  locally: `& "C:\Users\cnc\anaconda3\anaconda2025\python.exe" -m pytest -q` → identical pass
+  count to 47 ⇒ quick checks no longer need ssh. 47 remains the deployment target and the
+  parity reference.
+- **⚠️ CORRECTED 2026-09-13 — the endpoint's JSON is NOT byte-identical cross-platform either.**
+  This note used to claim it was; that was written 2026-08-25 when the endpoint priced **vanilla
+  only**, and the lattice products arrived 08-31 with nobody re-checking. Found by
+  `tests/test_excel_fixture_parity.py`, whose first version asserted exact equality: green
+  locally, **5 failures on 47**. Measured over the 9 shipped fixtures: strings, codes, fields and
+  structure **identical**; prices/spreads ≤6e-16 rel; durations/dv01 ≤4e-13; **`convexity` up to
+  7.5e-08 absolute** — the same second-difference amplification as the driver CSVs, so the rule
+  above extends to the endpoint unchanged. ⚠️ Two values look huge in RELATIVE terms and are
+  machine epsilon in ABSOLUTE: `calibration_residual_per_100` (≈6.6e-09, Δ 4e-14) and an inactive
+  put's `price_effect_per_1pct_vol` (≈1.1e-11, Δ 7e-15) — near-zero denominators, so scale by
+  `max(1,|x|)`, **never by `|x|`**.
+  **⭐ And ONE tolerance for every quantity was WRONG:** a single 1e-6 bound (sized for convexity)
+  let a deliberate **1e-4 price perturbation** through at 9.6e-07. The amplification belongs to
+  the second-difference formula, not to the endpoint ⇒ per-quantity bounds: **convexity 1e-6,
+  everything else 1e-10**, both mutation-verified. Same lesson as `PAR_YIELD_UNITS`: one rule
+  covering two populations hides the smaller one.
 - **`pytest.ini` (added 2026-08-25) is what makes a bare `pytest` work.** Without
   `testpaths = tests`, a root-level run also walks the git-ignored Drive staging copies
   (`corporate_bond/`, `code_structure_sample/`), which contain duplicates of the test files ⇒

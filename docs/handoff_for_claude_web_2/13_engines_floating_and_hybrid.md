@@ -168,3 +168,29 @@ The 8 margin-gap names are **deliberately not half-modelled** — a guessed post
 prices the floating leg as if the borrower paid pure index and reports a confident number for
 a bond nobody has fully specified. A margin fill is **one cell** in
 `data/hybrid_switch_terms.csv` and the bond prices with zero code change.
+
+---
+
+## Refresh 2026-09-16
+
+⭐ **Verified UNCHANGED this refresh.** `core/pricing/floating.py` and
+`core/pricing/hybrid.py` have not been touched since 2026-08-31. The current-coupon
+freeze, the single-regime duration, the margin-0 telescoping identity and the private
+re-export contract all still hold exactly as written above.
+
+Two notes from adjacent work:
+
+* **The shim re-export contract has a second instance now.** `pricing/ilb.py` became a
+  shim on 2026-09-10, and unlike `pricing/frn.py` **nothing imports an ILB private** —
+  `YEAR_DAYS` and `_as_date` are re-exported as a courtesy, not as a contract. The frn
+  shim's private re-exports remain load-bearing for `core/pricing/hybrid.py`. ⚠️ The
+  difference is documented in both shims so nobody "tidies" the wrong one.
+* **Object identity is now asserted for every shim**, not just importability. A shim that
+  quietly re-implements passes every import-by-name test while production drifts onto a
+  second copy. See `18`.
+
+⚠️ One floating-rate security in the sovereign book is **refused, not priced**:
+`TNTG630227U`, a Japanese FRN whose 15-year series resets off the **10-year JGB auction
+yield**. A simple-forward engine cannot represent that reference rate; the custodian's
+own duration of −0.475 confirms it. **This is not a missing-margin ask** and must not be
+added to any data request.

@@ -181,3 +181,130 @@ Two endpoint tests used GBP as their "unbuildable curve" fixture. Fixing the cur
 them — correctly, but confusingly, because the subject of those tests was the error *mapping*,
 not the state of a file. If a plan specifies a test whose fixture is "this real thing happens
 to be broken", say so and prefer a constructed fixture.
+
+
+---
+
+## 6. The four rounds since (2026-08-31 -> 2026-09-15), and what they say about planning
+
+None of these came from a web plan. Two came from a user-written instruction document,
+one from the words "ultrathink start", and one from a question. That is not an argument
+against planning -- it is the evidence for where a plan earns its cost, below.
+
+| round | how it was specified | outcome |
+|---|---|---|
+| **08-31** Round 2b hardening | instruction doc, **Gate-0 revision in its 14, written BEFORE implementation** (6 adjustments) | 390 tests, 3 silent failures closed |
+| **09-03** Government + Municipal | no document at all -- "ultrathink start" | 423 tests, 154 securities, 3 genuine findings, all 9 prior artifacts byte-identical |
+| **09-10** Government book -> template | instruction doc written HERE, ⭐ **Gate 0 as section 1** | 468 tests, 63 securities unchanged, zero output moved |
+| **09-13/15** interface sync + Azure | a question, then a request | 495 tests, 2 stale docs corrected, 1 false CLAUDE.md claim retracted |
+
+### ⭐ The measurable finding: put the alignment gate FIRST, not last
+
+**Four plans in a row each needed a revision section written after the fact** -- the
+vanilla JSON follow-up (16), Round 2a (21), the Round 2b delivery-quality pass (26), and
+the hardening instruction (14). Four for four. The cause is structural, not carelessness:
+**a plan written away from the repository always drifts from it, and the drift surfaces
+on contact.**
+
+The 2026-09-10 instruction document therefore put the gate in its **section 1** and ran
+it before a line was written: the shim's real contract, the hashes of all thirteen
+production artifacts, the test baseline, whether the landing site was clean, the
+population read from the artifact rather than from the page, and whether the module map
+was still wrong. **All six passed and the thirteen hashes matched the record exactly**,
+so the files on disk *were* the record and a valid baseline.
+
+⚠️ **Front-loading the gate did NOT prevent the document from being wrong.** It claimed
+the agency conventions were `if` branches inside the driver. They were not -- routing
+already had a clean, well-named owner in `dataio.phase2._route_agency`. The difference is
+that this was found in the first hour rather than after the code was written, and it was
+**recorded as a correction in the document rather than quietly fixed**, so the next
+reader sees both the claim and its retraction.
+
+**For the next plan: state the gate as section 1, with the exact command and the exact
+expected answer for each check, and say what a different answer means.** A gate whose
+expected answers are not written down is a to-do list, not a gate.
+
+### The round with no plan at all went fine, and that is also data
+
+2026-09-03 went from "ultrathink start" to shipped: 154 securities, a locked curve
+convention with a Fable consult before any code, three genuine findings, every
+pre-existing artifact byte-identical. **A plan is worth its round trip when there are
+open decisions or new modelling. It is overhead when the procedure is established and
+the only decisions are already made.** The 09-10 round had exactly two open decisions,
+both settled in one exchange before the document was written.
+
+---
+
+## 7. Three more habits, earned since
+
+### ⭐ Habit 6 -- a verification tool must not depend on what it verifies
+
+Two instances in three days, and both were tools built to catch other people's mistakes:
+
+* the cross-platform **text digest** was computed through
+  `pandas.select_dtypes(...).to_csv()`. Its first machine ran pandas 3.0 against a record
+  written under 2.3; all thirteen digests differed and nothing could say whether the text
+  had changed or the serializer had. A check meant to be invariant across platforms
+  cannot rest on a library whose behaviour varies across versions.
+* the endpoint **tolerance** used one bound for every field, sized from the noisiest
+  quantity's noise. Applied to a price it let a 1e-4 perturbation through.
+
+**Before shipping a check, ask what the check itself depends on, and whether that thing
+is more stable than the thing being checked.** If not, the check will fail first and
+will fail confusingly.
+
+### ⭐ Habit 7 -- mutation-test every new lock, or it may be decorative
+
+Every lock added since 2026-09-10 was verified by **making it fail on purpose** and then
+restoring. It was not ceremony; two of them were weak:
+
+* the fixture-parity tolerance passed a deliberate 1e-4 price change (Habit 6 above);
+* a threshold-consistency test had an `or` fallback on a hardcoded string, so half the
+  assertion did not reference the constant it claimed to pin.
+
+Both were found by mutation and both were fixed before shipping. The module-map locks
+were validated the same way -- reverting to the historical map turned all three red,
+which is the only reason we know they bind rather than merely pass.
+
+**A test that has never been seen to fail is a hypothesis.**
+
+### ⭐ Habit 8 -- do not hand-maintain a number that has an authoritative source
+
+Three separate instances in one week, all found by accident:
+
+| what said it | what it said | truth |
+|---|---|---|
+| `pricer/__init__.py` module map | tree/callable/floating `PLANNED` | shipped months earlier |
+| `bonds_input.py` input catalogue | 6 currencies | 14 |
+| the interface document's header | "194 automatic checks", "Scope: vanilla" | 495, seven types |
+
+Each was a **prose copy of a fact that lives somewhere authoritative**. The fixes were
+the same in shape: compute it (`" / ".join(supported_currencies())`), stop quoting it
+(point at the dated `release_facts`), or attach a test that fails when the copy and the
+source disagree.
+
+⚠️ **The direction that rots is not always the obvious one.** Two of the three module-map
+tests written that day would have missed the actual failure; the load-bearing one was
+*"nothing marked PLANNED may already exist"* -- an entry that is present, parses fine,
+and is simply untrue.
+
+---
+
+## 8. What the recent rounds got right -- keep doing these
+
+* **Byte-identity as the exit test for a restructure.** "63 securities before, 63 after,
+  every one of 22 output files identical after re-running every driver" is a
+  restructuring proving it was one. It is also what made the 09-10 report honest.
+* **Recording a correction instead of quietly fixing it.** The 09-10 instruction
+  document keeps its wrong claim visible above the retraction; CLAUDE.md keeps the
+  false cross-platform claim above its correction. A reader learns the shape of the
+  mistake, not just the current state.
+* **Reporting a guard that found nothing as having found nothing.** `check_representable`
+  was added to the agency lattice and refused nothing -- all five schedules reach a node.
+  The report says **"latent, not live"** rather than dressing it as a fix.
+* **Naming the population beside the median.** The linker breakeven is *85 bp over 13
+  linkers, near-maturity excluded -- the driver's own population*. All 14 gives 82.
+* **Leading a report with the finance, not the refactor.** The 09-10 round moved no
+  number, so the report leads with what the inflation-linked output *means* -- a
+  deflation curve from -34 bp to +139 bp, and a Japanese bond at -229 bp whose sign flips
+  the right way. "We restructured two classes" would have been a weak thing to present.

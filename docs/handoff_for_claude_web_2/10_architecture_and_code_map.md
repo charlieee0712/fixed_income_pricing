@@ -171,3 +171,42 @@ decimals below) and delegates. `bonds_input.py` now catalogues **17** inputs and
 
 **Still not migrated** (reached through original paths, all working): `pricing/ilb.py`,
 `pricing/mbs.py`, `curves/`, `credit/`, `dataio/`.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### `assets/government/` — the second asset family
+
+| module | owns |
+|---|---|
+| `bonds_input.py` | 16 numbered inputs, **its own numbering** (government 9 is `spread_vs_nominal_bp`, corporate 9 is `bp_adjust`). Currency options are **computed** from the curve registry |
+| `linker.py` | seven per-metric functions over `core.pricing.inflation` |
+| `agency.py` | the option verdict rule and its three named thresholds |
+| `guaranteed.py` | the FDIC-TLGP reporting rule |
+| `sovereign.py` | the government-side path to the shared lattice surface |
+
+⚠️ **Nothing in this package routes.** Routing has one owner, `dataio.phase2._route_agency`
+with its named constants, and a test forbids the government package from redefining any
+of them. Full detail in `23`.
+
+`core/pricing/inflation.py` is new (was `pricing/ilb.py`, body spliced not retyped,
+sha256 `ea475752…`, 105 lines). `pricing/ilb.py` is now a shim, and **shim-vs-core object
+identity is asserted for all six names** — importability is not enough, because a shim
+that quietly re-implements passes every import-by-name test while production drifts onto
+a second copy.
+
+### ⭐ The module map went stale for a whole round, and three tests now hold it honest
+
+`pricer/__init__.py` still marked `tree.py`, `assets/corporate/callable.py` and
+`assets/corporate/floating.py` as `PLANNED` months after they shipped, and called
+`endpoints/` a future idea when it had been the live contract since August. **A docstring
+cannot go red.**
+
+Of the three tests added, **only one would have caught it**: *nothing marked PLANNED may
+already exist*. The entry was present, parsed correctly, and was simply untrue. Verified
+by reverting to the historical map — all three go red. See `05` §1.21.
+
+### `src/dataio/output_digest.py` — new
+
+The one owner of "what counts as a text column", standard library only. See `24` §5.

@@ -5,6 +5,84 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-09-16 — Handoff bundle 2 refreshed: four rounds, and the parts of it that were wrong
+**Commits:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+The deep bundle the planning side works from was last written on 31 August. Four rounds
+had landed since — the government and municipal book, the government restructure, the
+interface sync, and Azure — so it was two weeks and 105 tests behind.
+
+**32 files / 8,931 lines -> 38 / 12,089.** Three new domain files, three new verbatim
+mirrors, every one of the twenty-four curated files dated.
+
+### The new material
+
+`23_government_and_sovereign_book` did not exist, and a whole asset family had no home in
+a bundle whose domain files are all corporate. `24_determinism_and_cross_platform` was one
+bullet in the environment file and is now a domain, because a third platform arrived and
+one of the documented claims about it was false. `25_cloud_and_azure` is a workstream one
+day old.
+
+Three verbatim mirrors were added, and one of them changes the bundle's precedence order:
+**`41_release_facts` outranks prose anywhere, including CLAUDE.md, for any count, hash or
+test number**, because a script writes it from the files it describes. Three separate
+stale numbers were found in prose in a single week; this is the structural answer to that,
+not another round of corrections.
+
+### What the refresh found wrong rather than merely stale
+
+Three claims, and the pattern is the same in all three: **true when written, and nothing
+attached to them could notice when the thing they described grew.**
+
+- CLAUDE.md said the endpoint's JSON is byte-for-byte identical across platforms. Written
+  when the endpoint priced vanilla bonds only; the lattice products arrived a week later.
+- CLAUDE.md said both handoff bundles still carry the F13 "2 rows, 1 held" error and must
+  be fixed at the next refresh. They were fixed on 31 August. **The instruction to fix it
+  had itself gone stale before anyone read it.**
+- CLAUDE.md's own line counts for the bundle were a refresh behind.
+
+All three are corrected, and the first two are recorded above their corrections rather
+than quietly replaced.
+
+### Saying "unchanged" out loud
+
+Four domain files describe things that genuinely did not move — the fixed-rate and
+floating engines, and the Monthly reconciliation. Each now says so with the evidence
+(`git log` over the four rounds returns nothing for those paths).
+
+⭐ **Silence in a planning bundle is ambiguous between "nothing changed" and "nobody
+updated this", and a planner cannot tell them apart.** A file that is quiet because its
+subject is quiet is useful; a file that is quiet because it was skipped is a trap.
+
+### The traps and the habits, which are the point of the bundle
+
+`05` went from 17 silent failures to **29**. The new ones are worth naming together
+because more than half are the same shape — a claim or a copy that could not go red:
+a driver flag carrying a filesystem path; the custodian making the same units error so
+the obvious cross-check is poisoned; a curve file that is not the kind of curve its name
+implies; a module map stale for a round; a hardcoded currency list the engine outgrew; a
+living document with a frozen header; both ends of a pipe guessing the encoding; a
+cross-platform claim that rotted; one tolerance hiding two populations.
+
+And two that are sharper, because both were in tools built to catch other people's
+mistakes: **a verification tool built on the thing it cannot control** (a text digest
+computed through pandas, meeting pandas 3.0 on its first machine), and **a measurement
+that cannot tell you it measured nothing** (`0.00% at none`, indistinguishable from an
+empty loop).
+
+`06` gained three habits from those — verify the verifier, mutation-test every lock, and
+stop hand-maintaining numbers that have an authoritative source — plus a measured finding
+about planning itself: **four execution plans in a row each needed a revision section
+written after the fact, and the one round that put its alignment gate first did not.**
+
+⚠️ **h1 was deliberately not touched** — the user asked for h2 by name. It is current to
+31 August and four rounds behind; CLAUDE.md now says so, so that nobody plans from it
+without knowing.
+
+---
+
 ## 2026-09-10 — The government book moves into the template, and nothing moves with it
 **Commits:** `479e6a5`, `b07cf2b`, `c37b9e3`, `f365556`
 **Hours:** `[TO FILL]`

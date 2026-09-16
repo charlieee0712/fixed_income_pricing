@@ -89,3 +89,38 @@ A plan that opens one of these without the user asking is a plan that will be ed
    is waiting on CEO confirmation, and implementation was deliberately parked until after
    the v1 report.
 6. **CreditMetrics risk layer** — the eventual destination, untouched so far.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### ⭐ Two new questions FOR Mario, both better asked with something working in hand
+
+1. **Where do the three inflation-linked inputs sit on the worksheet?** — a real coupon,
+   an index ratio, an inflation assumption. The engine and its wrapper are finished and
+   deliberately unreachable from Excel until he answers. This is section 7 of the
+   2026-09-10 report and the only thing blocking an eighth instrument type.
+2. **Which Azure tenant, and which shape?** He asked for the code to run on Azure so
+   "everyone in our group can run and test these codes". ⚠️ A personal free subscription
+   on a university email is not where a group's shared environment belongs — not a
+   sensitivity point, simply that his people need a tenant they can be added to. And his
+   words point at *a shell each* while his Excel proposal points at *a called service*.
+
+### Answered since the last refresh
+
+* **Is the client data sensitive enough to keep off a cloud tenant?** — Mario, 09-15:
+  **no**. The repo was cloned whole onto Azure. ⚠️ The *tenant* question above is separate
+  and still open.
+* **Is the Excel/JSON interface in sync with the code?** — measured 09-13: functionally
+  yes (nine of eleven committed fixtures reproduce byte-for-byte). The documentation was
+  not, in three places, all now fixed.
+
+### Unchanged, and still the largest unlock
+
+**The Govt-MBS 8-field × 882-CUSIP Bloomberg pull**, requested 2026-07-22. 882 securities,
+plus the CMO/ABS/CMBS block behind it. `pricing/mbs.py` is built and waiting on the exact
+8-mnemonic interface — the data lands, zero code changes.
+
+⚠️ **Do NOT re-raise before Mario returns that data:** KTBi indexation terms + the KRW
+3-31 curve row; agency call schedules (confirmation-only); the `TNTD04366584` rating
+quirk; the `SteepFlat` file; `FHR-3122-ZB`.

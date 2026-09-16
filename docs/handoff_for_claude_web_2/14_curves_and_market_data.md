@@ -154,3 +154,49 @@ investment grade **worse**: median |diff| 6.43% → 11.14%, signed −0.41% → 
 3-31 crisis-peak index OAS overstates these particular holdings' spreads. The 70-day gap was
 never the precision lever; finer per-name spreads were, which is what per-bond calibration
 now does. Do not propose the date-match as an improvement — it was tested and refuted.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### `CURVE_FILE` grew 6 → 14 currencies (2026-09-03)
+
+Added BRL CAD DKK ILS MXN NOK SEK SGD; CAD maps to `CAN_Yield_Curve.txt`. Units were
+**reproduced against each raw file** — all decimals, so no `PAR_YIELD_UNITS` entry was
+needed. **GBP and DKK remain the only percent files.**
+
+⚠️ **MYR is deliberately ABSENT** — no file exists, so `from_currency` raises and the
+driver names the gap rather than silently substituting a curve.
+
+⚠️ **`supported_currencies()` is the authoritative list and callers must READ it, not
+restate it.** A hand-written "USD / EUR / GBP / JPY / AUD / KRW" survived in the input
+catalogue and in that function's own docstring example for ten days after the registry
+grew. Both now compute it. See `05` §1.22.
+
+### ⭐ `EUR_Yield_Curve.txt` is a euro-area sovereign COMPOSITE, not a swap curve
+
+Verified rather than assumed: it lies strictly between Germany and Italy at **every**
+tenor, and a debt-weighted six-country average reproduces it to **7 bp mean / 18 bp max**.
+
+**Nothing breaks — what changes is what the number MEANS.** A German Bund reads
+**+1.34 bp** on `Germany_Yield_Curve.txt` and **−44.88 bp** on the euro curve, and both
+are correct answers to different questions. A euro sovereign's calibrated spread is
+relative value against the euro-area average and is **never** an asset-swap spread. The
+sovereign output carries `spread_meaning` per row for exactly this reason:
+`own-curve-anchor` 110 · `relative-to-euro-composite` 30 · `spread-over-government` 14.
+
+### `curve_failure_reason` — one owner for "why a curve would not build"
+
+A curve-blocked flag used to interpolate the raw exception, so the same failure produced
+`data\KRW_Yield_Curve.txt` on Windows and `data/…` on Linux. It broke cross-platform text
+parity **and** the contract rule "no path in any error message" at once.
+`curves.zero_curve.curve_failure_reason` keeps the file name and drops the directory, and
+both drivers use it. See `05` §1.18.
+
+### ⭐ The off-the-run liquidity premium is a RESULT, not an error
+
+US Treasury anchors have a median spread of **+40.6 bp** on their own curve. At the same
+maturity (2019-02-15): the on-the-run 10-year prices at **+3.9 bp**, STRIPS at +38.7 /
++41.0, an old off-the-run bond at **+42.8 bp**. The benchmark curve is built from
+recently-auctioned issues, so older paper is cheap by the liquidity premium. Recent
+issues have a median of 2.7 bp.

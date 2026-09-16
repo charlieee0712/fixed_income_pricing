@@ -154,3 +154,38 @@ price, so the figure does not depend on the seeded schedule.
 
 **The three corporate schedules joined the existing confirmation-only deferred queue. No new
 request was opened**, by instruction. Every one of those bonds prices today.
+
+---
+
+## Refresh 2026-09-16
+
+Two changes to `data/` in these four rounds, both small and both worth knowing.
+
+| file | change | why |
+|---|---|---|
+| `data/call_schedules.csv` | a row for **`TNTD03978845`** | a genuinely callable **US Treasury** (12.5% 2014, call 2009-08-15) found in the government book. Par call from the custodian AB date, like the agency rows, and like them labelled `provisional` |
+| the URS holdings workbook | committed as **directive provenance** | Mario's `no` marks in the `Summary` sheet's K column (`K23` Government Bonds, `K55` Municipal/Provincial) are IN the tracked workbook. Recorded the same way column F was on 2026-08-27 — ⚠️ **a screenshot is not the evidence; the committed file is** |
+
+⚠️ **The authoritative holdings workbook is still never written to.** Committing it to
+record a client annotation is not the same as editing it.
+
+### The curve registry grew, but no new curve files were added
+
+`CURVE_FILE` went 6 → 14 currencies on 2026-09-03. Those eight files were already in
+`data/` — what changed was the map from currency to filename (and `CAD` →
+`CAN_Yield_Curve.txt`). Units were **reproduced against each raw file**: all decimals, so
+no `PAR_YIELD_UNITS` entry was needed. **MYR is deliberately absent** so `from_currency`
+raises and the driver names the gap. See `14`.
+
+### ⭐ `data/` is not one thing, and the composition matters for deployment
+
+| | files | size |
+|---|---:|---:|
+| the client portfolio (URS holdings) | 1 | 3.4 MB |
+| legacy pricing workbooks (Mario's proprietary VBA) | 2 | 11.1 MB |
+| market data: par-yield curve exports | 26 | 14.2 MB |
+| our own override tables | 6 | ~0 |
+
+Measured for the Azure trial: **curves + our override tables alone** — no client
+portfolio, no proprietary workbooks — run **435 pass / 48 skip / 0 fail** and price a real
+bond. See `25` §3.

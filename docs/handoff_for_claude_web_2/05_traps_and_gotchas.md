@@ -266,6 +266,204 @@ Same family as 1.5 (`pytest.ini` read with the system codec).
 ⚠️ The **console** shows the same mojibake for a file that is perfectly good UTF-8. Check the
 bytes before concluding a file is broken — `raw.decode("utf-8")` succeeding is the test.
 
+### 1.18 ⭐ A driver flag carrying a filesystem path
+
+*Found 2026-09-03, both drivers, by diffing a new CSV local-against-47.*
+
+The curve-blocked flag interpolated the raw exception, so the same failure produced
+`data\KRW_Yield_Curve.txt` on Windows and `data/...` on Linux. **Two different strings
+for one event.** It broke cross-platform text parity and violated the contract rule
+"no path, traceback or payload in any error message" at the same time.
+
+**Fix:** `curves.zero_curve.curve_failure_reason` — ONE owner, used by both drivers,
+keeps the file NAME and drops the directory. The phase-2 driver's copy was *latent* (it
+has no curve-blocked rows) and was fixed anyway; its CSV stayed byte-identical.
+
+**The transferable part:** a message built by interpolating an exception inherits
+whatever the operating system put in it. Any message that crosses a machine boundary —
+into a CSV, a JSON response, a log someone diffs — must be constructed, not inherited.
+
+### 1.19 ⭐ The custodian making the SAME error, so the obvious cross-check is poisoned
+
+*Found 2026-09-03.*
+
+One Brazilian government bond is quoted per 1,000 rather than per 100 (916.73 for
+91.673). The natural cross-check is the custodian's own yield column `DI` — and for that
+bond `DI` reads **−23.1%** against 6.45–8.41% for the Mexican five, because the custodian
+made the identical mistake.
+
+**A cross-check is only independent if the other party did the work independently.** Any
+plan proposing "validate against the custodian yield" must carve this out by name.
+
+### 1.20 ⭐ A market-data file that is not the kind of curve its name implies
+
+*Verified 2026-09-03.*
+
+`EUR_Yield_Curve.txt` is a **euro-area sovereign composite**, not a swap curve. Verified
+rather than assumed: it lies strictly between Germany and Italy at every tenor, and a
+debt-weighted six-country average reproduces it to 7 bp mean / 18 bp max.
+
+Nothing breaks. What changes is **what the number means**: a euro sovereign's calibrated
+spread is relative value against the euro-area average, never an asset-swap spread. A
+German Bund reads **+1.34 bp** on the German curve and **-44.88 bp** on the euro curve,
+and both are correct answers to different questions. The output carries `spread_meaning`
+per row precisely so the same arithmetic is not read three ways.
+
+### 1.21 ⭐ A module map stale for a whole round, with nothing able to catch it
+
+*Found 2026-09-10.*
+
+`src/pricer/__init__.py` is the first file anyone reads on the code walkthrough. It still
+marked `tree.py`, `assets/corporate/callable.py` and `assets/corporate/floating.py` as
+`PLANNED` **months after they shipped**, and described `endpoints/` as a future idea when
+it had been the live JSON contract since August. **A docstring cannot go red**, so
+nothing did.
+
+Three tests now hold it honest, and **only one of them would have caught this**:
+
+* an entry naming a file that does not exist -- would NOT have caught it;
+* a file missing from the map -- would NOT have caught it;
+* ⭐ **nothing marked PLANNED may already exist** -- the direction that actually rotted.
+  The entry was present, parsed correctly, and was simply untrue.
+
+Verified by reverting to the historical map: all three go red.
+
+**Transferable:** when adding a consistency check, ask which direction actually rots.
+The obvious two directions here were both the wrong ones.
+
+### 1.22 ⭐ A hardcoded list in a docstring that the engine outgrew
+
+*Found 2026-09-13.*
+
+`assets/corporate/bonds_input.py` listed the supported currencies as
+`"USD / EUR / GBP / JPY / AUD / KRW"`. The curve registry grew to **fourteen** on
+2026-09-03. So the numbered input catalogue -- the artefact Mario's directive
+specifically asked for -- was telling a reader the tool could not price a Mexican or
+Brazilian bond, in the same week we shipped prices for both. The same stale six were
+also in `supported_currencies()`'s own docstring example.
+
+**Fix:** compute it from the registry (`" / ".join(supported_currencies())`) rather than
+restate it, and de-enumerate the docstring. A test pins it -- tautological today, red the
+moment someone writes a literal back in.
+
+**Transferable: a prose copy of a registry is a second owner and will go stale silently.**
+
+### 1.23 ⭐ A living document with a frozen header
+
+*Found 2026-09-13.*
+
+`docs/vanilla_json_excel_interface_v1.md` is amended in place; its 14 and 15 are dated
+additions. Its **header** still read *"194 automatic checks green"* and *"Scope: vanilla
+(option-free, fixed-coupon) corporate bonds"* -- while the README beside it in the same
+delivery folder said 468 and seven types. A reader who reads the header and stops gets
+the wrong answer.
+
+**Fix:** the header no longer quotes a count at all. The authoritative one is in the
+dated `release_facts`, which a script writes from the files themselves.
+
+**Transferable: do not hand-maintain a number in prose when it has an authoritative
+source.** Same lesson as 1.21 and 1.22, arriving by three different routes in one week.
+
+### 1.24 ⭐ Two ends of a pipe each guessing the encoding -- the THIRD appearance
+
+*Found 2026-09-10, inside the delivery package.*
+
+Two tests drive a script as a child process with `subprocess.run(..., text=True)` and no
+`encoding=`. The child encodes its output with the machine's locale, the parent decodes
+with its own, and **the two need not agree**. On this GBK console an em dash in a driver
+flag killed the pipe reader thread with `UnicodeDecodeError`.
+
+⚠️ **The tests still passed**, which is what makes it worth fixing: the reader thread's
+exception is swallowed and the assertions read the CSV rather than stdout. The cost is a
+**diagnostic hole** -- `assert run.returncode == 0, run.stderr[-2000:]` quotes the very
+stderr the broken pipe loses, so the message meant to explain a failure is unavailable
+exactly when there is one.
+
+**Fix:** pin BOTH ends -- `PYTHONIOENCODING=utf-8` in the child environment and
+`encoding="utf-8"` on the parent -- removing the dependence on the machine's locale
+rather than papering over one direction. Third appearance of this trap after
+`release_facts.py` and `pytest.ini`; see also 1.5 and 1.17.
+
+### 1.25 ⭐ A cross-platform claim that was true when made, and rotted in silence
+
+*Found 2026-09-13.*
+
+CLAUDE.md said *"the endpoint's JSON output is byte-for-byte the same as 47's"*. Written
+2026-08-25, when the endpoint priced **vanilla bonds only**. The lattice products arrived
+on 08-31 and nobody re-checked. The claim was false from that day.
+
+Found by a test whose first version asserted exact equality: green locally, **five
+failures on 47**.
+
+**Transferable, and this is the same shape as 1.21, 1.22 and 1.23:** a claim was true
+when made, the thing it described grew, and nothing was attached to the claim that could
+notice. ⚠️ **Never assert that two platforms agree; measure it, and re-measure when the
+subject grows.**
+
+### 1.26 ⭐ One tolerance sized for the noisiest quantity, hiding every other
+
+*Caught by mutation testing 2026-09-13, before it shipped.*
+
+A single `1e-6` bound across every numeric field looked like 47x headroom over the
+measured cross-platform noise. But that noise is **convexity's** -- a second difference
+over a squared bump amplifies a last-digit rounding by 1e8. Applied to a **price**, the
+same bound let a deliberate `1e-4` perturbation through at `9.6e-07`, just inside the
+limit.
+
+**Fix:** per-quantity bounds -- convexity `1e-6`, everything else `1e-10`.
+
+**Transferable: one rule covering two populations hides the smaller one.** Exactly the
+`PAR_YIELD_UNITS` lesson (1.9) in a different costume.
+
+### 1.27 ⭐ A verification tool built on the thing it cannot control
+
+*Found 2026-09-15, on the tool's first real outing.*
+
+`scripts/platform_parity.py` compares a **text-column digest** -- the columns that carry
+no arithmetic, which must therefore match on every machine. Its first version computed
+that digest through `pandas.read_csv(...).select_dtypes(...).to_csv()`.
+
+The first machine it met was Azure Cloud Shell on **pandas 3.0**, comparing against a
+record written under pandas 2.3. **All thirteen digests differed**, the report said "that
+is a defect" by its own documentation, and nothing in the output could distinguish *the
+text changed* from *the serializer changed*.
+
+**Fix:** `src/dataio/output_digest.py`, standard-library `csv` only, one stated rule
+(*a column is TEXT if any non-empty value fails to parse as a float*), reference digests
+published in `release_facts`, and a test asserting the module imports neither pandas nor
+numpy.
+
+**Transferable: a check meant to be invariant must not rest on a dependency that varies.**
+Ask what the check itself depends on, and whether that thing is more stable than what is
+being checked.
+
+### 1.28 ⭐ A measurement that cannot tell you it measured nothing
+
+*Found 2026-09-15, same run as 1.27.*
+
+The endpoint tolerance report printed `worst deviation: 0.00% of its tolerance, at none`.
+That is **indistinguishable from a loop that never ran** -- an empty fixture list
+produces exactly the same line. A reassuring number and a silent no-op were the same
+output.
+
+**Fix:** report the population. It now prints `9 fixtures compared, worst deviation ...`,
+and says so explicitly when the count is zero.
+
+**Transferable:** every aggregate needs its N beside it. This is Habit 1 (*name a count's
+SOURCE and POPULATION*) applied to a diagnostic rather than to a report -- and the same
+class as the driver's silent `skipped=N` (1.10).
+
+### 1.29 An undated output file overwriting a prior run -- STILL OPEN
+
+`outputs/callable_risk.csv` carries no valuation date, so running 6-10 after 3-31
+overwrites it. The disposition sidecars were dated for exactly this reason on 2026-08-31
+(1.16); this file was not.
+
+`scripts/platform_parity.py` works around it by running **June before March**, so both
+dated sidecars exist and the undated file ends holding March -- the run the record was
+written from. ⚠️ **The workaround is order-dependent and the real fix is still a named
+carry-over.**
+
 ## 2. Environment traps
 
 | Trap | Reality |
@@ -279,6 +477,30 @@ bytes before concluding a file is broken — `raw.decode("utf-8")` succeeding is
 | Excel automation | needs "Trust access to the VBA project object model", which is **off** by default. Scripts enable it and restore the previous state in a `finally` block. |
 | PowerShell + COM | caches a property's type from its **first use per call site**: write a string then a double through the same site and it throws `Unable to cast … Double to … String`. Do the cell I/O in VBA instead. |
 | A modal `MsgBox` | in an invisible Excel hangs the automation until timeout. Test harnesses call the bridge's sub-procedures, never the MsgBox-reporting wrappers. |
+
+
+### ⭐ Azure Cloud Shell -- four obstacles, none of them our code
+
+*2026-09-15. Anyone repeating the Azure trial hits all four, in this order.*
+
+1. **`Microsoft.CloudShell` is not registered on a new subscription.** Resource providers
+   are per-subscription opt-ins. `az provider register --namespace Microsoft.CloudShell`,
+   then **restart** -- the mount is established at session start, so registering inside a
+   running session does nothing for that session.
+2. ⭐ **Region mismatch is the usual cause of a failed mount.** Cloud Shell requires the
+   storage account in the **same region as the container**, and it places the container
+   near the user. Observed: storage `eastus`, `ACC_LOCATION=EASTASIA`. Let Cloud Shell
+   create the storage account itself so it lands in the right region.
+3. ⚠️ **Without a mount the session is EPHEMERAL and wipes on a ~20-minute idle timeout.**
+   It wiped twice during the trial, losing the clone, the venv and the pip installs each
+   time. Any conversation with a human easily exceeds 20 minutes.
+4. **The browser terminal mangles long multi-line pastes**, heredocs worst of all -- a
+   lost newline leaves the heredoc collecting input forever. ⇒ **put the work in a script
+   in the repository and paste one line.** That is why `scripts/platform_parity.py`
+   exists at all.
+
+⚠️ A storage account name becomes a **public DNS label**, so it must carry no client
+identity.
 
 ## 3. Modelling traps
 
@@ -340,3 +562,28 @@ bytes before concluding a file is broken — `raw.decode("utf-8")` succeeding is
   first computed from a CSV's rounded spread (410.8) and produced a price row that
   contradicted the report's own claim that the baseline reproduces the mark. Recalibrating
   exactly fixed it. Quote from a run, not from a summary.
+
+### ⭐ A commit that landed with its message and not its content
+
+*2026-09-10, `11ffc09`.*
+
+A `git add` listed a path that `git mv` had already staged as deleted. The bad pathspec
+**aborted the add before it reached the other paths**, so the commit contained the rename
+alone -- and was pushed that way, carrying a long message describing work that was not in
+it.
+
+**Recorded rather than rewritten**, since it was already on both remotes; the follow-up
+commit says plainly what happened. ⚠️ **`git add` is not atomic across its arguments**,
+and a commit whose message describes more than its diff is worse than a missing commit,
+because the record now lies.
+
+### ⭐ `git checkout <file>` discarding uncommitted work during a mutation test
+
+*2026-09-10.*
+
+A mutation test perturbed a file, then restored it with `git checkout` -- which reverted
+to the **committed** version and threw away an uncommitted rewrite of the same file.
+
+**Use a copy for mutation tests** (`cp x /tmp/x.bak` ... `cp /tmp/x.bak x`), never the
+index. The mutation itself was informative: reverting to the historical module map turned
+all three new tests red, which is how we know they bind.

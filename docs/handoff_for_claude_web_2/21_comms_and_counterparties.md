@@ -121,3 +121,37 @@ more useful to him than the two extra bonds.
 Unchanged and working: plain language throughout with each bond term defined in a clause where
 it first appears, **one clearly-labelled engineering section** the finance reader can skip, and
 a statement in the opening of which section is for whom. The Google team attends in person.
+
+---
+
+## Refresh 2026-09-16 — four rounds since 2026-08-31
+
+### ⭐ Mario's newest ask: Azure
+
+Relayed 2026-09-15: he wants the code to run on **Azure**, so that **"everyone in our
+group can run and test these codes"**, and asked us to register an account and try it
+first. A free personal subscription on the user's Columbia email was created and the
+trial ran.
+
+⚠️ **Two different projects hide in that sentence** and it is worth asking him which:
+*everyone can EXECUTE the pricing* (a called service) versus *everyone can RUN AND TEST
+the code* (an environment each). His words point at the second; his own Excel proposal —
+"one JSON in, one JSON out" — points at the first.
+
+⚠️ **And a personal subscription on a university email is not where a group's shared
+environment belongs.** Not a data-sensitivity point: simply that his people need a tenant
+they can be added to. Better asked with a working demo in hand.
+
+### Mario on the client data, 2026-09-15
+
+**The data is not sensitive.** Asked before anything was uploaded, because the boss's
+2026-07-08 approval covers a private GitHub repo and the user's 2026-09-05 approval covers
+the Drive delivery folder — neither obviously extends to a cloud tenant. With his answer,
+the repo was cloned whole onto Azure.
+
+### The standing deferral discipline is unchanged
+
+⚠️ **No new Mario or Liping request may be opened**, and these stay on the
+confirmation-only queue until Mario returns the MBS data: KTBi indexation terms + the KRW
+3-31 curve row; agency call schedules; the `TNTD04366584` rating quirk; the `SteepFlat`
+file; `FHR-3122-ZB`. Liping's 2026-07-30 data request is still pending.

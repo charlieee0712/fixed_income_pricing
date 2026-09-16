@@ -5,6 +5,335 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-09-16 — Handoff bundle 2 refreshed: four rounds, and the parts of it that were wrong
+**Commits:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+The deep bundle the planning side works from was last written on 31 August. Four rounds
+had landed since — the government and municipal book, the government restructure, the
+interface sync, and Azure — so it was two weeks and 105 tests behind.
+
+**32 files / 8,931 lines -> 38 / 12,089.** Three new domain files, three new verbatim
+mirrors, every one of the twenty-four curated files dated.
+
+### The new material
+
+`23_government_and_sovereign_book` did not exist, and a whole asset family had no home in
+a bundle whose domain files are all corporate. `24_determinism_and_cross_platform` was one
+bullet in the environment file and is now a domain, because a third platform arrived and
+one of the documented claims about it was false. `25_cloud_and_azure` is a workstream one
+day old.
+
+Three verbatim mirrors were added, and one of them changes the bundle's precedence order:
+**`41_release_facts` outranks prose anywhere, including CLAUDE.md, for any count, hash or
+test number**, because a script writes it from the files it describes. Three separate
+stale numbers were found in prose in a single week; this is the structural answer to that,
+not another round of corrections.
+
+### What the refresh found wrong rather than merely stale
+
+Three claims, and the pattern is the same in all three: **true when written, and nothing
+attached to them could notice when the thing they described grew.**
+
+- CLAUDE.md said the endpoint's JSON is byte-for-byte identical across platforms. Written
+  when the endpoint priced vanilla bonds only; the lattice products arrived a week later.
+- CLAUDE.md said both handoff bundles still carry the F13 "2 rows, 1 held" error and must
+  be fixed at the next refresh. They were fixed on 31 August. **The instruction to fix it
+  had itself gone stale before anyone read it.**
+- CLAUDE.md's own line counts for the bundle were a refresh behind.
+
+All three are corrected, and the first two are recorded above their corrections rather
+than quietly replaced.
+
+### Saying "unchanged" out loud
+
+Four domain files describe things that genuinely did not move — the fixed-rate and
+floating engines, and the Monthly reconciliation. Each now says so with the evidence
+(`git log` over the four rounds returns nothing for those paths).
+
+⭐ **Silence in a planning bundle is ambiguous between "nothing changed" and "nobody
+updated this", and a planner cannot tell them apart.** A file that is quiet because its
+subject is quiet is useful; a file that is quiet because it was skipped is a trap.
+
+### The traps and the habits, which are the point of the bundle
+
+`05` went from 17 silent failures to **29**. The new ones are worth naming together
+because more than half are the same shape — a claim or a copy that could not go red:
+a driver flag carrying a filesystem path; the custodian making the same units error so
+the obvious cross-check is poisoned; a curve file that is not the kind of curve its name
+implies; a module map stale for a round; a hardcoded currency list the engine outgrew; a
+living document with a frozen header; both ends of a pipe guessing the encoding; a
+cross-platform claim that rotted; one tolerance hiding two populations.
+
+And two that are sharper, because both were in tools built to catch other people's
+mistakes: **a verification tool built on the thing it cannot control** (a text digest
+computed through pandas, meeting pandas 3.0 on its first machine), and **a measurement
+that cannot tell you it measured nothing** (`0.00% at none`, indistinguishable from an
+empty loop).
+
+`06` gained three habits from those — verify the verifier, mutation-test every lock, and
+stop hand-maintaining numbers that have an authoritative source — plus a measured finding
+about planning itself: **four execution plans in a row each needed a revision section
+written after the fact, and the one round that put its alignment gate first did not.**
+
+⚠️ **h1 was deliberately not touched** — the user asked for h2 by name. It is current to
+31 August and four rounds behind; CLAUDE.md now says so, so that nobody plans from it
+without knowing.
+
+---
+
+## 2026-09-10 — The government book moves into the template, and nothing moves with it
+**Commits:** `479e6a5`, `b07cf2b`, `c37b9e3`, `f365556`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario's ask for next week was **Government Agencies** and **Index Linked Government Bonds**,
+restructured onto the code layout he approved in August. **Guaranteed Fixed Income went in with
+them**, and the reason is structural rather than convenient: the three classes share one loader,
+one driver and one 63-row output file, so restructuring two of the three would have left the
+third as an un-migrated island inside migrated code — one file owning half a decision, the shape
+this project has found and closed five times. Guaranteed is nine plain bonds and one reporting
+rule; it rode along at essentially no cost.
+
+**69 master rows, 63 securities, before and after. That invariance is the deliverable.**
+
+### The alignment gate ran first, for once
+
+Every previous round's plan needed a revision section written after the fact — §21, §16, §26,
+§14, four for four. The cause is structural: a plan written away from the repository always
+drifts from it, and the drift surfaces on contact. So this round's directive document put the
+gate in **§1** and ran it before a line was written: the shim's real contract, the hashes of
+all thirteen production artifacts, the test baseline, whether the landing site was clean, the
+population read from the artifact rather than from the page, and whether the module map was
+still wrong. All six passed, and the thirteen hashes matched the `release_facts` record
+exactly — so the files on disk were the record, and a valid baseline.
+
+### The work is not evenly distributed, and the report has to say so
+
+Only one of the three classes was an engine migration. **Government Agencies has no engine of
+its own**: its five routes — twenty-seven ordinary bonds, five callable debentures, four whose
+call date has passed, two STRIPS and one misfiled REMIC tranche — all run on engines migrated in
+Rounds 2a and 2b. Nothing was ported for it. Saying "we restructured two classes" would imply
+engine work that did not happen, and that is this round's one honesty risk.
+
+`pricing/ilb.py` became `core/pricing/inflation.py` — named for the mathematics, because `core/`
+is named for what the code *is* (analytical, tree, floating, hybrid) while `assets/` is named for
+the product. The body was **spliced, not retyped**, and hashes identically to the source. The
+shim contract turned out narrower than the FRN one: nothing anywhere imports an ILB private, so
+`YEAR_DAYS` and `_as_date` are re-exported as a courtesy rather than as load-bearing structure.
+Shim and core are asserted to be the **same objects** — a shim that quietly re-implements passes
+every import-by-name test while production drifts onto a second copy.
+
+### One function name, defended by a test that fails
+
+An inflation-linked bond's calibrated spread is approximately **minus the breakeven inflation
+rate**, not a credit spread, and it comes out negative for a healthy bond. The wrapper function
+is therefore `implied_spread_vs_nominal_bp` and the name `implied_oas` is **banned from the
+module** — not discouraged in prose. The test was mutation-checked: injecting the banned name
+makes it red.
+
+### A claim in my own directive document was wrong, and is corrected rather than quietly fixed
+
+That document said the agency conventions were `if` branches inside the driver. They are not.
+Routing already has a single well-named owner in `dataio.phase2._route_agency`, with named
+constants, and copying any of it into a wrapper would have created exactly the defect the round
+exists to avoid. What *was* genuinely unowned were three **unnamed magic numbers** in the driver
+deciding how a callable result gets described — negative spread, hundred-basis-point gap,
+one-basis-point gap. Those are now named constants behind one `option_verdict()` function. The
+driver keeps its inline copy so its output stays byte-identical, and the cost of that choice is
+that the rule lives in two places — so a test parses the driver source and fails if they diverge.
+
+### The guard that found nothing, reported as finding nothing
+
+`check_representable` now guards the agency lattice, the last hand-built lattice path without
+it. A call falling inside the final coupon period reaches no exercise node, and the bond then
+prices silently as a bullet and reports an option value of exactly zero — because the option was
+never evaluated. That was the `TNTD04920858` defect on the corporate side.
+
+All five agency schedules reach a node, at both dates. Nothing was refused, both files are
+byte-identical, and the guard is **latent, not live** — which is what it is, and not a fix.
+
+### The map had been wrong for a whole round, and nothing could catch it
+
+`pricer/__init__.py` is the first thing anyone reads on the code walkthrough. It still marked
+the option tree, the callable wrapper and the floating wrapper as `PLANNED`, months after they
+shipped, and described `endpoints/` as a future idea when it has been the live JSON contract
+since August. A docstring cannot go red, so nothing did.
+
+It is rewritten, and three tests now hold it honest. Two of them are the obvious directions — an
+entry naming a file that does not exist, a file missing from the map. Neither would have caught
+this. The one that matters is the third: **nothing marked PLANNED may already exist**. Reverting
+to the historical map turns all three red, which is how I know they bind.
+
+### Where it leaves the numbers
+
+Every one of the twenty-two files in `outputs/` is byte-identical after all four drivers were
+re-run. Tests went **424 → 468**: thirty-two government structure locks, three map locks, two
+driver wiring locks, and seven that nobody wrote — `test_exception_wiring` is parametrised per
+source file, so it picked up the new modules by itself.
+
+### What the report leads with instead of the refactor
+
+Nothing moved, so there is no number to present. The subject is what the inflation-linked output
+*means*, which has never been in an outward report. Reading it off the run: the median breakeven
+inflation rate across thirteen linkers was **85 bp at 31 March 2009 and 215 bp ten weeks later**
+— the deflation scare unwinding. At March the term structure *is* the panic, running from **−34
+bp** on the 2010 maturity, where the market was pricing falling prices within the year, up
+monotonically to **+139 bp** on the 2032. The near-dated linker flips from **−34 to +60 bp**
+between the two dates. And the Japanese linker sits at **−229 bp**, about −2.3% a year: the sign
+goes the other way, and it goes the right way.
+
+---
+
+## 2026-09-03 — Government and Municipal/Provincial bonds: the cash-bond side closes
+**Commits:** `[TO FILL]`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario marked two cells `no` in the **K column of the `Summary` sheet** — `K23` against
+`Government Bonds`, `K55` against `Municipal/Provincial Bonds Total`. They are the only two
+annotations on the sheet, and they map one-to-one onto master sub-categories: **153 rows → 147
+securities** and **7 → 7**. 154 unique securities, of which **147 price at the 3-31 baseline**
+and 150 at the 6-10 control.
+
+### One convention decided, with evidence, before any code
+
+Everything discounts on its **own currency's curve** — what `zeroyield4(ccy, date)` did in the
+legacy system, what `ZeroCurve.from_currency` already implemented, and what the corporate book
+does. The alternative was live: a German Bund reprices at **+1.34 bp** on
+`Germany_Yield_Curve.txt` but **−44.88 bp** on `EUR_Yield_Curve.txt`, so the choice moves every
+euro number. It went to the advisor before anything was written, and the deciding argument was
+neither elegance nor convention but coverage: **Ireland has no curve file**, so a per-country
+rule would have put 2 Irish holdings on a different footing from their 28 peers — the "two
+owners of one decision" shape again, prevented rather than found. Per-country curves stay as
+the cross-check.
+
+That left the question of what the number is *called*, which needed the EUR file's identity.
+It is a **euro-area sovereign composite, not a swap curve**: it sits strictly between Germany
+and Italy at every tenor, and a debt-weighted six-country average reproduces it to **7 bp mean,
+18 bp max**. So a Bund at −44.88 bp is rich to the euro-area average — relative value inside
+the sovereign sector, and emphatically not an asset-swap spread. The CSV carries
+`spread_meaning` per row (`own-curve-anchor` 110 · `relative-to-euro-composite` 30 ·
+`spread-over-government` 14) because the same arithmetic means three different things, and a
+reader who takes a −45 bp Bund and a +1 bp Bund as contradictory has been failed by the label,
+not the model.
+
+Eight currencies joined `CURVE_FILE` (6 → 14). Every units claim was **reproduced against the
+raw file** rather than assumed — the standing rule since the GBP bug — and all eight read as
+decimals, so no `PAR_YIELD_UNITS` entry was needed. MYR is deliberately *absent*: it has no
+file at all, so `from_currency` raises and the driver names the gap instead of quietly
+discounting a Malaysian bond on someone else's curve.
+
+### A quotation trap, caught before shipping rather than after
+
+Six holdings record **par as a count of titles**, not a currency face amount. The detector is
+the custodian's own identity — `BT == market value / par`, which fails at a ratio of exactly
+0.01 for these six — but the identity **cannot say what the denomination is**: it holds for
+Mexico at 100 and Brazil at 1,000 alike. So the denomination comes from an explicit
+per-currency registry and never from the price level, because no threshold separates a 916.73
+per-1000 quote from a per-100 one. That is the `PAR_YIELD_UNITS` lesson applied in advance
+instead of in hindsight.
+
+The five Mexican prices pass through untouched; only `TNTG630781W` rescales, **916.73 →
+91.673**. Priced as recorded it would have produced a spread of several thousand basis points.
+Both registry values are corroborated *inside the data* — every Mexican long description
+carries `MXN100`, the Brazilian carries `BRL1000` — and a test asserts that agreement so the
+registry cannot drift from its source. The conversion is written `BT / (F/100)` rather than
+`BT * 100 / F` so that `F`=100 divides by exactly 1.0 and the Mexican numbers are provably
+bit-identical; the first version was not, and the test caught it.
+
+The **custodian made the same mistake**: its own yield for that bond is −23.1%, against
+6.45–8.41% for the five Mexican bonds. A golden column is only golden where its own convention
+holds.
+
+### Four securities read one at a time
+
+A genuine **callable US Treasury** (12.5% of 2014, callable from 2009-08-15) goes on the BDT
+lattice with `check_representable` — the guard `phase2_risk.py` still lacks. Its two columns
+must be read together: **122 bp** with the call against **950 bp** straight, effective duration
+**0.39 y** against 4.05 y. A 12.5% coupon against a par call four months out is called with
+near certainty, so nearly all of that gap is option value; the flag says so in words, because
+950 bp is a number someone could otherwise lift out of the CSV and quote as a sovereign spread.
+
+`TNTD03983600` "TREAS BD STRIPPED CALL" carries a call date **equal to** its maturity. The zero
+rule claims it first — it would also have survived the exercise branch, but for the wrong
+reason, and a right answer reached by a wrong rule is a defect waiting for different data.
+
+Two are refused. The **Russian Federation 2030** says `STEP UP` in its description and we hold
+no coupon path; independently, the custodian's duration of 4.08 against roughly 10 for a 21-year
+7.5% bullet says the notional amortises, which we also cannot represent. The **Japanese
+floating-rate JGB** looked at first like the corporate pattern — an FRN missing its margin,
+i.e. a one-cell data ask. It is not: the 15-year series resets off the **10-year JGB auction
+yield**, so the *reference* is what the simple-forward engine cannot represent, and the
+custodian's −0.475 duration is inconsistent with a short-rate floater at 97.64. Filling a
+margin would not have made it right. Naming the gap correctly turned a request into an
+engine limitation — habit 5, on the other side of the ledger.
+
+Custodian duration was used as **evidence in the flag text and never as a router**. It means
+different things by class — it missed the call on corporate callables and was option-adjusted
+on agencies — so a rule keyed on it would have told us to price the corporate callables as
+bullets. A divergence beyond 1.5 y is reported with both numbers and acted on by nobody.
+
+### The results validate the framework more than they inform
+
+Anchors land where they must: JGBs at a median of **0.0 bp** (−3.9 to 12.0), gilts **4.4**,
+SEK 3.1, SGD 8.0, MXN 10.3. A sovereign on its own government curve *should* come out near
+zero; that is the pipeline checking itself.
+
+The euro hierarchy is right without being told anything about credit: Germany richest at −70
+to −52 bp, Spain +39, Belgium +40, **Ireland +156 and +164**. Australian semi-governments come
+in at 64–106 bp over the Commonwealth curve, Mexico 341–409 and Brazil 366 over Treasuries,
+Illinois taxable pension 296, a military-housing revenue bond 546.
+
+The one result needing explanation is the USD Treasury anchor, median +40.6 rather than ~0.
+It is not model error. Three securities maturing on **the same day**, 2019-02-15: the
+on-the-run 10-year auctioned that February prices at **+3.9 bp**, STRIPS at +38.7/+41.0, and an
+old off-the-run bond at **+42.8**. Same issuer, same maturity, same day, 39 bp apart. Our USD
+curve is built from on-the-run yields, so on a Treasury the calibrated number is the
+**off-the-run liquidity premium**, historically extreme in March 2009. Recent issues anchor at
+a median of 2.7 bp; everything older sits 40–55 bp cheap.
+
+### Discipline
+
+`build_phase2_universe` gained an explicit `classes` argument defaulting to the original four,
+so `phase2_risk.py` and its CSV are untouched; the sovereign work went into its own driver and
+its own dated outputs rather than spending the five-CSV invariant. The quotation resolution was
+made **universal across every asset class** and is inert for agency/guaranteed/linker **by
+evidence** — all 63 resolve to `currency-face`, asserted by a test, not assumed.
+
+All **five production CSVs and four disposition sidecars regenerated byte-identical** to the
+2026-08-31 release record. `reconcile()` proves the 154 over sets: 147 priced + 7 named at
+3-31, 150 + 4 at 6-10. **390 → 424 tests** (33 new, plus one because `test_exception_wiring`
+parametrises over every source file and picked up the new driver on its own).
+
+**No new Mario or Liping request was opened.** Four gaps are recorded in `missing_data.md` as
+G6 and the KRW 3-31 curve row stays where it was, in the G5 deferred queue.
+
+### One defect found by the cross-platform check itself
+
+Comparing the new CSV between Windows and 47 showed the numbers agreeing to the documented
+profile but **four text rows differing**. The curve-blocked flag interpolated the raw
+exception, so it carried `data\KRW_Yield_Curve.txt` here and `data/…` there. Two problems in
+one: it broke text parity between the two runs, and a filesystem path in a deliverable message
+is exactly what the endpoint contract already forbids. `curve_failure_reason` in
+`curves/zero_curve.py` now owns the rule for both drivers and keeps the file name while
+dropping the directory. `phase2_risk.py` built the identical string and was only ever
+**latent** — it has no curve-blocked rows — and was fixed anyway; its CSV is byte-identical.
+Worth noting the parity check earned its keep here by catching something that was not a
+number.
+
+### What this actually closes
+
+The **cash-bond side of the book**. Corporate bonds were already complete; these are sovereign
+and sub-sovereign, a different branch. What remains after this is the securitised block —
+Government MBS 882, Non-Government CMOs 264, ABS and CMBS — plus the derivative rows, all
+gated on the Bloomberg pull Mario has not returned. Nothing here unblocks any of it.
+
+Evidence: `docs/sovereign_municipal_scope_2026-09-03.md`.
+
+---
+
 ## 2026-08-31 (fourth wave) — Excel closes at 7 / 5 / 5, and the obsolete zips leave the branch
 **Commits:** `630a554` (zips) · `44e65fe` (floating through Excel)
 **Hours:** `[TO FILL]`
