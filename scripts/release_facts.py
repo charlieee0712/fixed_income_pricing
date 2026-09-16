@@ -29,6 +29,8 @@ import sys
 
 import pandas as pd
 
+from dataio.output_digest import text_columns, text_digest
+
 OUT_DIR = pathlib.Path(os.environ.get("FIP_OUT_DIR", "outputs"))
 FACTS = pathlib.Path(os.environ.get(
     "FIP_FACTS", f"docs/release_facts_{dt.date.today():%Y-%m-%d}.md"))
@@ -87,6 +89,23 @@ def main() -> None:
     w("|---|---:|---|")
     for f in DISPOSITIONS:
         w(f"| `{f}` | {rows(f)} | `{sha256(OUT_DIR / f)[:32]}` |")
+
+    w("\n## Text fingerprints -- what floating point cannot move\n")
+    w("A whole-file sha256 answers *are these the same bytes*, and across processors the honest")
+    w("answer is routinely no: a convexity divides a second difference by the square of a small")
+    w("bump, multiplying a last-digit rounding by a hundred million. The digests below cover only")
+    w("the columns that carry **no arithmetic** -- identifiers, routes, dates, flags, reason")
+    w("codes. Those are decided by logic, so they must be IDENTICAL on every machine.\n")
+    w("**A differing sha256 above with a matching digest below is rounding. A differing digest")
+    w("below is a defect** -- and the kind that hides: on 2026-09-03 a driver flag embedded a")
+    w("filesystem path, so one failure read two different ways on Windows and on Linux.\n")
+    w("Checked on any machine by `PYTHONPATH=src python scripts/platform_parity.py`.\n")
+    w("| file | text columns | digest |")
+    w("|---|---:|---|")
+    for f in PRODUCTION + DISPOSITIONS:
+        path = OUT_DIR / f
+        if path.exists():
+            w(f"| `{f}` | {len(text_columns(path))} | `{text_digest(path)}` |")
 
     w("\n## Corporate coverage\n")
     w("| valuation date | rows in output | with a model spread | carried at the custodian mark |")
