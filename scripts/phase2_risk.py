@@ -16,13 +16,16 @@ Routes (built by ``dataio.phase2.build_phase2_universe``; decisions in
   * ilb -> implied spread vs the NOMINAL curve at FIP_INFL (default 0). ⚠️ That spread is
     EXPECTED NEGATIVE ~ -(breakeven) at inflation=0 — it is the market's inflation expectation,
     NOT a credit OAS, and lives in its own column ``implied_spread_vs_nominal_bp`` (companion
-    ``breakeven_bp`` = -spread when FIP_INFL=0). See ``pricer.core.pricing.inflation``, and
-    ``pricer.assets.government.linker`` for the per-metric surface with legacy naming.
+    ``breakeven_bp`` = ``ln(1+FIP_INFL) - spread``, which is ``-spread`` at the production
+    FIP_INFL=0 and stays correct at any other assumption). See
+    ``pricer.core.pricing.inflation``, and ``pricer.assets.government.linker`` for the
+    per-metric surface with legacy naming.
   * cmo-tranche / ilb-indexation-unverified -> BT mark + flag (Mario/next-phase list).
 
 Run on 47:
     FIP_VAL_DATE=2009-03-31 PYTHONPATH=src python3 scripts/phase2_risk.py
 Writes FIP_OUT (default outputs/phase2_risk.csv, git-ignored)."""
+import math
 import os
 import sys
 
@@ -154,8 +157,13 @@ def main():
                 rows.append(row); continue
             rm = ilb_risk_metrics(VAL, mat, rc, curve, sp, index_ratio=ratio0, inflation=INFL, freq=fr)
             nm = near_maturity(VAL, mat, MIN_YEARS)
+            # breakeven = ln(1+pi) - spread, exact at ANY inflation assumption. It used to be
+            # emitted only at FIP_INFL=0 and NaN otherwise, so turning the parameter on silently
+            # deleted the one column that carries information: pricing with inflation pi at
+            # spread s is identical to pricing with inflation 0 at s - ln(1+pi), so the spread
+            # moves by exactly ln(1+pi) and the breakeven does not move at all.
             row.update(coupon=rc, clean=rm["clean"], implied_spread_vs_nominal_bp=sp * 1e4,
-                       breakeven_bp=(-sp * 1e4 if INFL == 0.0 else np.nan), index_ratio0=ratio0,
+                       breakeven_bp=(math.log1p(INFL) - sp) * 1e4, index_ratio0=ratio0,
                        eff_dur=rm["eff_duration"], dv01=rm["dv01"], convexity=rm["convexity"],
                        near_maturity=nm,
                        flag=("near-maturity" if nm else

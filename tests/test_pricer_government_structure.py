@@ -392,3 +392,36 @@ def test_the_government_side_reaches_the_shared_option_surface():
     assert sovereign.callable_implied_oas is shared.implied_oas
     assert agency.implied_oas is shared.implied_oas
     assert agency.SIGMA_DEFAULT == 0.15
+
+
+def test_the_driver_reports_a_breakeven_at_any_inflation_assumption():
+    """⚠️ Turning FIP_INFL on used to DELETE the only column that carries information.
+
+    The driver emitted ``breakeven_bp`` only when the inflation assumption was exactly zero
+    and NaN otherwise, so the moment anyone supplied a real inflation number the output lost
+    its market-implied inflation reading — while every other column stayed numerically
+    identical, because pricing with inflation pi at spread s is the same as pricing with
+    inflation 0 at s - ln(1+pi). Measured: at FIP_INFL=2%% every spread moved by exactly
+    198.0263 bp = ln(1.02), and nothing else moved at all.
+
+    The breakeven is ln(1+pi) - spread, which is invariant under that shift. This pins the
+    general form and forbids the NaN branch coming back.
+    """
+    src = (ROOT / "scripts" / "phase2_risk.py").read_text(encoding="utf-8")
+    assert "math.log1p(INFL) - sp" in src, "the driver no longer computes the general breakeven"
+    assert "else np.nan), index_ratio0" not in src, "the NaN-at-nonzero-inflation branch is back"
+    assert "import math" in src
+
+
+def test_the_breakeven_is_invariant_under_the_inflation_assumption():
+    """The property the driver now relies on, checked on the engine rather than the source."""
+    from pricer.core.pricing import inflation as core
+
+    c = FlatCurve(0.04)
+    kw = dict(index_ratio=1.19, face=100.0, freq=2)
+    target = core.price_ilb(VAL, "2032-04-15", 0.03375, c, -0.0139, inflation=0.0, **kw).clean
+    out = []
+    for pi in (0.0, 0.02, 0.05):
+        s = core.implied_spread_ilb(target, VAL, "2032-04-15", 0.03375, c, inflation=pi, **kw)
+        out.append(math.log1p(pi) - s)
+    assert max(out) - min(out) < 1e-10, out
