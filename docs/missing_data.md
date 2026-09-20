@@ -156,13 +156,29 @@ somebody documented — worth having, worth nobody's phone call on its own.
 
 | item | ids | unlocks | lands via |
 |---|---|---|---|
-| KTBi indexation terms (index ratio / base CPI @2009-03-31) | TNTG673976U / KR1035027T36 | the 1 BT-marked ILB (`ilb-indexation-unverified`, $1.2M) | ratio_0 input to `pricing/ilb.py` |
-| KRW govt par curve, 2009-03-31 row | — | KTBi at the 3-31 baseline (file has 06-10 only) | row in the KRW curve txt |
+| ~~KTBi indexation terms (index ratio / base CPI)~~ **CLOSED 2026-09-19 — sourced by us, PROVISIONAL** | TNTG673976U / KR1035027T36 | ✅ the bond now prices at the 6-10 control (breakeven +144.34bp, eff-dur 6.96y against custodian AQ 7.272 @3-31) | `data/index_ratios.csv` row 1.079316, derived from Korean CPI (FRED KORCPIALLMINMEI / OECD MEI) against a 2007-03-10 dated date. ⚠️ **Three things are INFERRED, not confirmed for this ISIN:** the dated date (Korea's first KTBi was a March-2007 10-year, which fits this maturity), the lag convention (the Korean source states only principal = face × CPI(payment)/CPI(issue)), and T+1 settlement (measured on the 13 US TIPS in the same file). The convention ambiguity was MEASURED at 0.04% of ratio ≈ 0.2bp of breakeven; the dated date is the material assumption. Bloomberg wins on arrival — log the delta. |
+| **KRW govt par curve, 2009-03-31 row — STILL OPEN, and now the ONLY blocker** | — | the KTBi at the 3-31 baseline | a row in the KRW curve txt. ⚠️ **Until 2026-09-19 the driver flag said `ilb-indexation-unverified` at BOTH dates, so a reader would have thought fixing the indexation would price this bond. It would not — at 3-31 the curve row is missing too.** Two gaps wearing one name in the OUTPUT, while this registry had them separate all along. The flag now reads `ilb-curve-blocked` at 3-31 and names the file. |
 | ~~UK Gilt par curve @2009-03-31 & 06-10~~ **WITHDRAWN 2026-08-30** | — | ~~FT-GBP + 2 GBP bonds~~ — both now priced | ✅ **not a data gap: a units bug on our side.** The GBP file stores par yields in PERCENT while 24 of the 26 files store decimals; the loader scaled everything by 100, making the gilt curve 73%-415%, which the bootstrap correctly refused as "not arbitrage-free". We read that as a fact about the data. Fixed in `curves.bootstrap.PAR_YIELD_UNITS` + a units guard. **Do not ask Mario or Liping for a GBP curve.** |
 | **Corporate call schedules (confirmation)** — ADDED 2026-08-31 | TNTD04115619 · TNTD04441873 · TNTG701850W | none — all three are priced today; confirmation would replace a convention with a term | `call_schedules.csv` rows if they differ |
 | Agency call schedules (confirmation) | US3133XKKW43 · US3128X4BE02 · US3128X4UZ20 · US31359ML849 · US31359M2B87 | none — par@100-from-AB lattice already matches custodian AQ 4/5 | `call_schedules.csv` rows if they differ |
 | FNMA 6.25 2011 rating quirk | TNTD04366584 / US31359MGT45 | senior-vs-sub identity behind the master's A/Aa2 | note / master correction |
 | FHR 3122 ZB (REMIC Z, misfiled as AGY debenture) | TNTD04733316 | CMO-phase input (BT-marked now, no force-pricing) | DES terms for the future CMO engine |
+
+### ⭐ What the inflation data actually bought (2026-09-19)
+
+Mario asked us to source per-country inflation ourselves. Where it landed, and where it did not:
+
+| | outcome |
+|---|---|
+| **Validating the index ratios** | ⭐ the real win. All **13 US TIPS** ratios reproduce from CPI-U NSA through TreasuryDirect's Reference-CPI rule to **5.9e-06**, and every inverted dated date lands on the 15th of a month. Until now that ratio came from a regex over custodian free text, guarded only by a 0.9-1.6 window — and a 1% error in it moves a published breakeven by ~6bp, a 6% error by 35bp on a bond whose breakeven is 138.8bp. The check now runs on every commit. |
+| **Unlocking a bond** | ✅ the Korean KTBi, at the control date (above). |
+| **A finding nobody had** | the custodian strikes its ratios at **T+1 (2009-04-01)**, not the valuation date. At 2009-03-31 the implied dated dates scatter across the 8th to the 19th and the residual is 10x worse. |
+| **A forward inflation assumption** | ❌ **provably inert, and the table says so.** A constant assumption folds into the spread: measured at 2%, every calibrated spread moved by exactly ln(1.02) = 198.0263bp and price, duration, DV01 and convexity did not move at all. `data/inflation_assumption.csv` is registered and empty on purpose. It becomes load-bearing with a term structure of inflation, or the deflation floor. |
+
+**Still missing, and it is a convention rather than a number:** Japan's CPI **excluding fresh
+food** series, which is what JGBi indexes to (headline CPI is the wrong series). The recovered
+ratio 1.01400 is consistent with the Ministry of Finance's 5-decimal rounding, but it has not
+been re-derived. One security, priced today, no downstream dependency — confirmation-only.
 
 ## G6 — Government / Municipal classes (2026-09-03)
 

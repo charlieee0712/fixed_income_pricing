@@ -334,7 +334,7 @@ def _route_sovereign(r):
     return "vanilla"
 
 
-def build_phase2_universe(master, classes=None):
+def build_phase2_universe(master, classes=None, index_ratios=None):
     """Per-class mini-universe for the three phase-2 classes (MBS counted only).
 
     Returns ``(bonds, recon, counts)``:
@@ -397,6 +397,24 @@ def build_phase2_universe(master, classes=None):
             u.loc[ok, "route"] = "ilb"
             u.loc[u["real_coupon_pct"].notna() & ~u["index_ratio0"].between(*RATIO_SANITY),
                   "route"] = "ilb-ratio-implausible"
+            u["index_ratio_status"] = ""
+            u["index_ratio_source"] = ""
+            # An EXPLICIT per-asset ratio beats the BG/description recovery. The recovery is a
+            # free-text parse guarded only by RATIO_SANITY, and the ratio scales every cash
+            # flow and the accrued -- a 1% error in it moves a published breakeven by ~6 bp.
+            # Where a security's custodian income rate carries no indexation at all (the
+            # Korean KTBi: BG equals the coupon exactly), the recovery cannot work and the
+            # stated coupon IS the real coupon.
+            for asset_id, entry in (index_ratios or {}).items():
+                hit = u.index == asset_id if u.index.name == "asset_id" else u["asset_id"] == asset_id
+                if not bool(getattr(hit, "any", lambda: False)()):
+                    continue
+                u.loc[hit, "index_ratio0"] = float(entry["index_ratio"])
+                missing = hit & u["real_coupon_pct"].isna()
+                u.loc[missing, "real_coupon_pct"] = u.loc[missing, "coupon_pct"]
+                u.loc[hit, "route"] = "ilb"
+                u.loc[hit, "index_ratio_status"] = entry.get("status", "provisional")
+                u.loc[hit, "index_ratio_source"] = entry.get("source", "")
         u["real_coupon"] = pd.to_numeric(u["real_coupon_pct"], errors="coerce") / 100.0
         # Quotation is resolved for EVERY class, while the golden columns are still here. The
         # three original phase-2 classes all resolve to "currency-face", which
@@ -427,5 +445,6 @@ def build_phase2_universe(master, classes=None):
     return bonds, recon, counts
 
 
-def build_phase2_from_path(path, classes=None):
-    return build_phase2_universe(load_master_phase2(path), classes=classes)
+def build_phase2_from_path(path, classes=None, index_ratios=None):
+    return build_phase2_universe(load_master_phase2(path), classes=classes,
+                                 index_ratios=index_ratios)

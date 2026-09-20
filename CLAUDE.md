@@ -599,6 +599,69 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   between the two dates. **JGBi breakeven −229bp (−2.3%)** — Japan, sign flips the other way and
   flips correctly. ⚠️ Re-read these from the CSV at writing time, never from here.
 
+## Inflation data — sourced ourselves (Mario 2026-09-19) — DONE, 525 tests
+- **The ask:** Mario, on the ILB question — *"各国的 inflation 数据我们可以自己从网上找"*, the table
+  being the Excel files given at project start. Same pattern as the 2026-07-20 ISIN lookup:
+  web-sourced = INTERIM, labelled PROVISIONAL, Bloomberg wins on arrival, log the delta.
+- **⚠️ MEASURE FIRST, and the measurement redirected the work.** Feeding a per-country CONSTANT
+  inflation into the engine as it stands **changes nothing**: at `FIP_INFL=2%` every calibrated
+  spread moved by **exactly 198.0263 bp = ln(1.02)** (the 14 bonds' shifts agreed to **2.7e-07
+  bp**) and clean price / eff-dur / DV01 / convexity did not move at all. `(1+π)^t` is exactly
+  `exp(t·ln(1+π))` and folds into the discount exponent ⇒ **a constant assumption and a flat
+  spread are ONE knob.** 26 countries of constants = 26 no-ops. Breaking the degeneracy needs a
+  **term structure** π(t), or the **deflation floor** (a `max()` is a nonlinearity; it bites on
+  the near-par-ratio bonds, ratio 1.0079 and 1.0187 here). Both v2.
+- **⭐ SO THE DATA LANDED ON `ratio_0`, WHICH IS WHERE IT DOES WORK.** The index ratio scales
+  every cash flow AND the accrued, and the **entire derivation** was
+  `BG ÷ parse_desc_coupon(free text)` guarded only by `RATIO_SANITY (0.9, 1.6)` — **never
+  validated for any of the 15**. Measured cost of an error on the 2032 TIPS: **1% → 5.9bp** of
+  published breakeven, **6% → 34.9bp** (against a published 138.8bp). The price never reveals it
+  — calibration absorbs it into the spread.
+- **⭐ ALL 13 US RATIOS NOW VALIDATE, to 5.9e-06.** CPI-U NSA (FRED `CPIAUCNS`) through
+  TreasuryDirect's rule: Ref CPI(1st of M) = CPI(M−3), day-interpolated; ratio = Ref CPI(settle)
+  / Ref CPI(dated date). **Every inverted dated date lands on the 15th of a month** — the
+  canonical TIPS dated date — and the 6 bonds whose description states one agree
+  (`DTD 07/15/2004`→2004-07-15; `DTD 01/18/2000`→2000-01-15, the 18th being the issue date).
+  The apparent outlier (2032, implying 2001-10-01) is not one: **CPI Jul-2001 = Aug-2001 =
+  177.500 exactly**, so Ref CPI is flat across October 2001 and the 15th is indistinguishable.
+- **⭐ NEW FINDING — the custodian strikes its ratios at T+1 (2009-04-01), not the valuation
+  date.** At 3-31 the implied dated dates scatter across the 8th-19th and the worst residual is
+  **6.3e-05**; at 4-01 they snap to the 15th and it is **5.9e-06**, 10× better.
+- **⭐ THE KOREAN KTBi IS PRICED** (`TNTG673976U` / `KR1035027T36`, 2.75% 2017-03-10). Its
+  custodian income rate **equals the coupon exactly** ⇒ no ratio embedded ⇒ the recovery cannot
+  work, and the stated coupon IS the real coupon. Ratio **1.079316** from Korean CPI (FRED
+  `KORCPIALLMINMEI` / OECD MEI) against a 2007-03-10 dated date (Korea's FIRST KTBi, a March-2007
+  10-year). **@6-10: breakeven +144.34bp, eff-dur 6.964y** vs custodian AQ 7.272 @3-31 (0.19y
+  apart — consistent). ⚠️ **Three inferences, labelled:** the dated date, the lag convention
+  (the Korean source states only `principal = face × CPI(pay)/CPI(issue)`), and T+1. The
+  convention ambiguity was **measured at 0.04% of ratio ≈ 0.2bp**; the dated date is the material
+  one.
+- **⭐ TWO GAPS WORE ONE NAME — in the OUTPUT, not the registry.** `ilb-indexation-unverified`
+  showed at BOTH dates, so a reader would think fixing the indexation prices the bond. It does
+  not: **KRW has no 2009-03-31 curve row** (06-10 only). `missing_data.md` had the two separate
+  all along; the driver flag did not. Now **@3-31 → `ilb-curve-blocked` naming the file**,
+  **@6-10 → `ilb` priced**. ⇒ **linker 14 → 15 priced at the control date.**
+- **THE ONE INTENTIONAL OUTPUT CHANGE:** both `phase2_risk_*.csv` — **63 rows unchanged, exactly
+  ONE row moved (`TNTG673976U`)**, plus 2 additive provenance columns
+  (`index_ratio_status` / `index_ratio_source`). **All 20 other artifacts byte-identical.**
+- **`breakeven_bp` NO LONGER NaNs at FIP_INFL≠0** — it was emitted only at exactly 0, so turning
+  the parameter on **deleted the one column carrying information**. Now `ln(1+π) − spread`,
+  invariant under π (1.7e-07 bp), `-spread` at π=0 ⇒ production byte-identical.
+- **THREE tables, deliberately separate** (`src/dataio/inflation.py`; missing file = no data):
+  `data/cpi_index.csv` **MEASURED** (192 rows, US 150 + KR 42, with source + as_of) ·
+  `data/index_ratios.csv` **DERIVED per security** with status/source/convention (1 row, the
+  KTBi) · `data/inflation_assumption.csv` **ASSUMED**, registered and **empty on purpose**.
+  A measurement, a security term and a forecast have different provenance — one file would let a
+  forecast read as an observation. ⚠️ `anchor_day` is a PARAMETER: **1 for US TIPS, 10 for
+  Japanese JGBi** (MOF; JGBi also uses CPI **ex-fresh-food** and rounds the coefficient to **5
+  decimals** — our recovered 1.01400 is consistent with that).
+- **Tests 497 → 525** (+27 inflation, +1 automatic). ⚠️ **The `fc0e851` commit message said
+  "483 → 485" — that was ARITHMETIC, not a measurement; the measured count at that commit was
+  497.** Quote `release_facts`, never a running total. Both new locks mutation-verified (shift a
+  dated date by a month → red; corrupt one CPI print by 0.5% → red).
+- **Still open, confirmation-only:** Japan's **CPI ex-fresh-food** series (headline is the wrong
+  index for JGBi) — 1 security, priced today, no dependency. And the **KRW 3-31 curve row**.
+
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
   store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied

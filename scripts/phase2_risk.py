@@ -36,6 +36,7 @@ import pandas as pd
 from curves.zero_curve import ZeroCurve, curve_failure_reason
 from dataio.call_schedules import (load_call_provenance, load_call_schedules,
                                    to_lattice_schedule)
+from dataio.inflation import load_index_ratios
 from dataio.phase2 import build_phase2_from_path
 from pricer.assets.government.agency import (ExerciseScheduleNotRepresentable,
                                              check_representable)
@@ -53,6 +54,9 @@ OUT = os.environ.get("FIP_OUT", "outputs/phase2_risk.csv")
 SIGMA = float(os.environ.get("FIP_VOL", "0.15"))
 INFL = float(os.environ.get("FIP_INFL", "0.0"))     # ILB inflation assumption (decimal)
 SCHED = os.environ.get("FIP_CALL_SCHED", os.path.join(DATA_DIR, "call_schedules.csv"))
+#: Explicit per-security index ratios. Beats the BG/description recovery; every row
+#: carries its own status and source. Missing file = no overrides.
+RATIOS = os.environ.get("FIP_INDEX_RATIOS", os.path.join(DATA_DIR, "index_ratios.csv"))
 MIN_YEARS = 1.0
 FREQ_VARIANT = {1: "Annual", 2: "Semiannual", 4: "Quarterly", 12: "Monthly"}
 PRICED_OAS_ROUTES = {"vanilla", "call-passed-vanilla", "zero"}
@@ -72,7 +76,8 @@ def _curve_cache():
 
 
 def main():
-    bonds, recon, counts = build_phase2_from_path(WB)
+    bonds, recon, counts = build_phase2_from_path(WB,
+                                                  index_ratios=load_index_ratios(RATIOS))
     recon = recon.drop_duplicates("asset_id").set_index("asset_id")
     recon.index = recon.index.astype(str)
     schedules = load_call_schedules(SCHED)
@@ -114,6 +119,11 @@ def main():
             aq_custodian=b.get("dur_eff_custodian"), flag="",
             exercise_terms_status="", exercise_terms_source="", exercise_price_source="",
             exercise_terms_as_of="",
+            # Where the index ratio came from. Blank = recovered from the custodian income
+            # rate over the description coupon; anything else names an explicit override and
+            # its confidence, because that ratio scales every cash flow and the accrued.
+            index_ratio_status=(b.get("index_ratio_status") or ""),
+            index_ratio_source=(b.get("index_ratio_source") or ""),
         )
         if pd.notna(mat) and pd.Timestamp(mat) < pd.Timestamp(VAL):
             row.update(route="matured", flag=f"matured before {VAL}")
