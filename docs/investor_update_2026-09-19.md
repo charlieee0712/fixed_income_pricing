@@ -12,13 +12,11 @@ command is at the end.
 
 ---
 
-## Slide 1 — Title
+## Slide 1 — Fixed-income pricing system: progress to 19 September 2026
 
-**Fixed-income pricing system — progress to 19 September 2026**
-
-- Built for: the client's fixed-income portfolio
-- Reporting: Mario [surname] and the engineering team
-- Twelve weeks in
+- Built for the client's fixed-income portfolio
+- Presented by [YOUR NAME] and Mario [SURNAME] — fill these in
+- Twelve weeks of work, 26 June to 19 September 2026
 
 *Say:* Keep this up for ten seconds. No preamble.
 
@@ -48,6 +46,8 @@ always the test. Second, the thing exists and runs today; we are not describing 
   can call — same answer from all three
 - **Every result is reproducible**: run it again a month later and you get the identical
   file, to the byte
+- We price the client's **March 2009 book** — their own reference case, chosen because the
+  outcomes are already known
 
 *Say:* The third point is worth a sentence. In a pricing system that number is the whole
 product, so we made "did anything change" a mechanical check rather than a matter of
@@ -97,20 +97,27 @@ struck one day after the valuation date. Small, but nobody knew it.
 
 ## Slide 6 — The one thing blocking the largest block
 
-- **882 mortgage securities — 39% of the portfolio — cannot be priced without terms only
-  Bloomberg has**
-- **The engine for them is already built and tested.** It is waiting for data, not for code
-- **Requested 22 July 2026. Still outstanding — eight weeks.**
+- **882 mortgage securities — 39% of the portfolio — need terms that only Bloomberg has**
+- **The engine for them is already built and tested.** It has been waiting on data, not on
+  code — the day the data lands it runs with no further development
+- **Requested 22 July 2026.** [STATUS — confirm the week of presenting; see the note]
 - A second, smaller request covers 164 ordinary bonds whose terms are missing from the file
   we were given
 
 *Say:* This is the slide we would most like you to remember. There is no technical obstacle
-here and no disagreement about what is needed — it is a data pull that has not happened. If
-it lands, roughly four in ten securities in this portfolio become priceable immediately,
-with work that is already done.
-
-[⚠️ Say this plainly and without blame. The request went to the client; we are surfacing it,
-not escalating it. If asked "why the delay" the honest answer is we do not know.]
+and no disagreement about what is needed. Four in ten securities in this portfolio become
+priceable on work that is already finished, as soon as the terms arrive.
+BEFORE PRESENTING, REPLACE THE THIRD BULLET. As of 19 September we had word the data may
+just have been delivered, unverified. Use whichever is true on the day.
+If it has NOT arrived: "Requested 22 July 2026 — still outstanding." The ask is that you
+help move it.
+If it HAS arrived: "Requested 22 July; the data reached us in September and we are loading
+it now." That is the better version of this slide — the engine was built ahead of the data
+and the largest remaining block is unlocking rather than stuck.
+Do not leave the outstanding wording standing once it is false. An investor who later
+learns the data had already arrived will discount everything else on these slides.
+Say all of this without blame either way. The request went to the client; we are surfacing
+it, not escalating it. If asked why it took this long, the honest answer is we do not know.
 
 ---
 
