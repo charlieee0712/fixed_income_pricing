@@ -52,6 +52,11 @@ RULE = RGBColor(0xD9, 0xD9, 0xD9)
 SERIES_INK = [RGBColor(0x1F, 0x4E, 0x79), RGBColor(0xD6, 0x89, 0x10),
               RGBColor(0x9E, 0x9E, 0x9E), RGBColor(0xD9, 0xD9, 0xD9)]
 
+#: Printed when a source line matched no rule. Silence here would mean content in the
+#: script that never reaches the deck, which is how a lead line went missing once.
+NOT_PLACED_BANNER = (
+    "\n  !! THESE SOURCE LINES REACHED NO RULE and are NOT in the deck:")
+
 SLIDE_W, SLIDE_H = Inches(10.0), Inches(5.625)
 MARGIN = Inches(0.55)
 
@@ -84,7 +89,7 @@ def parse(markdown_text):
             if heading.lower().startswith("slide"):
                 current = {"title": re.sub(r"^Slide\s*\d+\s*[—-]\s*", "", heading).strip(),
                            "bullets": [], "image": None, "chart": None, "table": None,
-                           "notes": ""}
+                           "lead": None, "notes": "", "dropped": []}
             continue
         if current is None:
             continue
@@ -144,6 +149,17 @@ def parse(markdown_text):
         if stripped and current["bullets"] and raw.startswith("  "):
             current["bullets"][-1] += " " + stripped
             continue
+        # A bold standalone line BEFORE any bullet is the slide's LEAD LINE: the point of
+        # the slide, said once, with no bullet so it does not read as another item.
+        if (stripped.startswith("**") and stripped.endswith("**")
+                and not current["bullets"] and current["lead"] is None):
+            current["lead"] = stripped
+            continue
+        # Anything else carrying content reached no rule and would vanish without a word.
+        # An earlier version dropped a lead line exactly this way: present in the source,
+        # absent from the deck, and nothing said so.
+        if stripped and not stripped.startswith(("---", "```", "|", "<!--")):
+            current["dropped"].append(stripped)
 
     flush()
     return slides
@@ -246,6 +262,12 @@ def build(slides, out_path, root):
                bold_default=True, space_after=Pt(3))
 
         top = Inches(2.55) if first else Inches(1.18)
+        if spec.get("lead"):
+            lead_h = Inches(0.56)
+            lead_box = slide.shapes.add_textbox(MARGIN, top, SLIDE_W - 2 * MARGIN, lead_h)
+            lead_box.text_frame.word_wrap = True
+            _write(lead_box.text_frame, spec["lead"], Pt(16), INK, space_after=Pt(2))
+            top = Emu(int(top) + int(lead_h))
         if spec.get("chart"):
             top = _add_chart(slide, spec["chart"], top)
         if spec.get("table"):
@@ -289,10 +311,17 @@ def main():
     out = pathlib.Path(args.output)
     n = build(slides, out, root)
     print(f"wrote {out} ({n} slides, {out.stat().st_size:,} bytes)")
+    unplaced = [(i, ln) for i, s in enumerate(slides, 1) for ln in s.get("dropped", [])]
+    if unplaced:
+        print(NOT_PLACED_BANNER)
+        for i, ln in unplaced:
+            print("     slide %d: %s" % (i, ln[:88]))
+
     for i, spec in enumerate(slides, 1):
         extras = "".join([
             "  +chart" if spec.get("chart") else "",
             f"  +table({len(spec['table'])}r)" if spec.get("table") else "",
+            "  +lead" if spec.get("lead") else "",
             "  +image" if spec.get("image") else "",
             "  +notes" if spec["notes"] else "  NO NOTES",
         ])
