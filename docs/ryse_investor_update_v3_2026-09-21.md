@@ -65,13 +65,17 @@ that does not exist today at all.
 
 - **Six of the thirteen categories are complete** — 949 securities, 766 of them carrying our own price
 - **Every input and output is a JSON dictionary**, which is what makes parallel execution straightforward rather than a rewrite
-- **The whole book revalues end to end on Azure in 40 seconds** — measured, on the free tier
+- **The code runs unchanged on Azure** — a clean checkout revalues the whole book in 40 seconds, measured, on the free tier
 - Next: the mortgage-backed book, then the parallel-computing work with Ryse's engineer
 
 *Say:* The forty seconds is the number that makes the goal arithmetic rather than
 aspirational. A thousand scenarios is a thousand times forty seconds divided by however
 many machines you run it on — that is a capacity question, and capacity is something you
 can buy. It was not a capacity question before.
+If an engineer asks how it runs there: today it is a checkout in an Azure terminal, which
+proves the code is portable and fast. Making it a service other systems call is the next
+step and is on slide 9 — do not let "runs on Azure" be heard as "deployed as a service",
+because it is not one yet.
 
 ---
 
@@ -188,11 +192,14 @@ number and ours are measuring the same thing.
 
 - **The mortgage-backed book** — the engine is built and tested; it needs terms data, not development
 - **The three remaining pooled classes** — scoped, and each reuses machinery that already exists
-- **Parallel execution on cloud with Ryse's engineer** — the step that turns forty seconds a scenario into a thousand scenarios
+- **Running it as a hosted service, then in parallel** — with Ryse's engineer. The interface is already one request in, one answer out, and exactly one file knows about its environment, so this is defined work rather than a rewrite. It is the step that turns forty seconds into a thousand scenarios
 - **The portfolio risk layer** — last, once coverage is complete
 
 *Say:* Be straight that the pooled classes are genuine remaining engineering, not a data
-problem. What makes them tractable is that the hard parts — the cash-flow machinery, the
+problem. On the cloud step: today each of us runs the code in our own Azure terminal, which
+was the point of the trial in September. Hosting it so Excel or another system can call it
+over the network is a separate, known piece of work — we put it to Mario in that report as
+an explicit question and it is still open. What makes them tractable is that the hard parts — the cash-flow machinery, the
 option model, the market-data plumbing — are built and proven on the 766 we already price.
 
 ---
