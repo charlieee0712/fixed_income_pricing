@@ -80,7 +80,7 @@ can buy. It was not a capacity question before.
 - Takes a bond, that day's market rates, and the recorded price — and returns **what the market is charging that borrower, and how much the value moves when rates move**
 - Runs **from a spreadsheet**, from a command line, or as a service another system calls — the same answer from all three
 - **Every result is reproducible**: run it again a month later and you get the identical file, to the byte
-- We work on a representative **March 2009** portfolio — chosen as the reference case because the outcomes are already known
+- We build and check against **a real client portfolio** — a pension fund's fixed-income book at March 2009, chosen as the reference case because its outcomes are already known
 
 *Say:* The third point deserves a sentence. In a pricing system the number is the whole
 product, so we made "did anything change" a mechanical check rather than a matter of
@@ -105,11 +105,13 @@ wrong question.]
 | Out of scope | 17 |
 
 - **2,260 securities in the portfolio. Six of the thirteen categories are complete — 42%**
-- Of those 949, **766 carry our own price**; the remaining 183 are individually named, most of them bonds whose terms are not in the file at all
+- Of those 949, **766 carry our own price**; the remaining 183 are individually named, most of them bonds whose terms are absent from the source records themselves
 
 *Say:* Two honest readings. First, "complete" means the category is built and running, not
 that every bond in it has our number — 183 do not, and every one of them is named in a
-register with its reason. Second, the largest remaining block is the mortgage book, and its
+register with its reason. That is not an apology: a real book has incomplete records, and
+a tool meant for any portfolio has to name what it cannot price rather than guess at it.
+Second, the largest remaining block is the mortgage book, and its
 engine is already built and tested; what it needs is terms data, not development.
 
 [⚠️ THE MORTGAGE LABEL IS DELIBERATELY NEUTRAL. As of 2026-09-21 we have word that the
@@ -140,7 +142,7 @@ and loading, change it to "In progress" and say so; do not claim it before we ha
 | 13 | Other Fixed Income | 1 | 1 | Out of scope |
 | | **Total** | **2,366** | **2,260** | |
 
-*Say:* Two columns because the holdings file's Summary sheet counts lines and we count securities,
+*Say:* Two columns because the client's own Summary sheet counts lines and we count securities,
 and the two differ: a bond held by two managers appears on two lines. Lines reconcile
 against their sheet exactly — 2,366 — and securities are what a pricing question is
 actually about.
@@ -158,11 +160,12 @@ buckets again.]
 ## Slide 8 — How we know the numbers are right
 
 - **A government bond priced on its own government's curve must come out at zero.** Japan's come out at 0.0 basis points, the UK's at 4.4 — the thermometer reads right in ice water
-- **The portfolio's custodian independently reports a risk number for some bonds.** Where it does, ours agrees — on agency bonds whose sensitivity runs from one to nine years, four of the five agree within three-quarters of a year
-- **We re-derived the portfolio's own inflation adjustments from published government statistics** — thirteen US inflation-linked bonds, agreeing to six parts in a million
+- **The client's own custodian independently reports a risk number for some bonds.** Where it does, ours agrees — on agency bonds whose sensitivity runs from one to nine years, four of the five agree within three-quarters of a year
+- **We re-derived the client's own inflation adjustments from published government statistics** — thirteen US inflation-linked bonds, agreeing to six parts in a million
 
 *Say:* None of these three uses anything we control — that is the point, we are not grading
-our own homework. The third one also found something nobody knew: those records are struck
+our own homework, and the last two are checked against a live institutional portfolio's own
+records rather than a test file. The third one also found something nobody knew: those records are struck
 one day after the valuation date. Small, and it had been invisible for months.
 If anyone asks for the populations: the zero test is over bonds priced on their own
 government's curve — eleven Japanese, twelve UK with the under-one-year bonds excluded, the
@@ -211,15 +214,27 @@ outsourced the work to us. **Ryse is "we".** Every "the client asked us to" is g
 hand-over is to Ryse's engineer rather than to a customer, and the portfolio is described as
 a representative reference case — Liping's own phrase.
 
-⚠️ **One question to settle before this is presented.** We have kept "the portfolio" rather
-than "the client's portfolio" throughout, because it is correct either way. But the record
-is ambiguous about what URS actually is: the delivery package README calls `data/` "the
-client's own material", the tracking policy of 8 July calls it "the client portfolio", and
-Drive access is Mario only — all of which reads like a real client. Liping's own v2 calls it
-"a representative set of asset data as our working example", which reads like a sample.
-**If URS is a Ryse client, say "a client portfolio" on slides 5 and 8 and it is stronger, not
-weaker — it means the validation is against live client records.** If it is a sample dataset,
-the current wording is right. One word from Mario settles it.
+⭐ **SETTLED 2026-09-21 (user): the portfolio is a real client's, AND the example Mario chose
+for this project.** Both at once, and the two were never in tension — Liping's "representative
+working example" describes its ROLE here, not its provenance.
+
+The record agrees. `CLAUDE.md` carries a section headed **"Two clients — do NOT merge"** that
+names URS as the client and Uganda as the separate example; the delivery-package README calls
+`data/` "the client's own material"; tracking it in the repo at all needed the boss's approval;
+Drive access is Mario only. That is how real client data is handled, not how a sample file is.
+
+**So the deck says "a client portfolio", and it is stronger for it.** Our numbers are not
+checked against a test file — they are checked against a live institutional portfolio's own
+custodian records. Slides 5, 7 and 8 now say so, and the note on slide 8 makes the point
+explicitly.
+
+⚠️ **The identity stays out.** "A pension fund's fixed-income book" is as specific as any slide
+gets. The repository is private precisely because it references this portfolio; naming the
+institution to investors is Mario's call, not ours, and nothing on these slides depends on it.
+
+⚠️ **March 2009 is a feature, and the slide already says why.** A current book has no known
+answers to check against; a settled one does. If anyone asks why the data is old, that is the
+answer — we chose a period whose outcomes are on the record.
 
 **2. The coverage numbers.** ⭐ Liping was right that they did not reconcile, and the cause
 was a units mismatch, not an arithmetic error. Our chart counted **securities** (2,260); her
