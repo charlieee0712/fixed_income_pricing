@@ -13,16 +13,21 @@ What the parser takes from the script:
 
   ``## Slide N — Title``      a new slide, titled with whatever follows the dash
   ``- bullet``                a bullet, wrapped lines joined; ``**bold**`` becomes bold runs
-  ``<!-- slide-chart -->``    the NEXT table becomes a real, editable PowerPoint chart
+  ``<!-- slide-chart -->``    the NEXT table becomes a stacked bar drawn from rectangles
   ``<!-- slide-table -->``    the NEXT table becomes a real, editable PowerPoint table
   ``**Chart: …** — `path```   an image to place (kept for decks that still want a picture)
   ``*Say:* …``                the presenter's words -> SPEAKER NOTES, never the slide
   ``[ … ]``                   a note to ourselves -> dropped entirely
   a table with no marker      appended to the notes rather than shown
 
-⚠️ **Native, not a picture.** An earlier version placed the coverage chart as a PNG and a
-reviewer could not edit the numbers on it — a deck somebody else has to finish is a deck
-they have to be able to change. Marked tables and charts are now real PowerPoint objects.
+⚠️ **Everything on a slide must be editable in GOOGLE SLIDES, not just in PowerPoint.**
+Version 1 placed the coverage bar as a PNG and the reviewer could not edit the numbers.
+Version 3 "fixed" that with a real PowerPoint chart object — which did not reach the problem
+at all: she works in Google Slides, and Slides cannot open an embedded OOXML chart. It passes
+the bytes through untouched (verified: the chart part came back byte-identical, sha e4b438fd)
+and shows a rendered preview in its place. That preview is what she meant by blurry, and it
+is why the same slide was un-editable in both rounds. So the bar is now ordinary rectangles
+and text boxes, which Slides imports as native objects. Tables round-trip fine — hers did.
 
 Slide size is **10 x 5.625 in**, matching the deck this one continues, so slides can be
 moved between them without re-scaling.
@@ -38,17 +43,16 @@ import pathlib
 import re
 
 from pptx import Presentation
-from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
 INK = RGBColor(0x1F, 0x4E, 0x79)          # headings and the "complete" series
 BODY = RGBColor(0x26, 0x26, 0x26)
 QUIET = RGBColor(0x70, 0x70, 0x70)
 RULE = RGBColor(0xD9, 0xD9, 0xD9)
-#: One colour per chart series, in the order the marked table lists them.
+#: One colour per bar segment, in the order the marked table lists them.
 SERIES_INK = [RGBColor(0x1F, 0x4E, 0x79), RGBColor(0xD6, 0x89, 0x10),
               RGBColor(0x9E, 0x9E, 0x9E), RGBColor(0xD9, 0xD9, 0xD9)]
 
@@ -182,41 +186,46 @@ def _write(frame, text, size, colour=BODY, bold_default=False, space_after=Pt(9)
 
 
 def _add_chart(slide, rows, top):
-    """A real, editable stacked bar. ``rows`` is [[header...], [label, value], ...]."""
+    """A stacked bar drawn from PLAIN RECTANGLES. ``rows`` is [[header...], [label, value], ...].
+
+    Not a chart object, on purpose — see the note at the top of this file. Rectangles and text
+    boxes survive a Google Slides round trip as editable native shapes; a chart object does not.
+    """
     body = [r for r in rows[1:] if len(r) >= 2 and r[1].replace(",", "").strip().isdigit()]
-    data = CategoryChartData()
-    data.categories = [""]
-    for label, value in ((r[0], int(r[1].replace(",", ""))) for r in body):
-        data.add_series(label, (value,))
+    values = [int(r[1].replace(",", "")) for r in body]
+    total = sum(values)
 
-    height = Inches(1.5)
-    frame = slide.shapes.add_chart(XL_CHART_TYPE.BAR_STACKED, MARGIN, top,
-                                   SLIDE_W - 2 * MARGIN, height, data)
-    chart = frame.chart
-    chart.has_title = False
-    chart.value_axis.visible = False
-    chart.value_axis.has_major_gridlines = False
-    chart.category_axis.visible = False
-    chart.has_legend = True
-    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-    chart.legend.include_in_layout = False
-    chart.legend.font.size = Pt(10)
+    bar_w, bar_h = int(SLIDE_W - 2 * MARGIN), Inches(0.92)
+    # Cumulative ROUNDED edges, so segment i+1 begins exactly where segment i ends. Widths
+    # rounded independently leave sub-EMU gaps, and Slides draws a gap as a visible seam.
+    edges, running = [0], 0
+    for v in values:
+        running += v
+        edges.append(int(round(bar_w * running / total)))
 
-    total = sum(int(r[1].replace(",", "")) for r in body)
-    for i, plot_series in enumerate(chart.plots[0].series):
-        plot_series.format.fill.solid()
-        plot_series.format.fill.fore_color.rgb = SERIES_INK[i % len(SERIES_INK)]
-        share = int(body[i][1].replace(",", "")) / total
-        if share > 0.08:                       # only label a band wide enough to hold text
-            plot_series.has_data_labels = True
-            labels = plot_series.data_labels
-            labels.number_format, labels.number_format_is_linked = '#,##0', False
-            labels.font.size = Pt(12)
-            labels.font.bold = True
-            labels.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-    chart.plots[0].gap_width = 40
-    chart.plots[0].overlap = 100
-    return Emu(int(top) + int(height)) + Inches(0.12)
+    label_top = Emu(int(top) + int(bar_h) + int(Inches(0.06)))
+    for i, value in enumerate(values):
+        left, width = Emu(int(MARGIN) + edges[i]), Emu(edges[i + 1] - edges[i])
+        colour = SERIES_INK[i % len(SERIES_INK)]
+
+        seg = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, bar_h)
+        seg.fill.solid()
+        seg.fill.fore_color.rgb = colour
+        seg.line.fill.background()          # no theme outline
+        seg.shadow.inherit = False          # no theme shadow
+        seg.text_frame.word_wrap = False
+        seg.text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+        _write(seg.text_frame, "**{:,}**".format(value), Pt(14),
+               RGBColor(0xFF, 0xFF, 0xFF), space_after=Pt(0))
+        seg.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+
+        # The name sits UNDER its own segment, in its own colour: the reader never has to
+        # match a swatch in a legend to a band in the bar.
+        cap = slide.shapes.add_textbox(left, label_top, width, Inches(0.42))
+        cap.text_frame.word_wrap = True
+        _write(cap.text_frame, "**{}**".format(body[i][0]), Pt(10), colour, space_after=Pt(0))
+
+    return Emu(int(label_top) + int(Inches(0.42))) + Inches(0.10)
 
 
 def _add_table(slide, rows, top):
@@ -297,6 +306,118 @@ def build(slides, out_path, root):
     return len(slides)
 
 
+#: How the coarse bar on the coverage slide groups the per-category statuses in the table
+#: beside it. Declared rather than inferred, so renaming either one fails loudly instead of
+#: silently splitting the two slides -- which is exactly what happened between v4 and v5.
+#:
+#: WHAT THIS CANNOT SEE, measured by mutation rather than assumed: a category moving between
+#: two statuses that land in the SAME segment. "Scoped, not started" and "Out of scope" both
+#: roll into "Not yet built", so moving a row between them leaves the bar correct and the
+#: check silent. That is sound for the bar, but any PROSE quoting one of those two subtotals
+#: is unguarded -- slide 7's note says sixteen for futures and options. A four-segment bar
+#: would catch it; it was rejected because the fourth segment is one security in 2,260 and
+#: renders as a hairline. The run prints the subtotals so the split is at least visible.
+COVERAGE_GROUPS = {
+    "Complete": ("Complete",),
+    "Engine built \u2014 next": ("Engine built \u2014 next",),
+    "Not yet built": ("Scoped, not started", "Out of scope"),
+}
+
+
+def verify(out, slides):
+    """Read the written deck back and cross-check the bar against the table.
+
+    Reads the FILE, not the in-memory model: the question is what ships, and a bar drawn as
+    shapes has no series to interrogate. Raises on any disagreement.
+    """
+    from pptx import Presentation
+
+    prs = Presentation(str(out))
+    problems, notes = [], []
+
+    # 1. Nothing on any slide may be a chart object or a picture. Google Slides cannot edit
+    #    either: it shows a rendered preview, which is how the bar came to be called blurry.
+    for i, slide in enumerate(prs.slides, 1):
+        for sh in slide.shapes:
+            if getattr(sh, "has_chart", False):
+                problems.append("slide %d holds a CHART OBJECT; Slides cannot edit one" % i)
+            if sh.shape_type is not None and "PICTURE" in str(sh.shape_type):
+                problems.append("slide %d holds a PICTURE; it will not be editable" % i)
+
+    chart_rows = next((s["chart"] for s in slides if s.get("chart")), None)
+    table_rows = next((s["table"] for s in slides if s.get("table")), None)
+    if not chart_rows or not table_rows:
+        return notes, problems
+
+    def num(x):
+        return int(x.replace(",", "").replace("*", "").strip())
+
+    bar = {r[0]: num(r[1]) for r in chart_rows[1:]
+           if len(r) >= 2 and r[1].replace(",", "").strip().isdigit()}
+
+    # 2. Every status in the table must belong to exactly one bar segment, and vice versa.
+    by_status = {}
+    total_row = None
+    for r in table_rows[1:]:
+        if len(r) >= 5 and r[3].replace(",", "").replace("*", "").strip().isdigit():
+            if "Total" in r[1]:
+                total_row = num(r[3])
+            else:
+                by_status[r[4]] = by_status.get(r[4], 0) + num(r[3])
+    if set(bar) != set(COVERAGE_GROUPS):
+        problems.append("bar segments %s do not match the declared grouping %s"
+                        % (sorted(bar), sorted(COVERAGE_GROUPS)))
+    claimed = [s for g in COVERAGE_GROUPS.values() for s in g]
+    for status in by_status:
+        if status not in claimed:
+            problems.append('table status "%s" belongs to no bar segment' % status)
+
+    # 3. Each segment must equal the categories it claims to cover.
+    for label, statuses in COVERAGE_GROUPS.items():
+        want = sum(by_status.get(s, 0) for s in statuses)
+        got = bar.get(label)
+        if got != want:
+            problems.append('"%s": bar says %s, the table rows under it sum to %s'
+                            % (label, got, want))
+        else:
+            if len(statuses) > 1:
+                notes.append("   ^ a row moving between those two is INVISIBLE here; "
+                             "check any prose quoting either subtotal")
+            notes.append('"%s" %s = %s' % (label, got, " + ".join(
+                "%s %d" % (s, by_status[s]) for s in statuses if s in by_status)))
+
+    if total_row is not None and sum(bar.values()) != total_row:
+        problems.append("the bar sums to %d, the table total says %d"
+                        % (sum(bar.values()), total_row))
+    else:
+        notes.append("bar total = table total = %s" % format(sum(bar.values()), ","))
+
+    # 4. The segments must tile: each begins exactly where the last ended, and together they
+    #    span the full bar. A sub-EMU gap renders in Slides as a visible seam.
+    slide6 = next((s for s in prs.slides
+                   if any(sh.has_text_frame and sh.text_frame.text.strip()
+                          == format(list(bar.values())[0], ",") for sh in s.shapes)), None)
+    if slide6 is not None:
+        segs = sorted((sh for sh in slide6.shapes
+                       if sh.has_text_frame
+                       and sh.text_frame.text.strip().replace(",", "").isdigit()
+                       and sh.height > Inches(0.5)), key=lambda s: s.left)
+        if len(segs) != len(bar):
+            problems.append("found %d bar rectangles, expected %d" % (len(segs), len(bar)))
+        for a, b in zip(segs, segs[1:]):
+            if int(a.left) + int(a.width) != int(b.left):
+                problems.append("a %d EMU seam between two segments"
+                                % (int(b.left) - int(a.left) - int(a.width)))
+        if segs:
+            span = int(segs[-1].left) + int(segs[-1].width) - int(segs[0].left)
+            if span != int(SLIDE_W - 2 * MARGIN):
+                problems.append("the segments span %d EMU, the bar is %d"
+                                % (span, int(SLIDE_W - 2 * MARGIN)))
+            else:
+                notes.append("%d segments tile the bar exactly, no seams" % len(segs))
+    return notes, problems
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--input", required=True)
@@ -316,6 +437,15 @@ def main():
         print(NOT_PLACED_BANNER)
         for i, ln in unplaced:
             print("     slide %d: %s" % (i, ln[:88]))
+
+    notes, problems = verify(out, slides)
+    for note in notes:
+        print("  ok   " + note)
+    if problems:
+        print("\n  !! THE COVERAGE BAR AND THE CATEGORY TABLE DISAGREE:")
+        for p in problems:
+            print("     " + p)
+        raise SystemExit(1)
 
     for i, spec in enumerate(slides, 1):
         extras = "".join([
