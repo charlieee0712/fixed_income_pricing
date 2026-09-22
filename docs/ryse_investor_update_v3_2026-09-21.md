@@ -147,13 +147,22 @@ and the two differ: a bond held by two managers appears on two lines. Lines reco
 against their sheet exactly — 2,366 — and securities are what a pricing question is
 actually about.
 
-[⚠️ TELL LIPING DIRECTLY, do not let this be a silent correction: **Guaranteed Fixed
-Income (11 lines / 9 securities) belongs in COMPLETE, not in the remaining list.** All nine
-are FDIC-guaranteed bank paper, priced since July and restructured on 10 September. That
-moves her "Total Completed" from 1,029 to 1,040 lines and "Total Unassigned" from 1,337 to
-1,326. Every other number in her two tables is exactly right and matches the Summary sheet.
-One table with a status column is used here precisely so a category cannot sit in two
-buckets again.]
+[**Guaranteed Fixed Income sits in COMPLETE here, and Liping's tables have it in the
+remaining list — because she has not been told we finished it, not because she got anything
+wrong.** Nine bonds, all FDIC-guaranteed bank paper, priced in the July phase-2 round and
+folded into the new code structure on 10 September as a bonus alongside the two classes
+Mario actually asked for. It is already written up in `docs/phase2_methods_2026-07-22.md`
+and in the 10 September report that went to Mario in the delivery package, so nobody is
+being surprised — Liping simply has not read those two.
+
+Low stakes: 11 lines out of 2,366. The ONLY reason to mention it before the meeting is
+that the two of you present together, and her totals (1,029 completed / 1,337 remaining)
+differ from the slide's (1,040 / 1,326). One sentence beforehand — *"we also finished
+Guaranteed, the nine FDIC-backed bank bonds, so completed reads 1,040"* — prevents that
+showing up live. Every other number in her two tables matches the Summary sheet exactly.
+
+The merge into one table with a status column stands on its own merit: a category cannot
+then sit in two buckets, whoever is filling it in.]
 
 ---
 
@@ -244,7 +253,8 @@ than one manager holds them. Version 3 leads with securities, because "how many 
 price" is a security question, and carries the line count in its own column so her check
 against the Summary sheet reconciles on the slide.
 
-The one substantive correction is Guaranteed Fixed Income — see the note on slide 7.
+The one difference is Guaranteed Fixed Income, and it is not a correction — see the note on
+slide 7. She has it in the remaining list because nobody told her we had finished it.
 
 **And the chart is no longer a picture.** It is a native PowerPoint chart, editable like any
 other, which was the second half of her complaint.
