@@ -1,8 +1,8 @@
 """Build the investor deck (.pptx) FROM the markdown script.
 
     python scripts/make_investor_deck.py
-        --input  docs/investor_update_2026-09-19.md
-        --output docs/investor_update_2026-09-19.pptx
+        --input  docs/ryse_investor_update_v3_2026-09-21.md
+        --output "docs/Ryse Presentation v3.pptx"
 
 ⭐ The markdown is the single source. Keeping a hand-edited .pptx beside a hand-edited
 script is the two-owners-one-decision shape this project keeps closing: the two drift, and
@@ -11,20 +11,25 @@ re-run this, and the deck follows.
 
 What the parser takes from the script:
 
-  ``## Slide N — Title``   a new slide, titled with whatever follows the dash
-  ``- bullet``             a bullet, wrapped lines joined; ``**bold**`` becomes bold runs
-  ``**Chart: …** — `path```the image to place on that slide
-  ``*Say:* …``             the presenter's words -> the slide's SPEAKER NOTES, never the slide
-  ``[ … ]``                a note to ourselves -> dropped entirely
-  ``| a | b |``            a table -> appended to the notes, not shown (see below)
+  ``## Slide N — Title``      a new slide, titled with whatever follows the dash
+  ``- bullet``                a bullet, wrapped lines joined; ``**bold**`` becomes bold runs
+  ``<!-- slide-chart -->``    the NEXT table becomes a real, editable PowerPoint chart
+  ``<!-- slide-table -->``    the NEXT table becomes a real, editable PowerPoint table
+  ``**Chart: …** — `path```   an image to place (kept for decks that still want a picture)
+  ``*Say:* …``                the presenter's words -> SPEAKER NOTES, never the slide
+  ``[ … ]``                   a note to ourselves -> dropped entirely
+  a table with no marker      appended to the notes rather than shown
 
-⚠️ Tables go to the notes on purpose. The one table in this deck restates what its chart
-already shows, with a "why" column; on a slide that is duplication read by nobody, and in
-the presenter's notes it is exactly what they want when somebody asks.
+⚠️ **Native, not a picture.** An earlier version placed the coverage chart as a PNG and a
+reviewer could not edit the numbers on it — a deck somebody else has to finish is a deck
+they have to be able to change. Marked tables and charts are now real PowerPoint objects.
 
-Needs ``python-pptx`` (``pip install python-pptx``). It is deliberately NOT in
-requirements.txt — that file lists what the pricing system needs to run, and document
-tooling is not that; ``scripts/md_to_pdf.py`` treats ``markdown`` the same way.
+Slide size is **10 x 5.625 in**, matching the deck this one continues, so slides can be
+moved between them without re-scaling.
+
+Needs ``python-pptx`` (``pip install python-pptx``). Deliberately NOT in requirements.txt —
+that file lists what the pricing system needs to run, and document tooling is not that;
+``scripts/md_to_pdf.py`` treats ``markdown`` the same way.
 """
 from __future__ import annotations
 
@@ -33,60 +38,58 @@ import pathlib
 import re
 
 from pptx import Presentation
+from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx.enum.text import PP_ALIGN
 from pptx.util import Emu, Inches, Pt
 
-INK = RGBColor(0x1F, 0x4E, 0x79)          # the deck's one accent, same blue as the chart
+INK = RGBColor(0x1F, 0x4E, 0x79)          # headings and the "complete" series
 BODY = RGBColor(0x26, 0x26, 0x26)
 QUIET = RGBColor(0x70, 0x70, 0x70)
+RULE = RGBColor(0xD9, 0xD9, 0xD9)
+#: One colour per chart series, in the order the marked table lists them.
+SERIES_INK = [RGBColor(0x1F, 0x4E, 0x79), RGBColor(0xD6, 0x89, 0x10),
+              RGBColor(0x9E, 0x9E, 0x9E), RGBColor(0xD9, 0xD9, 0xD9)]
 
-SLIDE_W, SLIDE_H = Inches(13.333), Inches(7.5)
-MARGIN = Inches(0.8)
+SLIDE_W, SLIDE_H = Inches(10.0), Inches(5.625)
+MARGIN = Inches(0.55)
 
 
 def parse(markdown_text):
-    """Turn the script into ``[{title, subtitle, bullets, image, notes}]``.
-
-    Inputs
-    ------
-    1. markdown_text : str — the whole script file.
-
-    Returns: list of dicts, one per ``## Slide N — …`` heading, in order.
-    """
-    slides = []
-    current = None
-    note_lines, table_lines, in_note, in_aside = [], [], False, False
+    """Turn the script into ``[{title, bullets, image, chart, table, notes}]``."""
+    slides, current = [], None
+    note_lines, loose_table, in_note, in_aside = [], [], False, False
+    pending = None                      # "chart" | "table" | None, set by an HTML comment
+    started = False                     # has the marked table produced a row yet?
 
     def flush():
         if current is None:
             return
         notes = " ".join(note_lines).strip()
-        if table_lines:
-            notes = (notes + "\n\nFor reference:\n" + "\n".join(table_lines)).strip()
+        if loose_table:
+            notes = (notes + "\n\nFor reference:\n" + "\n".join(loose_table)).strip()
         current["notes"] = notes
         slides.append(current)
 
     for raw in markdown_text.splitlines():
-        line = raw.rstrip()
-        stripped = line.strip()
+        line, stripped = raw.rstrip(), raw.strip()
 
         if stripped.startswith("## "):
             heading = stripped[3:].strip()
-            if not heading.lower().startswith("slide"):
-                flush()
-                current = None
-                continue
             flush()
-            title = re.sub(r"^Slide\s*\d+\s*[—-]\s*", "", heading).strip()
-            current = {"title": title, "subtitle": None, "bullets": [], "image": None,
-                       "notes": ""}
-            note_lines, table_lines, in_note, in_aside = [], [], False, False
+            current, note_lines, loose_table = None, [], []
+            in_note = in_aside = False
+            pending, started = None, False
+            if heading.lower().startswith("slide"):
+                current = {"title": re.sub(r"^Slide\s*\d+\s*[—-]\s*", "", heading).strip(),
+                           "bullets": [], "image": None, "chart": None, "table": None,
+                           "notes": ""}
             continue
-
         if current is None:
             continue
 
-        if in_aside:                                   # a bracketed note to ourselves
+        if in_aside:
             if stripped.endswith("]"):
                 in_aside = False
             continue
@@ -94,45 +97,61 @@ def parse(markdown_text):
             in_aside = not stripped.endswith("]")
             continue
 
+        if stripped.startswith("<!--"):
+            if "slide-chart" in stripped:
+                pending = "chart"
+            elif "slide-table" in stripped:
+                pending = "table"
+            continue
+
         if stripped.startswith("*Say:*"):
             in_note = True
             note_lines.append(stripped[len("*Say:*"):].strip())
             continue
         if in_note:
-            if not stripped:
-                in_note = False
-            else:
+            if stripped:
                 note_lines.append(stripped)
+            else:
+                in_note = False
             continue
 
         if stripped.startswith("|"):
             cells = [c.strip() for c in stripped.strip("|").split("|")]
-            if not all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
-                table_lines.append("  " + " | ".join(c for c in cells if c))
+            if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
+                continue                                  # the ---|--- separator row
+            if pending in ("chart", "table"):
+                if current[pending] is None:
+                    current[pending] = []
+                current[pending].append(cells)
+                started = True
+            else:
+                loose_table.append("  " + " | ".join(c for c in cells if c))
+            continue
+        if pending and started and not stripped:
+            # A blank line ends a marked table -- but only once it has actually begun.
+            # The marker sits on its own line with a blank line after it, so clearing on
+            # the FIRST blank would drop every marked table. It did.
+            pending, started = None, False
             continue
 
         m = re.match(r"\*\*Chart:.*?\*\*\s*[—-]\s*`([^`]+)`", stripped)
         if m:
             current["image"] = m.group(1)
             continue
-
         if stripped.startswith("- "):
             current["bullets"].append(stripped[2:].strip())
             continue
         if stripped and current["bullets"] and raw.startswith("  "):
-            current["bullets"][-1] += " " + stripped          # a wrapped bullet
-            continue
-        if stripped.startswith("**") and stripped.endswith("**") and not current["bullets"]:
-            current["subtitle"] = stripped
+            current["bullets"][-1] += " " + stripped
             continue
 
     flush()
     return slides
 
 
-def _write(frame, text, size, colour=BODY, bold_default=False, space_after=Pt(14)):
+def _write(frame, text, size, colour=BODY, bold_default=False, space_after=Pt(9)):
     """Append one paragraph, honouring ``**bold**`` and dropping stray emphasis marks."""
-    para = frame.paragraphs[0] if not frame.text and len(frame.paragraphs) == 1 \
+    para = frame.paragraphs[0] if (not frame.text and len(frame.paragraphs) == 1) \
         else frame.add_paragraph()
     para.space_after = space_after
     for i, chunk in enumerate(text.split("**")):
@@ -146,8 +165,72 @@ def _write(frame, text, size, colour=BODY, bold_default=False, space_after=Pt(14
     return para
 
 
+def _add_chart(slide, rows, top):
+    """A real, editable stacked bar. ``rows`` is [[header...], [label, value], ...]."""
+    body = [r for r in rows[1:] if len(r) >= 2 and r[1].replace(",", "").strip().isdigit()]
+    data = CategoryChartData()
+    data.categories = [""]
+    for label, value in ((r[0], int(r[1].replace(",", ""))) for r in body):
+        data.add_series(label, (value,))
+
+    height = Inches(1.5)
+    frame = slide.shapes.add_chart(XL_CHART_TYPE.BAR_STACKED, MARGIN, top,
+                                   SLIDE_W - 2 * MARGIN, height, data)
+    chart = frame.chart
+    chart.has_title = False
+    chart.value_axis.visible = False
+    chart.value_axis.has_major_gridlines = False
+    chart.category_axis.visible = False
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+    chart.legend.include_in_layout = False
+    chart.legend.font.size = Pt(10)
+
+    total = sum(int(r[1].replace(",", "")) for r in body)
+    for i, plot_series in enumerate(chart.plots[0].series):
+        plot_series.format.fill.solid()
+        plot_series.format.fill.fore_color.rgb = SERIES_INK[i % len(SERIES_INK)]
+        share = int(body[i][1].replace(",", "")) / total
+        if share > 0.08:                       # only label a band wide enough to hold text
+            plot_series.has_data_labels = True
+            labels = plot_series.data_labels
+            labels.number_format, labels.number_format_is_linked = '#,##0', False
+            labels.font.size = Pt(12)
+            labels.font.bold = True
+            labels.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    chart.plots[0].gap_width = 40
+    chart.plots[0].overlap = 100
+    return Emu(int(top) + int(height)) + Inches(0.12)
+
+
+def _add_table(slide, rows, top):
+    """A real, editable table. First row is the header; a ``**Total**`` row is emphasised."""
+    n_rows, n_cols = len(rows), max(len(r) for r in rows)
+    height = min(Inches(0.235) * n_rows, SLIDE_H - top - Inches(0.2))
+    shape = slide.shapes.add_table(n_rows, n_cols, MARGIN, top,
+                                   SLIDE_W - 2 * MARGIN, height)
+    table = shape.table
+    widths = (0.38, 3.05, 1.05, 1.25, 3.17)                # tuned for the category table
+    for c in range(n_cols):
+        table.columns[c].width = Inches(widths[c] if c < len(widths) else 1.2)
+
+    for r, row in enumerate(rows):
+        for c in range(n_cols):
+            cell = table.cell(r, c)
+            raw = row[c] if c < len(row) else ""
+            text = raw.replace("**", "")
+            cell.text = text
+            para = cell.text_frame.paragraphs[0]
+            para.alignment = PP_ALIGN.RIGHT if (c in (0, 2, 3) and r > 0) else PP_ALIGN.LEFT
+            for run in para.runs:
+                run.font.size = Pt(9.5)
+                run.font.bold = (r == 0) or raw.startswith("**")
+                run.font.color.rgb = INK if r == 0 else BODY
+            cell.margin_top = cell.margin_bottom = Pt(1)
+    return Emu(int(top) + int(height)) + Inches(0.15)
+
+
 def build(slides, out_path, root):
-    """Render the parsed script to a 16:9 deck."""
     prs = Presentation()
     prs.slide_width, prs.slide_height = SLIDE_W, SLIDE_H
     blank = prs.slide_layouts[6]
@@ -156,36 +239,32 @@ def build(slides, out_path, root):
         slide = prs.slides.add_slide(blank)
         first = index == 0
 
-        box = slide.shapes.add_textbox(MARGIN, Inches(0.55 if not first else 2.2),
-                                       SLIDE_W - 2 * MARGIN, Inches(1.1))
+        box = slide.shapes.add_textbox(MARGIN, Inches(1.55 if first else 0.34),
+                                       SLIDE_W - 2 * MARGIN, Inches(0.8))
         box.text_frame.word_wrap = True
-        _write(box.text_frame, spec["title"], Pt(40 if first else 30), INK,
-               bold_default=True, space_after=Pt(4))
+        _write(box.text_frame, spec["title"], Pt(30 if first else 23), INK,
+               bold_default=True, space_after=Pt(3))
 
-        top = Inches(3.35) if first else Inches(1.75)
-        if spec["subtitle"]:
-            sub = slide.shapes.add_textbox(MARGIN, Inches(3.25), SLIDE_W - 2 * MARGIN,
-                                           Inches(0.7))
-            sub.text_frame.word_wrap = True
-            _write(sub.text_frame, spec["subtitle"], Pt(20), QUIET)
-            top = Inches(4.15)
-
+        top = Inches(2.55) if first else Inches(1.18)
+        if spec.get("chart"):
+            top = _add_chart(slide, spec["chart"], top)
+        if spec.get("table"):
+            top = _add_table(slide, spec["table"], top)
         if spec["image"]:
             picture = root / spec["image"]
             if picture.exists():
-                width = SLIDE_W - 2 * MARGIN
-                slide.shapes.add_picture(str(picture), MARGIN, Inches(1.85), width=width)
-                # the chart's own aspect decides where the bullets can start
+                slide.shapes.add_picture(str(picture), MARGIN, top,
+                                         width=SLIDE_W - 2 * MARGIN)
                 shape = slide.shapes[-1]
-                top = Emu(int(shape.top) + int(shape.height)) + Inches(0.35)
+                top = Emu(int(shape.top) + int(shape.height)) + Inches(0.15)
 
         if spec["bullets"]:
             body = slide.shapes.add_textbox(MARGIN, top, SLIDE_W - 2 * MARGIN,
-                                            SLIDE_H - top - Inches(0.6))
+                                            SLIDE_H - top - Inches(0.2))
             frame = body.text_frame
             frame.word_wrap = True
             for bullet in spec["bullets"]:
-                _write(frame, "•  " + bullet, Pt(19 if not first else 18),
+                _write(frame, "•  " + bullet, Pt(13 if not first else 13),
                        BODY if not first else QUIET)
 
         if spec["notes"]:
@@ -211,10 +290,13 @@ def main():
     n = build(slides, out, root)
     print(f"wrote {out} ({n} slides, {out.stat().st_size:,} bytes)")
     for i, spec in enumerate(slides, 1):
-        print(f"  {i}. {spec['title'][:58]:58s} "
-              f"{len(spec['bullets'])} bullets"
-              f"{'  +chart' if spec['image'] else ''}"
-              f"{'  +notes' if spec['notes'] else '  NO NOTES'}")
+        extras = "".join([
+            "  +chart" if spec.get("chart") else "",
+            f"  +table({len(spec['table'])}r)" if spec.get("table") else "",
+            "  +image" if spec.get("image") else "",
+            "  +notes" if spec["notes"] else "  NO NOTES",
+        ])
+        print(f"  {i}. {spec['title'][:46]:46s} {len(spec['bullets'])}b{extras}")
 
 
 if __name__ == "__main__":
