@@ -244,12 +244,13 @@ matters: it is a defined piece of work rather than a rewrite. Bullet 2 spells ou
 
 <!-- slide-columns -->
 
-| Lichen Chen | Liping Yin |
+| Lichen Chen (Charlie) | Liping Yin |
 |---|---|
-| <<DEGREE PROGRAMME>>, Columbia University · <<GRADUATING MONTH YEAR>> | <<LIPING: programme / affiliation>> |
-| Built the instrument pricing engines, the calibration and risk layer, and the Excel-to-Python interface. | <<LIPING: what you did on this project>> |
-| <<ONE LINE OF BACKGROUND BEFORE THIS — an internship, a role, a degree. Delete this row if you would rather not.>> | <<LIPING: one line of background, or delete this row>> |
-| lc3904@columbia.edu | <<LIPING: contact>> |
+| MS Business Analytics, Columbia University · BS Mathematics, University of Michigan | <<LIPING: programme / affiliation>> |
+| On this project: built the instrument pricing engines, the calibration and risk layer, and the Excel-to-Python interface. | <<LIPING: what you did on this project>> |
+| Quantitative research internships at Turing Fund and QiLin Investment, both $2.8B+ funds — equity alpha factors, volatility forecasting, and tick-level market microstructure. | <<LIPING: one line of background, or delete this row>> |
+| Single-authored working paper on forecasting realized volatility with econometric-informed deep learning. | |
+| lc3904@columbia.edu · linkedin.com/in/lichen-chen-567982174 | <<LIPING: contact>> |
 
 *Say:* Almost nothing. Advance to this as you say "happy to take questions", give it one
 line — "and that's us; do get in touch" — and leave it up. **Do not read your own bio
@@ -278,7 +279,18 @@ tonight rather than a discovery tomorrow.
 
 ON THE CONTRIBUTION LINE: it names three things and deliberately stops there. It does not
 claim the curve bootstrap, which was a colleague's port, and it does not reach into
-Liping's half — she describes her own work in her own words.]
+Liping's half — she describes her own work in her own words.
+
+LICHEN'S HALF IS FILLED FROM HIS OWN CV (the 2026-06-12 version, newest of about forty on
+the machine). What was left off, and why: the MS finished in December 2025, so no
+"graduating" language and no dates at all, which reads as qualified rather than as a
+student; GPAs are off because they read as student register; the transferred-out London
+BSc is CV nuance rather than slide material; the mobile number does not belong on a
+projected screen. "Internships" is kept although it is the weaker word — the roles were
+internships, and being caught rounding up in front of this audience would cost far more
+than the word saves. The fund names are kept rather than "two quant funds": concrete and
+checkable is this project's register everywhere else, and a name somebody recognises
+starts a conversation.]
 
 ---
 
