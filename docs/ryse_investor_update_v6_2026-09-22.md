@@ -159,9 +159,10 @@ differ — a bond held by two managers appears on two lines. Lines reconcile aga
 exactly, at 2,366. If anyone asks about the last three rows: the futures and options are
 counted as work still to do, not as work written off — they are not bonds and they would need
 machinery we have not designed, but they are sixteen securities and nobody should leave thinking
-we have excluded them. The last row is a single fund holding, which a bond model cannot price at
-all. The bar on the previous slide groups all three into "not yet built", which is the same
-statement said more coarsely.
+we have excluded them. The last row is a fund holding rather than a bond — it carries no ISIN,
+no maturity and no rating, and it was bought at exactly $10.00 a unit and is marked at $9.23, so
+there is nothing for a bond model to price. The bar on the previous slide groups all three rows
+into "not yet built", which is the same statement said more coarsely.
 
 [⭐ RESOLVED IN V6, AND THE V5 DIAGNOSIS WAS BACKWARDS. V5 read v4's chart-vs-table
 disagreement as Liping having changed the table by mistake, and "fixed" it by pulling the table
@@ -224,6 +225,10 @@ On the cloud step: today each of us runs the code in our own Azure terminal, whi
 point of the September trial. Hosting it so Excel or another system can call it over the
 network is separate, known work — we put it to Mario in that report as an explicit question
 and it is still open.
+⚠️ If anyone joins the previous slide to this one and asks why futures and options are not on
+it: because "scoped" on that table is a status, not a queue position. They are sixteen securities
+out of 2,260, they are the only remaining rows that would need machinery we have not designed,
+and they sit behind everything on this slide. Say that rather than improvising a date.
 
 [Bullet 3 was two sentences of engineering in version 3/4, including "exactly one file knows
 about its environment", which means nothing to this audience. Shortened to the claim that
