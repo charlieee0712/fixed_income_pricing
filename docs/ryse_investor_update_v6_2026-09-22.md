@@ -240,6 +240,48 @@ matters: it is a defined piece of work rather than a rewrite. Bullet 2 spells ou
 
 ---
 
+## Slide 10 — The team
+
+<!-- slide-columns -->
+
+| Lichen Chen | Liping Yin |
+|---|---|
+| <<DEGREE PROGRAMME>>, Columbia University · <<GRADUATING MONTH YEAR>> | <<LIPING: programme / affiliation>> |
+| Built the instrument pricing engines, the calibration and risk layer, and the Excel-to-Python interface. | <<LIPING: what you did on this project>> |
+| <<ONE LINE OF BACKGROUND BEFORE THIS — an internship, a role, a degree. Delete this row if you would rather not.>> | <<LIPING: one line of background, or delete this row>> |
+| lc3904@columbia.edu | <<LIPING: contact>> |
+
+*Say:* Almost nothing. Advance to this as you say "happy to take questions", give it one
+line — "and that's us; do get in touch" — and leave it up. **Do not read your own bio
+aloud**; they can read, and narrating it is the one way to make it awkward. The reason this
+slide exists is that it stays on screen for the whole of Q&A, which is the most-looked-at
+minute of the meeting.
+
+[⭐ WHY A NEW SLIDE RATHER THAN A CORNER OF SLIDE 9. Slide 9 is the forward plan and it is
+the note the presentation should close on; bolting biographies onto it would blunt that. A
+separate final slide also buys the thing that actually matters here — it is the one that
+sits on screen through every question.
+
+BUILT FROM TEXT BOXES, NOT A TABLE, ON PURPOSE. Liping writes her own half, and she writes
+it in Google Slides, where a text box arrives native and editable and a chart object does
+not. Same reason the coverage bar stopped being a chart in this version. A blank cell is
+skipped rather than drawn, so the two halves do not have to be the same length.
+
+⚠ EVERY <<...>> IS AN UNFILLED PLACEHOLDER AND THE BUILD REFUSES TO PRODUCE THE DECK
+WHILE ONE SURVIVES. That is deliberate: the alternative is a placeholder going up on a
+screen in front of the investors. Square brackets were not used because the parser already
+treats a bracketed line as a note to ourselves and drops it silently.
+
+⚠ MARIO IS NOT ON THIS SLIDE. Slide 1 credits him as directing, and Liping asked for the
+two presenters. If he expects a third half, that is a two-minute change — worth a message
+tonight rather than a discovery tomorrow.
+
+ON THE CONTRIBUTION LINE: it names three things and deliberately stops there. It does not
+claim the curve bootstrap, which was a colleague's port, and it does not reach into
+Liping's half — she describes her own work in her own words.]
+
+---
+
 ## What changed — version 5 over Liping's version 4, then version 6 over that
 
 Liping's version 4 is a plain-language pass over version 3 and **most of it is kept verbatim** —

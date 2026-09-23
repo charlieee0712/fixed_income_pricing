@@ -15,6 +15,9 @@ What the parser takes from the script:
   ``- bullet``                a bullet, wrapped lines joined; ``**bold**`` becomes bold runs
   ``<!-- slide-chart -->``    the NEXT table becomes a stacked bar drawn from rectangles
   ``<!-- slide-table -->``    the NEXT table becomes a real, editable PowerPoint table
+  ``<!-- slide-columns -->``  the NEXT 2-column table becomes two side-by-side text boxes;
+                              row 1 holds the two headings, later rows the lines under them,
+                              and a blank cell is simply skipped so the halves may differ
   ``**Chart: …** — `path```   an image to place (kept for decks that still want a picture)
   ``*Say:* …``                the presenter's words -> SPEAKER NOTES, never the slide
   ``[ … ]``                   a note to ourselves -> dropped entirely
@@ -93,7 +96,7 @@ def parse(markdown_text):
             if heading.lower().startswith("slide"):
                 current = {"title": re.sub(r"^Slide\s*\d+\s*[—-]\s*", "", heading).strip(),
                            "bullets": [], "image": None, "chart": None, "table": None,
-                           "lead": None, "notes": "", "dropped": []}
+                           "columns": None, "lead": None, "notes": "", "dropped": []}
             continue
         if current is None:
             continue
@@ -111,6 +114,8 @@ def parse(markdown_text):
                 pending = "chart"
             elif "slide-table" in stripped:
                 pending = "table"
+            elif "slide-columns" in stripped:
+                pending = "columns"
             continue
 
         if stripped.startswith("*Say:*"):
@@ -128,7 +133,7 @@ def parse(markdown_text):
             cells = [c.strip() for c in stripped.strip("|").split("|")]
             if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
                 continue                                  # the ---|--- separator row
-            if pending in ("chart", "table"):
+            if pending in ("chart", "table", "columns"):
                 if current[pending] is None:
                     current[pending] = []
                 current[pending].append(cells)
@@ -228,6 +233,42 @@ def _add_chart(slide, rows, top):
     return Emu(int(label_top) + int(Inches(0.42))) + Inches(0.10)
 
 
+def _add_columns(slide, rows, top):
+    """Two side-by-side text boxes. ``rows[0]`` holds the headings, the rest the lines.
+
+    Text boxes, not a table: the other presenter edits her half in Google Slides, where a
+    text box arrives native and editable. A blank cell is skipped rather than drawn, so the
+    two halves need not be the same length.
+    """
+    gutter = Inches(0.55)
+    col_w = Emu(int((SLIDE_W - 2 * MARGIN - gutter) / 2))
+    height = SLIDE_H - top - Inches(0.35)
+
+    # A hairline between the halves, so the eye splits the slide without being told.
+    rule = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Emu(int(MARGIN) + int(col_w) + int(gutter) // 2 - 6350),
+        top, Emu(12700), Emu(int(height) - int(Inches(0.2))))
+    rule.fill.solid()
+    rule.fill.fore_color.rgb = RULE
+    rule.line.fill.background()
+    rule.shadow.inherit = False
+
+    for col in (0, 1):
+        left = Emu(int(MARGIN) + col * (int(col_w) + int(gutter)))
+        box = slide.shapes.add_textbox(left, top, col_w, height)
+        box.text_frame.word_wrap = True
+        for r_i, row in enumerate(rows):
+            cell = row[col].strip() if col < len(row) else ""
+            if not cell:
+                continue
+            if r_i == 0:
+                _write(box.text_frame, cell, Pt(17), INK, bold_default=True,
+                       space_after=Pt(7))
+            else:
+                _write(box.text_frame, cell, Pt(12), BODY, space_after=Pt(8))
+    return Emu(int(top) + int(height))
+
+
 def _add_table(slide, rows, top):
     """A real, editable table. First row is the header; a ``**Total**`` row is emphasised."""
     n_rows, n_cols = len(rows), max(len(r) for r in rows)
@@ -281,6 +322,8 @@ def build(slides, out_path, root):
             top = _add_chart(slide, spec["chart"], top)
         if spec.get("table"):
             top = _add_table(slide, spec["table"], top)
+        if spec.get("columns"):
+            top = _add_columns(slide, spec["columns"], top)
         if spec["image"]:
             picture = root / spec["image"]
             if picture.exists():
@@ -324,7 +367,7 @@ COVERAGE_GROUPS = {
 }
 
 
-def verify(out, slides):
+def verify(out, slides, draft=False):
     """Read the written deck back and cross-check the bar against the table.
 
     Reads the FILE, not the in-memory model: the question is what ships, and a bar drawn as
@@ -333,7 +376,7 @@ def verify(out, slides):
     from pptx import Presentation
 
     prs = Presentation(str(out))
-    problems, notes = [], []
+    problems, notes, blanks = [], [], []
 
     # 1. Nothing on any slide may be a chart object or a picture. Google Slides cannot edit
     #    either: it shows a rendered preview, which is how the bar came to be called blurry.
@@ -344,10 +387,21 @@ def verify(out, slides):
             if sh.shape_type is not None and "PICTURE" in str(sh.shape_type):
                 problems.append("slide %d holds a PICTURE; it will not be editable" % i)
 
+    # A bio half written for somebody else to complete carries <<LIKE THIS>> markers.
+    # One left in by accident goes up on a screen in front of the investors, so the deck
+    # is refused rather than shipped. Chosen over [SQUARE BRACKETS] because the parser
+    # already treats a bracketed line as a note to ourselves and silently drops it.
+    for i, slide in enumerate(prs.slides, 1):
+        for sh in slide.shapes:
+            if sh.has_text_frame and "<<" in sh.text_frame.text:
+                for frag in sh.text_frame.text.split("<<")[1:]:
+                    blanks.append("slide %d: <<%s"
+                                  % (i, frag.split(">>")[0][:62] + ">>"))
+
     chart_rows = next((s["chart"] for s in slides if s.get("chart")), None)
     table_rows = next((s["table"] for s in slides if s.get("table")), None)
     if not chart_rows or not table_rows:
-        return notes, problems
+        return notes, problems, blanks
 
     def num(x):
         return int(x.replace(",", "").replace("*", "").strip())
@@ -415,13 +469,15 @@ def verify(out, slides):
                                 % (span, int(SLIDE_W - 2 * MARGIN)))
             else:
                 notes.append("%d segments tile the bar exactly, no seams" % len(segs))
-    return notes, problems
+    return notes, problems, blanks
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--input", required=True)
     ap.add_argument("--output", required=True)
+    ap.add_argument("--draft", action="store_true",
+                    help="allow unfilled <<placeholders>>, for circulating to be completed")
     args = ap.parse_args()
 
     source = pathlib.Path(args.input)
@@ -438,18 +494,33 @@ def main():
         for i, ln in unplaced:
             print("     slide %d: %s" % (i, ln[:88]))
 
-    notes, problems = verify(out, slides)
+    notes, problems, blanks = verify(out, slides, draft=args.draft)
     for note in notes:
         print("  ok   " + note)
     if problems:
         print("\n  !! THE COVERAGE BAR AND THE CATEGORY TABLE DISAGREE:")
         for p in problems:
             print("     " + p)
+    if blanks:
+        print("\n  %s %d PLACEHOLDER%s STILL UNFILLED:"
+              % ("--" if args.draft else "!!", len(blanks), "" if len(blanks) == 1 else "S"))
+        for b in blanks:
+            print("     " + b)
+        print("     %s" % ("this is a DRAFT -- fine to circulate so they can be filled in"
+                           if args.draft
+                           else "refusing to ship; re-run with --draft to circulate it"))
+    if problems or (blanks and not args.draft):
+        # Move the bad file aside rather than leave it under the name somebody will grab.
+        rejected = out.with_suffix(".REJECTED.pptx")
+        rejected.unlink(missing_ok=True)
+        out.rename(rejected)
+        print("\n     moved to %s" % rejected.name)
         raise SystemExit(1)
 
     for i, spec in enumerate(slides, 1):
         extras = "".join([
             "  +chart" if spec.get("chart") else "",
+            "  +columns" if spec.get("columns") else "",
             f"  +table({len(spec['table'])}r)" if spec.get("table") else "",
             "  +lead" if spec.get("lead") else "",
             "  +image" if spec.get("image") else "",

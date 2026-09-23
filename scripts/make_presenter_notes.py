@@ -1,4 +1,4 @@
-"""Build the presenter's Word document for slides 6-9 of the investor deck.
+"""Build the presenter's Word document for slides 6-10 of the investor deck.
 
 Two things in one file:
 
@@ -121,13 +121,13 @@ def build(out: pathlib.Path) -> pathlib.Path:
     normal.font.size = Pt(10.5)
 
     # ---------------------------------------------------------------- cover
-    _p(doc, "Investor update — the four slides you present", 22, INK, bold=True,
+    _p(doc, "Investor update — the slides you present", 22, INK, bold=True,
        before=0, after=2)
-    _p(doc, "Slides 6–9: walkthrough, script, and the questions to expect",
+    _p(doc, "Slides 6–10: walkthrough, script, and the questions to expect",
        14, QUIET, after=12)
     table(doc, [
         ["Occasion", "Ryse project progress update · the investors, at Goldman Sachs"],
-        ["Split", "Liping presents slides 2–5. You present **6–9**."],
+        ["Split", "Liping presents slides 2–5. You present **6–10**, the last being the two bios."],
         ["Your time", "About **9 minutes**, then questions"],
         ["The deck", "docs/Ryse Presentation v6.pptx"],
         ["Numbers", "All re-measured from a live run on 22 September. Sources on the last page."],
@@ -151,7 +151,7 @@ def build(out: pathlib.Path) -> pathlib.Path:
 
     # ---------------------------------------------------------------- concepts
     h1(doc, "0 · Eight words, and one idea that matters more than all of them")
-    body(doc, "These eight carry all four of your slides. Once they are solid, everything "
+    body(doc, "These eight carry every slide you present. Once they are solid, everything "
               "else in this document follows.")
 
     table(doc, [
@@ -196,7 +196,7 @@ def build(out: pathlib.Path) -> pathlib.Path:
 
     # ---------------------------------------------------------------- Liping's half
     h1(doc, "0.5 · Liping's half, in five lines")
-    body(doc, "You present 6–9, but questions do not respect slide boundaries. This is "
+    body(doc, "You present 6–10, but questions do not respect slide boundaries. This is "
               "enough to field one about her half and hand it back to her gracefully.")
     table(doc, [
         ["Slide", "Her point", "The number in it"],
@@ -379,13 +379,34 @@ def build(out: pathlib.Path) -> pathlib.Path:
     ], widths=[0.35, 1.9, 4.55])
     warn(doc, "Never let **\"runs on Azure\"** be heard as **\"deployed as a service\"**. The "
               "first is true and measured; the second is not done. This is the single "
-              "sentence on your four slides most likely to be quoted back at you later.")
+              "sentence in your half most likely to be quoted back at you later.")
+
+    # ---- slide 10
+    h2(doc, "Slide 10 — The team")
+    body(doc, "**In one sentence:** two short biographies, one half each.")
+    star(doc, "**This slide earns its place for a reason that is easy to miss: it is the one "
+              "that stays on screen for the whole of Q&A.** That is the most-looked-at "
+              "stretch of the meeting — people are watching you answer and deciding "
+              "whether the name is worth remembering. It is the best real estate in the deck "
+              "for exactly what you want out of today, which is why it goes at the end rather "
+              "than bolted onto slide 9.")
+    bullet(doc, "Liping writes her own half. The deck is built so that she can — both "
+                "halves are plain text boxes, the one thing that arrives in Google Slides "
+                "fully editable.")
+    bullet(doc, "**Mario is not on it.** Slide 1 credits him as directing, and Liping asked "
+                "for the two presenters. If he expects a third column that is a two-minute "
+                "change — better asked tonight than discovered tomorrow.")
+    warn(doc, "**The build refuses to produce a shippable deck while any <<placeholder>> "
+              "survives**, and names each one; a draft for circulating is `--draft`. So the "
+              "failure this guards against — a blank going up on a screen in front of "
+              "the investors — cannot happen quietly.")
 
     # ================================================================ PART 2
     h1(doc, "2 · The script")
     body(doc, "**Indented blue is what you say.** Black is a note to you — don't read it "
               "out. The timings are counted, not guessed: about 900 spoken words, 6.7 minutes "
-              "of pure reading, roughly **8.8 minutes** at presenting pace with pauses.")
+              "of pure reading, roughly **8.8 minutes** at presenting pace with pauses. Slide "
+              "10 adds about fifteen seconds, because you barely speak over it.")
 
     h2(doc, "Taking over from Liping (slide 5 → 6)")
     body(doc, "Give the room a map of your half before you start. An audience that knows "
@@ -484,6 +505,14 @@ def build(out: pathlib.Path) -> pathlib.Path:
              "which is exactly the shape a service wants.")
     say(doc, "And last, the portfolio risk layer — once coverage is complete.")
     say(doc, "That's where we are. Happy to take questions.")
+
+    h2(doc, "Slide 10 — The team · about 15 seconds")
+    body(doc, "Advance to it **on** the word \"questions\", not after a pause, so it is "
+              "already up when the first hand goes. Then one line, and stop.")
+    say(doc, "And that's us. Do get in touch.")
+    warn(doc, "**Do not read your own biography aloud.** They can read, it takes longer than "
+              "it is worth, and narrating your own credentials is the easiest way there is to "
+              "make a good slide awkward. Say the one line and let the room ask something.")
 
     # ================================================================ PART 3
     h1(doc, "3 · Questions to expect")
