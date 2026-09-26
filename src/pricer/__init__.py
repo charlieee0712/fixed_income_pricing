@@ -21,8 +21,8 @@ core/ — the mathematics
   core/pricing/floating.py        DONE  was pricing/frn.py — forward projection + reset
   core/pricing/hybrid.py          DONE  was pricing/hybrid.py — fixed leg then floating
   core/pricing/inflation.py       DONE  was pricing/ilb.py — index-linked (2026-09-10)
-  core/pricing/prepayment.py      PLANNED  from pricing/mbs.py (CPR/SMM; awaiting the
-                                        Bloomberg pool pull — the engine skeleton exists)
+  core/pricing/prepayment.py      DONE  was pricing/mbs.py — constant-CPR pool
+                                        amortisation (2026-09-25, the last engine migrated)
   core/risk/sensitivities.py      DONE  DV01 / duration / convexity, engine-agnostic
   core/market/spreads.py          DONE  implied-spread calibration (Brent) + near-maturity
   core/market/curves.py           DONE  curve resolution, the flat-curve helper and the
@@ -49,7 +49,11 @@ assets/ — one short file per product, no arithmetic
   assets/government/agency.py     DONE  agency conventions + the option verdict rule
   assets/government/guaranteed.py DONE  the FDIC-TLGP reporting bucket
   assets/government/sovereign.py  DONE  government-side path to the shared engines
-  assets/securitized/             PLANNED  with the MBS / CMO phase
+  assets/securitized/bonds_input.py DONE the pool input catalogue — its OWN
+                                        numbering again, 1-11 (2026-09-25)
+  assets/securitized/pool.py      DONE  mortgage pass-through per-metric surface;
+                                        implied_cpr_pct is the primary calibration
+                                        — CMO / ABS / CMBS join this package
 
 endpoints/ — the outside world's single door
 --------------------------------------------
