@@ -171,6 +171,18 @@ somewhere to build and test it. So the real question is not *which*, but:
 If the answer is yes, the useful next step is small and we can scope it properly once we
 know which account it lives in.
 
+### ⭐ ANSWERED — yes (Mario demo, ~2026-09-24; recorded 2026-09-26)
+
+He showed a working sketch of it: JavaScript in an HTML page that reads the user's Excel
+data, routes by fixed-income type to Azure APIs, runs them in parallel and returns the
+result. So B is wanted and the shape is decided — a hosted service with a browser front
+end rather than an Excel one.
+
+**The timeline half of the question is still open**, and so is the tenant. Nothing is
+scheduled: the work waits until instrument coverage is complete. Full account, with what
+was said kept separate from our reading of it, in
+`docs/client_directive_browser_azure_architecture_2026-09-26.md`.
+
 ---
 
 ## 5. Engineering section

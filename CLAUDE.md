@@ -808,6 +808,22 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   paid off. Pinning is an open follow-up. **Client data on Azure: Mario says not sensitive
   (2026-09-15)**; the open question is WHICH TENANT, since a personal free subscription on
   a university email is not where a group's shared environment belongs.
+- **⭐ THE FRONT END IS NOW A BROWSER PAGE, NOT ONLY EXCEL (Mario demo, ~2026-09-24).** He
+  showed JavaScript inside an HTML file: read the user's Excel data, route by fixed-income
+  type to Azure APIs, run them in parallel in the cloud, return the result. Recorded in
+  `docs/client_directive_browser_azure_architecture_2026-09-26.md`. Three things to carry:
+  ① it **answers** the open question in `azure_trial_report_2026-09-16.md` §4.2 ("do you
+  want B as well") — yes, hosted, the timeline still open; ② the JavaScript replaces the
+  HOST of the Excel→JSON step, **not the contract** — the VBA bridge and a browser page are
+  two callers of `analyze_payload`, so a second front end costs no engine work, and
+  `endpoints/__init__.py` already reserves `routes/` for exactly this; ③ his remark that
+  "similar types with different parameters might share the same endpoint" is **our current
+  design**, not a misunderstanding — one contract, seven `instrument_type` values.
+  ⚠️ The whole account is Lichen's RECALL of a demo in a language he does not work in, and
+  he flagged it as approximate; the doc separates what was said from our reading. **Not
+  started, waits for coverage.** Parallelism needs nothing from us: refusing a batch
+  operation and making one bond the canonical unit — done for verifiability — is exactly
+  the shape parallel execution wants.
 - **`pytest.ini` (added 2026-08-25) is what makes a bare `pytest` work.** Without
   `testpaths = tests`, a root-level run also walks the git-ignored Drive staging copies
   (`corporate_bond/`, `code_structure_sample/`), which contain duplicates of the test files ⇒
