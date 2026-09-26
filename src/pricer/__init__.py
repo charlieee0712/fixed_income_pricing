@@ -51,6 +51,8 @@ assets/ — one short file per product, no arithmetic
   assets/government/sovereign.py  DONE  government-side path to the shared engines
   assets/securitized/bonds_input.py DONE the pool input catalogue — its OWN
                                         numbering again, 1-11 (2026-09-25)
+  assets/securitized/tba.py       DONE  to-be-announced forward on a generic pool
+                                        — the pool engine seen through a settle date
   assets/securitized/pool.py      DONE  mortgage pass-through per-metric surface;
                                         implied_cpr_pct is the primary calibration
                                         — CMO / ABS / CMBS join this package

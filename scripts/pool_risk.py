@@ -113,8 +113,8 @@ import pandas as pd
 
 from curves.zero_curve import ZeroCurve, curve_failure_reason
 from dataio.dispositions import reconcile
-from dataio.phase2 import build_pool_universe, load_master_phase2
-from pricer.assets.securitized import pool
+from dataio.phase2 import build_pool_universe, load_master_phase2, parse_tba_terms
+from pricer.assets.securitized import pool, tba
 
 DATA_DIR = os.environ.get("FIP_DATA_DIR", "data")
 WB = os.environ.get("FIP_URS_WB",
@@ -137,6 +137,9 @@ CPR_GRID_PCT = (15.0, 25.0, 35.0)
 ZERO_SPREAD_BP = 0.0
 
 VAL_DATE = datetime.date.fromisoformat(VAL)
+
+#: Set by main() before any pricing; the TBA helper reads it for the moneyness column.
+frm_rate = None
 
 #: Freddie Mac's weekly survey rate, published via FRED. Used ONLY to describe each pool's
 #: refinancing incentive; nothing in the pricing depends on it.
@@ -180,6 +183,92 @@ def load_pool_terms(path=BDP):
     return pd.DataFrame(out)
 
 
+def _price_tba(r, curve, curve_error, skipped):
+    """One TBA forward, or None with a named reason recorded in ``skipped``.
+
+    A TBA's terms come from its DESCRIPTION, not from the security master: the master's
+    maturity is wrong for these (a 2009 thirty-year forward is carried as maturing 2034) and
+    its Income rate is 0.000 for three of them. Both sources are read and neither is trusted
+    alone; anything still unreadable is named rather than guessed.
+    """
+    aid = r["asset_id"]
+    if curve is None:
+        skipped[aid] = ("pool-curve-blocked", f"USD curve unavailable: {curve_error}")
+        return None
+
+    terms = parse_tba_terms(r["desc_short"], r["desc_long"], r["net_coupon_pct"])
+    unreadable = [k for k in ("issuer", "term_months", "coupon_pct", "settle_month")
+                  if terms[k] is None]
+    if unreadable:
+        skipped[aid] = ("tba-terms-unreadable",
+                        "the description does not state " + ", ".join(unreadable)
+                        + " and no other source carries it")
+        return None
+
+    bt = r["gold_price"]
+    if pd.isna(bt) or bt <= 0:
+        skipped[aid] = ("pool-price-unavailable", "no custodian price to calibrate against")
+        return None
+
+    settle_date = tba.settlement_date(VAL_DATE, terms["settle_month"])
+    try:
+        settle = tba.settle_years(VAL_DATE, settle_date)
+    except ValueError as exc:
+        # The holdings file is a 2009-03-31 snapshot; at a later control date its April and
+        # May forwards have delivered and are no longer forwards.
+        skipped[aid] = ("tba-already-settled", str(exc)[:200])
+        return None
+    coupon, term = terms["coupon_pct"], terms["term_months"]
+
+    spreads, failures = {}, []
+    for cpr_assumed in CPR_GRID_PCT:
+        try:
+            spreads[cpr_assumed] = tba.implied_spread_bp(coupon, term, cpr_assumed, bt,
+                                                         curve, settle)
+        except ValueError as exc:
+            spreads[cpr_assumed] = float("nan")
+            failures.append(f"cpr={cpr_assumed:.0f}: {str(exc)[:60]}")
+    if all(pd.isna(v) for v in spreads.values()):
+        skipped[aid] = ("tba-spread-not-solvable",
+                        "no spread reproduces the quoted forward at any assumed CPR; "
+                        + "; ".join(failures))
+        return None
+
+    mid = CPR_GRID_PCT[len(CPR_GRID_PCT) // 2]
+    lo, hi = CPR_GRID_PCT[0], CPR_GRID_PCT[-1]
+    rec = {
+        "asset_id": aid, "isin": r["isin"], "structure": r["structure"], "route": "tba-forward",
+        "desc_short": r["desc_short"],
+        # The gross WAC is a convention here and measurably worth 0.1 bp; see tba.py.
+        "wac_pct": coupon + tba.TBA_SERVICING_SPREAD_PCT,
+        "net_coupon_pct": coupon, "wam_months": int(term),
+        "maturity": pd.NaT, "par_current_face": r["par_value"],
+        "paydown_factor": r["paydown_factor"], "bt": bt,
+        "mv_base_usd": r["gold_mkt_value"], "di_ytm_custodian": r["gold_ytm"],
+        "moneyness_pct": (coupon - frm_rate) if frm_rate is not None else float("nan"),
+        "mortgage_rate_pct": frm_rate if frm_rate is not None else float("nan"),
+    }
+    for cpr_assumed in CPR_GRID_PCT:
+        rec[f"implied_spread_bp_at_cpr_{cpr_assumed:.0f}"] = spreads[cpr_assumed]
+    rec["spread_bp_per_10pp_cpr"] = (
+        (spreads[hi] - spreads[lo]) / (hi - lo) * 10.0
+        if pd.notna(spreads[hi]) and pd.notna(spreads[lo]) else float("nan"))
+    rec["implied_cpr_pct_at_zero_spread"] = float("nan")   # not solved for a forward
+    rec.update({
+        "risk_at_cpr_pct": mid,
+        "wal_years": tba.weighted_average_life(coupon, term, mid),
+        "spread_dur_years": float("nan"), "dv01": float("nan"), "convexity": float("nan"),
+        "aq_custodian": r.get("dur_eff_custodian"), "aq_divergence": float("nan"),
+        "wac_source": "coupon + %.2f convention (measured worth 0.1bp)" % tba.TBA_SERVICING_SPREAD_PCT,
+        "wac_as_of": "-", "wam_source": "description (original term)",
+        "cpr_status": "ASSUMED (no 2009-dated prepayment speed exists; see G1)",
+        "settle_date": settle_date.isoformat(), "settle_years": settle,
+        "issuer": terms["issuer"],
+        "flag": "; ".join(failures),
+    })
+    return rec
+
+
 def main():
     master = load_master_phase2(WB)
     terms = load_pool_terms()
@@ -190,6 +279,7 @@ def main():
     for route, n in sorted(counts["routes"].items(), key=lambda kv: -kv[1]):
         print(f"   {route:<36} {n:4d}")
 
+    global frm_rate
     frm_rate, frm_source = mortgage_rate_on(VAL_DATE)
     if frm_rate is None:
         print("   ! no published mortgage rate for this date; moneyness left blank")
@@ -209,6 +299,14 @@ def main():
     for _, r in pools.iterrows():
         aid = r["asset_id"]
         route = r["route"]
+
+        if route == "tba-forward":
+            rec = _price_tba(r, curve, curve_error, skipped)
+            if rec is not None:
+                records.append(rec)
+                priced.append(aid)
+            continue
+
         if route != "pool":
             skipped[aid] = (route, _REASON_TEXT[route])
             continue
@@ -315,10 +413,20 @@ def main():
             print(f"      CPR {cpr_assumed:4.0f}%  ->  {df[col].median():+8.1f} bp"
                   f"   (n={df[col].notna().sum()})")
         print(f"      trade-off: {df['spread_bp_per_10pp_cpr'].median():+.1f} bp per 10pp of CPR")
+        # Pass-throughs ONLY. A TBA's zero-spread CPR is not solved at all, so counting
+        # its blanks here would merge "not attempted" with "attempted and impossible" --
+        # two different facts about two kinds of security, collapsed into one number.
+        spot = df[df["route"] == "pool"]
         print(f"\n   at ZERO spread the implied CPR is a median "
-              f"{df['implied_cpr_pct_at_zero_spread'].median():.1f}% "
-              f"({df['implied_cpr_pct_at_zero_spread'].isna().sum()} pools cannot reach the "
-              f"price at any CPR) — which is why zero is not the anchor")
+              f"{spot['implied_cpr_pct_at_zero_spread'].median():.1f}% over the "
+              f"{len(spot)} pass-throughs ("
+              f"{spot['implied_cpr_pct_at_zero_spread'].isna().sum()} of which no CPR "
+              f"reaches) — which is why zero is not the anchor")
+        fwd = df[df["route"] == "tba-forward"]
+        if len(fwd):
+            print(f"   plus {len(fwd)} TBA forwards: median "
+                  f"{fwd['implied_spread_bp_at_cpr_25'].median():+.1f} bp at CPR 25%, "
+                  f"settling {fwd['settle_date'].min()} to {fwd['settle_date'].max()}")
         if df["moneyness_pct"].notna().any():
             import numpy as _np
             b = pd.cut(df["moneyness_pct"], [-99, -0.5, 0.5, 1.5, 2.5, 99],
@@ -348,9 +456,14 @@ _REASON_TEXT = {
     "po-strip-unsupported":
         "Principal-only strip: receives no interest, so the pass-through coupon is meaningless "
         "and the price is a pure discount on the principal path.",
-    "tba-forward-settlement":
-        "To-be-announced forward trade that had not settled at the valuation date; the pool "
-        "delivered against it was not yet identified.",
+    "tba-already-settled":
+        "A to-be-announced forward whose settlement month is earlier than the valuation date. "
+        "The holdings file is a 2009-03-31 snapshot, so at a later valuation date these "
+        "contracts have delivered and the position is no longer a forward.",
+    "tba-terms-unreadable":
+        "A to-be-announced forward whose description does not state everything the contract "
+        "needs. Terms come from the description for these, and guessing a settlement month "
+        "or a coupon would price a contract nobody wrote.",
     "adjustable-rate-unsupported":
         "Adjustable-rate pool: the coupon resets, so a single fixed WAC cannot describe it.",
     "structure-unclassified":

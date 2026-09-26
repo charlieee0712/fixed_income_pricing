@@ -248,7 +248,7 @@ POOL_ROUTE = {
     "cmo-tranche":   "cmo-tranche-engine-unavailable",
     "io-strip":      "io-strip-unsupported",
     "po-strip":      "po-strip-unsupported",
-    "tba-forward":   "tba-forward-settlement",
+    "tba-forward":   "tba-forward",
     "arm":           "adjustable-rate-unsupported",
     "unclassified":  "structure-unclassified",
 }
@@ -265,6 +265,82 @@ def pool_structure(*texts) -> str:
         if pattern.search(blob):
             return name
     return "unclassified"
+
+
+#: A TBA is a forward on a GENERIC pool, so its terms come from the description rather than
+#: from any security master: issuer, original term, coupon, and the month it settles in.
+#: "30 YEARS", "30 YEAR" and "30YR" all appear in this book, sometimes for the same
+#: security in its two description fields.
+_TBA_TERM = re.compile(r"\b(\d{1,2})\s*(?:YEARS?|YRS?)\b")
+_TBA_COUPON = re.compile(r"\b(\d{1,2}(?:\.\d+)?)\s*%")
+#: The month name ALONE, not "SETTLES <month>". Three reasons, all seen in this book:
+#: the description fields are fixed-width and run together ("30 YEARSSETTLES APRIL", where
+#: SETTLES has no word boundary in front of it); desc_short can END on the word SETTLES with
+#: the month over in desc_long, so searching a joined string matched SETTLES in one field and
+#: took the next word from the other ("GNMA"); and one description gives the month with no
+#: SETTLES at all ("TBA POOL 30YR APRIL"). A bare month name carries the same information and
+#: cannot be split by a field boundary. Dates like 03-15-2030 are digits and never match.
+_TBA_SETTLE = re.compile(r"\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\b")
+#: Coupon fallback: a half-point step in [3, 9], which is every agency coupon that trades.
+#: Accepted ONLY when the description contains exactly one such number, so "6" in
+#: "(SF) 6 30 YEARS" resolves and anything ambiguous is refused instead of guessed. The
+#: lookbehind keeps it out of dates -- the 03 in 03-15-2030 is not a coupon.
+_TBA_COUPON_BARE = re.compile(r"(?<![\d\-/.])([3-9](?:\.[05])?)(?![\d\-/.%])")
+_TBA_ISSUER = (("FHLMC", "FHLMC"), ("FREDDIE", "FHLMC"), ("FNMA", "FNMA"),
+               ("FANNIE", "FNMA"), ("GNMA", "GNMA"), ("GINNIE", "GNMA"))
+_MONTHS = {"JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
+           "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12}
+
+#: Only these two original terms are accepted. A TBA trades in standard terms; a description
+#: that parses to anything else has been misread, and guessing 20 or 40 years would put the
+#: whole amortisation schedule on the wrong footing for a number that still looked plausible.
+TBA_TERMS_MONTHS = {15: 180, 30: 360}
+
+
+def parse_tba_terms(desc_short, desc_long, income_rate_pct=None):
+    """Read a TBA's terms off its description. Returns a dict, or None for any field it
+    cannot read — the caller names the gap, this never guesses.
+
+    Inputs
+    ------
+    1. desc_short / desc_long : str — the custodian's description.
+    2. income_rate_pct        : float | None — the master's Income rate, used ONLY as the
+       coupon fallback when the description carries no percent sign.
+
+    Returns: ``{"issuer", "term_months", "coupon_pct", "settle_month"}`` with None for
+    anything unreadable.
+
+    ⚠️ The coupon needs both sources and neither alone is enough. Some descriptions write
+    "5% 30 YEARS" and some write "(PC) 5 15 YEARS" with no percent sign; three securities
+    carry an Income rate of exactly 0.000 while their description states a coupon. Taking
+    either source alone silently loses securities at one end or prices a zero-coupon pool at
+    the other.
+    """
+    # Each field searched SEPARATELY and the first hit wins. Joining them let a match start
+    # in one description and finish in the other, which is how three settle months came back
+    # as the word "GNMA".
+    fields = [str(t).upper() for t in (desc_long, desc_short) if t is not None]
+    blob = " ".join(fields)
+
+    issuer = next((code for token, code in _TBA_ISSUER if token in blob), None)
+    term = _TBA_TERM.search(blob)
+    term_months = TBA_TERMS_MONTHS.get(int(term.group(1))) if term else None
+
+    coupon = next((float(m.group(1)) for m in
+                   (_TBA_COUPON.search(f) for f in fields) if m), None)
+    if coupon is None and income_rate_pct is not None and float(income_rate_pct) > 0:
+        coupon = float(income_rate_pct)
+    if coupon is None:
+        for f in fields:
+            hits = {h for h in _TBA_COUPON_BARE.findall(f)}
+            if len(hits) == 1:
+                coupon = float(hits.pop())
+                break
+
+    month = next((_MONTHS[m.group(1)] for m in
+                  (_TBA_SETTLE.search(f) for f in fields) if m), None)
+    return {"issuer": issuer, "term_months": term_months,
+            "coupon_pct": coupon, "settle_month": month}
 
 
 def _route_pool(r):
