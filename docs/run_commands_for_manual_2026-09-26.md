@@ -117,33 +117,51 @@ reports a range across three prepayment assumptions instead of one number.
 
 ## 4. On your FRN question — do we use a forward curve?
 
-**Yes for the projection, but there is no second curve.**
+**Yes, we project forward rates. But there is no separate forward curve.**
 
-A floating-rate bond's future coupons are projected as implied forwards taken off the *same*
-zero curve we discount with:
+A floating-rate bond resets its coupon every period, so to price one you have to know what
+those future coupons will be. We do not guess them — they are implied by today's curve. If you
+know today's one-year rate and today's two-year rate, then the one-year rate *starting a year
+from now* is already pinned down: any other value would let somebody borrow at one and lend at
+the other for a riskless profit. That implied number is the forward rate, and it is what each
+future coupon is built from.
+
+The part worth stressing is that it comes out of **the same curve we discount with**. One
+curve does both jobs:
 
 ```
-F(t0, t1)  =  ( DF(t0) / DF(t1) − 1 ) / (t1 − t0)        simple, not compounded
-coupon     =  F(t0, t1) + the quoted margin
-discount   =  the same curve, plus the bond's calibrated spread
+future coupon  =  forward rate implied by the curve  +  the bond's quoted margin
+discounting    =  the same curve, plus the spread we solve for
 ```
 
-In code: `core/pricing/floating.py`, `simple_forward()` at line 80, used at line 148 for the
-coupon and line 150 for the discount factor — the same `curve` object both times.
+In the code: `core/pricing/floating.py` — `simple_forward()` defined on line 80, used on line
+148 for the coupon and line 150 for the discount factor, with literally the same curve object
+passed to both.
 
-**This is a single-curve framework, and that is deliberate.** The modern convention is
-dual-curve: discount on OIS, project on a separate LIBOR curve. We use one curve for both
-because that was the market convention at the 2009 valuation date, and because the legacy
-VBA system we are reproducing does exactly this — we confirmed that against its floating-rate
-tree during the reconciliation work. Moving to dual-curve is a documented future enhancement,
-not an oversight, and it is written into the module docstring so nobody has to re-derive why.
+### Why one curve and not two
 
-Two details worth having in the manual:
+After 2008 the market moved to **two** curves — discount on one, project coupons off another —
+because the crisis made it plain that the rate banks lend to each other at is not the same
+thing as a risk-free rate.
 
-* **The first coupon period starts at the bond's true last reset**, which is before the
-  valuation date. Getting this wrong breaks the property that a par floater prices at par
-  under any curve shift — which is the test we use to check the engine.
-* **Effective duration bumps the curve, not the spread**, so the coupons re-project and the
-  duration comes out near the time to the next reset rather than near the maturity. That is
-  the signature behaviour of a floating-rate note and the reason its duration is short even
-  on a thirty-year bond.
+We use one, for two reasons. Our valuation date is **March 2009**, when single-curve was still
+the convention; and the legacy system we are reproducing does exactly this, which we confirmed
+against its floating-rate tree during the reconciliation work. So it is a match to the period
+rather than a simplification. Moving to two curves is written up in the code as a future
+enhancement, so nobody later mistakes it for an oversight.
+
+### Two details that may earn a line in the manual
+
+**The first coupon period starts at the bond's last reset, not at the valuation date.** A
+floater's current coupon was fixed at the previous reset, which is in the past. Starting that
+period at the valuation date would treat a coupon that has already been set as if it were
+still floating. The check that catches it: a floater trading at par should be worth par no
+matter how you shift the curve — get this wrong and that stops holding.
+
+**A floater's duration is short, and that is the whole point of the instrument.** For an
+ordinary bond, duration is roughly its maturity. For a floater it is not: when rates rise the
+coupon rises with them, so the price barely moves. Duration lands near the time to the **next
+reset** instead — a thirty-year floater can have a duration of a few months. We get that by
+shifting the *curve*, so the coupons re-project along with it, rather than by shifting the
+spread; shifting the spread would leave the coupons frozen and give a long duration, which
+would be the wrong answer for the right-looking reason.
