@@ -826,6 +826,14 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   started, waits for coverage.** Parallelism needs nothing from us: refusing a batch
   operation and making one bond the canonical unit — done for verifiability — is exactly
   the shape parallel execution wants.
+- **⚠️ DO NOT write Python through a bash heredoc — it cost five separate failures in one
+  session (2026-09-26).** `
+` inside an f-string becomes a real newline; `\u2014` arrives as
+  a literal backslash-u; nested triple quotes and apostrophes break the outer quoting. Two of
+  the five wrote a syntactically broken file. **Write patch scripts with the Write tool into
+  the scratchpad, then run them**, and have every patch `ast.parse()` before it writes.
+  Related: files created by the Write tool hold DECODED characters, so a later patch must
+  match the real `—`, not `—`.
 - **`pytest.ini` (added 2026-08-25) is what makes a bare `pytest` work.** Without
   `testpaths = tests`, a root-level run also walks the git-ignored Drive staging copies
   (`corporate_bond/`, `code_structure_sample/`), which contain duplicates of the test files ⇒
