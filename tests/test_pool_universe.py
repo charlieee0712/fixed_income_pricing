@@ -167,3 +167,48 @@ def test_the_pool_driver_does_not_touch_the_phase2_universe():
     bonds, _, _ = build_phase2_universe(master)
     assert len(bonds) == 63
     assert "govt_mbs" not in set(bonds["asset_class"])
+
+
+# --------------------------------------------------------------------------- moneyness
+
+def test_the_mortgage_rate_lookup_does_not_look_ahead():
+    """⚠️ The survey publishes weekly on a Thursday, so a valuation date usually sits days
+    after the last print and days BEFORE the next one. Taking the nearest observation would
+    reach into the future: 2009-06-10 is one day before the 06-11 survey, and using 5.59%
+    there would price the book with a rate the market had not yet seen.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("pool_risk", "scripts/pool_risk.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    rate, src = mod.mortgage_rate_on(datetime.date(2009, 6, 10))
+    assert rate == 5.29 and "2009-06-04" in src, "must take the last print BEFORE the date"
+    assert mod.mortgage_rate_on(datetime.date(2009, 3, 31))[0] == 4.85
+    # before every row -> nothing, rather than reaching forward to the first one
+    assert mod.mortgage_rate_on(datetime.date(2000, 1, 1))[0] is None
+
+
+@pytest.mark.parametrize("val", ["2009-03-31", "2009-06-10"])
+def test_spread_rises_with_moneyness_on_the_in_the_money_side(val):
+    """⭐ The cross-sectional check, and the part of it that is robust.
+
+    Deeper in the money means more spread, at BOTH dates. This is the ITM half of the OAS
+    smile in NY Fed Staff Report 674, obtained from custodian prices and a static engine with
+    no dealer quote and no prepayment model.
+
+    The OTM bucket is deliberately EXCLUDED. Its upturn appears at 3-31 over fourteen
+    securities and reverses at 6-10; asserting it would lock in a result the data does not
+    support at both dates.
+    """
+    out = f"outputs/pool_risk_{val}.csv"
+    try:
+        d = pd.read_csv(out)
+    except FileNotFoundError:
+        pytest.skip(f"{out} not built in this checkout")
+    itm = d[d["moneyness_pct"] > -0.5]
+    b = pd.cut(itm["moneyness_pct"], [-0.5, 0.5, 1.5, 2.5, 99])
+    med = itm.groupby(b, observed=True)["implied_spread_bp_at_cpr_25"].median()
+    assert len(med) == 4
+    assert list(med) == sorted(med), f"not monotonic in moneyness: {list(med.round(1))}"
+    assert med.iloc[-1] - med.iloc[0] > 50, "the effect should be worth more than noise"

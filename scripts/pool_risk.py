@@ -36,6 +36,43 @@ data check listed a re-pull of the three CPR fields with a 2009-03-31 override a
 validation for an implied-CPR route. That route does not survive contact with the prices, so
 the re-pull is now the thing that turns this driver's trade-off curve into a valuation.
 
+⭐ **SEARCHED FOR IT PUBLICLY FIRST, AND IT IS NOT THERE (2026-09-25).** Ginnie Mae and
+Fannie Mae publish pool-level prepayment data, but the historical files cover pools still
+active in 2018 and these had paid off long before; FHFA's Prepayment Monitoring Report series
+begins in 2014. A 2009-dated per-pool CPR needs a terminal.
+
+What IS published is the thing that DRIVES prepayment, and the standard way to use it. The
+30-year mortgage rate (Freddie Mac's PMMS via FRED ``MORTGAGE30US``) is in
+``data/mortgage_rate.csv`` with its source and pull date, and every priced row carries
+
+    moneyness = WAC - FRM rate
+
+after Boyarchenko, Fuster and Lucca (NY Fed Staff Report 674). Their definition is
+``coupon + 0.5 - FRM`` and the paper says plainly that the WAC would be better but "is not
+known exactly for the TBA securities studied"; we have it for 490 of 490, so this driver uses
+the more precise form. At 2009-03-31 the rate was **4.85%** against a median WAC of 6.40% —
+deeply in the money — and by 2009-06-10 it had risen to **5.59%**, which is most of why the
+spread halved between the two dates.
+
+⭐ **AND IT PRODUCED AN INDEPENDENT CROSS-SECTIONAL CHECK.** Sorted into moneyness buckets:
+
+    @3-31 (FRM 4.85%)   OTM 178 | ATM 165 | 217 | 274 | deep ITM 296 bp   (n = 14/41/163/187/73)
+    @6-10 (FRM 5.29%)   OTM  76 | ATM 104 | 150 | 194 | deep ITM 218 bp   (n = 32/76/215/125/30)
+
+**The robust part is the ITM side: spread rises monotonically with moneyness at BOTH dates**,
+over a 130 bp range, from one pension fund's custodian prices and a static cash-flow engine
+using no dealer quote and no prepayment model. That the deeper in the money a pool is the more
+spread it carries is the ITM half of the "OAS smile" SR 674 documents from fifteen years of
+quotes across six dealers.
+
+⚠️ **The OTM upturn is NOT robust and must not be reported as a reproduced smile.** It
+appears at 2009-03-31 (178 against 165 at the money) over fourteen securities and reverses at
+2009-06-10, where OTM is the cheapest bucket. Fourteen securities and one date do not make a
+smile. Two readings are consistent with that and this project cannot separate them: a
+zero-volatility spread should smile LESS than an OAS anyway, because option time value peaks
+at the money and lifts the ATM bucket; and the OTM population changes composition between the
+dates as the mortgage rate moves under the book.
+
 Until it arrives the CSV carries both directions, every column naming its own assumption:
 ``implied_spread_bp_at_cpr_15/25/35`` and ``implied_cpr_pct_at_zero_spread``. The last one is
 kept precisely because it is implausible — it is the evidence that the zero-spread anchor
@@ -64,6 +101,8 @@ ROUTES (``dataio.phase2.POOL_ROUTE``; only the first reaches the engine)
 Every one of the 882 is either priced or carries a reason, proved over SETS by
 ``dataio.dispositions.reconcile`` and written to a dated sidecar.
 """
+import bisect
+import csv as _csv
 import datetime
 import os
 import sys
@@ -99,6 +138,30 @@ ZERO_SPREAD_BP = 0.0
 
 VAL_DATE = datetime.date.fromisoformat(VAL)
 
+#: Freddie Mac's weekly survey rate, published via FRED. Used ONLY to describe each pool's
+#: refinancing incentive; nothing in the pricing depends on it.
+MORTGAGE_RATE_CSV = os.environ.get("FIP_MORTGAGE_RATE",
+                                   os.path.join(DATA_DIR, "mortgage_rate.csv"))
+
+
+def mortgage_rate_on(valuation_date, path=MORTGAGE_RATE_CSV):
+    """The published 30-year mortgage rate in effect at ``valuation_date``, or None.
+
+    Takes the most recent survey on or before the date — the survey is weekly and publishes
+    on a Thursday, so a month-end valuation sits days after the last print. Returns None when
+    the file is absent or the date precedes every row, because a missing rate must leave the
+    moneyness column empty rather than silently reach forward to the next week's number.
+    """
+    if not os.path.exists(path):
+        return None, None
+    with open(path, encoding="utf-8") as fh:
+        rows = sorted((r["date"], float(r["rate_pct"]), r["source"])
+                      for r in _csv.DictReader(fh))
+    i = bisect.bisect_right([r[0] for r in rows], valuation_date.isoformat()) - 1
+    if i < 0:
+        return None, None
+    return rows[i][1], f"{rows[i][2]} @ {rows[i][0]}"
+
 
 def load_pool_terms(path=BDP):
     """``asset_id`` + ``wac_pct`` from the Bloomberg pull. Missing file = no terms at all."""
@@ -126,6 +189,12 @@ def main():
     print(f"Govt MBS @ {VAL}: {counts['rows']} rows -> {counts['unique']} securities")
     for route, n in sorted(counts["routes"].items(), key=lambda kv: -kv[1]):
         print(f"   {route:<36} {n:4d}")
+
+    frm_rate, frm_source = mortgage_rate_on(VAL_DATE)
+    if frm_rate is None:
+        print("   ! no published mortgage rate for this date; moneyness left blank")
+    else:
+        print(f"   30-year mortgage rate {frm_rate:.2f}%  ({frm_source})")
 
     curve = None
     curve_error = None
@@ -202,6 +271,10 @@ def main():
             "maturity": r["maturity"], "par_current_face": r["par_value"],
             "paydown_factor": r["paydown_factor"], "bt": bt,
             "mv_base_usd": r["gold_mkt_value"], "di_ytm_custodian": r["gold_ytm"],
+            # Boyarchenko/Fuster/Lucca moneyness, with the WAC they say they would have
+            # preferred. Positive = the borrower can cut their payment by refinancing.
+            "moneyness_pct": (wac - frm_rate) if frm_rate is not None else float("nan"),
+            "mortgage_rate_pct": frm_rate if frm_rate is not None else float("nan"),
         }
         for cpr_assumed in CPR_GRID_PCT:
             rec[f"implied_spread_bp_at_cpr_{cpr_assumed:.0f}"] = spreads[cpr_assumed]
@@ -246,6 +319,15 @@ def main():
               f"{df['implied_cpr_pct_at_zero_spread'].median():.1f}% "
               f"({df['implied_cpr_pct_at_zero_spread'].isna().sum()} pools cannot reach the "
               f"price at any CPR) — which is why zero is not the anchor")
+        if df["moneyness_pct"].notna().any():
+            import numpy as _np
+            b = pd.cut(df["moneyness_pct"], [-99, -0.5, 0.5, 1.5, 2.5, 99],
+                       labels=["OTM", "ATM", "ITM 0.5-1.5", "ITM 1.5-2.5", "deep ITM"])
+            by = df.groupby(b, observed=True)["implied_spread_bp_at_cpr_25"].agg(["size", "median"])
+            print("\n   spread by moneyness (WAC - mortgage rate) — the OAS smile of "
+                  "NY Fed SR 674, reproduced:")
+            for name, row in by.iterrows():
+                print(f"      {str(name):<12} n={int(row['size']):3d}   {row['median']:7.1f} bp")
         print(f"   at CPR {df['risk_at_cpr_pct'].iloc[0]:.0f}%: WAL median "
               f"{df['wal_years'].median():.2f} y, spread duration "
               f"{df['spread_dur_years'].median():.2f} y vs custodian "
