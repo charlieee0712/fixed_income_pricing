@@ -55,6 +55,7 @@ integrations/excel_vba/demo/run_engine.cmd
 # ---- Handoff bundles (uploaded to the claude.ai Project; regenerated on request) ----
 # Code-only zip for a colleague (scripts/make_code_zip.py); regenerable, never committed
 ryse_pricing_code_*.zip
+ryse_pricing_data_*.zip
 handoff1_*.zip
 handoff2_*.zip
 

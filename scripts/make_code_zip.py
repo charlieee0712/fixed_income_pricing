@@ -1,6 +1,12 @@
 """Package the source tree as a zip for a colleague — code only, no prose.
 
-    python scripts/make_code_zip.py
+    python scripts/make_code_zip.py            the code      ~0.6 MB
+    python scripts/make_code_zip.py --data     the data too  ~34 MB, a SEPARATE archive
+
+TWO ARCHIVES, NOT ONE, and the reason is not tidiness. The code changes every week and the
+data changes only when a pull lands, so splitting them means a later refresh is half a
+megabyte instead of thirty-four. They share a top-level folder name, so unzipping both into
+the same place merges them into one working tree with no moving of files.
 
 Written for Liping's request of 2026-09-26: *"目前所有的 code 给我一个 zip,不要任何 pdf 和
 markdown"*. She is writing the modelling manual and wants to read the code, not our write-ups.
@@ -56,23 +62,42 @@ def wanted(path: pathlib.Path) -> bool:
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(description="Code-only zip for a colleague.")
+    ap.add_argument("--data", action="store_true",
+                    help="package data/ instead, as a separate archive sharing the same "
+                         "top-level folder so both unzip into one tree")
+    args = ap.parse_args()
+
     stamp = datetime.date.today().isoformat()
     top = f"ryse_pricing_code_{stamp}"
-    out = ROOT / f"{top}.zip"
-
     members: list[tuple[pathlib.Path, str]] = []
-    for d in CODE_DIRS:
-        base = ROOT / d
+
+    if args.data:
+        # The client's own material: the holdings workbook, the curve exports, the two
+        # legacy workbooks, our override tables. Not code, which is why it is not in the
+        # other archive; shipped because without it the suite cannot run at all.
+        out = ROOT / f"ryse_pricing_data_{stamp}.zip"
+        base = ROOT / "data"
         if not base.exists():
-            raise SystemExit(f"missing source directory: {d}")
+            raise SystemExit("missing data/")
         for p in sorted(base.rglob("*")):
-            if p.is_file() and wanted(p):
+            if p.is_file() and not any(x in BANNED_DIR_NAMES for x in p.parts):
                 members.append((p, f"{top}/{p.relative_to(ROOT).as_posix()}"))
-    for f in ROOT_FILES:
-        p = ROOT / f
-        if not p.exists():
-            raise SystemExit(f"missing root file: {f}")
-        members.append((p, f"{top}/{f}"))
+    else:
+        out = ROOT / f"{top}.zip"
+        for d in CODE_DIRS:
+            base = ROOT / d
+            if not base.exists():
+                raise SystemExit(f"missing source directory: {d}")
+            for p in sorted(base.rglob("*")):
+                if p.is_file() and wanted(p):
+                    members.append((p, f"{top}/{p.relative_to(ROOT).as_posix()}"))
+        for f in ROOT_FILES:
+            p = ROOT / f
+            if not p.exists():
+                raise SystemExit(f"missing root file: {f}")
+            members.append((p, f"{top}/{f}"))
 
     if out.exists():
         out.unlink()
@@ -81,14 +106,18 @@ def main():
             z.write(src, arc)
 
     # ---- verify by REOPENING, not by trusting the walk that just ran -------------
+    allowed_top = ("data",) if args.data else CODE_DIRS + ROOT_FILES
+    #: A data archive must contain no executable code, and a code archive no prose. Each
+    #: refuses the other's content, so neither can quietly absorb the other's mistake.
+    banned_here = (".py",) if args.data else BANNED_SUFFIXES
     with zipfile.ZipFile(out) as z:
         names = z.namelist()
         bad_suffix = [n for n in names
-                      if pathlib.PurePosixPath(n).suffix.lower() in BANNED_SUFFIXES]
+                      if pathlib.PurePosixPath(n).suffix.lower() in banned_here]
         bad_dir = [n for n in names
                    if any(part in BANNED_DIR_NAMES for part in pathlib.PurePosixPath(n).parts)]
         stray = [n for n in names
-                 if n.split("/", 1)[1].split("/", 1)[0] not in CODE_DIRS + ROOT_FILES]
+                 if n.split("/", 1)[1].split("/", 1)[0] not in allowed_top]
         if bad_suffix or bad_dir or stray:
             out.unlink()
             for n in (bad_suffix + bad_dir + stray)[:10]:
@@ -100,19 +129,29 @@ def main():
         by_ext[pathlib.PurePosixPath(n).suffix or "(none)"] = \
             by_ext.get(pathlib.PurePosixPath(n).suffix or "(none)", 0) + 1
 
-    print(f"wrote {out.name}  ({len(names)} files, {out.stat().st_size / 1024:.0f} KB)")
-    for ext, n in sorted(by_ext.items(), key=lambda kv: -kv[1]):
+    size = out.stat().st_size
+    unit = f"{size / 1048576:.1f} MB" if size > 1048576 else f"{size / 1024:.0f} KB"
+    print(f"wrote {out.name}  ({len(names)} files, {unit})")
+    for ext, n in sorted(by_ext.items(), key=lambda kv: -kv[1])[:8]:
         print(f"   {ext:<8} {n:4d}")
-    print("\n   verified by reopening the archive: no .md, no .pdf, no __pycache__")
     # ASCII ONLY below this line. This console encodes as GBK, and the first version of
     # this script died on a warning-sign glyph -- swallowing the one message it exists to
     # print. Third time this project has hit the same codec: pytest.ini's em dash and
     # release_facts' redirected stdout were the others.
-    print("\n   !! SAY THIS IN THE COVERING MESSAGE:")
-    print("   The zip has no data/ : it is the client's portfolio, not code. Without it")
-    print("   `pytest` gives roughly 414 passed / 88 failed / 32 errors, and every failure")
-    print("   is a missing input file rather than a defect. Drop the project's data/ folder")
-    print("   in beside src/ and it is 594 passed.")
+    if args.data:
+        print("\n   verified by reopening: no .py, nothing outside data/")
+        print("\n   !! THIS IS THE CLIENT'S PORTFOLIO. Send it only to someone already on")
+        print("   the project. It unzips into the same folder as the code archive, so both")
+        print("   extracted in one place give a tree that runs: 591 passed, 4 skipped, and")
+        print("   595 after `PYTHONPATH=src python scripts/pool_risk.py` builds the outputs")
+        print("   the last four tests read.")
+    else:
+        print("\n   verified by reopening: no .md, no .pdf, no __pycache__")
+        print("\n   !! SAY THIS IN THE COVERING MESSAGE:")
+        print("   This archive has no data/ : that is the client's portfolio, not code.")
+        print("   Alone it gives 415 passed / 88 failed / 32 errors, and every failure is a")
+        print("   missing input file rather than a defect. Add the data archive (--data) and")
+        print("   it is 591 passed / 4 skipped; run scripts/pool_risk.py once for the full 595.")
 
 
 if __name__ == "__main__":
