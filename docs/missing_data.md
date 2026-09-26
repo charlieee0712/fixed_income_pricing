@@ -28,7 +28,7 @@ Working rules derived:
 
 | # | gap | securities | blocks | lands via | status |
 |---|---|---|---|---|---|
-| G1 | Govt-MBS pool stats, 8 fields | 882 CUSIPs | whole Govt-MBS class (888 rows) | `PoolTerms.from_bloomberg` (+ driver/routing on arrival) | ⏳ Mario 07-22 · Liping 07-30 |
+| G1 | Govt-MBS pool stats, 8 fields | 882 CUSIPs | whole Govt-MBS class (888 rows) | `PoolTerms.from_bloomberg` (+ driver/routing on arrival) | **DELIVERED by Liping 2026-07-30, received 09-25 — 882/882, but as-of the PULL not the valuation date; see below** |
 | G2 | pass-through amortization | 13 uniques (16 tab rows) | 13 corporate securities (out of output) | new schedule table + amortizing-vanilla engine on arrival | ⏳ Mario 07-20 · Liping 07-30 |
 | G3 | FRN/hybrid terms | 11 (3 all-terms + 8 margins) | 8 BT-marked hybrids; 3 FRNs priced imprecisely | `frn_spreads.csv` / `hybrid_switch_terms.csv` — one cell each | ⏳ Mario 07-20 · Liping 07-30 |
 | G4 | call schedule | 1 (AssuredGty US04622DAA90) | the unpriced 5th corporate callable | one `call_schedules.csv` row | ⏳ Liping 07-30 (first ask) |
@@ -58,6 +58,53 @@ MTG_GEN_CPR_12M · MTG_HIST_COLLAT_CPR_LIFE`
   formula sheet `outputs/govt_mtge_bdp_template.csv` (882 × `=BDP($C_,"<field>")`, opens straight
   into add-in Excel; regenerable from the CUSIP csv — WORKLOG 2026-07-30). Both git-ignored
   (`outputs/`), mirrored local+47, WhatsApp'd to Liping.
+
+### ⭐ DELIVERED — `data/govt_mtge_bdp.xlsm` (checked 2026-09-25)
+
+Liping ran the pull **2026-07-30**, the day she received the request (the date is the
+workbook's own `docProps`, not the file mtime); it reached us 09-25. Regenerate the check with
+`PYTHONPATH=src python scripts/mbs_data_check.py` → `outputs/mbs_data_check_2026-07-30.csv`.
+
+**The delivery is complete: 882 requested, 882 returned, nothing missing or extra.** Everything
+below is about what the values can be used for, not about the pull.
+
+- ⚠️ **`MTG_HIST_COLLAT_CPR_LIFE` is not a Bloomberg field.** 877 × `#N/A Invalid Field` —
+  the terminal rejecting the *mnemonic*, not the security. **That is an error in the request we
+  wrote**, and nothing short of running it could have surfaced it. Registry rule added: the four
+  `#N/A` strings are four different problems with four different owners and must be counted
+  separately — `Invalid Field` (our mnemonic is wrong) · `Invalid Security` (the ticker did not
+  resolve, 1 row) · `Field Not Applicable` (valid field, wrong security type, benign) · `N/A`
+  (valid everything, genuinely no data). A single "missing" count hides the first one.
+- **It is a CURRENT pull, not an as-of-2009 one** — the fallback branch of the preference order
+  above, not the preferred one. Two independent confirmations: WALA median **241 months (20
+  years)** against a 208-month gap to the valuation date, and Bloomberg's WAM median **69**
+  against **289** computed from the master's own maturity dates, a 220-month difference that is
+  simply the elapsed time.
+- ⭐ **The master already held the field we most needed.** WAM at 2009-03-31 comes straight from
+  the holdings file's own maturity dates for **868 of 882**, none negative. Bloomberg was never
+  required for it.
+- ⚠️ **The anticipated failure mode was wrong, and the real one is worse.** This section
+  predicted that paid-off pools would return `N/A` and could be left blank. They do not: they
+  return **`WAM = 0` with `WALA` frozen at the age the pool reached when it paid off** — 327
+  rows. So `original term = WAM + WALA`, which is date-invariant for a live pool, silently
+  yields *age at payoff* for a dead one. It produces a plausible number, no error, and nothing
+  in the data marks it. A first version of the check tested only "is the derived seasoning
+  non-negative" and passed **165 dead pools** as reconstructable. Aliveness is a separate
+  condition and is now checked separately.
+- **Net reconstructable 2009 state: 498 of 882** (pool alive at the pull, and the master's term
+  consistent with the original). Their implied original term clusters at 29–30 years, 497 of
+  498, which is what confirms the identity works where it applies. A further 104 rows are
+  incoherent (the master's 2009 term exceeds the Bloomberg original term), 38 of them on pools
+  that are still alive.
+- **Per field:** `MTG_AOLS` static and usable (870) · `MTG_WACPN` drifts down as higher-rate
+  loans prepay first, so the 2026 value **understates** 2009 (781) · `MTG_WAM` / `MTG_STATED_WALA`
+  as-of and not directly usable · the three `CPR` fields describe 2026 prepayment behaviour.
+- ⭐ **The one genuinely irreplaceable gap is the 2009 prepayment speed.** The master does not
+  hold it and it cannot be reconstructed. Two routes, and `pricing/mbs.py` was built for both:
+  **(a)** re-pull the three CPR fields with a 2009-03-31 override, or **(b)** fix the spread near
+  zero for government-guaranteed paper and imply the CPR from the custodian price
+  (`implied_cpr_pool`). **(b) needs nothing from anybody** and turns the missing input into an
+  output; (a) would then validate it. **No new request opened — the choice is the user's.**
 
 ## G2 — Corporate pass-through: 13 unique securities (16 tab rows incl. duplicate holdings)
 
