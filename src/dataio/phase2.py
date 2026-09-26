@@ -214,6 +214,129 @@ def _route_agency(r):
     return "vanilla"
 
 
+# ---------------------------------------------------------------- pools (Govt MBS)
+#: Structure tags read off the custodian's own description, in PRIORITY ORDER — a strip tag
+#: outranks a structure tag, because "I/O FHLMC MULTICLASS REMIC 3260" is both and only one of
+#: those facts decides whether a pass-through model may touch it.
+#:
+#: ⚠️ The slashes are load-bearing. A first version matched ``\bIO\b``, which never matches
+#: "I/O", and 76 interest-only strips sat inside the REMIC bucket looking like ordinary
+#: tranches. An IO strip has NO principal cash flow at all; pricing one as a level-pay pool
+#: produces a confident number that is wrong by construction.
+#:
+#: Corroborated independently of the text: Bloomberg returns MTG_WACPN for 490 of 490
+#: pass-throughs (100%) and for 67-83% of every other bucket. The terminal's willingness to
+#: describe a security as a pool agrees with this classification, and it was not consulted
+#: when the patterns were written.
+POOL_STRUCTURE_PATTERNS = (
+    ("io-strip",      re.compile(r"\bI/O\b|INTEREST ONLY")),
+    ("po-strip",      re.compile(r"\bP/O\b|PRINCIPAL ONLY")),
+    ("tba-forward",   re.compile(r"\bTBA\b|SETTLES|SETTLEMENT")),
+    ("remic-tranche", re.compile(r"\bREMIC\b|MULTICLASS")),
+    ("cmo-tranche",   re.compile(r"\bSER\b\s*\S+\s*\bCL\b|\bCMO\b")),
+    ("arm",           re.compile(r"\bARM\b|ADJUSTABLE")),
+    ("pass-through",  re.compile(r"\bPOOL\b|\bGOLD\b|\bPC\b|PARTICIPATION|#")),
+)
+
+#: Route per structure. Only ``pass-through`` reaches the engine; everything else is named and
+#: carried, never force-priced. The reasons differ in kind and the CSV says which:
+#: a tranche needs a waterfall engine nobody has built, a strip cannot be a level-pay pool at
+#: all, and a TBA had not settled at the valuation date.
+POOL_ROUTE = {
+    "pass-through":  "pool",
+    "remic-tranche": "remic-tranche-engine-unavailable",
+    "cmo-tranche":   "cmo-tranche-engine-unavailable",
+    "io-strip":      "io-strip-unsupported",
+    "po-strip":      "po-strip-unsupported",
+    "tba-forward":   "tba-forward-settlement",
+    "arm":           "adjustable-rate-unsupported",
+    "unclassified":  "structure-unclassified",
+}
+
+
+def pool_structure(*texts) -> str:
+    """The structural kind of a mortgage security, from the custodian's description.
+
+    Inputs: the description strings (short and long), in any order.
+    Returns: one of the keys of :data:`POOL_ROUTE`.
+    """
+    blob = " | ".join(str(t) for t in texts if t is not None).upper()
+    for name, pattern in POOL_STRUCTURE_PATTERNS:
+        if pattern.search(blob):
+            return name
+    return "unclassified"
+
+
+def _route_pool(r):
+    """Route one Govt-MBS security. Structure decides candidacy; the engine decides the rest.
+
+    ⚠️ This function does NOT look at whether the terms are available. Candidacy and
+    representability are separate questions with separate owners — conflating them is what
+    let ``TNTD04920858`` be priced by nothing for two months.
+    """
+    return POOL_ROUTE[pool_structure(r.get("desc_short"), r.get("desc_long"))]
+
+
+def build_pool_universe(master, pool_terms=None, valuation_date=None):
+    """Mini-universe for **Government Mortgage Backed Securities** (888 rows -> 882 securities).
+
+    Separate from :func:`build_phase2_universe` on purpose. ``govt_mbs`` is listed in
+    ``PHASE2_CLASSES`` as a COUNT_ONLY class so that driver's census stays complete; building
+    it there would push 882 rows into a 63-row hashed artifact.
+
+    Inputs
+    ------
+    1. master         : DataFrame — from :func:`load_master_phase2`.
+    2. pool_terms     : DataFrame | None — ``asset_id`` + ``wac_pct`` (+ optional
+       ``wam_at_pull`` / ``wala_at_pull``), from the Bloomberg pull. Missing = no terms.
+    3. valuation_date : date — anchors ``wam_months``.
+
+    Returns ``(pools, recon, counts)`` in the shape the other universes use.
+
+    ⭐ ``wam_months`` comes from the MASTER's own maturity dates, not from the pull. The pull's
+    WAM is as-of 2026 and is ~220 months short; the holdings file had the right number all
+    along (``scripts/mbs_data_check.py``).
+
+    ⚠️ ``par_value`` is CURRENT face, verified: ``MV / (par * BT/100 * fx)`` has a median of
+    1.000000 over 872 securities, while the same identity with ``paydown_factor`` applied gives
+    1.886. The factor is descriptive here and must NOT be multiplied in — doing so would
+    understate every position by roughly half.
+    """
+    m = master.copy()
+    m["sub"] = m["sub_category"].astype("string").str.strip()
+    rows = m[m["sub"] == SUBCATS["govt_mbs"]]
+    counts = {"rows": int(len(rows)), "unique": int(rows["asset_id"].nunique())}
+
+    u = _uniques(rows)
+    u["asset_class"] = "govt_mbs"
+    u["group"] = "govt-mbs"
+    u["structure"] = [pool_structure(a, b) for a, b in zip(u["desc_short"], u["desc_long"])]
+    u["route"] = u.apply(_route_pool, axis=1)
+    u["net_coupon_pct"] = pd.to_numeric(u["income_rate"], errors="coerce")
+    u["maturity"] = pd.to_datetime(u["maturity_master"], errors="coerce")
+    u["is_short"] = u["par_value"] < 0
+    if valuation_date is not None:
+        val = pd.Timestamp(valuation_date)
+        u["wam_months"] = ((u["maturity"] - val).dt.days / 30.4375).round()
+    else:
+        u["wam_months"] = float("nan")
+
+    u["wac_pct"] = float("nan")
+    if pool_terms is not None and len(pool_terms):
+        u = u.merge(pool_terms[["asset_id", "wac_pct"]].rename(columns={"wac_pct": "_wac"}),
+                    on="asset_id", how="left")
+        u["wac_pct"] = u.pop("_wac")
+
+    counts["structures"] = u["structure"].value_counts().to_dict()
+    counts["routes"] = u["route"].value_counts().to_dict()
+    recon = u[["asset_id", "gold_price", "gold_mkt_value", "gold_ytm",
+               "dur_eff_custodian"]].copy()
+    keep = ["asset_id", "isin", "asset_class", "group", "structure", "route", "desc_short",
+            "desc_long", "wac_pct", "net_coupon_pct", "wam_months", "maturity", "par_value",
+            "paydown_factor", "pay_freq", "n_rows", "is_short"]
+    return u[keep].sort_values("asset_id").reset_index(drop=True), recon, counts
+
+
 def _resolve_quotation(u):
     """Resolve the custodian's price / par quotation for one class frame.
 
