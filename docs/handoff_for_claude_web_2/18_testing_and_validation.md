@@ -263,3 +263,40 @@ Runs every driver, then compares rows / bytes / **text fingerprint** against the
 processor a differing hash is the expected reading, and an exit code calling that failure
 would train people to ignore the text-column line, which is the one that means something.
 Full detail in `24`.
+
+---
+
+## Refresh 2026-09-26 — 594 tests
+
+`525 → 594` across three rounds (inflation 09-19, the deck 09-22, mortgage 09-25/26).
+⭐ **Quote `41_release_facts_verbatim.md`, never a running total** — it is machine-written
+from the files it describes, and it now covers **17 artifacts** (the two pool outputs and
+their two sidecars were added on 09-26; the 13 pre-existing ones are byte-identical).
+
+New test files this round:
+
+```
+tests/test_pool_universe.py    16  the 882-security census, the face convention,
+                                   and the finding that the zero-spread anchor fails
+tests/test_tba.py              15  the forward, its degenerate limit, term parsing
+tests/test_pricer_securitized_structure.py  25  shim identity, the spliced body,
+                                   the unit boundary, the refusals
+```
+
+Three of these lock a **result** rather than a mechanism, which is unusual and deliberate:
+
+- `test_the_zero_spread_anchor_still_fails` — if the implied CPR at zero spread ever starts
+  looking reasonable, something material changed and the anchor decision needs revisiting
+  rather than inheriting.
+- `test_the_spread_is_robust_to_the_cpr_assumption` — the measurement that makes the missing
+  2009 CPR affordable. If it stops holding, the priority of that ask changes.
+- `test_spread_rises_with_moneyness_on_the_in_the_money_side` — asserted at **both** dates,
+  and deliberately **excludes the OTM bucket**, which is 14 securities at one date and
+  reverses at the other.
+
+⚠️ **Two of my own test assumptions were wrong this round and the tests were rewritten to
+the identity that actually holds**, not to the one I expected: on a flat curve a TBA forward
+equals the spot price exactly at zero spread (carry cancels; `F = exp(-s·spread)·spot`), so
+the 17.4 bp adjustment on the real book comes from the *shape* of the 2009 curve rather than
+from the pools being at a premium. A test that passes because it asserts the wrong thing is
+worse than no test.

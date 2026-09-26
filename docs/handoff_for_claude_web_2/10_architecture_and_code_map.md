@@ -210,3 +210,41 @@ by reverting to the historical map — all three go red. See `05` §1.21.
 ### `src/dataio/output_digest.py` — new
 
 The one owner of "what counts as a text column", standard library only. See `24` §5.
+
+---
+
+## Refresh 2026-09-26 — the last engine came inside, and a new asset package
+
+**`pricing/mbs.py` → `pricer/core/pricing/prepayment.py`** (2026-09-25). It was the only
+module left in `src/pricing/` that was not a shim — written 2026-07-22, three weeks before
+Mario's restructure directive, and skipped by every round since. Body **spliced**, not
+retyped (sha `45a0ef7d…`, asserted by a test); the old path is a shim whose 11 public names
+assert **object identity** with the core.
+
+⭐ **Done at the only risk-free moment it would ever have.** Every earlier migration had to
+hold production CSVs byte-identical. This one had no driver and no hashed output yet, so
+there was nothing to hold. That window closed the day the driver was written — worth
+remembering as a scheduling principle, not just a fact about this file.
+
+**New `assets/securitized/`** — named for the class, not for mortgages, because ABS is in
+this book and car loans are not mortgages; CMO and CMBS join the same package.
+
+```
+assets/securitized/bonds_input.py   its OWN numbering 1-11; every `external` reads "-"
+assets/securitized/pool.py          per-metric surface; implied_cpr_pct is primary
+assets/securitized/tba.py           the forward: F = PV(flows from t1) / DF(t0,t1)
+```
+
+Routing lives in `dataio.phase2._route_pool` + `POOL_ROUTE`, beside `_route_agency` and
+`_route_sovereign` — **one owner**, the rule this project has had to re-establish five times.
+
+**No MBS endpoint type**, the same 7/5/5 decision as ILB: the worksheet has no pool cells
+and Mario has not chosen a layout. `contracts.py`, `schema_version` and the `.bas` are
+untouched.
+
+⭐ **The module map caught itself three times this round** — `core/pricing/prepayment.py`,
+`assets/securitized/` and later `assets/securitized/tba.py` were all still marked PLANNED
+when they existed. The 2026-09-10 lock ("nothing marked PLANNED may already exist") is the
+one that fires; the other two directions would have missed all three.
+
+Full detail: **`26_securitized_and_mortgage.md`**.

@@ -5,6 +5,122 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-09-25/26 — The mortgage book: data checked, last engine migrated, 505 priced
+**Commits:** `1a0b152` `579da23` `3b263c2` `3d1449f` `72c8696` `ad1d8ba` `2d111d3`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**The Bloomberg pull arrived and is complete — 882 requested, 882 returned.** Liping ran it
+2026-07-30, the day she got the request (the workbook's own docProps, not the file mtime);
+it reached us 09-25. `scripts/mbs_data_check.py` regenerates the whole check.
+
+Three findings, none about coverage:
+
+- ⚠️ **`MTG_HIST_COLLAT_CPR_LIFE` is not a Bloomberg field** — 877 × `#N/A Invalid Field`
+  is the terminal rejecting the MNEMONIC. **Our error, in the list we sent.** Only running
+  it could surface it. The four `#N/A` strings are four different problems with four
+  different owners and the check now counts them separately; one "missing" total hid this.
+- **It is a CURRENT pull, not as-of 2009.** WALA median 241 months against a 208-month gap;
+  Bloomberg's WAM median 69 against 289 computed from the master's own maturity dates.
+  ⭐ **The master already held the field we most needed** — WAM at 2009-03-31 for 868 of 882.
+- ⚠️ **The predicted failure mode was wrong and the real one is worse.** G1 said paid-off
+  pools would return `N/A`; they return `WAM = 0` with WALA **frozen at payoff age**, 327
+  rows. So `original term = WAM + WALA` silently yields age-at-death. **My own first pass
+  fell in**: it tested only "is the derived seasoning non-negative" and passed 165 dead
+  pools as reconstructable. Honest figure 498 of 882.
+
+**`pricing/mbs.py` → `pricer/core/pricing/prepayment.py`** — the last engine outside the
+template, body spliced (sha `45a0ef7d…`), old path a shim with object identity asserted on
+all 11 names. Done NOW deliberately: no driver and no hashed output existed, so unlike every
+earlier migration there were no CSVs to hold byte-identical. New `assets/securitized/` with
+its own input numbering; no endpoint type, same 7/5/5 decision as ILB.
+
+**⭐ THE POOL DRIVER'S ANCHOR WAS REFUTED BY ITS OWN MEASUREMENT.** Fixing the spread near
+zero and solving for the CPR gave a median **66%** against the 10-25% agency pools really
+prepaid, and 21 pools no CPR in [0,99] can reach. `TNTD03131477` prices at **143.26** with no
+prepayment and no spread against a 2.77% ten-year; holding CPR at a plausible 15-35% needs
+**+216 to +298 bp**. Static flows with no prepayment option solve for a **zero-volatility
+spread**, not an OAS, and 200-300 bp is the right order for agency MBS in March 2009. So the
+driver reports the CPR/spread **trade-off curve** and picks no point on it. The implausible
+zero-spread CPR stays in the output — it is the evidence, and a test asserts it still looks
+wrong.
+
+**The 2009 CPR is not obtainable free** (Ginnie/Fannie historical files cover pools active in
+2018; FHFA's report series starts 2014) — searched before asking anyone. **But the rate that
+drives it is:** `data/mortgage_rate.csv`, Freddie Mac PMMS via FRED, and every row now carries
+`moneyness = WAC − FRM` after NY Fed Staff Report 674. ⭐ Spread rises monotonically with
+moneyness on the ITM side at **both** dates over a 130 bp range — the ITM half of the OAS
+smile SR 674 documents from six dealers over fifteen years, from one custodian's prices and a
+static engine. ⚠️ I overstated this as a reproduced *smile* before checking the second date;
+the OTM upturn is 14 securities at one date and reverses at the other.
+
+**TBA: 29 forwards priced**, `F = PV_t0(flows from t1) / DF(t0,t1)`, delegating to the spot
+path at zero settle so it reduces bit-for-bit. Advisor argued the 29 were ~15 duplicate
+bookings and that the custodian carried a forward net value — **both refuted by measurement**
+(29 distinct CUSIPs; `MV/(par×BT/100)` = 1.000000 on 29 of 29). Its as-of concern about the
+2026 WAC was right to raise and **measured at 0.1 bp**: a 360-month pool barely amortises
+early, so the flows are interest at the known net coupon plus prepayment.
+
+⚠️ **The control date caught a bug a single valuation date never would.** `settlement_date`
+rolled the year on a past settle month — correct for a December valuation quoting January,
+wrong for a 2009-03-31 snapshot re-valued at 06-10, where "SETTLES APRIL" became April 2010
+and a delivered contract was priced as a forward fourteen months out. Plausible number, no
+error. Roll removed; 27 now named `tba-already-settled` at the control date.
+
+**505 priced + 377 named = 882 at 3-31.** 529 → **594 tests**. All 13 pre-existing artifacts
+byte-identical; `release_facts` extended to 17 (pool outputs added 09-26).
+
+**Open / next**
+- Re-pull the three CPR fields with a **2009-03-31 override** — WhatsApp'd to Mario 09-26.
+- **756 securities (a third of the book) need deal-level waterfall data** — CMO/REMIC/strips
+  across Govt MBS, CMO, ABS and CMBS. A purchase decision, not a scheduling one; also asked.
+- The Mario report. Not urgent — several days available.
+
+---
+
+## 2026-09-22 — Investor deck v1→v6, and why the chart kept coming back "blurry"
+**Commits:** `2d54251` `1a998ee` `955a2e9` … `3434cf3`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Five rounds with Liping on a 9-slide deck for the Goldman Sachs investors, generated from a
+markdown script by `scripts/make_investor_deck.py`. Presented Liping 2-5, Lichen 6-10.
+
+⭐ **The finding worth keeping: she works in Google Slides** (25/25 and 19/19 shapes in her
+returns carry Google's naming). **Slides cannot open an embedded PowerPoint chart** — it
+passes the bytes through byte-identical and shows a rendered preview, which is what "blurry"
+meant, and why she could not edit those numbers in either round. v3 had already "fixed" this
+once by turning a PNG into a chart object, which never touched the problem.
+
+⚠️ It also means **v5's diagnosis was backwards**: v4's chart-vs-table disagreement was not
+her mistake, it was her changing the only half she could reach. The bar is now plain
+rectangles and text boxes, and `verify()` refuses any chart object or picture in the deck.
+
+Also: `docs/Presenter Notes v6.docx` (walkthrough, script, Q&A, three true stories), and a
+placeholder guard that refuses to ship a deck with an unfilled `<<blank>>` while `--draft`
+still builds one to circulate.
+
+---
+
+## 2026-09-19 — Inflation data sourced by us, and the measurement redirected the work
+**Commits:** `fc0e851` `ebe26a7`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+Mario: *"各国的 inflation 数据我们可以自己从网上找"*. Measured before building, and the
+measurement changed the plan: a per-country **constant** inflation is a no-op. At 2% every
+calibrated spread moved by exactly **198.0263 bp = ln(1.02)** (agreeing to 2.7e-07) and
+nothing else moved at all — `(1+π)^t` folds into the discount exponent, so a constant
+assumption and a flat spread are **one knob**. Twenty-six countries of constants would have
+been twenty-six no-ops.
+
+⭐ So the data landed on `ratio_0`, where it does bite. **All 13 US index ratios now validate
+to 5.9e-06** against CPI-U NSA through TreasuryDirect's rule, and ⭐ **the custodian strikes
+its ratios at T+1**, not the valuation date — at 3-31 the worst residual is 6.3e-05, at 4-01
+it is 5.9e-06. The Korean KTBi is priced (ratio 1.079316, breakeven +144.34 bp @6-10).
+Three tables, deliberately separate: measured CPI, derived per-security ratios, assumed
+forecasts. 497 → 525 tests.
+
 ## 2026-09-16 (evening) — The Azure trial closes: 495 there, and the mount persists
 **Commits:** `[TO FILL]`
 **Hours:** `[TO FILL]`

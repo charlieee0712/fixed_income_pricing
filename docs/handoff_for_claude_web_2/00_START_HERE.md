@@ -1,8 +1,11 @@
 # START HERE — handoff 2 (the deep bundle)
 
-**Stamped 2026-09-16 · repo `fixed_income_pricing` main at `01e0848` · 495 tests green
-(local Windows ~50 s · server 47 ~230 s · Azure Cloud Shell ~40 s) · origin and 47 in
-sync · 38 files in this bundle.**
+**Stamped 2026-09-26 · repo `fixed_income_pricing` main at `2d111d3` plus this refresh ·
+594 tests green (local Windows ~60 s) · origin and 47 in sync · 39 files in this bundle.**
+
+*Three rounds since the 09-16 stamp: the inflation data (09-19), the investor deck (09-22),
+and the mortgage book (09-25/26). The mortgage round is the one that changes planning —
+read `26` before scoping anything securitised.*
 
 Client-confidential: this Project references a private US pension portfolio (URS). Keep
 the Project private and do not share its artifacts onward.
@@ -15,7 +18,7 @@ There are **two** bundles, and they are not the same document at two sizes:
 
 | | **handoff 1** | **handoff 2** (this one) |
 |---|---|---|
-| Files | 13, new content displaces old | up to 40 (**38 today**) |
+| Files | 13, new content displaces old | up to 40 (**39 today**) |
 | Length | no longer capped, but curated for deciding | no limit; depth is the point |
 | Purpose | everything needed to **decide** | everything needed to **specify** — the reference you plan *from* |
 | Content | state · numbers · locked decisions · the numerical laws · open asks · traps | the same, plus per-domain deep dives, the accumulated traps, and feedback on your own previous plans |
@@ -110,9 +113,38 @@ reconciliation · `20` environment and execution mechanics · `21` comms and cou
 43  government instruction   NEW — the 09-10 directive doc, whose §1 is its Gate 0
 ```
 
-## What changed since the last refresh (2026-08-31)
+## What changed since the 2026-09-16 stamp — three rounds, and one that resets the map
 
-Four rounds, two weeks, **390 → 495 tests**. `01` carries each in full; the short version:
+**2026-09-19 — inflation data, sourced by us.** The measurement redirected the work: a
+per-country *constant* inflation assumption is a no-op (at 2% every spread moved by exactly
+ln(1.02) and nothing else moved), so the data landed on the index ratio instead. All 13 US
+ratios validate to 5.9e-06; the Korean linker is priced. `525` tests.
+
+**2026-09-22 — the investor deck, v1 to v6.** Nine slides for the Goldman Sachs investors.
+⭐ The finding worth carrying: the reviewer works in **Google Slides**, which cannot open an
+embedded PowerPoint chart — it shows a rendered preview instead. That is why a chart came
+back "blurry" twice, and why a v3 "fix" (PNG → chart object) never touched the problem. The
+bundle's own guidance: anything a colleague has to edit must be a native shape or a table.
+
+**⭐ 2026-09-25/26 — the mortgage book, and it changes what "remaining" means.** The Bloomberg
+pull arrived complete (882/882) but as-of the pull date, not 2009; the master already held
+the field we most needed. The last engine outside the template moved in. 505 of 882 are
+priced. **594 tests.**
+
+⚠️ **The part that should reshape a plan:** only 56% of the mortgage class is a simple
+pass-through pool. Counting the same structure across CMOs, ABS and CMBS, about **756
+securities — a third of the whole book — need deal-level waterfall data that no field-level
+pull contains.** That is a purchase decision (Intex, or Bloomberg CMO analytics), not a
+scheduling one. **Read `26` before scoping anything securitised.**
+
+**Also decided:** Mario demoed a browser front end calling Azure pricing APIs, which answers
+the hosted-service question we put to him on 09-16. Not started; waits for coverage. See `25`.
+
+---
+
+## What changed in the refresh before that (2026-08-31 → 09-16)
+
+Four rounds, two weeks, **390 → 495 tests**, and three rounds since taking it to **594** (the section above). `01` carries each in full; the short version:
 
 1. **2026-09-03 — Government Bonds + Municipal/Provincial priced** (154 securities, 147
    at the baseline). Locked the own-currency curve convention; found that

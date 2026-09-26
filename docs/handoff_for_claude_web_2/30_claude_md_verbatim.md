@@ -52,8 +52,10 @@ checks — those are decided here, from the repo.
   anyone plans from it.
 - **`docs/handoff_for_claude_web_2/`** (NEW 2026-08-25) = **the DEEP bundle**: cap **40
   files**, no length limit per file, the reference web-Claude PLANS FROM.
-  **Last refreshed 2026-09-16** (user: "全面更新下handoff_for_claude_web_2") — **38 files /
-  12,089 lines / 848 KB** (was 32 / 8,931 on 08-31). No zip.
+  **Last refreshed 2026-09-26** (user: "更新下handsoff2 同步到当前进度") — **39 files /
+  13,294 lines / 824 KB** (was 38 / 12,089 on 09-16). No zip. The 09-26 refresh added
+  **`26_securitized_and_mortgage.md`** — read it before scoping anything securitised, because
+  a third of the book turns out to need deal-structure data rather than more code.
   Structure: `00`-`07` orientation (START_HERE · current state · locked decisions ·
   conventions/laws · open asks · **traps & gotchas** · **feedback on previous plans** ·
   glossary) + `10`-`25` per-domain deep dives (architecture · engines fixed/tree/floating ·
@@ -599,6 +601,69 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   between the two dates. **JGBi breakeven −229bp (−2.3%)** — Japan, sign flips the other way and
   flips correctly. ⚠️ Re-read these from the CSV at writing time, never from here.
 
+## Inflation data — sourced ourselves (Mario 2026-09-19) — DONE, 525 tests
+- **The ask:** Mario, on the ILB question — *"各国的 inflation 数据我们可以自己从网上找"*, the table
+  being the Excel files given at project start. Same pattern as the 2026-07-20 ISIN lookup:
+  web-sourced = INTERIM, labelled PROVISIONAL, Bloomberg wins on arrival, log the delta.
+- **⚠️ MEASURE FIRST, and the measurement redirected the work.** Feeding a per-country CONSTANT
+  inflation into the engine as it stands **changes nothing**: at `FIP_INFL=2%` every calibrated
+  spread moved by **exactly 198.0263 bp = ln(1.02)** (the 14 bonds' shifts agreed to **2.7e-07
+  bp**) and clean price / eff-dur / DV01 / convexity did not move at all. `(1+π)^t` is exactly
+  `exp(t·ln(1+π))` and folds into the discount exponent ⇒ **a constant assumption and a flat
+  spread are ONE knob.** 26 countries of constants = 26 no-ops. Breaking the degeneracy needs a
+  **term structure** π(t), or the **deflation floor** (a `max()` is a nonlinearity; it bites on
+  the near-par-ratio bonds, ratio 1.0079 and 1.0187 here). Both v2.
+- **⭐ SO THE DATA LANDED ON `ratio_0`, WHICH IS WHERE IT DOES WORK.** The index ratio scales
+  every cash flow AND the accrued, and the **entire derivation** was
+  `BG ÷ parse_desc_coupon(free text)` guarded only by `RATIO_SANITY (0.9, 1.6)` — **never
+  validated for any of the 15**. Measured cost of an error on the 2032 TIPS: **1% → 5.9bp** of
+  published breakeven, **6% → 34.9bp** (against a published 138.8bp). The price never reveals it
+  — calibration absorbs it into the spread.
+- **⭐ ALL 13 US RATIOS NOW VALIDATE, to 5.9e-06.** CPI-U NSA (FRED `CPIAUCNS`) through
+  TreasuryDirect's rule: Ref CPI(1st of M) = CPI(M−3), day-interpolated; ratio = Ref CPI(settle)
+  / Ref CPI(dated date). **Every inverted dated date lands on the 15th of a month** — the
+  canonical TIPS dated date — and the 6 bonds whose description states one agree
+  (`DTD 07/15/2004`→2004-07-15; `DTD 01/18/2000`→2000-01-15, the 18th being the issue date).
+  The apparent outlier (2032, implying 2001-10-01) is not one: **CPI Jul-2001 = Aug-2001 =
+  177.500 exactly**, so Ref CPI is flat across October 2001 and the 15th is indistinguishable.
+- **⭐ NEW FINDING — the custodian strikes its ratios at T+1 (2009-04-01), not the valuation
+  date.** At 3-31 the implied dated dates scatter across the 8th-19th and the worst residual is
+  **6.3e-05**; at 4-01 they snap to the 15th and it is **5.9e-06**, 10× better.
+- **⭐ THE KOREAN KTBi IS PRICED** (`TNTG673976U` / `KR1035027T36`, 2.75% 2017-03-10). Its
+  custodian income rate **equals the coupon exactly** ⇒ no ratio embedded ⇒ the recovery cannot
+  work, and the stated coupon IS the real coupon. Ratio **1.079316** from Korean CPI (FRED
+  `KORCPIALLMINMEI` / OECD MEI) against a 2007-03-10 dated date (Korea's FIRST KTBi, a March-2007
+  10-year). **@6-10: breakeven +144.34bp, eff-dur 6.964y** vs custodian AQ 7.272 @3-31 (0.19y
+  apart — consistent). ⚠️ **Three inferences, labelled:** the dated date, the lag convention
+  (the Korean source states only `principal = face × CPI(pay)/CPI(issue)`), and T+1. The
+  convention ambiguity was **measured at 0.04% of ratio ≈ 0.2bp**; the dated date is the material
+  one.
+- **⭐ TWO GAPS WORE ONE NAME — in the OUTPUT, not the registry.** `ilb-indexation-unverified`
+  showed at BOTH dates, so a reader would think fixing the indexation prices the bond. It does
+  not: **KRW has no 2009-03-31 curve row** (06-10 only). `missing_data.md` had the two separate
+  all along; the driver flag did not. Now **@3-31 → `ilb-curve-blocked` naming the file**,
+  **@6-10 → `ilb` priced**. ⇒ **linker 14 → 15 priced at the control date.**
+- **THE ONE INTENTIONAL OUTPUT CHANGE:** both `phase2_risk_*.csv` — **63 rows unchanged, exactly
+  ONE row moved (`TNTG673976U`)**, plus 2 additive provenance columns
+  (`index_ratio_status` / `index_ratio_source`). **All 20 other artifacts byte-identical.**
+- **`breakeven_bp` NO LONGER NaNs at FIP_INFL≠0** — it was emitted only at exactly 0, so turning
+  the parameter on **deleted the one column carrying information**. Now `ln(1+π) − spread`,
+  invariant under π (1.7e-07 bp), `-spread` at π=0 ⇒ production byte-identical.
+- **THREE tables, deliberately separate** (`src/dataio/inflation.py`; missing file = no data):
+  `data/cpi_index.csv` **MEASURED** (192 rows, US 150 + KR 42, with source + as_of) ·
+  `data/index_ratios.csv` **DERIVED per security** with status/source/convention (1 row, the
+  KTBi) · `data/inflation_assumption.csv` **ASSUMED**, registered and **empty on purpose**.
+  A measurement, a security term and a forecast have different provenance — one file would let a
+  forecast read as an observation. ⚠️ `anchor_day` is a PARAMETER: **1 for US TIPS, 10 for
+  Japanese JGBi** (MOF; JGBi also uses CPI **ex-fresh-food** and rounds the coefficient to **5
+  decimals** — our recovered 1.01400 is consistent with that).
+- **Tests 497 → 525** (+27 inflation, +1 automatic). ⚠️ **The `fc0e851` commit message said
+  "483 → 485" — that was ARITHMETIC, not a measurement; the measured count at that commit was
+  497.** Quote `release_facts`, never a running total. Both new locks mutation-verified (shift a
+  dated date by a month → red; corrupt one CPI print by 0.5% → red).
+- **Still open, confirmation-only:** Japan's **CPI ex-fresh-food** series (headline is the wrong
+  index for JGBi) — 1 security, priced today, no dependency. And the **KRW 3-31 curve row**.
+
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
   store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied
@@ -745,6 +810,22 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   paid off. Pinning is an open follow-up. **Client data on Azure: Mario says not sensitive
   (2026-09-15)**; the open question is WHICH TENANT, since a personal free subscription on
   a university email is not where a group's shared environment belongs.
+- **⭐ THE FRONT END IS NOW A BROWSER PAGE, NOT ONLY EXCEL (Mario demo, ~2026-09-24).** He
+  showed JavaScript inside an HTML file: read the user's Excel data, route by fixed-income
+  type to Azure APIs, run them in parallel in the cloud, return the result. Recorded in
+  `docs/client_directive_browser_azure_architecture_2026-09-26.md`. Three things to carry:
+  ① it **answers** the open question in `azure_trial_report_2026-09-16.md` §4.2 ("do you
+  want B as well") — yes, hosted, the timeline still open; ② the JavaScript replaces the
+  HOST of the Excel→JSON step, **not the contract** — the VBA bridge and a browser page are
+  two callers of `analyze_payload`, so a second front end costs no engine work, and
+  `endpoints/__init__.py` already reserves `routes/` for exactly this; ③ his remark that
+  "similar types with different parameters might share the same endpoint" is **our current
+  design**, not a misunderstanding — one contract, seven `instrument_type` values.
+  ⚠️ The whole account is Lichen's RECALL of a demo in a language he does not work in, and
+  he flagged it as approximate; the doc separates what was said from our reading. **Not
+  started, waits for coverage.** Parallelism needs nothing from us: refusing a batch
+  operation and making one bond the canonical unit — done for verifiability — is exactly
+  the shape parallel execution wants.
 - **`pytest.ini` (added 2026-08-25) is what makes a bare `pytest` work.** Without
   `testpaths = tests`, a root-level run also walks the git-ignored Drive staging copies
   (`corporate_bond/`, `code_structure_sample/`), which contain duplicates of the test files ⇒

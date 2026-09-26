@@ -52,8 +52,10 @@ checks — those are decided here, from the repo.
   anyone plans from it.
 - **`docs/handoff_for_claude_web_2/`** (NEW 2026-08-25) = **the DEEP bundle**: cap **40
   files**, no length limit per file, the reference web-Claude PLANS FROM.
-  **Last refreshed 2026-09-16** (user: "全面更新下handoff_for_claude_web_2") — **38 files /
-  12,089 lines / 848 KB** (was 32 / 8,931 on 08-31). No zip.
+  **Last refreshed 2026-09-26** (user: "更新下handsoff2 同步到当前进度") — **39 files /
+  13,294 lines / 824 KB** (was 38 / 12,089 on 09-16). No zip. The 09-26 refresh added
+  **`26_securitized_and_mortgage.md`** — read it before scoping anything securitised, because
+  a third of the book turns out to need deal-structure data rather than more code.
   Structure: `00`-`07` orientation (START_HERE · current state · locked decisions ·
   conventions/laws · open asks · **traps & gotchas** · **feedback on previous plans** ·
   glossary) + `10`-`25` per-domain deep dives (architecture · engines fixed/tree/floating ·

@@ -587,3 +587,67 @@ to the **committed** version and threw away an uncommitted rewrite of the same f
 **Use a copy for mutation tests** (`cp x /tmp/x.bak` ... `cp /tmp/x.bak x`), never the
 index. The mutation itself was informative: reverting to the historical module map turned
 all three new tests red, which is how we know they bind.
+
+---
+
+# Refresh 2026-09-26 — six from the mortgage round
+
+Numbered continuing §1; all six are silent-failure class, and **four of the six were mine,
+caught by a check rather than by review.**
+
+### §1.30 An identity that is true for live things and silently false for dead ones
+
+`original term = WAM + WALA` is date-invariant for a pool that still exists. When a pool pays
+off, Bloomberg sets WAM to 0 and **freezes WALA at the age it reached**, so the same
+arithmetic returns *age at death* — a plausible positive number, no error, nothing in the
+data marking it. **My first version of the check tested only "is the derived seasoning
+non-negative" and passed 165 dead pools as reconstructable.** Aliveness is a separate
+condition and has to be checked separately. Honest figure: 498 of 882, not 663.
+
+### §1.31 A regex word boundary that cannot see a slash
+
+`\bIO\b` never matches `I/O`. **76 interest-only strips sat inside the REMIC bucket** for a
+whole classification pass, looking like ordinary tranches. An IO strip has no principal cash
+flow at all; a level-pay pool model would have produced 76 confident wrong prices. The test
+now also asserts that the naive pattern misses them, so the fix cannot quietly regress.
+
+### §1.32 Two statistics merged into one number
+
+The driver's summary counted TBA forwards' blank zero-spread CPR alongside pass-throughs
+whose price no CPR can reach — collapsing **"not attempted"** into **"attempted and
+impossible"**. Same family as the `PAR_YIELD_UNITS` and per-quantity-tolerance lessons: one
+number covering two populations hides the smaller one.
+
+### §1.33 A date rule that is right half the time
+
+`settlement_date` advanced the year when a TBA's settle month had passed — correct for a
+December valuation quoting a January settle. The holdings file is a **2009-03-31 snapshot**,
+so at the 06-10 control date "SETTLES APRIL" became April **2010**, and a contract that had
+delivered two months earlier was priced as a forward fourteen months out. Plausible number,
+no error. ⭐ **Only the control date could find this** — at a single valuation date the rule
+never fires. Nothing in a description separates "next January" from "last April", so the
+ambiguity is now refused rather than resolved.
+
+### §1.34 A parity check that matched zero files and reported success
+
+The first version's regex expected 64-character hashes; the record stores the first 32. It
+found nothing, compared nothing, and printed a pass. ⚠️ **A measurement that cannot say it
+measured nothing** — already §1.29, met again within a week. The check now asserts it parsed
+something before it is allowed to report anything.
+
+### §1.35 A field name nobody can validate without spending the request
+
+`MTG_HIST_COLLAT_CPR_LIFE` does not exist. 877 × `#N/A Invalid Field` is the terminal
+rejecting the *mnemonic*. It cost a whole round trip to a counterparty's Bloomberg time to
+discover a typo in our own list. ⭐ And the four `#N/A` strings are four different problems
+with four different owners — `Invalid Field` (ours), `Invalid Security` (the ticker),
+`Field Not Applicable` (benign), `N/A` (a real gap). **Counting them together hides the only
+one you can fix yourself.**
+
+### Also worth carrying, not a trap but a method
+
+Three assumptions in the TBA work were **measured rather than argued**: the gross WAC is
+worth 0.1 bp, the settlement day ~4 bp per ten days, the CPR ~21 bp. That is what let an
+as-of concern about a 2026-dated WAC be closed in one command instead of debated. ⭐ When an
+advisor or a reviewer raises a concern about an input, the cheapest reply is usually its
+sensitivity, not an argument.

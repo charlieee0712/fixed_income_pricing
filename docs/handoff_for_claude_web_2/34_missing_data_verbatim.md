@@ -28,7 +28,7 @@ Working rules derived:
 
 | # | gap | securities | blocks | lands via | status |
 |---|---|---|---|---|---|
-| G1 | Govt-MBS pool stats, 8 fields | 882 CUSIPs | whole Govt-MBS class (888 rows) | `PoolTerms.from_bloomberg` (+ driver/routing on arrival) | ⏳ Mario 07-22 · Liping 07-30 |
+| G1 | Govt-MBS pool stats, 8 fields | 882 CUSIPs | whole Govt-MBS class (888 rows) | `PoolTerms.from_bloomberg` (+ driver/routing on arrival) | **DELIVERED by Liping 2026-07-30, received 09-25 — 882/882, but as-of the PULL not the valuation date; see below** |
 | G2 | pass-through amortization | 13 uniques (16 tab rows) | 13 corporate securities (out of output) | new schedule table + amortizing-vanilla engine on arrival | ⏳ Mario 07-20 · Liping 07-30 |
 | G3 | FRN/hybrid terms | 11 (3 all-terms + 8 margins) | 8 BT-marked hybrids; 3 FRNs priced imprecisely | `frn_spreads.csv` / `hybrid_switch_terms.csv` — one cell each | ⏳ Mario 07-20 · Liping 07-30 |
 | G4 | call schedule | 1 (AssuredGty US04622DAA90) | the unpriced 5th corporate callable | one `call_schedules.csv` row | ⏳ Liping 07-30 (first ask) |
@@ -58,6 +58,53 @@ MTG_GEN_CPR_12M · MTG_HIST_COLLAT_CPR_LIFE`
   formula sheet `outputs/govt_mtge_bdp_template.csv` (882 × `=BDP($C_,"<field>")`, opens straight
   into add-in Excel; regenerable from the CUSIP csv — WORKLOG 2026-07-30). Both git-ignored
   (`outputs/`), mirrored local+47, WhatsApp'd to Liping.
+
+### ⭐ DELIVERED — `data/govt_mtge_bdp.xlsm` (checked 2026-09-25)
+
+Liping ran the pull **2026-07-30**, the day she received the request (the date is the
+workbook's own `docProps`, not the file mtime); it reached us 09-25. Regenerate the check with
+`PYTHONPATH=src python scripts/mbs_data_check.py` → `outputs/mbs_data_check_2026-07-30.csv`.
+
+**The delivery is complete: 882 requested, 882 returned, nothing missing or extra.** Everything
+below is about what the values can be used for, not about the pull.
+
+- ⚠️ **`MTG_HIST_COLLAT_CPR_LIFE` is not a Bloomberg field.** 877 × `#N/A Invalid Field` —
+  the terminal rejecting the *mnemonic*, not the security. **That is an error in the request we
+  wrote**, and nothing short of running it could have surfaced it. Registry rule added: the four
+  `#N/A` strings are four different problems with four different owners and must be counted
+  separately — `Invalid Field` (our mnemonic is wrong) · `Invalid Security` (the ticker did not
+  resolve, 1 row) · `Field Not Applicable` (valid field, wrong security type, benign) · `N/A`
+  (valid everything, genuinely no data). A single "missing" count hides the first one.
+- **It is a CURRENT pull, not an as-of-2009 one** — the fallback branch of the preference order
+  above, not the preferred one. Two independent confirmations: WALA median **241 months (20
+  years)** against a 208-month gap to the valuation date, and Bloomberg's WAM median **69**
+  against **289** computed from the master's own maturity dates, a 220-month difference that is
+  simply the elapsed time.
+- ⭐ **The master already held the field we most needed.** WAM at 2009-03-31 comes straight from
+  the holdings file's own maturity dates for **868 of 882**, none negative. Bloomberg was never
+  required for it.
+- ⚠️ **The anticipated failure mode was wrong, and the real one is worse.** This section
+  predicted that paid-off pools would return `N/A` and could be left blank. They do not: they
+  return **`WAM = 0` with `WALA` frozen at the age the pool reached when it paid off** — 327
+  rows. So `original term = WAM + WALA`, which is date-invariant for a live pool, silently
+  yields *age at payoff* for a dead one. It produces a plausible number, no error, and nothing
+  in the data marks it. A first version of the check tested only "is the derived seasoning
+  non-negative" and passed **165 dead pools** as reconstructable. Aliveness is a separate
+  condition and is now checked separately.
+- **Net reconstructable 2009 state: 498 of 882** (pool alive at the pull, and the master's term
+  consistent with the original). Their implied original term clusters at 29–30 years, 497 of
+  498, which is what confirms the identity works where it applies. A further 104 rows are
+  incoherent (the master's 2009 term exceeds the Bloomberg original term), 38 of them on pools
+  that are still alive.
+- **Per field:** `MTG_AOLS` static and usable (870) · `MTG_WACPN` drifts down as higher-rate
+  loans prepay first, so the 2026 value **understates** 2009 (781) · `MTG_WAM` / `MTG_STATED_WALA`
+  as-of and not directly usable · the three `CPR` fields describe 2026 prepayment behaviour.
+- ⭐ **The one genuinely irreplaceable gap is the 2009 prepayment speed.** The master does not
+  hold it and it cannot be reconstructed. Two routes, and `pricing/mbs.py` was built for both:
+  **(a)** re-pull the three CPR fields with a 2009-03-31 override, or **(b)** fix the spread near
+  zero for government-guaranteed paper and imply the CPR from the custodian price
+  (`implied_cpr_pool`). **(b) needs nothing from anybody** and turns the missing input into an
+  output; (a) would then validate it. **No new request opened — the choice is the user's.**
 
 ## G2 — Corporate pass-through: 13 unique securities (16 tab rows incl. duplicate holdings)
 
@@ -156,13 +203,29 @@ somebody documented — worth having, worth nobody's phone call on its own.
 
 | item | ids | unlocks | lands via |
 |---|---|---|---|
-| KTBi indexation terms (index ratio / base CPI @2009-03-31) | TNTG673976U / KR1035027T36 | the 1 BT-marked ILB (`ilb-indexation-unverified`, $1.2M) | ratio_0 input to `pricing/ilb.py` |
-| KRW govt par curve, 2009-03-31 row | — | KTBi at the 3-31 baseline (file has 06-10 only) | row in the KRW curve txt |
+| ~~KTBi indexation terms (index ratio / base CPI)~~ **CLOSED 2026-09-19 — sourced by us, PROVISIONAL** | TNTG673976U / KR1035027T36 | ✅ the bond now prices at the 6-10 control (breakeven +144.34bp, eff-dur 6.96y against custodian AQ 7.272 @3-31) | `data/index_ratios.csv` row 1.079316, derived from Korean CPI (FRED KORCPIALLMINMEI / OECD MEI) against a 2007-03-10 dated date. ⚠️ **Three things are INFERRED, not confirmed for this ISIN:** the dated date (Korea's first KTBi was a March-2007 10-year, which fits this maturity), the lag convention (the Korean source states only principal = face × CPI(payment)/CPI(issue)), and T+1 settlement (measured on the 13 US TIPS in the same file). The convention ambiguity was MEASURED at 0.04% of ratio ≈ 0.2bp of breakeven; the dated date is the material assumption. Bloomberg wins on arrival — log the delta. |
+| **KRW govt par curve, 2009-03-31 row — STILL OPEN, and now the ONLY blocker** | — | the KTBi at the 3-31 baseline | a row in the KRW curve txt. ⚠️ **Until 2026-09-19 the driver flag said `ilb-indexation-unverified` at BOTH dates, so a reader would have thought fixing the indexation would price this bond. It would not — at 3-31 the curve row is missing too.** Two gaps wearing one name in the OUTPUT, while this registry had them separate all along. The flag now reads `ilb-curve-blocked` at 3-31 and names the file. |
 | ~~UK Gilt par curve @2009-03-31 & 06-10~~ **WITHDRAWN 2026-08-30** | — | ~~FT-GBP + 2 GBP bonds~~ — both now priced | ✅ **not a data gap: a units bug on our side.** The GBP file stores par yields in PERCENT while 24 of the 26 files store decimals; the loader scaled everything by 100, making the gilt curve 73%-415%, which the bootstrap correctly refused as "not arbitrage-free". We read that as a fact about the data. Fixed in `curves.bootstrap.PAR_YIELD_UNITS` + a units guard. **Do not ask Mario or Liping for a GBP curve.** |
 | **Corporate call schedules (confirmation)** — ADDED 2026-08-31 | TNTD04115619 · TNTD04441873 · TNTG701850W | none — all three are priced today; confirmation would replace a convention with a term | `call_schedules.csv` rows if they differ |
 | Agency call schedules (confirmation) | US3133XKKW43 · US3128X4BE02 · US3128X4UZ20 · US31359ML849 · US31359M2B87 | none — par@100-from-AB lattice already matches custodian AQ 4/5 | `call_schedules.csv` rows if they differ |
 | FNMA 6.25 2011 rating quirk | TNTD04366584 / US31359MGT45 | senior-vs-sub identity behind the master's A/Aa2 | note / master correction |
 | FHR 3122 ZB (REMIC Z, misfiled as AGY debenture) | TNTD04733316 | CMO-phase input (BT-marked now, no force-pricing) | DES terms for the future CMO engine |
+
+### ⭐ What the inflation data actually bought (2026-09-19)
+
+Mario asked us to source per-country inflation ourselves. Where it landed, and where it did not:
+
+| | outcome |
+|---|---|
+| **Validating the index ratios** | ⭐ the real win. All **13 US TIPS** ratios reproduce from CPI-U NSA through TreasuryDirect's Reference-CPI rule to **5.9e-06**, and every inverted dated date lands on the 15th of a month. Until now that ratio came from a regex over custodian free text, guarded only by a 0.9-1.6 window — and a 1% error in it moves a published breakeven by ~6bp, a 6% error by 35bp on a bond whose breakeven is 138.8bp. The check now runs on every commit. |
+| **Unlocking a bond** | ✅ the Korean KTBi, at the control date (above). |
+| **A finding nobody had** | the custodian strikes its ratios at **T+1 (2009-04-01)**, not the valuation date. At 2009-03-31 the implied dated dates scatter across the 8th to the 19th and the residual is 10x worse. |
+| **A forward inflation assumption** | ❌ **provably inert, and the table says so.** A constant assumption folds into the spread: measured at 2%, every calibrated spread moved by exactly ln(1.02) = 198.0263bp and price, duration, DV01 and convexity did not move at all. `data/inflation_assumption.csv` is registered and empty on purpose. It becomes load-bearing with a term structure of inflation, or the deflation floor. |
+
+**Still missing, and it is a convention rather than a number:** Japan's CPI **excluding fresh
+food** series, which is what JGBi indexes to (headline CPI is the wrong series). The recovered
+ratio 1.01400 is consistent with the Ministry of Finance's 5-decimal rounding, but it has not
+been re-derived. One security, priced today, no downstream dependency — confirmation-only.
 
 ## G6 — Government / Municipal classes (2026-09-03)
 

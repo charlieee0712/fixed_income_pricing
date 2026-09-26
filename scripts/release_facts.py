@@ -37,10 +37,15 @@ FACTS = pathlib.Path(os.environ.get(
 
 PRODUCTION = ("implied_oas_2009-03-31.csv", "implied_oas.csv", "callable_risk.csv",
               "phase2_risk_2009-03-31.csv", "phase2_risk_2009-06-10.csv",
-              "sovereign_risk_2009-03-31.csv", "sovereign_risk_2009-06-10.csv")
+              "sovereign_risk_2009-03-31.csv", "sovereign_risk_2009-06-10.csv",
+              # The mortgage book, added 2026-09-26. Its spreads carry a prepayment
+              # ASSUMPTION rather than a sourced rate, so the rows are listed here for
+              # reproducibility and must not be quoted as final -- see the driver docstring.
+              "pool_risk_2009-03-31.csv", "pool_risk_2009-06-10.csv")
 DISPOSITIONS = ("corporate_disposition_2009-03-31.csv", "corporate_disposition_2009-06-10.csv",
                 "callable_disposition_2009-03-31.csv", "callable_disposition_2009-06-10.csv",
-                "sovereign_disposition_2009-03-31.csv", "sovereign_disposition_2009-06-10.csv")
+                "sovereign_disposition_2009-03-31.csv", "sovereign_disposition_2009-06-10.csv",
+                "pool_disposition_2009-03-31.csv", "pool_disposition_2009-06-10.csv")
 
 
 def sha256(path) -> str:

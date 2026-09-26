@@ -1,6 +1,6 @@
 # Current state
 
-**2026-09-16 · main `01e0848` · 495 tests · all six non-securitised asset classes complete.**
+**2026-09-26 · main `2d111d3` + this refresh · 594 tests · six non-securitised classes complete, and the mortgage book now routed end to end.**
 
 *Rewritten rather than appended this refresh. The previous version had grown four dated
 "update" sections and a reader had to reconstruct the present from strata. History lives
@@ -14,11 +14,21 @@ The legacy Excel/VBA fixed-income toolkit is ported to Python and **all six
 non-securitised asset classes are priced end to end** — 1,040 of the book's 2,366 rows,
 949 of its 2,260 unique securities. Everything runs on the `pricer/` template Mario
 approved (core engines + thin asset wrappers + one JSON endpoint), reachable from a real
-spreadsheet for five instrument types and from Python for eight products. What remains
-is the **securitised block** — mortgage pools, CMOs, ABS, CMBS — which is 1,294
-securities and is blocked on a Bloomberg data pull requested 2026-07-22. The newest
-workstream is **Azure**: the code has been proven to run there, and the shape of a
-shared environment for Mario's group is undecided.
+spreadsheet for five instrument types and from Python for eight products. The mortgage book is now
+routed and partly priced: **505 of its 882 securities carry numbers**, the rest are named.
+
+⭐ **What changed this round is the shape of what remains, and it is not what the previous
+stamp said.** The securitised block was described as blocked on a Bloomberg pull. That pull
+arrived complete — and revealed that only **56% of the mortgage class is a simple
+pass-through pool**. The rest are tranches of structured deals whose cash flows come from
+each deal's own waterfall. Counting the same structure across CMOs, ABS and CMBS, about
+**756 securities — a third of the whole book — need deal-level structure data that no
+field-level pull contains.** That is a purchase decision (Intex, or Bloomberg's CMO
+analytics), not a scheduling one, and it was put to Mario on 09-26. **Read `26` before
+scoping any securitised work.**
+
+On **Azure**: the code runs there, and the direction is now decided — Mario demoed a browser
+front end calling Azure pricing APIs. Not started; waits for coverage. See `25`.
 
 ---
 
@@ -186,11 +196,13 @@ New: `scripts/platform_parity.py` and `src/dataio/output_digest.py`. ⚠️ **Bo
 parity tool's first two checks were themselves wrong** — a text digest built on pandas
 (and the first machine ran pandas 3.0), and a tolerance report that could not distinguish
 "zero deviation" from "compared nothing". Both fixed; see `24` §5–6 and `05` §1.27–1.28.
-483 → **495**.
+483 → **495** (594 today).
 
 ---
 
-## 5. Test suite — 495
+## 5. Test suite — 594
+
+*The table below was counted at 495 on 2026-09-16 and is kept for its per-file shape; the three rounds since added `test_pool_universe` (16), `test_tba` (15), `test_pricer_securitized_structure` (25), `test_inflation_data` (27) and picked up more automatically through the parametrized wiring guard. ⭐ **Quote `41_release_facts_verbatim.md`, never a total in prose.**
 
 | file | n | file | n |
 |---|---:|---|---:|

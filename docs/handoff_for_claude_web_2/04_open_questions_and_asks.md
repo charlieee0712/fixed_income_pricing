@@ -124,3 +124,40 @@ plus the CMO/ABS/CMBS block behind it. `pricing/mbs.py` is built and waiting on 
 ⚠️ **Do NOT re-raise before Mario returns that data:** KTBi indexation terms + the KRW
 3-31 curve row; agency call schedules (confirmation-only); the `TNTD04366584` rating
 quirk; the `SteepFlat` file; `FHR-3122-ZB`.
+
+---
+
+## Refresh 2026-09-26 — the mortgage round
+
+### ⭐ Two asks sent to Mario on 09-26 (WhatsApp), both unanswered
+
+**1. Re-pull three CPR fields with a 2009-03-31 as-of override.** The delivered pull is
+as-of the pull date, so its prepayment speeds describe 2026. Only
+`MTG_GEN_CPR_3M / 6M / 12M` are affected; WAC and loan size are fine either way.
+⚠️ **Also told him `MTG_HIST_COLLAT_CPR_LIFE` is not a Bloomberg field** — 877 ×
+`#N/A Invalid Field`, an error in the list *we* sent. Owned, not glossed.
+
+⭐ **This sharpens rather than unlocks, and the message says so**, because otherwise he
+would chase it as a blocker. Measured: ±5 pp of CPR uncertainty is ±12 bp of spread on a
+250 bp number.
+
+**2. Deal-level structure data for ~756 tranche securities.** A third of the book.
+⚠️ **Framed explicitly as a different KIND of request** from the field pulls so far —
+probably a cost decision rather than a scheduling one. If this is not clear to him he will
+hear "you need a few more weeks of coding", which is the wrong picture entirely.
+
+### Answered since the last refresh
+
+- **"Do you want a hosted service as well?"** (`azure_trial_report_2026-09-16` §4.2) —
+  **yes.** He demoed a browser front end calling Azure APIs. The *timeline* half of that
+  question, and the tenant, are still open. See `25` and
+  `docs/client_directive_browser_azure_architecture_2026-09-26.md`.
+- **"Can we source inflation data ourselves?"** — done 09-19, and the measurement redirected
+  the work: a constant per-country assumption is a no-op, so the data landed on the index
+  ratio instead. All 13 US ratios validate to 5.9e-06.
+
+### Still unchanged
+
+The July asks (G2 pass-through schedules 13, G3 FRN/hybrid terms 11, G4 one call schedule)
+and the deferred confirmation queue. Mentioned in the 09-26 message as "a short list, none
+of it urgent" rather than itemised — the two asks above are what need a decision.

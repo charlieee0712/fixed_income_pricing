@@ -218,3 +218,35 @@ where the curve files live (a mounted share, blob storage, or baked into the ima
 
    **What remains is not engineering.** It is the two questions for Mario in §6: which
    tenant, and which shape.
+
+---
+
+## Refresh 2026-09-26 — the direction is decided
+
+⭐ **Mario demoed a browser front end** (JavaScript inside an HTML file) at a meeting a few
+days before 2026-09-26: read the user's Excel data, route by fixed-income type to Azure APIs,
+run them in parallel in the cloud, return the result.
+
+**This answers §4.2 of the Azure trial report** — option B (one hosted service) is wanted.
+The *timeline*, and which tenant it lives in, are still open.
+
+Three things to carry into any plan:
+
+- **The JavaScript replaces the HOST of the Excel→JSON step, not the contract.** The VBA
+  bridge and a browser page are two callers of `analyze_payload`, which already takes a dict
+  and returns a dict — so the HTTP wrapper is thin, and `endpoints/__init__.py` lines 20-22
+  already reserve `routes/` for it with the reason it is currently empty.
+- **"Similar types with different parameters sharing an endpoint"** — the remark Lichen
+  thought he might have misheard — **is our current design**: one contract, seven
+  `instrument_type` values, callable/puttable/sinking over one tree.
+- ⭐ **Parallelism needs nothing from us.** Refusing a batch operation and making one bond
+  the canonical unit was done for *verifiability*; it happens to be exactly the shape N
+  independent stateless requests want.
+
+⚠️ **The whole account is Lichen's recall of a demo in a language he does not work in**, and
+he flagged it as approximate. Full record, with what was said kept separate from our reading
+of it, in `docs/client_directive_browser_azure_architecture_2026-09-26.md`. ⚠️ New ground
+that the VBA bridge never had to cross: **CORS and authentication** for a browser calling an
+API on another host.
+
+**Not started. Waits for coverage.**
