@@ -17,9 +17,16 @@ fixed_to_floating, callable, puttable, sinking — so one integration prices eve
 corporate bond in the book. A payload that names no type is a vanilla bond, which is
 why ``analyze_vanilla_payload`` (the v1.0 name) still returns exactly what it did.
 
-The template also shows ``endpoints/routes/`` for HTTP routes; with a single
-non-HTTP entry point that folder would be empty nesting, so it arrives with the
-service. File-based use: ``scripts/price_json.py`` (request file -> response file).
+    routes/          the HTTP door (2026-09-28) — ``handle(method, path, body)``,
+                     framework-free, so a Web App, a Function App and the local runner
+                     each reach the same contract without any of them owning it
+
+Three ways in, one contract: ``scripts/price_json.py`` (request file -> response file),
+the Excel/VBA bridge, and now HTTP. ⭐ What goes over the wire is asserted byte-for-byte
+equal to what a Python caller gets from the same request in the same process
+(``tests/test_http_routes.py``), so the transport cannot become a place where a number
+changes. ⚠️ No CORS and no authentication yet — a browser on another origin is refused
+by the browser itself, before the request arrives, which is invisible in any server log.
 """
 from pricer.endpoints.main import analyze_payload, analyze_vanilla_payload  # noqa: F401
 

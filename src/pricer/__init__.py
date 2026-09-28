@@ -64,6 +64,11 @@ endpoints/ — the outside world's single door
   endpoints/contracts.py     DONE  the request/response contract, standard library only
   endpoints/pricing.py       DONE  orchestration over the approved wrappers, zero formulas
   endpoints/dependencies.py  DONE  the only environment-aware file (swap for the cloud)
+  endpoints/routes/handler.py DONE the HTTP door (2026-09-28). handle(method, path,
+                                   body) is framework-free on purpose — a Web App, a
+                                   Function App and the local runner each call it in ten
+                                   lines, so the host stays a deployment decision rather
+                                   than a code one. Driven by scripts/serve_local.py
   errors.py                  DONE  the domain exception family, rooted at Exception so a
                                    solver's ``except ValueError`` cannot swallow a
                                    contract refusal and report it as a failed calibration
