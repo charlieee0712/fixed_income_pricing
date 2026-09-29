@@ -61,6 +61,52 @@ not noise — a −100y IO strip is economically correct, since an IO gains valu
 prepayments slow. Which is the point: **they are a different risk object, and approximating
 them as pools would be a category error, not an approximation.**
 
+### ⭐⭐ 2026-09-29 — the 344 are probably NOT blocked, and the blocker was our question
+
+Everything above says these need a deal-structure purchase. ⭐ **That was the wrong ask.**
+
+> A waterfall's only job is to decide how much principal each tranche receives each month.
+> **The factor file records that decision.**
+>
+> ```
+> principal(t) = orig_face × (factor(t−1) − factor(t))
+> interest(t)  = orig_face × factor(t−1) × coupon(t) / 12
+> ```
+
+That is the complete cash flow vector with **no knowledge of the structure at all** — and
+it is structure-agnostic as arithmetic, not as a claim. A PO has no interest term, an IO no
+principal term, and a **Z accrual needs no special case**: during accrual the interest term
+and the negative principal term are equal and opposite, so net cash flow is **exactly
+zero**, which is what a Z does.
+
+⭐ **And because the valuation date is seventeen years ago, most of that vector is already
+observed.** Measured on the 344: **89 have paid off entirely** ($114.3M) so their realised
+cash flow is complete with zero tail assumption; the **255 survivors** ($359.1M) have a
+median **6.7 years** left against 17 years elapsed, so the observed window dominates and
+the short tail takes the CPR grid the pools already use. `factor` and `par` are on hand for
+**341 of 344** (⚠️ the master's `orig_face` is empty — derive it as `par / factor`; and
+⚠️ factors run to **1.868**, correct for a Z whose balance grew).
+
+⭐ **Why the new ask is easier than the one it replaces:** a factor is a *published monthly
+fact with a date*, which is the category `BDH` serves. A cash flow *projection* is a
+computed analytic off today's collateral, and dating that to 2009 is a different problem.
+
+⭐ **Validation is built in and comes first.** The request carries **20 pass-through pools
+our engine already prices** beside the 344, so the method is checked against a number we
+trust before it touches a tranche. And the same history on the 490 pools yields their
+**realised CPR**, turning the 15/25/35 grid from three scenarios into three plus the answer.
+
+⚠️ **The limit that must travel with every number:** a realised path is **hindsight** — it
+gives the rate the holder actually earned, not the spread the market demanded in March
+2009. For *risk* metrics (spread duration, DV01, convexity) a cash flow vector is a cash
+flow vector, on the same footing as the pools' fixed-CPR numbers, and **neither is an OAS**.
+For "what was it worth that morning", the deal structure is still required.
+
+⇒ **Re-scope the securitised plan.** "≈756 securities need a purchase" should now read
+"≈756 need *either* a purchase *or* factor history, and factor history is worth trying
+first because it is one BDH call per security." Pack: `docs/bloomberg_request_2026-09-29/`,
+record: `docs/bloomberg_request_2026-09-29.md`.
+
 ### The narrower question that had not been asked
 
 ⭐ Our own text says the capability is a purchase "**(Intex, or Bloomberg CMO analytics)**"
