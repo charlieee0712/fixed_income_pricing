@@ -116,6 +116,79 @@ def verify(path: pathlib.Path) -> int:
     return len(body)
 
 
+#: Three tranches to put in front of a terminal, chosen for spread rather than size alone:
+#: the largest position, the largest PO strip, and a Z accrual (the hardest case, so it
+#: bounds the answer). Pinned rather than re-derived, because these travel in a message and
+#: a colleague has to be able to type them -- a probe that silently picked different
+#: securities than the one discussed would be worse than no probe.
+PROBE = (
+    ("31396XJY1", "TNTD03416170", "largest tranche position, $15.7M",
+     "FEDERAL NATIONAL MORTGAGE ASSOC 6% CMO"),
+    ("31396XDP6", "TNTD03415261", "largest PO strip, $5.0M",
+     "FNMA REMIC SER 2007-80 CL WO 25 AUG 2037"),
+    ("31392PPG4", "TNTD03131620", "a Z accrual tranche, $3.9M -- the hardest case",
+     "FHLMC SER 2460 CL VZ 6.0% 15 NOV 2029"),
+)
+
+#: ⚠️ QUESTIONS, not formulas. We do not know the CMO field names, and inventing one is
+#: precisely what cost the July pull (`MTG_HIST_COLLAT_CPR_LIFE` returned Invalid Field on
+#: all 882). So this sheet asks a colleague to LOOK and tell us, rather than to run
+#: something we guessed. Ordered with the decisive question first.
+PROBE_QUESTIONS = (
+    ("Q1_can_it_be_dated_to_2009",
+     "THE DECIDING ONE. Can the cash flow projection be run AS OF 2009-03-31, or does it "
+     "only ever project forward from today? If only from today, everything below is moot "
+     "for us and we stop here."),
+    ("Q2_is_there_a_cash_flow_table",
+     "Does the terminal show a projected cash flow table for THIS tranche (date, "
+     "interest, principal)? If yes, can it be exported to Excel?"),
+    ("Q3_can_a_prepay_speed_be_set",
+     "Can that table be produced at a prepayment speed we specify (e.g. 15 CPR), rather "
+     "than only at the terminal's own default?"),
+    ("Q4_what_cmo_fields_exist",
+     "FLDS on this security -- are there CMO-specific fields (tranche type, deal name, "
+     "PAC bands, current factor)? Please paste back the exact names; we are deliberately "
+     "not guessing them."),
+    ("Q5_what_does_DES_call_it",
+     "What does DES call the tranche type? Our own guess from the description text is "
+     "unreliable -- 29 of the 54 tranches whose class letter starts with P turn out to be "
+     "PRINCIPAL ONLY strips, not PACs."),
+)
+
+
+def write_structure_probe():
+    """The 344 tranches -- five questions, three securities, no invented field names.
+
+    ⭐ This sheet exists because of a real inconsistency. Our own handoff says the deal
+    structure is "a purchase decision (Intex, **or Bloomberg CMO analytics**)" -- and then
+    the request note told a colleague standing in front of a Bloomberg terminal that the
+    tranches were a conversation for Mario. One of the two named sources was within reach
+    and nobody asked it.
+
+    ⭐ The question is also narrower than "give us the waterfall", which Bloomberg will not
+    do. A waterfall's JOB is to produce a cash flow schedule. If the terminal will hand us
+    that schedule for our tranche, we never need the rules -- we discount the vector on our
+    own curve and solve for the spread exactly as we do for every other bond in the book.
+
+    ⚠️ Expect no. A projected cash flow is a COMPUTED analytic off today's collateral
+    state, and dating it to 2009 is harder than dating a stored field -- many of these
+    deals have since paid off entirely. But a measured no is worth having: the purchase
+    question has been sitting with Mario since 2026-09-26 on the strength of our reasoning
+    alone, and this project's own rule is that a claimed data gap needs evidence from the
+    source.
+    """
+    path = OUT / "cmo_structure_probe.csv"
+    with path.open("w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.writer(fh)
+        w.writerow(["cusip", "asset_id", "security", "why_this_one", "description",
+                    "question", "what_it_settles", "answer_here"])
+        for cusip, aid, why, desc in PROBE:
+            for qname, qtext in PROBE_QUESTIONS:
+                w.writerow([cusip, aid, f"{cusip} Mtge", why, desc, qname, qtext, ""])
+    print(f"wrote {path}  ({len(PROBE)} securities x {len(PROBE_QUESTIONS)} questions "
+          f"= {len(PROBE) * len(PROBE_QUESTIONS)} cells, ~5 minutes)")
+
+
 def main():
     if not RISK.exists():
         raise SystemExit(f"missing {RISK}; run scripts/pool_risk.py first")
@@ -216,6 +289,8 @@ def main():
             rows += 1
     assert verify(pilot) == rows
     print(f"wrote {pilot}  ({rows} securities, one per stratum, 4 ways of asking)  [verified]")
+
+    write_structure_probe()
     print("\n   !! Send the PILOT first. The July pull came back complete and unusable, and")
     print("   both reasons were visible in its first row.")
 

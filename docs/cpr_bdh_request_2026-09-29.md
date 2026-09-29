@@ -2,7 +2,8 @@
 
 **For:** Liping (university terminal) · **Date:** 2026-09-29
 **Files:** `outputs/cpr_bdh_pilot.csv` (5 rows — **run this one first**) ·
-`outputs/cpr_bdh_template.csv` (505 rows)
+`outputs/cpr_bdh_template.csv` (505 rows) ·
+`outputs/cmo_structure_probe.csv` (3 × 5 questions, separate topic, ~5 min)
 **Regenerate:** `PYTHONPATH=src python scripts/make_cpr_request.py`
 
 ---
@@ -113,13 +114,60 @@ rescale anything.
   calibrated spread by 0.24 bp at the median and 0.87 bp at the worst**. Not worth your
   time. (WAM is different, but we reconstruct it from the custodian file rather than from
   Bloomberg.)
-* **The 344 REMIC / CMO / IO / PO tranches are excluded.** Their cash flows are set by each
-  deal's own waterfall, so a prepayment speed alone prices none of them — we would be
-  spending terminal time on data we cannot yet use. Those need deal-level structure, which
-  is a separate and much larger conversation with Mario.
+* **The 344 REMIC / CMO / IO / PO tranches are not in *this* request** — a prepayment speed
+  alone prices none of them, because their cash flows are set by each deal's own waterfall.
+  ⭐ **They have their own five-minute sheet instead** (`cmo_structure_probe.csv`, below);
+  an earlier draft of this note dropped them entirely, which was wrong.
 * **`MTG_HIST_COLLAT_CPR_LIFE` is not in this request.** It was in the July one and returned
   "Invalid Field" on every security. That was our error, not a data gap, and we are not
   repeating it.
+
+---
+
+## ⭐ A separate five-minute sheet: the 344 structured tranches
+
+`outputs/cmo_structure_probe.csv` — **3 securities × 5 questions.** Questions to answer at
+the terminal, not formulas to run.
+
+**Why it exists.** Our own handoff says the deal structure behind these is *"a purchase
+decision (Intex, **or Bloomberg CMO analytics**)"* — and then the first draft of this note
+told you the tranches were a conversation for Mario. One of the two sources we named was
+the terminal you are already sitting at, and we did not ask it. That was our oversight.
+
+**The question is narrower than it first looks.** Bloomberg will not hand over a waterfall
+— the payment rules live inside its analytics, not in any field. But a waterfall's *job* is
+to produce a cash flow schedule, and **if the terminal will give us that schedule for our
+tranche, we never need the rules.** We discount the vector on our own curve and solve for
+the spread exactly as we already do for every other bond in the book. No CMO engine.
+
+⚠️ **We expect the answer to be no**, and that is fine. A projected cash flow is computed
+off *today's* collateral state, and dating it back to 2009 is much harder than dating a
+stored field — a lot of these deals have paid off since. But a measured *no* is worth five
+minutes: the purchase question has been sitting with Mario since 2026-09-26 on the strength
+of our reasoning alone, and a *"we checked at a terminal and it cannot do X"* is a much
+better thing to put in front of him than *"we think it cannot."*
+
+**Q1 is the deciding one** — can a projection be dated to 2009-03-31 at all? If no, skip
+Q2–Q5 and we have our answer.
+
+### What we found on our side while writing this
+
+Three numbers that may save you time, and that argue the structure really is a purchase:
+
+* **344 tranches, but 170 distinct deals — and 144 of those deals contribute only ONE
+  tranche to the portfolio.** We hold a single slice of a deal that may have twenty. To run
+  the waterfall for our slice you need the *whole* deal, so the requirement is ~170 complete
+  deal models, not 344 security records.
+* **They are 39% of the class by count but 28.5% by value** ($473M of $1,661M) — real money,
+  smaller average positions.
+* ⚠️ **The tranche class letter is a per-deal convention, not a standard.** Of the 54 whose
+  class token starts with `P`, **29 are PRINCIPAL ONLY strips, not PACs.** So we cannot
+  classify these from the description text, which is part of why Q5 is on the sheet.
+
+And one thing that rules out the cheap route: **IO and PO come to exactly 76 each**, which
+looked like matched pairs — if we held both halves of a strip, the pair reconstitutes the
+underlying pool and prices with the engine we already have. Checked: **we hold both halves
+in one deal, and even there the two are not complementary.** That route is closed.
 
 ---
 

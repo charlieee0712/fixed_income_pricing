@@ -31,6 +31,61 @@ Put to Mario 2026-09-26; unanswered.
 ⚠️ Do not plan "we write the CMO engine next quarter". Plan "we ask whether the structure
 data is being bought, and what we do in each branch".
 
+### ⭐ Measured 2026-09-29 — the claim above is now evidence, not reasoning
+
+The Government-MBS 344 were taken apart before asking a colleague to spend terminal time on
+them. Four findings, all reproducible from `scripts/pool_risk.py`'s own loaders:
+
+* **344 tranches sit in 170 distinct deals, and 144 of those deals contribute exactly ONE
+  tranche.** ⭐ This is the load-bearing number. We hold a single slice of a deal that may
+  have twenty, and a waterfall cannot be run for one slice — it allocates across all of
+  them. So the requirement is **~170 complete deal models**, not 344 security records, and
+  no per-security field pull can express that. It is the same argument as "264 contracts",
+  but measured, and about a quantity a vendor actually sells.
+* **39% of the class by count, 28.5% by value** — $473.4M of $1,660.8M. Real money, smaller
+  average tickets than the pools.
+* ⚠️ **The tranche class letter is a per-deal convention with no cross-deal standard.** Of
+  the 54 whose class token starts with `P`, **29 are PRINCIPAL ONLY strips, not PACs** —
+  a 54% error rate on the one letter anybody would be tempted to route on. Any plan that
+  says "we can at least classify them from the description" is wrong.
+* **The cheap route was checked and is closed.** IO and PO come to exactly **76 each**,
+  which looks like matched pairs — and a held IO+PO pair off one collateral reconstitutes
+  that collateral, pricing with the pass-through engine we already have. We hold both
+  halves in **one** deal (FHLMC 2827), and even there the two are not complementary
+  (`CL XO` against `CL PS`). No reconstitution.
+
+⚠️ **And the custodian's own risk number does not rescue them either.** Effective duration
+(master `dur_eff_custodian`) on the 344 runs **−102.5 to +57.1, with 61 negative and 72
+below 0.1y**, against a well-behaved 0.85–3.95 on the 490 pass-throughs. Those extremes are
+not noise — a −100y IO strip is economically correct, since an IO gains value as
+prepayments slow. Which is the point: **they are a different risk object, and approximating
+them as pools would be a category error, not an approximation.**
+
+### The narrower question that had not been asked
+
+⭐ Our own text says the capability is a purchase "**(Intex, or Bloomberg CMO analytics)**"
+— and the 09-29 data request then told Liping, who was about to sit at a Bloomberg terminal,
+that the tranches were a conversation for Mario. One of the two sources we had named was
+within reach and nobody asked it. Corrected same day.
+
+**Bloomberg will not hand over a waterfall** — the rules live inside its analytics, not in
+any field, and no BDP/BDH mnemonic returns them. But a waterfall's *job* is to emit a cash
+flow schedule, and **if the terminal will give us the schedule for our tranche we never need
+the rules**: discount the vector on our curve, solve for the spread, bump for risk — the
+path every other bond in this book already takes. No CMO engine at all.
+
+⚠️ **Expect no.** A projection is a computed analytic off *today's* collateral state, and
+dating it to 2009-03-31 is strictly harder than dating a stored field — many of these deals
+have since paid off. But `outputs/cmo_structure_probe.csv` (3 securities × 5 questions,
+~5 minutes) asks it anyway, with **Q1 = "can it be dated to 2009 at all"** first so the
+other four can be skipped on a no. ⚠️ The sheet asks *questions*, never invented mnemonics
+— guessing a field name is what cost the July pull.
+
+⭐ **A measured no is the deliverable either way.** The purchase question has sat with Mario
+since 09-26 on the strength of our reasoning; "we checked at a terminal" is a different
+class of evidence, and it is this project's own rule (habit 5) that a claimed data gap needs
+evidence from the source.
+
 ---
 
 ## 2. What the Bloomberg pull actually delivered
