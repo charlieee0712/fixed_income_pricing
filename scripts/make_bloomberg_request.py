@@ -85,6 +85,25 @@ BDH_OPTS = '"Dts=H","cols=1;rows=1"'
 FACTOR_FIELD = "MTG_FACTOR"
 COUPON_FIELD = "CPN"
 
+#: The factor request's calendar, fixed so every series returns the SAME number of rows and
+#: the 376 columns tile into one rectangle. Starts at the valuation month; ends at the month
+#: the request was written.
+FACTOR_START = "20090301"
+FACTOR_END = "20260930"
+
+
+def _month_ends(start: str, end: str):
+    """Every month between two YYYYMMDD stamps, as YYYY-MM. Written into the sheet rather
+    than fetched, so the rows are labelled even where a series returns nothing."""
+    import datetime
+    d = datetime.date(int(start[:4]), int(start[4:6]), 1)
+    stop = datetime.date(int(end[:4]), int(end[4:6]), 1)
+    out = []
+    while d <= stop:
+        out.append(f"{d.year:04d}-{d.month:02d}")
+        d = datetime.date(d.year + (d.month == 12), d.month % 12 + 1, 1)
+    return out
+
 TRANCHES = ("remic-tranche", "cmo-tranche", "io-strip", "po-strip")
 
 
@@ -302,13 +321,18 @@ def write_factor_pilot(u: pd.DataFrame) -> int:
         rows.append([
             r["cusip"], r["asset_id"], r["structure"], r["security"],
             f'=BDP({cell},"{FACTOR_FIELD}")',
-            _bdh(cell, FACTOR_FIELD, "20090301", "20090630", '"Dts=H"'),
-            _bdh(cell, COUPON_FIELD, "20090301", "20090630", '"Dts=H"'),
+            # ⭐ EXACTLY the form 03 uses, only over 12 months instead of 211. A pilot that
+            # tests a DIFFERENT spelling from the real request validates nothing -- the
+            # whole point is that whatever works here gets pasted into 03 unchanged.
+            _bdh(cell, FACTOR_FIELD, "20090301", "20100201",
+                 '"Per=M","Dts=H","Fill=B","cols=1;rows=12"'),
+            _bdh(cell, COUPON_FIELD, "20090301", "20100201",
+                 '"Per=M","Dts=H","Fill=B","cols=1;rows=12"'),
             why,
         ])
     p = _write("01b_PILOT_factor.csv",
                ["cusip", "asset_id", "structure", "security",
-                "E_factor_today_BDP", "F_factor_4month_series", "G_coupon_4month_series",
+                "E_factor_today_BDP", "F_factor_12mo_series", "G_coupon_12mo_series",
                 "why_this_row_is_here"], rows)
     print(f"   {p.name:32s} {len(rows)} rows, factor + coupon history")
     return len(rows)
@@ -329,12 +353,28 @@ def _refused_arm_ids() -> set:
 
 
 def write_factor_list(u: pd.DataFrame) -> int:
-    """A security LIST, not a formula sheet -- the precedent is govt_mtge_cusips.csv.
+    """A formula sheet, TRANSPOSED: securities across the top, months down the side.
 
-    ⚠️ Deliberate. A factor request returns a TIME SERIES per security, and 364 of those
-    cannot be laid out on one row each. How to arrange them is a decision to make at the
-    terminal once the pilot has shown what one series looks like, so pretending to know
-    here would just be a layout somebody has to undo.
+    ⚠️ **REWRITTEN 2026-09-30 — the first version had no formulas at all.** It was a bare
+    list of CUSIPs, on the reasoning that a time series cannot sit one-per-row and the
+    layout should be settled at the terminal. The reasoning was fine; the delivery was not.
+    Liping opened it, found nothing to run, and said she could not follow it -- fairly,
+    because its three sibling files ARE formula sheets and this one silently was not.
+    Worse, "settle the layout at the terminal" pushed a decision onto someone doing us a
+    favour, who has no basis to make it. That was our job.
+
+    ⭐ The layout problem was also easier than I made it. Fixing the date range to exactly
+    the 211 months from 2009-03 to 2026-09 and asking BDH for a FIXED ROW COUNT makes every
+    series the same height, so they tile into one rectangle:
+
+        A1 "date"      B1..  one ticker per column
+        A2:A212        the 211 month-ends, written out here, not fetched
+        B2..           one BDH per column, each spilling 211 rows straight down
+
+    Every series aligned to the same calendar, dead pools simply blank after payoff, and
+    one screen shows whether it worked. ⚠️ The sheet is TRANSPOSED relative to 02 --
+    securities across rather than down -- which is inherent to a time series and is said
+    plainly in the header row rather than left to be discovered.
     """
     tr = u[u["structure"].isin(TRANCHES)].copy()
     # ⚠️ `group` already exists in the universe (an asset-class field). A second column of
@@ -361,19 +401,40 @@ def write_factor_list(u: pd.DataFrame) -> int:
                     "against a number we trust")
 
     d = pd.concat([tr, arm, pools])
-    rows = [[r["cusip"], r["asset_id"], r["security"], r["request_group"], r["structure"],
-             f"{(r['mv'] or 0)/1e6:.2f}",
-             "yes" if r["pool_alive_at_pull"] == "no" else "no",
-             r["why"]]
-            for _, r in d.iterrows()]
-    p = _write("03_factor_history.csv",
-               ["cusip", "asset_id", "security", "request_group", "structure", "mv_musd",
-                "already_paid_off", "why_we_need_it"], rows, check=False)
-    dead = sum(1 for r in rows if r[6] == "yes")
-    print(f"   {p.name:32s} {len(rows)} securities "
-          f"({len(tr)} tranches + {len(arm)} ARM pools + {len(pools)} validation; "
-          f"{dead} already paid off)")
-    return len(rows)
+
+    months = _month_ends(FACTOR_START, FACTOR_END)
+    n = len(months)
+    # Row 1 = the tickers the formulas point at. Rows 2-4 stay descriptive so a reader can
+    # see WHAT each column is before the numbers arrive; the formulas go on row 5 and spill
+    # down from there.
+    header = ["date (the formulas on row 5 spill 211 rows DOWN, beside these months)"] \
+        + [r["security"] for _, r in d.iterrows()]
+    what = ["request_group"] + [r["request_group"] for _, r in d.iterrows()]
+    struct = ["structure"] + [r["structure"] for _, r in d.iterrows()]
+    dead = ["already_paid_off"] + ["yes" if r["pool_alive_at_pull"] == "no" else "no"
+                                   for _, r in d.iterrows()]
+
+    # ⚠️ The formula row IS the first data row. A first version put the formulas on row 5
+    # and started the months on row 6, so every value would have sat one month above its
+    # own label -- a spreadsheet full of plausible numbers, each attributed to the wrong
+    # date, and nothing on the sheet to reveal it. Same shape as the off-by-one that the
+    # CSV verifier was written for, one row lower.
+    formulas = [months[0]]
+    for i in range(len(d)):
+        col = _column_letter(i + 1)               # A is the date column, so B onwards
+        formulas.append(
+            f'=BDH({col}$1,"{FACTOR_FIELD}","{FACTOR_START}","{FACTOR_END}",'
+            f'"Per=M","Dts=H","Fill=B","cols=1;rows={n}")')
+
+    rows = [what, struct, dead, formulas]
+    rows += [[m] + [""] * len(d) for m in months[1:]]
+
+    p = _write("03_factor_history.csv", header, rows, check=False)
+    n_dead = sum(1 for x in dead[1:] if x == "yes")
+    print(f"   {p.name:32s} {len(d)} securities ACROSS x {n} months DOWN "
+          f"({len(tr)} tranches + {len(arm)} ARM + {len(pools)} validation; "
+          f"{n_dead} already paid off)")
+    return len(d)
 
 
 # --------------------------------------------------------------- ask 2b: the fallback
@@ -411,13 +472,38 @@ PROBE_QUESTIONS = (
 
 
 def write_probe() -> int:
-    rows = [[c, a, f"{c} Mtge", why, desc, qn, qt, ""]
-            for c, a, why, desc in PROBE for qn, qt in PROBE_QUESTIONS]
-    p = _write("04_cmo_terminal_questions.csv",
-               ["cusip", "asset_id", "security", "why_this_one", "description",
-                "question", "what_it_settles", "answer_here"], rows, check=False)
-    print(f"   {p.name:32s} {len(PROBE)} securities x {len(PROBE_QUESTIONS)} questions")
-    return len(rows)
+    """A plain-text questionnaire, not a CSV.
+
+    ⚠️ It WAS a CSV, and that was a mistake for the same reason 03 was: a spreadsheet
+    signals "fill these cells", and the cells here hold free-form English answers. Liping
+    could not tell what it wanted. A numbered list with blank lines under each question
+    asks for exactly what it is: a reply.
+    """
+    lines = [
+        "CMO tranche -- 几个终端上的问题(可选,看到再答)",
+        "=" * 64,
+        "",
+        "不是公式表,是想请你在终端上看一眼然后告诉我们。",
+        "我们不敢乱猜 CMO 的字段名 -- 七月那个 MTG_HIST_COLLAT_CPR_LIFE 就是猜错的,",
+        "882 只全返回 Invalid Field。所以这里是问题,不是让你跑的东西。",
+        "",
+        "⭐ Q1 最重要。如果 Q1 的答案是肯定的,后面四个可以都不管 --",
+        "   factor 历史(03 那张表)就是我们要的全部。",
+        "",
+        "三只证券,都是我们手上真实的持仓:",
+        "",
+    ]
+    for c, a, why, desc in PROBE:
+        lines += [f"   {c}   {desc}", f"      ({why})", ""]
+    lines += ["=" * 64, ""]
+    for i, (qn, qt) in enumerate(PROBE_QUESTIONS, start=1):
+        lines += [f"Q{i}. {qt}", "", "    答:", "", ""]
+    lines += ["=" * 64,
+              "一个都答不上来也完全没关系 -- 这几个是备选路线,主线是 01b 和 03。"]
+    path = PACK / "04_questions.txt"
+    path.write_text("\n".join(lines), encoding="utf-8-sig")
+    print(f"   {path.name:32s} {len(PROBE_QUESTIONS)} questions, plain text")
+    return len(PROBE_QUESTIONS)
 
 
 # --------------------------------------------------------------------------- readme
@@ -426,10 +512,30 @@ README = """\
 Bloomberg 数据请求 - 2026-09-29
 ================================================================
 
-一共两件事,第二件是这次真正重要的。
+先看这张表就够了:每个文件是什么、要你做什么
+----------------------------------------------------------------
 
-先跑 01a 和 01b 这两个小表(加起来 8 行,几分钟),把结果发回来。
-确认没问题之后再跑 02 和 03。04 是附带的几个问题,看到了顺手回答就好。
+  文件                     这是什么              你要做什么
+  ----------------------   -------------------   ----------------------
+  01a_PILOT_cpr.csv        公式表,5 行           ⭐ 先跑这个
+  01b_PILOT_factor.csv     公式表,3 行           ⭐ 先跑这个
+                                                 (两个加起来几分钟)
+                           ↓ 上面两个没问题了再往下 ↓
+  02_cpr_main.csv          公式表,505 行         打开,算,发回来
+  03_factor_history.csv    公式表,376 列         打开,算,发回来
+  04_questions.txt         5 个问题,不是表格     看到顺手答,答不上来
+                                                 也没关系
+
+全部都是"打开 → 让 Bloomberg 插件算 → 发回来",没有别的操作。
+
+⚠️ 上一版的 03 我发了一份**只有 CUSIP 清单、没有公式**的文件,你说看不懂
+是对的 —— 那份东西确实没法用。当时我的想法是"时间序列不知道该怎么排版,
+等你在终端上看过再定",但那等于把一个本该我们做的决定丢给你。已经改成
+正常的公式表了。04 原本是个 CSV,也改成了纯文本,因为它要的是文字回答,
+不是填格子。
+
+
+一共两件事,第二件是这次真正重要的。
 
 
 为什么要先跑小表
@@ -514,9 +620,17 @@ factor 是每月公布的**事实**,带日期的,本来就是 BDH 该干的事�
 返回一列**,这本来就是 BDH 在做的事,不是几万次单点查询。真正的未知
 数是排版,所以才要先跑 01b 看一只长什么样。
 
-03_factor_history.csv 是一份**清单**,不是公式表。因为 factor 是
-时间序列,一只证券一行放不下,怎么排版等 01b 跑出来看过再定 - 我们
-先猜一个反而要你返工。
+** 03 长得和别的表不一样,是横过来的 **
+因为 factor 是时间序列,一只证券占**一列**,不是一行:
+
+    第 1 行    证券代码(376 个,横着排)
+    第 2-4 行  这只是什么(tranche / ARM / 验证用、结构、是否已还清)
+    第 5 行    ⭐ 公式在这一行,每个往下自动填满 211 行
+    A 列       2009-03 到 2026-09 共 211 个月,已经写好了
+
+所以打开之后应该是一块 376 列 x 211 行的整齐矩形,每一列一只证券,
+每一行一个月,已经还清的那些后面自然是空的。⚠️ 如果太慢,删掉一半
+列分两次跑就行,月份那一列留着别动。
 
 清单里分三组,request_group 那列标了:
 

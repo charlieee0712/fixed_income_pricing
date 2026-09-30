@@ -1,0 +1,50 @@
+﻿CMO tranche -- 几个终端上的问题(可选,看到再答)
+================================================================
+
+不是公式表,是想请你在终端上看一眼然后告诉我们。
+我们不敢乱猜 CMO 的字段名 -- 七月那个 MTG_HIST_COLLAT_CPR_LIFE 就是猜错的,
+882 只全返回 Invalid Field。所以这里是问题,不是让你跑的东西。
+
+⭐ Q1 最重要。如果 Q1 的答案是肯定的,后面四个可以都不管 --
+   factor 历史(03 那张表)就是我们要的全部。
+
+三只证券,都是我们手上真实的持仓:
+
+   31396XJY1   FEDERAL NATIONAL MORTGAGE ASSOC 6% CMO
+      (largest tranche position, $15.7M)
+
+   31396XDP6   FNMA REMIC SER 2007-80 CL WO 25 AUG 2037
+      (largest PO strip, $5.0M)
+
+   31392PPG4   FHLMC SER 2460 CL VZ 6.0% 15 NOV 2029
+      (a Z accrual tranche, $3.9M -- the hardest case)
+
+================================================================
+
+Q1. THE ONE THAT MATTERS MOST. FLDS on this security -- is there a factor field, and does it carry history back to 2009? Please paste the exact field name. A factor is a published monthly fact, so this should be the easy one.
+
+    答:
+
+
+Q2. Can a cash flow projection be run AS OF 2009-03-31, or only forward from today? We expect 'only forward' -- a projection is computed off today's collateral. A clear no is a useful answer and closes the question.
+
+    答:
+
+
+Q3. Does the terminal show a projected cash flow table for THIS tranche (date, interest, principal), and can it be exported to Excel?
+
+    答:
+
+
+Q4. Any other CMO-specific fields worth knowing about (tranche type, deal name, PAC bands, original tranche amount)? Exact names please -- we are deliberately not guessing them.
+
+    答:
+
+
+Q5. What does DES call the tranche type? Our guess from the description text is unreliable: of the 54 tranches whose class letter starts with P, 29 are PRINCIPAL ONLY strips rather than PACs.
+
+    答:
+
+
+================================================================
+一个都答不上来也完全没关系 -- 这几个是备选路线,主线是 01b 和 03。

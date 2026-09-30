@@ -12,8 +12,8 @@ to give it that shape.
 | `01a_PILOT_cpr.csv` | 5 | **run first** — 4 ways of asking, stratified |
 | `01b_PILOT_factor.csv` | 3 | **run first** — factor + coupon history |
 | `02_cpr_main.csv` | 505 | 3 fields × 2 dates = 3,030 points |
-| `03_factor_history.csv` | 376 | 344 tranches + **12 ARM pools** + 20 validation — a **list** |
-| `04_cmo_terminal_questions.csv` | 3×5 | questions, no formulas |
+| `03_factor_history.csv` | 376 cols | 344 tranches + **12 ARM pools** + 20 validation — **formulas**, transposed |
+| `04_questions.txt` | 5 Q | plain text, not a sheet |
 
 ---
 
@@ -97,10 +97,22 @@ alongside the 344. If the factor method reproduces our own number on those, the 
 proven **before** it is pointed at a single tranche. Gate 0, at the front, which is the one
 ordering this project has measured as working.
 
-⚠️ **`03` is a security LIST, not a formula sheet.** A factor request returns a *time
-series* per security; 364 of those cannot sit one-per-row, and the layout is a decision to
-make at the terminal once the pilot shows what one series looks like. The precedent is
-`govt_mtge_cusips.csv`. ⚠️ `MTG_FACTOR` in `01b` is a **candidate spelling**, labelled as
+⚠️ **`03` WAS a bare security list and that was wrong — corrected 2026-09-30.** Liping
+opened it, found no formulas, and said she could not follow it. Fairly: its three sibling
+files are formula sheets and this one silently was not. The reasoning behind it ("a time
+series cannot sit one-per-row, so settle the layout at the terminal") was sound, and the
+delivery pushed a decision we should have made onto someone doing us a favour.
+
+⭐ The layout was also easier than it looked. Fix the range to exactly the **211 months**
+from 2009-03 to 2026-09 and ask BDH for a fixed row count, and every series is the same
+height, so 376 of them tile into one rectangle: tickers across row 1, the months written
+down column A, one BDH per column on row 5 spilling 211 rows straight down. Dead pools are
+simply blank after payoff, and one screen shows whether it worked.
+
+⚠️ And the first version of THAT had the formulas on row 5 with the months starting on row
+6 — every value one month above its own label, a sheet full of plausible numbers each
+attributed to the wrong date, with nothing on it to reveal the shift. Caught by asserting
+the alignment rather than by looking. ⚠️ `MTG_FACTOR` in `01b` is a **candidate spelling**, labelled as
 one, with a `FLDS` question beside it — guessing a mnemonic is what cost the July pull.
 
 ### ⚠️ The honest limit, which must travel with every number this produces
