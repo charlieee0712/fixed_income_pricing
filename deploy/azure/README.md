@@ -6,6 +6,34 @@ Windows-written record. **Option B is a hosted URL other people can call.**
 
 ## Run it
 
+## ✅ Live since 2026-09-30 04:44 UTC
+
+`ryse-pricing-urs`, Southeast Asia, B1. The container log settles it:
+
+```
+04:44:13 [INFO] Starting gunicorn 23.0.0
+04:44:13 [INFO] Listening at: http://0.0.0.0:8000
+04:44:13 [INFO] Booting worker with pid: 1894      <- two workers, as configured
+04:44:14 [INFO] Booting worker with pid: 1895
+04:44:20 Site startup probe succeeded after 64.6 seconds
+04:44:21 Site started.   Site is running with patch version PYTHON-3.12.13
+```
+
+⭐ And a later request confirms it is *ours* and not a platform page:
+`"GET / HTTP/1.1" 404 146` — **146 bytes is exactly the byte length of our own
+`NOT_FOUND` envelope.** The app is up and routing.
+
+It took four attempts and the causes were all different: OneDeploy silently skipping the
+build, a diagnostic that could not read wwwroot, Oryx delivering into `output.tar.zst`,
+and an absolute startup path naming a file that therefore did not exist (`exit code 127`).
+
+⚠️ **Two traps for whoever reads these logs next.** `LastError: ContainerStartupFailure`
+is **sticky** — it reports the last error ever seen and keeps appearing inside messages
+that also say `State: Started`. And the IP allow-rule pins one address, so a **new Cloud
+Shell session gets a new egress IP and a 403**; re-add the rule, nothing is broken.
+
+---
+
 ### From Azure Cloud Shell (the shortest path)
 
 Cloud Shell already has `az`, already has a persistent `$HOME`, and reaches GitHub without

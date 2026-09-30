@@ -98,10 +98,25 @@ az webapp config access-restriction show -g "$RG" -n "$APP" \
 cat <<'MSG'
 
 === reading this
-  antenv ABSENT + "Build successful" in ~1s  -> Oryx skipped pip. The two app settings in
-                                                section 1 are the cause; deploy.sh now sets
-                                                both and verifies them before deploying.
-  antenv PRESENT + container log shows an
-  import error or ModuleNotFoundError        -> a real code or dependency problem.
-  container log shows a port/bind message    -> the startup command, not the build.
+  ⭐ "Starting gunicorn" + "Listening at: http://0.0.0.0:8000" + "Site started"
+                                             -> IT IS UP. Stop reading logs and run
+                                                scripts/remote_smoke.py.
+  "GET / ... 404 146"                        -> also UP: 146 bytes is exactly our own
+                                                NOT_FOUND envelope, not an Azure error
+                                                page. The app is routing.
+  wwwroot holds output.tar.zst and no src/   -> NORMAL for a package this size. Oryx
+                                                compresses and the platform extracts at
+                                                container start, so the startup command
+                                                must use a RELATIVE path.
+  "exit code 127"                            -> command not found: the startup command
+                                                names a file that is not there.
+  antenv ABSENT + "Build successful" in ~1s  -> Oryx skipped pip. Check the deployer in
+                                                section 4: OneDeploy does not build here,
+                                                zipdeploy does.
+  ModuleNotFoundError in section 6           -> a real code or dependency problem.
+
+⚠️⚠️ `LastError: ContainerStartupFailure` IS STICKY. It records the last error EVER seen,
+not the current state, and it keeps appearing on lines that also say `State: Started`.
+Read the STATE and the timestamps, never the LastError alone — on 2026-09-30 it went on
+reporting a 04:34 exit-127 inside the very messages announcing the successful 04:44 start.
 MSG
