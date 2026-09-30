@@ -148,22 +148,33 @@ def diff(committed, live, path=""):
 
 
 def worst(committed, live, path=""):
-    """The largest fraction-of-budget consumed anywhere in the pair."""
-    w, where = 0.0, ""
+    """The largest fraction-of-budget consumed anywhere, AND how many numbers were read.
+
+    ⭐ The count is not decoration. "worst 0.0% of budget" looks identical whether every
+    number agreed or no number was examined, and this project has shipped that confusion
+    twice -- a parity check that matched zero files and reported success, and a
+    parametrized test over an empty glob. A measurement must be able to say it measured
+    nothing.
+
+    Returns: (worst_fraction, its_path, numbers_compared).
+    """
+    w, where, n = 0.0, "", 0
     if isinstance(committed, dict) and isinstance(live, dict):
         for k in set(committed) & set(live):
-            a, p = worst(committed[k], live[k], f"{path}.{k}".lstrip("."))
+            a, p, c = worst(committed[k], live[k], f"{path}.{k}".lstrip("."))
+            n += c
             if a > w:
                 w, where = a, p
     elif isinstance(committed, list) and isinstance(live, list):
         for i, (a_, b_) in enumerate(zip(committed, live)):
-            a, p = worst(a_, b_, f"{path}[{i}]")
+            a, p, c = worst(a_, b_, f"{path}[{i}]")
+            n += c
             if a > w:
                 w, where = a, p
     elif (isinstance(committed, (int, float)) and isinstance(live, (int, float))
             and not isinstance(committed, bool) and not isinstance(live, bool)):
-        w, where = tol.budget_used(path, float(committed), float(live)), path
-    return w, where
+        w, where, n = tol.budget_used(path, float(committed), float(live)), path, 1
+    return w, where, n
 
 
 def main(argv=None):
@@ -211,6 +222,7 @@ def main(argv=None):
         return 1
 
     failures, checked, worst_used, worst_at, worst_fix = [], 0, 0.0, "", ""
+    numbers = 0                      # how many values were actually put side by side
     print(f"\nfixtures: {len(fixtures)}")
     for req_path, resp_path, generation in fixtures:
         payload = json.loads(req_path.read_text(encoding="utf-8"))
@@ -240,19 +252,24 @@ def main(argv=None):
                                  [(s, "text", "frozen v1.0", "today") for s in short]))
                 print(f"   FAIL  {req_path.name:40s} v1.0 guarantee broken: {len(short)}")
             else:
-                print(f"   ok    {req_path.name:40s} {status}  v1.0 superset holds")
+                _, _, n_here = worst(committed, live)
+                numbers += n_here
+                print(f"   ok    {req_path.name:40s} {status}  v1.0 superset holds "
+                      f"({n_here} numbers)")
             continue
 
         checked += 1
         d = diff(committed, live)
-        used, at = worst(committed, live)
+        used, at, n_here = worst(committed, live)
+        numbers += n_here
         if used > worst_used:
             worst_used, worst_at, worst_fix = used, at, req_path.name
         if d:
             failures.append((req_path.name, d))
             print(f"   FAIL  {req_path.name:40s} {len(d)} difference(s)")
         else:
-            print(f"   ok    {req_path.name:40s} {status}  worst {used:7.1%} of budget")
+            print(f"   ok    {req_path.name:40s} {status}  {n_here:3d} numbers, "
+                  f"worst {used:7.1%} of budget")
 
     # ------------------------------------------------ 3. optional: agree with here, now
     if analyze is not None:
@@ -280,6 +297,17 @@ def main(argv=None):
               "rounding.")
         return 1
 
+    # ⚠️ A pass over nothing is the failure this count exists to make impossible. The
+    # floor is deliberately loose -- it is a smoke alarm for "the traversal broke", not a
+    # golden count that would need updating whenever a fixture gains a field.
+    MIN_NUMBERS = 100
+    if numbers < MIN_NUMBERS:
+        print(f"FAIL  only {numbers} numeric fields were compared, against roughly 156 "
+              f"in the committed fixtures. Something stopped the comparison descending, "
+              f"and a green result here would mean nothing.")
+        return 1
+
+    print(f"numbers compared: {numbers}")
     print(f"worst deviation anywhere: {worst_used:.2%} of its budget "
           f"({worst_at or 'n/a'}, {worst_fix or 'n/a'})")
     if worst_used > tol.BUDGET_USED_MAX:
@@ -288,7 +316,8 @@ def main(argv=None):
         print(f"FAIL  the noise floor exceeds {tol.BUDGET_USED_MAX:.0%} of budget. "
               "Nothing is wrong yet, and that is exactly when to look.")
         return 1
-    print(f"\nPASS  the deployed service reproduces the record on all {checked} fixtures.")
+    print(f"\nPASS  the deployed service reproduces the record: {checked} fixtures, "
+          f"{numbers} numbers, worst {worst_used:.2%} of tolerance.")
     return 0
 
 

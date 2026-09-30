@@ -304,3 +304,87 @@ decision rather than a code one.
 ⚠️ **Still unanswered by anybody, and ours to decide:** how `data/` (~34 MB) reaches the
 app — baked into the image, mounted from Blob Storage, or pulled at start — and **CORS plus
 authentication**, which the browser front end needs and the VBA bridge never had to cross.
+
+---
+
+## ⭐⭐ OPTION B IS LIVE — 2026-09-30, and the gate is green
+
+`https://ryse-pricing-urs.azurewebsites.net` · App Service Linux **B1** · **PYTHON
+3.12.13** · Southeast Asia · 2 gunicorn workers · `data/` shipped inside the package.
+
+```
+PASS  the deployed service reproduces the record: 11 fixtures, 156 numbers,
+      worst 0.00% of tolerance.
+```
+
+⭐ **0.00% is explained, not suspicious.** `deploy/azure/requirements.txt` pins the exact
+numpy / pandas / scipy this machine runs, so bit-agreement is the expected outcome — and
+it is the clearest evidence the pinning decision ("pin what can change a number, range
+what cannot") was worth making.
+
+### Four attempts, four different causes, and not one error message named the real one
+
+| # | the actual cause | what the platform said |
+|---|---|---|
+| 1-2 | `az webapp deploy --type zip` (OneDeploy) **skips the Oryx build entirely** | `Deployment successful` + `Build successful. Time: 1(s)`, then a 10-minute startup timeout |
+| — | the diagnostic could not read wwwroot — **SCM basic auth is off by default now** | a bare `401` |
+| 3 | **Oryx delivers `output.tar.zst`, not loose files**, and the platform extracts it to a TEMP directory at container start | nothing |
+| 4 | the startup command used an ABSOLUTE wwwroot path, so it named a file that did not exist | `exit code 127`, surfaced as *"the worker process failed to start within the allotted time"* |
+
+⭐ **The working deploy command is the DEPRECATED one.** `az webapp deployment source
+config-zip` builds correctly (221 s) while printing *"This command has been deprecated,
+use az webapp deploy instead"* — and the command it recommends is the one that silently
+skips the build. ⚠️ When it is finally removed, verify the successor by **watching for a
+build that takes MINUTES**, never by trusting the word "successful".
+
+⭐ **The startup path must be RELATIVE** (`bash deploy/azure/startup.sh`), because the app
+does not run from wwwroot. `startup.sh` derives its root from `BASH_SOURCE`, recomputes
+`FIP_DATA_DIR` when the configured absolute path does not exist, and looks for `antenv`
+beside the extracted app as well as in wwwroot.
+
+### Three traps recorded where they will next mislead someone
+
+* ⚠️ **`LastError: ContainerStartupFailure` is STICKY.** It reports the last error ever
+  seen and keeps appearing inside the very messages announcing `State: Started`. On
+  2026-09-30 it cited a 04:34 exit-127 throughout the successful 04:44 start. **Read the
+  state and the timestamps, never LastError alone.**
+* ⚠️ **Container logging is OFF by default.** An empty log means *"nothing was being
+  recorded"*, not *"the container said nothing"* — and reading it the second way cost a
+  round. `deploy.sh` now enables it before deploying.
+* ⚠️ **The IP allow-rule pins one address**, so a new Cloud Shell session gets a new
+  egress IP and a **403**. Nothing is broken. `deploy.sh` refreshes it every run.
+
+### ⭐ The gate needs no scientific stack, and that is a correction
+
+`scripts/remote_smoke.py` first imported `pricer.endpoints.main` for a local reference and
+therefore died on the machine that had just deployed the service
+(`ModuleNotFoundError: No module named 'pandas'` — Cloud Shell has no stack). The venv was
+never the problem; **a gate that only runs where the engine runs cannot be run by the
+people option B exists for.** It is also a soft form of habit 6.
+
+It now compares the deployed answers against the **committed response fixtures** — which
+is the better question anyway: *"does Azure reproduce the record"* rather than *"does
+Azure agree with this laptop right now"*, the same question `platform_parity.py` asks of
+the driver CSVs. Standard library only; `tolerances.py` is loaded **by path**, because the
+ordinary import runs an `__init__` that pulls in pandas to read four constants.
+
+⚠️ The two frozen v1.0 fixtures cannot be compared with plain equality (today's engine
+answers them at 1.1 with an added field — the additive contract working). A first cut
+checked only their `status`, which would pass a response with wrong numbers on the two
+plainest bonds in the book. They now use `tolerances.shortfalls` — *is today's answer a
+SUPERSET of the frozen one* — shared with `test_excel_fixture_parity` so there is one rule.
+
+⭐ **It reports how many numbers it compared (156) and refuses a pass under 100.** Trap
+1.29: a measurement that cannot say it measured nothing. `worst 0.0%` reads identically
+whether every number agreed or none were examined, and this project has shipped that
+confusion twice.
+
+### Still open
+
+* **Entra authentication** — `enable_entra_auth.sh` is written and **not yet run**. Two
+  phases by decision: the IP rule proves the app first, because an early version enabled
+  Easy Auth with `--action Return401` and **no identity provider**, which 401s every
+  request including our own gate with no token obtainable.
+* **CORS** — the browser front end needs it, and a browser refuses **before the request
+  arrives**, so nothing appears in any server log.
+* **Always On** — off. One setting, worth it once the audience is real.

@@ -829,6 +829,43 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   the idle wipe, the storage-region dance were all free-tier problems); ⚠️ and it is the
   client's money, so the shape — one plan, one region, idle-down or not — is decided BEFORE
   standing it up, not after the first invoice.
+- **⭐⭐ OPTION B IS LIVE — `ryse-pricing-urs.azurewebsites.net`, up 2026-09-30 04:44 UTC,
+  GATE GREEN (11 fixtures, 156 numbers, worst 0.00% of tolerance).** App Service Linux
+  B1 / PYTHON 3.12.13, Southeast Asia, 2 gunicorn workers, `data/` shipped in the package.
+  Everything is a repo artifact: `deploy/azure/{deploy,startup,diagnose,enable_entra_auth}.sh`
+  + `src/pricer/endpoints/routes/wsgi.py` + `scripts/remote_smoke.py`.
+  **⚠️ FOUR ATTEMPTS, FOUR DIFFERENT CAUSES, AND NO ERROR MESSAGE NAMED THE REAL ONE:**
+  ① `az webapp deploy --type zip` (OneDeploy) **silently skips the Oryx build** —
+  "Build successful. Time: 1(s)" and then ten minutes of startup failure looking for
+  gunicorn. ⭐ **The command that WORKS is the DEPRECATED one**, `az webapp deployment
+  source config-zip` (221 s of real build); it prints "use az webapp deploy instead" while
+  doing the right thing. Verify any successor by watching for a build that takes MINUTES,
+  never by trusting the word "successful". ② the diagnostic could not read wwwroot —
+  **Azure now disables SCM basic auth by default**; use an Entra bearer token against
+  Kudu. ③ ⭐ **Oryx does not leave the app in wwwroot** for a package this size: it writes
+  ONE file, `output.tar.zst`, and the platform extracts it to a TEMP dir at container
+  start ⇒ **the startup command must be RELATIVE** (`bash deploy/azure/startup.sh`). An
+  absolute wwwroot path = `exit code 127`, reported by the platform as "the worker process
+  failed to start within the allotted time". ④ container logging is **OFF by default**, so
+  an empty log means "not recording", not "the container said nothing".
+  **⚠️ `LastError: ContainerStartupFailure` IS STICKY** — it keeps appearing inside the very
+  messages announcing `State: Started`. Read the state and timestamps, never LastError.
+  **⚠️ The IP allow-rule pins ONE address; a new Cloud Shell session = new egress IP = 403.**
+  Re-add the rule (`deploy.sh` does it every run, outside the `--no-create` branch).
+  **Auth is TWO PHASES by decision:** deploy.sh shuts the door with an IP rule (no app
+  registration, no consent, no token — so it cannot wall us out before the app is proven);
+  `enable_entra_auth.sh` does Entra properly afterwards and is **written but NOT yet run**.
+  ⚠️ An early version enabled Easy Auth with `--action Return401` and **no identity
+  provider** = every request 401s including our own gate, with no token obtainable.
+  **Still open:** Entra (phase 2), **CORS** (the browser front end needs it; a browser
+  refuses before the request arrives, so nothing appears in any log), Always On.
+  ⭐ **`scripts/remote_smoke.py` is the gate and needs NO scientific stack** — it compares
+  the deployed answers against the **committed response fixtures** (the record), not
+  against a live local run, so Mario's team or a CI runner can verify the service. It
+  EXITS NONZERO, unlike `platform_parity.py`. The 2 frozen v1.0 fixtures use
+  `tolerances.shortfalls` (is today's answer a SUPERSET), shared with
+  `test_excel_fixture_parity`. It reports **how many numbers it compared** and refuses a
+  pass under 100 — a green run over nothing is the failure that count exists to prevent.
 - **⚠️ LIPING'S WEB APP: NOTHING TO INHERIT (answers 2026-09-29).** She doesn't know which
   service, doesn't know what was stuck ("tried a few times and it inexplicably worked"),
   doesn't know how data would ship — a small demo, not a deployment, and she said so. ⇒ we
