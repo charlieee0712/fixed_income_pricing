@@ -343,6 +343,18 @@
 38375Y5V0,TNTD03433588,38375Y5V0 Mtge,tranche-unpriced,io-strip,0.23,no,cash flows need the deal waterfall; the factor path replaces it
 3837H16W6,TNTD03342563,3837H16W6 Mtge,tranche-unpriced,remic-tranche,2.28,no,cash flows need the deal waterfall; the factor path replaces it
 3837H4AM7,TNTD03339996,3837H4AM7 Mtge,tranche-unpriced,remic-tranche,0.19,no,cash flows need the deal waterfall; the factor path replaces it
+3128JNXP5,TNTD03143340,3128JNXP5 Mtge,arm-pool-unpriced,pass-through,1.87,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+3128JPK82,TNTD03153409,3128JPK82 Mtge,arm-pool-unpriced,pass-through,0.19,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+3128LUJ31,TNTD03134118,3128LUJ31 Mtge,arm-pool-unpriced,pass-through,0.88,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+3128NFGD3,TNTD03138540,3128NFGD3 Mtge,arm-pool-unpriced,pass-through,1.17,no,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+3128QPK35,TNTD03150984,3128QPK35 Mtge,arm-pool-unpriced,pass-through,0.73,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+3128QPSS2,TNTD03143296,3128QPSS2 Mtge,arm-pool-unpriced,pass-through,3.95,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+31349TV99,TNTD03141998,31349TV99 Mtge,arm-pool-unpriced,pass-through,1.55,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+31403JD45,TNTD03410000,31403JD45 Mtge,arm-pool-unpriced,pass-through,0.35,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+31404GNT4,TNTD03391227,31404GNT4 Mtge,arm-pool-unpriced,pass-through,0.14,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+31405MB71,TNTD03403331,31405MB71 Mtge,arm-pool-unpriced,pass-through,0.48,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+31405MUZ8,TNTD03403279,31405MUZ8 Mtge,arm-pool-unpriced,pass-through,2.45,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
+31409JPF1,TNTD03394240,31409JPF1 Mtge,arm-pool-unpriced,pass-through,1.37,yes,"adjustable rate: the coupon RESET between 2009 and the 2026 pull, so the pulled WAC is the wrong decade. Coupon history is the ARM model"
 31402CZR6,TNTD03415332,31402CZR6 Mtge,validation-pool,pass-through,44.48,yes,our engine already prices this one -- used to check the factor method against a number we trust
 31410KQJ6,TNTD03426713,31410KQJ6 Mtge,validation-pool,pass-through,35.94,no,our engine already prices this one -- used to check the factor method against a number we trust
 31410KRX4,TNTD03428194,31410KRX4 Mtge,validation-pool,pass-through,31.86,no,our engine already prices this one -- used to check the factor method against a number we trust

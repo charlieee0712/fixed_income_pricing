@@ -11,8 +11,8 @@ to give it that shape.
 | `00_README.txt` | — | order of play, in Chinese |
 | `01a_PILOT_cpr.csv` | 5 | **run first** — 4 ways of asking, stratified |
 | `01b_PILOT_factor.csv` | 3 | **run first** — factor + coupon history |
-| `02_cpr_main_505.csv` | 505 | 3 fields × 2 dates = 3,030 points |
-| `03_factor_history_364.csv` | 364 | 344 tranches + 20 validation pools — a **list** |
+| `02_cpr_main.csv` | 505 | 3 fields × 2 dates = 3,030 points |
+| `03_factor_history.csv` | 376 | 344 tranches + **12 ARM pools** + 20 validation — a **list** |
 | `04_cmo_terminal_questions.csv` | 3×5 | questions, no formulas |
 
 ---
@@ -23,8 +23,9 @@ We have these fields. They came back in July **as of the pull date** rather than
 2009-03-31. `BDP` returns only a current value, so this is the same request re-dated
 through `BDH`. 882 × 8 fields became **505 × 3 × 2 = 3,030 points**, a 57% cut.
 
-**The acceptance test is quantitative.** These pools run at a **median 8.3% CPR today**
-(7.2–11.7 across the book). At 2009 the same collateral sat a **median 1.53pp in the
+**The acceptance test is quantitative.** ⚠️ Population named, because the first draft did
+not: of the **505 in this request**, the **253 still alive today** run at a **median 8.3%
+CPR** (p10 7.2 / p90 11.3). At 2009 the same collateral sat a **median 1.53pp in the
 money** in the middle of a refi wave, so a 2009 speed should be several times today's —
 plausibly 20–40%. **If the 2009 column reads ≈8%, the date did not apply.**
 
@@ -32,7 +33,8 @@ plausibly 20–40%. **If the 2009 column reads ≈8%, the date did not apply.**
 the identifiers resolve and the field name is real — neither is what needs testing. The
 open questions are whether `BDH` applies the date and how the array lays out. One row each
 for: a live pool with a value, **a paid-off pool** (⚠️ Bloomberg *freezes* a dead pool's
-CPR rather than blanking it — 215 of our 221 still return one, so a frozen number is
+CPR rather than blanking it — **215 of the 220 dead pools inside the 505** still return
+one, so a frozen number is
 indistinguishable from a live one), a live pool with no current value, and a TBA generic
 from each side of the July outcome.
 
@@ -69,9 +71,12 @@ We are valuing at **2009-03-31, seventeen years ago**. Measured on the 344:
 
 * **89 have paid off entirely** ($114.3M) — realised cash flow **complete**, zero tail
   assumption of any kind.
-* **255 still alive** ($359.1M), median **6.7 years** remaining today against the 17 years
+* **251 still alive** ($356.0M), median **6.7 years** remaining today against the 17 years
   since the valuation date. The observed window dominates; the short tail takes the same
   CPR grid the pools already use.
+* ⚠️ **4 are of unknown status** — the July pull returned no WAM for them, so they are
+  neither. The first draft said "255 alive", folding the unknowns in, which made the
+  paragraph sound more settled than the data is.
 * **`factor` and `par` are on hand for 341 of 344**, so `orig_face = par / factor` is
   derivable — ⚠️ the master's `orig_face` column is empty, which is why it is computed
   rather than read.
@@ -87,7 +92,7 @@ route is worth trying first.
 
 ### ⭐ The validation seed
 
-`03_factor_history_364.csv` carries **20 pass-through pools our engine already prices**
+`03_factor_history.csv` carries **20 pass-through pools our engine already prices**
 alongside the 344. If the factor method reproduces our own number on those, the method is
 proven **before** it is pointed at a single tranche. Gate 0, at the front, which is the one
 ordering this project has measured as working.
@@ -178,9 +183,16 @@ spread on the measured sensitivity. ⚠️ The ARM nature remains — a level-pa
 an adjustable pool freezes the coupon at its 2009 value, which is the same shape as the
 2026-08-31 FRN current-coupon freeze and needs the same explicit label.
 
-**Named follow-up, not done here:** recover the 12 (`505 → 517`) via a derived-WAC path with
-an `arm-frozen-coupon` label. It moves a hashed production CSV, so it is its own piece of
-work.
+⭐⭐ **SUPERSEDED BY THE PRE-SEND AUDIT (2026-09-30): the 12 are now IN the factor
+request.** The derived-WAC plan above is not wrong, it is beside the point — it recovers a
+coupon **level**, and an ARM's whole difficulty is that the coupon **moves**. Factor
+history plus coupon history is an ARM's realised path exactly as it is a tranche's: the
+same route, the same request, twelve more rows on a list of 364.
+
+⭐ Worth naming as a pattern: the reason they were left out was a **cost** argument ("24
+data points, we can do it ourselves for 0.12bp") that quietly answered a **different
+question** than the one being asked. The audit caught it only because it asked "is every
+unpriced security accounted for in some ask?" rather than re-reading the prose.
 
 **This is the same failure as `PAR_YIELD_UNITS` and the endpoint tolerance:** one rule sized
 on the population you measured, silently covering a second population you did not.
