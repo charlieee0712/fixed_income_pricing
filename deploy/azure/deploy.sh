@@ -113,6 +113,13 @@ echo "build settings verified"
 az webapp config set -g "$RG" -n "$APP" -o none \
   --startup-file "bash /home/site/wwwroot/deploy/azure/startup.sh"
 
+# ⚠️ Container logging is OFF by default, and that cost a whole round on 2026-09-30: the
+# container log came back EMPTY after a ten-minute startup failure, which reads as "the
+# container said nothing" when it actually meant "nothing was being recorded". Turned on
+# BEFORE deploying, or the next failure is exactly as mute as the last one.
+az webapp log config -g "$RG" -n "$APP" -o none \
+  --docker-container-logging filesystem --application-logging filesystem --level verbose
+
 # ------------------------------------------------------------------ 3. package
 # Staged rather than zipping the repo: the pinned requirements must land at the package
 # ROOT, because that is the only one Oryx reads.
