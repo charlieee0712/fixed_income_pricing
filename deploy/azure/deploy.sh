@@ -154,11 +154,22 @@ echo "archive verified: requirements.txt at the root, $(unzip -l "$ZIP" | tail -
 
 echo "deploying — the FIRST build installs numpy/pandas/scipy and takes several minutes."
 echo "⚠️ If this reports 'Build successful' in about a second, the build did NOT run."
-# ⚠️ The deployment ENDPOINT is switchable, because which one triggers an Oryx build is
-# the open question of 2026-09-30. `az webapp deploy --type zip` uses the newer OneDeploy
-# API; `config-zip` uses the older /api/zipdeploy, which is the path Python-on-Linux build
-# automation was originally built around. Both are documented to honour the app settings;
-# only one of them is observed to.
+# ⚠️⚠️ SETTLED BY MEASUREMENT 2026-09-30, AND THE ANSWER IS UNCOMFORTABLE: the working
+# command is the DEPRECATED one.
+#
+#   az webapp deploy --type zip   (OneDeploy, the recommended replacement)
+#       -> "Build successful. Time: 1(s)". No Oryx, no pip, no virtualenv. The deployment
+#          reports SUCCESS and the container then fails to start for ten minutes looking
+#          for gunicorn. Twice.
+#   az webapp deployment source config-zip   (the older /api/zipdeploy)
+#       -> "Building the app..." for 221 seconds, then "Build successful". Correct.
+#
+# `config-zip` prints "This command has been deprecated and will be removed in a future
+# release. Use 'az webapp deploy' instead." ⚠️ Do not take that advice here without
+# re-measuring: the replacement is the one that silently skips the build, and its failure
+# surfaces as a startup timeout that points at the startup command. When config-zip is
+# finally removed, the successor must be verified by watching for a build that takes
+# MINUTES, not by trusting the word "successful".
 case "${FIP_DEPLOY_METHOD:-zipdeploy}" in
   zipdeploy)
     az webapp deployment source config-zip -g "$RG" -n "$APP" --src "$ZIP" -o none ;;
