@@ -110,8 +110,14 @@ for want in SCM_DO_BUILD_DURING_DEPLOYMENT ENABLE_ORYX_BUILD; do
 done
 echo "build settings verified"
 
+# ⚠️⚠️ RELATIVE, not /home/site/wwwroot/... — an absolute path cost a full round on
+# 2026-09-30. For a package this size Oryx leaves wwwroot holding ONE FILE,
+# `output.tar.zst`, and the platform extracts it into a temporary directory and runs the
+# startup command from there. An absolute wwwroot path therefore named a file that did
+# not exist; bash exited, App Service retried, and the loop looked exactly like a slow
+# start for ten minutes. A relative path resolves against wherever the app actually is.
 az webapp config set -g "$RG" -n "$APP" -o none \
-  --startup-file "bash /home/site/wwwroot/deploy/azure/startup.sh"
+  --startup-file "bash deploy/azure/startup.sh"
 
 # ⚠️ Container logging is OFF by default, and that cost a whole round on 2026-09-30: the
 # container log came back EMPTY after a ten-minute startup failure, which reads as "the

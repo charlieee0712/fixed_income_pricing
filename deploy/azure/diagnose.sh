@@ -64,9 +64,12 @@ echo "   -> $n_build log line(s) mention a build. ZERO means Oryx never ran."
 
 say "5. is container logging even ON? (OFF by default — an empty section 6 then means"
 say "   'nothing was being recorded', NOT 'the container said nothing')"
-az webapp log config show -g "$RG" -n "$APP" \
+# ⚠️ `az webapp log config show` DOES NOT EXIST — it is `az webapp log show`. The wrong
+# spelling printed "unrecognized arguments: show" and this section reported nothing on
+# 2026-09-30, which is a diagnostic failing at the one job it has.
+az webapp log show -g "$RG" -n "$APP" \
    --query "{docker:httpLogs.fileSystem.enabled, appLevel:applicationLogs.fileSystem.level}" \
-   -o json
+   -o json 2>&1 | head -8
 echo "   turning filesystem logging on so the NEXT attempt is observable..."
 az webapp log config -g "$RG" -n "$APP" --docker-container-logging filesystem \
    --application-logging filesystem --level verbose -o none 2>/dev/null || true
@@ -76,7 +79,18 @@ say "6. container log — the last 60 lines before it gave up"
 # container that is not running.
 timeout 30 az webapp log tail -g "$RG" -n "$APP" 2>&1 | tail -60
 
-say "7. access restrictions"
+say "7. where did Oryx actually put the app?"
+# ⭐ The manifest names the extraction target. When wwwroot holds `output.tar.zst` rather
+# than loose files, the app runs from a TEMPORARY directory and any absolute
+# /home/site/wwwroot path in the startup command names a file that does not exist. That
+# was the 2026-09-30 failure: a perfect build, and a startup command aimed at nothing.
+if [[ -n "${TOKEN:-}" ]]; then
+  curl -fsS -H "Authorization: Bearer $TOKEN" \
+       "https://$APP.scm.azurewebsites.net/api/vfs/site/wwwroot/oryx-manifest.toml" \
+       2>/dev/null | head -20 || echo "   (no oryx-manifest.toml — loose-file layout)"
+fi
+
+say "8. access restrictions"
 az webapp config access-restriction show -g "$RG" -n "$APP" \
    --query "ipSecurityRestrictions[].{name:name, action:action, ip:ipAddress, pri:priority}" \
    -o table
