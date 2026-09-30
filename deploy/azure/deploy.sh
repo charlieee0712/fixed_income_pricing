@@ -38,19 +38,35 @@ if [[ $CREATE -eq 1 ]]; then
   az appservice plan create -g "$RG" -n "$PLAN" --sku "$SKU" --is-linux -o none
   az webapp create -g "$RG" -p "$PLAN" -n "$APP" --runtime "$RUNTIME" -o none
 
-  # ⚠️⚠️ AUTHENTICATION GOES ON BEFORE ANY DATA DOES, and this ordering is the point of
-  # putting it here rather than in a checklist. The app carries the client's portfolio and
-  # the engine has no authentication of its own -- endpoints/__init__ says so in as many
-  # words. Easy Auth is the platform's, so we ship no hand-rolled auth and "everyone with
-  # authorized access" becomes a membership list in Entra ID rather than a secret in a
-  # config file.
-  echo "enabling Entra ID authentication (unauthenticated requests -> 401)..."
-  az webapp auth microsoft update -g "$RG" -n "$APP" \
-     --allowed-audiences "api://$APP" -o none 2>/dev/null || true
-  az webapp auth update -g "$RG" -n "$APP" \
-     --enabled true \
-     --action Return401 \
-     --redirect-provider AzureActiveDirectory -o none
+  # ⚠️⚠️ THE DOOR IS SHUT BEFORE ANY DATA GOES IN, and the ordering is the point of putting
+  # it here rather than in a checklist. The app carries the client's portfolio and the
+  # engine has no authentication of its own -- endpoints/__init__ says so in as many words.
+  #
+  # ⚠️ IT IS AN IP RESTRICTION, NOT ENTRA, AND THAT IS A CORRECTION (2026-09-29).
+  # The first version of this script enabled Easy Auth here with `--action Return401` and
+  # no identity provider configured. That is not "locked", it is "walled up": every request
+  # 401s including our own gate, and no token can be obtained because no application is
+  # registered to issue one. The `az webapp auth microsoft update` line above it carried
+  # `2>/dev/null || true`, so the half that would have said so failed in silence -- a guard
+  # that hid the error it was guarding against.
+  #
+  # ⭐ Entra is still where this ends up; it is just not a prerequisite for finding out
+  # whether the app runs. `deploy/azure/enable_entra_auth.sh` does it properly, after the
+  # gate is green. An IP allow-rule needs no app registration, no consent and no token, and
+  # App Service appends an implicit "deny all" as soon as one Allow rule exists.
+  MYIP="$(curl -fsS https://api.ipify.org || true)"
+  if [[ -z "$MYIP" ]]; then
+    echo "REFUSING to continue: could not determine this machine's public IP, and the" >&2
+    echo "alternative is publishing a pricing service with client data and no door." >&2
+    exit 1
+  fi
+  echo "restricting access to $MYIP (implicit deny-all for everyone else)..."
+  az webapp config access-restriction add -g "$RG" -n "$APP" \
+     --rule-name allow-deployer --priority 100 --action Allow \
+     --ip-address "$MYIP/32" -o none
+  # ⚠️ Cloud Shell's egress IP CHANGES between sessions. A later session that gets 403 is
+  # not a broken app -- re-run this one command with the new address. `--scm-site` is left
+  # at its default so the deployment endpoint stays reachable.
 fi
 
 # ------------------------------------------------------------------ 2. settings
@@ -97,8 +113,11 @@ deployed -> $URL
 ⚠️ NOT DONE YET. A deployment that returns 200 has proved nothing; this one has the
 client's data behind it and has to reproduce the committed numbers. Run the gate:
 
-    TOKEN=\$(az account get-access-token --resource "api://$APP" --query accessToken -o tsv)
-    PYTHONPATH=src python scripts/remote_smoke.py "$URL" --token "\$TOKEN"
+    PYTHONPATH=src python scripts/remote_smoke.py "$URL"
+
+No token: access is currently an IP allow-rule for this machine only, so the gate runs
+as itself. Entra comes after this passes -- deploy/azure/enable_entra_auth.sh, which is
+also what turns "authorized access" into a membership list Mario's team can be added to.
 
 It checks /health for visible curve files first (the code shipping without the data is the
 likeliest failure), then prices all 11 shipped fixtures and compares every field against

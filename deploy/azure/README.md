@@ -24,8 +24,10 @@ cd fixed_income_pricing        # on later visits: cd ~/fixed_income_pricing && g
 export FIP_APP=ryse-pricing-urs          # must be globally unique
 bash deploy/azure/deploy.sh              # infrastructure + settings + code + data
 
-TOKEN=$(az account get-access-token --resource "api://$FIP_APP" --query accessToken -o tsv)
-PYTHONPATH=src python scripts/remote_smoke.py "https://$FIP_APP.azurewebsites.net" --token "$TOKEN"
+PYTHONPATH=src python scripts/remote_smoke.py "https://$FIP_APP.azurewebsites.net"
+
+# only once that prints PASS:
+bash deploy/azure/enable_entra_auth.sh
 ```
 
 ⚠️ **`$HOME` persisting is a setting, not a guarantee.** It survives when Cloud Shell has a
@@ -58,9 +60,24 @@ Code-only redeploy, infrastructure untouched: `bash deploy/azure/deploy.sh --no-
 | workers | **2** | separate processes, so N workers *are* the parallel execution the browser front end wants. Not more on 1.75 GB — each loads its own numpy, pandas and curves. |
 | timeout | **300 s** | the first request on a cold worker imports pandas and bootstraps a curve. The 30 s default kills it mid-import and the client sees a 502 that never recurs. |
 | data | **shipped in the package** (34 MB) | version-locked with the code, which matters: a curve file drifting under a pinned engine changes numbers silently. Blob Storage is the answer when the data outgrows the package, not before. |
-| auth | **App Service Easy Auth (Entra ID), `Return401`** | see below |
+| auth, phase 1 | **IP allow-rule for the deployer**, implicit deny-all | no app registration, no consent, no token — so it cannot wall us out before the app is proven |
+| auth, phase 2 | **App Service Easy Auth (Entra ID), `Return401`** | see below |
 
 ## ⚠️ Authentication is not optional here
+
+⚠️ **CORRECTED 2026-09-29, on the first real run.** `deploy.sh` originally enabled Easy
+Auth here with `--action Return401` and **no identity provider configured**. That is not a
+locked door, it is a walled-up one: every request 401s including our own gate, and no token
+can be obtained because no application is registered to issue one. The line that would have
+reported the problem carried `2>/dev/null || true` — a guard that hid the error it guarded
+against, which is this repo's most-catalogued failure shape.
+
+⭐ **So it is two phases now.** `deploy.sh` shuts the door with an **IP allow-rule** (one
+command, no prerequisites, App Service adds an implicit deny-all beside it), the gate runs
+and proves the app, and `enable_entra_auth.sh` then does the registration properly —
+three objects, no `|| true` anywhere, stopping on any failure with the app still reachable.
+⚠️ Cloud Shell's egress IP changes between sessions: a later 403 means re-run the one
+access-restriction command, not that anything broke.
 
 The engine has none — `endpoints/__init__.py` says so plainly — and this app has the client
 portfolio on disk. `deploy.sh` turns Easy Auth on **before the first deploy**, so there is
