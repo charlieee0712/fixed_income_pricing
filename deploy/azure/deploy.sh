@@ -54,34 +54,61 @@ if [[ $CREATE -eq 1 ]]; then
   # whether the app runs. `deploy/azure/enable_entra_auth.sh` does it properly, after the
   # gate is green. An IP allow-rule needs no app registration, no consent and no token, and
   # App Service appends an implicit "deny all" as soon as one Allow rule exists.
-  MYIP="$(curl -fsS https://api.ipify.org || true)"
-  if [[ -z "$MYIP" ]]; then
-    echo "REFUSING to continue: could not determine this machine's public IP, and the" >&2
-    echo "alternative is publishing a pricing service with client data and no door." >&2
-    exit 1
-  fi
-  echo "restricting access to $MYIP (implicit deny-all for everyone else)..."
-  az webapp config access-restriction add -g "$RG" -n "$APP" \
-     --rule-name allow-deployer --priority 100 --action Allow \
-     --ip-address "$MYIP/32" -o none
-  # ⚠️ Cloud Shell's egress IP CHANGES between sessions. A later session that gets 403 is
-  # not a broken app -- re-run this one command with the new address. `--scm-site` is left
-  # at its default so the deployment endpoint stays reachable.
+  :
 fi
+
+# ------------------------------------------------------------------ 1b. the door
+# ⚠️ OUTSIDE the create block, and that placement is the point. Cloud Shell's egress IP
+# CHANGES between sessions, so this is not a one-time setup step -- it is something every
+# run has to refresh, and a later 403 means "new session, new IP", not "the app broke".
+# Having it inside `if CREATE` meant a --no-create run silently left the previous session's
+# address allowed and this one locked out.
+MYIP="$(curl -fsS https://api.ipify.org || true)"
+if [[ -z "$MYIP" ]]; then
+  echo "REFUSING to continue: could not determine this machine's public IP, and the" >&2
+  echo "alternative is publishing a pricing service with client data and no door." >&2
+  exit 1
+fi
+echo "restricting access to $MYIP (implicit deny-all for everyone else)..."
+# Idempotent: drop the previous rule if present, then add. `|| true` is safe HERE and only
+# here -- a missing rule is the expected state on a first run, not a hidden failure.
+az webapp config access-restriction remove -g "$RG" -n "$APP" \
+   --rule-name allow-deployer -o none 2>/dev/null || true
+az webapp config access-restriction add -g "$RG" -n "$APP" \
+   --rule-name allow-deployer --priority 100 --action Allow \
+   --ip-address "$MYIP/32" -o none
+# `--scm-site` left at its default, so the deployment endpoint stays reachable.
 
 # ------------------------------------------------------------------ 2. settings
 az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
   PYTHONPATH=/home/site/wwwroot/src \
   FIP_DATA_DIR=/home/site/wwwroot/data \
   SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-  WEBSITES_CONTAINER_START_TIME_LIMIT=600
+  ENABLE_ORYX_BUILD=true \
+  WEBSITES_CONTAINER_START_TIME_LIMIT=900
 # PYTHONPATH   so gunicorn can import pricer.* without --chdir
 # FIP_DATA_DIR ABSOLUTE. A relative "data" resolves against the worker's cwd, which is not
 #              guaranteed to be wwwroot; the failure mode is a 503 from /health, which is
 #              at least the one we built a probe for.
-# SCM_DO_BUILD ... = Oryx runs pip install against the requirements.txt in the package root
-# START_TIME_LIMIT the first boot installs numpy/pandas/scipy; the 230s default is not
-#              always enough and the container is killed with no useful message.
+# SCM_DO_BUILD + ENABLE_ORYX_BUILD  ⚠️ BOTH, and the second was missing on 2026-09-30.
+#              With only the first, `az webapp deploy --type zip` skips pip ENTIRELY,
+#              reports "Build successful" in about ONE SECOND, and the container then
+#              spends ten minutes failing to find gunicorn. Nothing in that sequence says
+#              "no dependencies were installed" — the deployment reports success and the
+#              site reports a startup timeout, which points at the startup command.
+# START_TIME_LIMIT  900, up from 600: the first boot compiles nothing but does download and
+#              install numpy, pandas and scipy. 615s was not enough on a B1.
+
+# ⭐ READ IT BACK. An app setting that did not apply is invisible, and this project's own
+# rule is to schedule a gate check rather than assert state. The cost of skipping this was
+# the ten-minute failure above.
+for want in SCM_DO_BUILD_DURING_DEPLOYMENT ENABLE_ORYX_BUILD; do
+  got="$(az webapp config appsettings list -g "$RG" -n "$APP" \
+         --query "[?name=='$want'].value|[0]" -o tsv)"
+  [[ "$got" == "true" ]] || { echo "REFUSING to deploy: $want reads '$got', not true. " \
+     "Oryx would skip pip and the container would fail to start." >&2; exit 1; }
+done
+echo "build settings verified"
 
 az webapp config set -g "$RG" -n "$APP" -o none \
   --startup-file "bash /home/site/wwwroot/deploy/azure/startup.sh"
@@ -102,7 +129,26 @@ find "$STAGE" -name '.pytest_cache' -type d -prune -exec rm -rf {} + 2>/dev/null
 echo "package: $(du -sh "$STAGE" | cut -f1)"
 
 ( cd "$STAGE" && zip -qr app.zip . )
+echo "deploying — the FIRST build installs numpy/pandas/scipy and takes several minutes."
+echo "⚠️ If this reports 'Build successful' in about a second, the build did NOT run."
 az webapp deploy -g "$RG" -n "$APP" --src-path "$STAGE/app.zip" --type zip -o none
+
+# ⭐ The platform's own verdict is not the one that matters. Poll until the app answers, so
+# a failure here is "it never came up" rather than a green deployment and a dead URL.
+echo "waiting for the app to answer /health ..."
+for i in $(seq 1 60); do
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+          "https://${APP}.azurewebsites.net/health" || true)"
+  case "$code" in
+    200) echo "  /health -> 200 after ~$((i*10))s"; break ;;
+    503) echo "  /health -> 503: it is RUNNING but sees no curve files — the code shipped"
+         echo "  and the data did not. Check FIP_DATA_DIR."; break ;;
+    403) echo "  /health -> 403: the IP allow-rule does not include this machine."
+         echo "  Cloud Shell's egress IP changes between sessions; re-add the rule."; break ;;
+    *)   printf '  %ss: %s\r' "$((i*10))" "${code:-no answer}"; sleep 10 ;;
+  esac
+done
+echo
 
 # ------------------------------------------------------------------ 4. the gate
 URL="https://${APP}.azurewebsites.net"
