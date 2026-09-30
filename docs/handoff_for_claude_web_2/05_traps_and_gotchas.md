@@ -651,3 +651,34 @@ worth 0.1 bp, the settlement day ~4 bp per ten days, the CPR ~21 bp. That is wha
 as-of concern about a 2026-dated WAC be closed in one command instead of debated. ⭐ When an
 advisor or a reviewer raises a concern about an input, the cheapest reply is usually its
 sensitivity, not an argument.
+
+---
+
+# Refresh 2026-09-30 — one from the Azure deployment
+
+### §1.36 An IP allow-rule pinned to a SHARED, ROTATING address
+
+`deploy/azure/deploy.sh` protects the pricing service with an App Service access
+restriction: allow one IP, implicit deny-all. Read as `Allow 135.171.36.90/32`, that looks
+like *only this machine*.
+
+⚠️ **It is not.** The address is Azure **Cloud Shell's egress NAT**, which is shared across
+customers and reassigned between sessions. So the rule actually means *whoever currently
+holds that NAT address, and everyone else behind it*. Nothing anywhere says this — the
+portal shows a tidy allow-list, and the rule keeps working for you right up until the
+session where it silently does not.
+
+The same property produces the visible half of the trap: **a new Cloud Shell session gets
+a new egress IP and a flat 403**, which reads as a broken deployment. It is not; re-add the
+rule.
+
+⭐ **What bounded the risk was the CONTRACT, not the network rule.** The service exposes
+exactly two routes — `POST /price`, which prices whatever you send it, and `GET /health`,
+which returns a curve count and deliberately omits the directory. Everything else is 404.
+So even reached, the API is a calculator; it has the client portfolio on disk and no way to
+serve it. ⭐ That is worth noticing as a design property rather than luck: refusing every
+route you did not intend is what turned a weak network control into an acceptable one.
+
+**The lesson generalises past Azure:** an allow-list entry is only as narrow as the thing it
+names. Before trusting one, ask *who else can be at that address* — and size the exposure by
+what the surface can actually return, not by how likely someone is to find it.

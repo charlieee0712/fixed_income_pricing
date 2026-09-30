@@ -857,8 +857,27 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   `enable_entra_auth.sh` does Entra properly afterwards and is **written but NOT yet run**.
   ⚠️ An early version enabled Easy Auth with `--action Return401` and **no identity
   provider** = every request 401s including our own gate, with no token obtainable.
-  **Still open:** Entra (phase 2), **CORS** (the browser front end needs it; a browser
-  refuses before the request arrives, so nothing appears in any log), Always On.
+  **⭐ DECISION 2026-09-30 — ENTRA DEFERRED, trigger = THE FIRST CALLER WHO IS NOT US**
+  (not a date). ① its value is adding someone to a list and there is nobody to add yet;
+  ② ⚠️ the auth SHAPE is undecided — our script configures `Return401` (right for an API)
+  while Mario's browser front end needs an INTERACTIVE flow, so ⇒ **Entra and CORS get
+  decided together**; ③ ⚠️ it is the one operation that has already locked us out, and the
+  rewritten script has never been run — pointing it at a working service is the highest
+  risk available for zero present benefit.
+  **Instead the app is STOPPED** (`az webapp stop -g ryse-pricing -n ryse-pricing-urs`;
+  verify `az webapp show … --query state` = `Stopped`, `start` restores it in ~1 min, the
+  deployment persists). ⚠️ **Stopping does NOT stop the bill — the PLAN charges, ~$13/mo on
+  Mario's card, running or not.** Keep-running / stop-app / delete-the-RG cost $13 / $13 /
+  **$0**, restoring in 0 / 1 min / ~5 min; ⭐ deleting only became reasonable because the
+  deployment is a committed script. Revisit when a demo date exists.
+  **⚠️ THE IP ALLOW-RULE IS WEAKER THAN IT LOOKS:** it pins Cloud Shell's **shared, rotating
+  NAT egress**, so it means "whoever holds that address now, and everyone behind it", not
+  "only us" (h2 trap **§1.36**). ⭐ What bounds the risk is the CONTRACT, not the network:
+  only `POST /price` and `GET /health` exist, everything else 404s, and health omits the
+  directory — so even reached, the API is a calculator with no way to serve the portfolio
+  sitting beside it.
+  **Still open:** Entra + **CORS** together (a browser refuses before the request arrives,
+  so nothing appears in any log), Always On.
   ⭐ **`scripts/remote_smoke.py` is the gate and needs NO scientific stack** — it compares
   the deployed answers against the **committed response fixtures** (the record), not
   against a live local run, so Mario's team or a CI runner can verify the service. It

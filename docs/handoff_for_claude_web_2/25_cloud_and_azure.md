@@ -388,3 +388,42 @@ confusion twice.
 * **CORS** — the browser front end needs it, and a browser refuses **before the request
   arrives**, so nothing appears in any server log.
 * **Always On** — off. One setting, worth it once the audience is real.
+
+### ⭐ DECISION 2026-09-30 — Entra is DEFERRED, and the trigger is named
+
+**Not enabled. The trigger is the first caller who is not us — not a date.**
+
+Three reasons, in order of weight:
+
+1. ⭐ **Entra's value is adding someone to a list, and there is nobody to add yet.** Mario's
+   team is not testing against this URL; the IP rule covers the two people who are.
+2. ⚠️ **The auth SHAPE is undecided, so choosing now risks choosing wrong.**
+   `enable_entra_auth.sh` configures `Return401`, which is correct for an **API**. Mario's
+   browser front end needs an **interactive** flow (a token acquired in the page, MSAL or
+   equivalent). Configuring the API shape before that demo is specified means configuring
+   it twice. ⇒ **Entra and CORS get decided together**, because the browser needs both and
+   they constrain each other.
+3. ⚠️ **It is the one operation that has already locked us out.** The rewritten script is
+   careful, and it has **never been run**. Pointing an untested auth script at a working
+   service is the highest-risk action currently available, for zero present benefit.
+
+**Instead: the app is STOPPED** (`az webapp stop -g ryse-pricing -n ryse-pricing-urs`),
+which removes the exposure entirely and reverses in one command. ⚠️ Verify rather than
+assume — `az webapp show -g ryse-pricing -n ryse-pricing-urs --query state -o tsv` should
+read `Stopped`. `az webapp start` brings it back in about a minute; the deployment
+persists.
+
+⚠️ **Stopping the app does NOT stop the bill.** The App Service *plan* is what charges,
+about **USD 13/month on Mario's card**, whether or not the app runs. Three honest options,
+and the third only became reasonable because the deployment is now a committed script:
+
+| | monthly | time to have it back |
+|---|---:|---|
+| leave it running | ~$13 | 0 |
+| **stop the app, keep the plan** ← chosen | ~$13 | ~1 minute |
+| delete the resource group | **$0** | ~5 minutes (`deploy.sh`) |
+
+⭐ If no demo is scheduled within a few weeks, deleting is defensible and costs only a
+re-run. Keeping it is buying readiness for an unscheduled demo. **Revisit when a date
+exists**, and tell Mario the line item is there — it is his card and it answers his own
+question.
