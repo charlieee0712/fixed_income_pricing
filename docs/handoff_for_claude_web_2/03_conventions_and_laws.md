@@ -296,3 +296,71 @@ a defect.** On 2026-09-03 a driver flag embedded a filesystem path and read
 `data\KRW_Yield_Curve.txt` on Windows against `data/…` on Linux; a human found it by
 diffing two CSVs. `src/dataio/output_digest.py` now finds it automatically, and the
 reference digests are published in `release_facts`.
+
+---
+
+## Convention — docstring layout in the `assets/` wrapper layer (2026-09-29)
+
+**Liping, reviewing, said she can follow the code but there is "a lot of comment."** The
+census says the instinct is right and the wording is not:
+
+| | lines | share |
+|---|---:|---:|
+| code | 7,647 | 46.1% |
+| **docstring** | **5,497** | **33.1%** |
+| inline `#` | 969 | **5.8%** |
+| blank | 2,523 | 15.2% |
+
+⭐ **Inline comments are 5.8% — inside any healthy band.** The mass is docstrings, and by
+type the prose is **85.5% plain explanation**, only 4.4% history, 1.4% traps, 0.4% starred
+insight. So the picture of a reader wading through our debugging war stories was wrong; it
+was tested and refuted.
+
+⭐⭐ **The real defect is that marginal information per line collapses across SIBLING
+files.** The heaviest files are all `assets/` wrappers — `pool.py` 3.48:1, `linker.py`
+3.20, `floating.py` 3.19, `hybrid.py` 2.85, then callable/puttable/sinking — and **43
+sentences appear in two or more of them**. They repeat because the wrappers genuinely share
+parameters (`curve : ZeroCurve`, `volatility : float — DECIMAL`, the widening/tightening
+pair). No single file is over-written. But the first wrapper a reader opens is 100% new and
+the sixth is ~20% new **at the same length**, and that is what "too much comment" feels like
+from the outside.
+
+**Measured: 46% of per-function docstring text is the shared parameter list** — 460 lines
+across the layer, against 546 lines of purpose-and-Returns.
+
+### The rule
+
+1. **`bonds_input.INPUT_CATALOGUE` stays the authoritative input dictionary.** Unchanged.
+2. **The module docstring carries a `Shared inputs, once` block** naming every parameter the
+   family takes, in order.
+3. **A function docstring carries only:** one line of purpose · a `Differs:` line if its
+   inputs deviate · **the `Returns:` line**. ⭐ The Returns line is where the modelling
+   content actually lives ("SHORTER than the straight-bond duration — the put floors the
+   price when rates rise") and cutting the parameter repetition is what makes it visible.
+4. **A sibling module's docstring opens with what is DIFFERENT here**, in one sentence,
+   before anything shared. A reader comparing `puttable.py` to `callable.py` should get the
+   delta in a line rather than by diffing two essays.
+5. **Traps stay inline and stay where they fire.** ⚠️ A `⚠️` comment's whole value is being
+   in the reader's path at the moment they would make the mistake. Never relocate one to a
+   doc. This is the one thing that must not be optimised for brevity.
+
+### ⭐ This moves TOWARDS Mario's template, not away from it
+
+His reference sheet separates them the same way: **rows 47-60 are the per-metric functions,
+rows 61-98 are the input dictionary in its own block.** A shared input block plus
+per-function specifics is closer to what he pointed at than repeating all eight inputs in
+all ten functions.
+
+### Status and the honest number
+
+**Applied to `puttable.py` as the worked example** (2026-09-29). Bodies asserted identical
+by AST; 632 tests green; no test pinned the old shape.
+
+⚠️ **Within one file the saving is small — 184 → 174 lines, 2.37:1 → 2.14:1.** The text
+mostly *moved* into the module block rather than disappearing, and claiming otherwise would
+be dishonest. **The win is cross-file:** 460 repeated lines replaced by ~14 per module
+across 14 files, a net ~264 lines, and a 46% cut in what a reader must read per function.
+⭐ Judge it by reading `callable.py` and then `puttable.py` back to back — that is the
+experience the change is for, and a single-file line count cannot show it.
+
+**The remaining 13 files are a sweep awaiting approval, not a decision.**

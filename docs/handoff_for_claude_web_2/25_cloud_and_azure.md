@@ -250,3 +250,57 @@ that the VBA bridge never had to cross: **CORS and authentication** for a browse
 API on another host.
 
 **Not started. Waits for coverage.**
+
+---
+
+## Answers back, 2026-09-29 — and the useful finding is how little they contain
+
+Four questions went to Liping about her Web App (which service, where it stuck, how she
+shipped the data, whether we build on hers). What came back:
+
+| asked | answer |
+|---|---|
+| which service exactly — App Service, Container App? | **doesn't know** — "hasn't got that far" |
+| where did it stick? | **"something in the Azure settings was stuck; tried a few times and it inexplicably started working"** — doesn't know what fixed it |
+| how did you ship the ~34 MB `data/`? | **doesn't know**, same as above |
+| is it running our pricing code? | **no** — a small demo, but option B did run |
+
+⭐ **Conclusion: there is nothing to inherit.** That is not a criticism — she built a demo,
+not a deployment, and she said so. But it settles the question we actually asked: **we stand
+up our own, and her experience cannot shorten it.** Do not plan around reusing her app.
+
+⭐⭐ **Her answer about the stall is the most useful thing in the set, read the other way.**
+"Tried a few times and it mysteriously worked" is the exact signature of the deployment we
+must not produce. A cloud setup that cannot be reproduced from a committed script will
+un-work just as mysteriously, in front of Mario's group, with nobody able to say what
+changed. ⇒ **The deployment is an artifact in the repo from the first commit**, not a
+sequence of portal clicks somebody remembers. Same discipline as `release_facts.py`: the
+record is machine-written from the thing it describes.
+
+### ⭐ The tenant question is RESOLVED, and it was the real blocker
+
+`20_environment_and_execution` records the open question as *"which tenant — a personal free
+subscription on a university email is not where a group's shared environment belongs."*
+
+**Answer (Lichen, 2026-09-29): our own account, and it is billed to Mario's credit card.**
+
+Two consequences worth stating:
+* **The free tier stops constraining the design.** Cloud Shell's ephemerality, the 20-minute
+  idle wipe and the storage-account region dance were all free-tier problems. A paid App
+  Service plan has none of them.
+* ⚠️ **It is the client's money now.** Anything left running costs him, so the deployment
+  needs a stated shape — one plan, one region, and a named answer on whether it idles down
+  — before it is stood up, not after the first invoice.
+
+### What this unblocks, and what is already built for it
+
+`src/pricer/endpoints/routes/handler.py` (2026-09-28) was written for exactly this:
+`handle(method, path, body) -> (status, headers, body)`, framework-free, no third-party
+imports, 33 locks including **the response over the wire asserted byte-identical to what a
+Python caller gets in the same process**. A Web App, a Function App and
+`scripts/serve_local.py` are each ten lines around it, so the host stays a deployment
+decision rather than a code one.
+
+⚠️ **Still unanswered by anybody, and ours to decide:** how `data/` (~34 MB) reaches the
+app — baked into the image, mounted from Blob Storage, or pulled at start — and **CORS plus
+authentication**, which the browser front end needs and the VBA bridge never had to cross.

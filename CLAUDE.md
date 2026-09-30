@@ -155,6 +155,22 @@ checks — those are decided here, from the repo.
 - **Rollout rules when approved:** migrate module-by-module, shims keep old surface until retired,
   full suite green at every step, float-op order preserved (no numeric drift), docstrings carry
   the numbered Inputs blocks, new code imports `pricer.*` (never the shims).
+- **⭐ DOCSTRING LAYOUT in `assets/` — revised 2026-09-29 after Liping said "comment 有点多".**
+  Measured before acting: inline `#` is only **5.8%** of lines (healthy); the mass is
+  **docstrings at 33.1%**, and by type it is **85.5% plain explanation**, not war stories
+  (history 4.4% / traps 1.4%) — so the obvious hypothesis was tested and REFUTED. ⭐ The real
+  defect is that **marginal information per line collapses across SIBLING files**: 43 sentences
+  appear in 2+ wrappers, because the wrappers genuinely share parameters, so the first one read
+  is 100% new and the sixth ~20% new at the same length. **46% of per-function docstring text is
+  the repeated parameter list** (460 lines vs 546 of purpose+Returns). **Rule:** `INPUT_CATALOGUE`
+  stays authoritative · the MODULE docstring carries a `Shared inputs, once` block · a FUNCTION
+  docstring keeps only purpose + a `Differs:` line + **`Returns:`** (where the modelling content
+  lives) · a sibling module opens with **what is DIFFERENT here** · ⚠️ **traps stay inline and
+  where they fire — never relocate a `⚠️`**. ⭐ This moves TOWARD Mario's template: his sheet
+  puts the input dictionary in its own block (rows 61-98) apart from the per-metric functions
+  (47-60). Worked example = `puttable.py` (bodies AST-identical; 184→174 lines only, ⚠️ the
+  saving within ONE file is small because the text moved — the win is cross-file, ~264 lines).
+  **Other 13 files = a sweep awaiting approval.** Full record: h2 `03_conventions_and_laws`.
 - **FOLLOW-UP ROUND DONE (2026-08-25) — JSON/Excel interface v1.** Mario approved the sample with
   three follow-ups (currency · yield volatility · an Excel↔JSON↔Python process); user's plan =
   `docs/vanilla_json_excel_followup_final_execution_plan_2026-08-25.md` (its §16 = the execution
@@ -808,8 +824,21 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   usable by a group.
   ⚠️ **`requirements.txt` has NO upper version bounds** — meeting pandas 3.0 was luck that
   paid off. Pinning is an open follow-up. **Client data on Azure: Mario says not sensitive
-  (2026-09-15)**; the open question is WHICH TENANT, since a personal free subscription on
-  a university email is not where a group's shared environment belongs.
+  (2026-09-15)**. ⭐ **TENANT RESOLVED 2026-09-29 — our own account, billed to Mario's
+  credit card.** So the free tier stops constraining the design (Cloud Shell's ephemerality,
+  the idle wipe, the storage-region dance were all free-tier problems); ⚠️ and it is the
+  client's money, so the shape — one plan, one region, idle-down or not — is decided BEFORE
+  standing it up, not after the first invoice.
+- **⚠️ LIPING'S WEB APP: NOTHING TO INHERIT (answers 2026-09-29).** She doesn't know which
+  service, doesn't know what was stuck ("tried a few times and it inexplicably worked"),
+  doesn't know how data would ship — a small demo, not a deployment, and she said so. ⇒ we
+  stand up our own and her experience cannot shorten it. ⭐ **Her stall answer is the useful
+  one, read backwards:** a cloud setup that cannot be reproduced from a committed script
+  will un-work just as mysteriously, in front of Mario's group. **The deployment is a repo
+  artifact from the first commit**, never remembered portal clicks. Built and waiting:
+  `endpoints/routes/handler.py` (framework-free, 33 locks, wire == in-process asserted).
+  ⚠️ Ours to decide, unanswered by anyone: how `data/` (~34 MB) reaches the app, and
+  **CORS + authentication** — new ground the VBA bridge never crossed.
 - **⭐ THE FRONT END IS NOW A BROWSER PAGE, NOT ONLY EXCEL (Mario demo, ~2026-09-24).** He
   showed JavaScript inside an HTML file: read the user's Excel data, route by fixed-income
   type to Azure APIs, run them in parallel in the cloud, return the result. Recorded in
