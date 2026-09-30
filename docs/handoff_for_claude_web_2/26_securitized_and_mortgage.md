@@ -20,8 +20,14 @@ Counting the same structure across the classes still to do:
 | Government MBS | 882 | 344 |
 | Non-Government CMOs | 264 | 264 (100% tranche) |
 | Commercial Mortgage-Backed | 69 | 69 (100% tranche) |
-| Asset-Backed Securities | 79 | 47 (59%) |
-| **total** | | **≈756, a third of the 2,260-security book** |
+| Asset-Backed Securities | 79 | **79 (all)** |
+| **total** | | **756 = 33% of the 2,260-security book** |
+
+⚠️ **The ABS cell read `47 (59%)` until 2026-09-30 and was wrong; the TOTAL was right** — 344+264+69+47 is 724, not 756, so the total had been computed with ABS = 79 and the cell disagreed with it in plain sight.
+
+Re-deriving it showed how. ``pool_structure()`` reads the custodian description, and its patterns are MORTGAGE vocabulary (REMIC, CMO, I/O). Run against ABS it returns ``unclassified`` for **71 of 79** — which means *this classifier cannot read these descriptions*, not *these are simple pass-throughs*. The text says otherwise plainly: `WAMU ASSET-BACKED CTFS SER 2007-HE3`, `CWABS INC 2005-16 ASSET BKD CTF CL`, `NELNET STUDENT LN TR 2008-4` — and **44 of the 79 carry a CLASS/CL token**. They are securitisation trusts with tranches, all of them.
+
+⭐ **So the per-class counts rest on two different kinds of evidence, and the distinction is worth keeping.** Government MBS is **measured per security**, because that class genuinely mixes 490 simple pass-throughs with 344 tranches. CMO / CMBS / ABS are **by definition** — the class is what it is named — corroborated by the description text wherever the classifier can read it. Quoting a classifier's output as a count for a class it was never built for is exactly how the 47 happened.
 
 ⭐ **This is a purchase decision, not a scheduling one.** Writing a CMO engine without the
 waterfalls produces a program with nothing to feed it, and every deal's rules differ — 264
