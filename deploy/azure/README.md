@@ -6,13 +6,39 @@ Windows-written record. **Option B is a hosted URL other people can call.**
 
 ## Run it
 
+### From Azure Cloud Shell (the shortest path)
+
+Cloud Shell already has `az`, already has a persistent `$HOME`, and reaches GitHub without
+the interference the 47 box sees.
+
 ```bash
-az login
+# ⚠️ Do NOT run `az login` here. Cloud Shell is already authenticated as the account that
+# opened it, and typing it anyway starts a device-code flow you then have to cancel.
+az account show --query "{sub:name, user:user.name}" -o tsv    # confirm the subscription
+
+# ⚠️ The repo is PRIVATE, so a first clone needs credentials. gh is preinstalled.
+gh auth login                                                  # once, ever
+gh repo clone charlieee0712/fixed_income_pricing
+cd fixed_income_pricing        # on later visits: cd ~/fixed_income_pricing && git pull
+
 export FIP_APP=ryse-pricing-urs          # must be globally unique
 bash deploy/azure/deploy.sh              # infrastructure + settings + code + data
 
 TOKEN=$(az account get-access-token --resource "api://$FIP_APP" --query accessToken -o tsv)
 PYTHONPATH=src python scripts/remote_smoke.py "https://$FIP_APP.azurewebsites.net" --token "$TOKEN"
+```
+
+⚠️ **`$HOME` persisting is a setting, not a guarantee.** It survives when Cloud Shell has a
+mounted storage account (`cloud-shell-storage-southeastasia`, configured 2026-09-16). Without
+the mount the session is ephemeral and wipes after ~20 minutes idle — which has happened
+twice — so a missing repo means "check the mount", not "the clone failed".
+
+### From a machine with the Azure CLI
+
+```bash
+az login
+export FIP_APP=ryse-pricing-urs
+bash deploy/azure/deploy.sh
 ```
 
 ⭐ **Until the gate prints `PASS`, the service is not deployed — it is merely running.**
