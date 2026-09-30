@@ -9,7 +9,7 @@ Writes one folder, ``docs/bloomberg_request_<date>/``, which is what gets sent:
     01b_PILOT_factor.csv           3 rows   -- run first
     02_cpr_main.csv                505 pass-through + TBA, 3 fields x 2 dates
     03_factor_history.csv          tranches + ARMs + validation pools (a LIST, not formulas)
-    04_cmo_terminal_questions.csv  3 securities x 5 questions, no formulas at all
+    04_questions.txt               3 securities x 5 questions, plain text, no formulas
 
 ⭐ TWO SEPARATE ASKS, and the second one is the important one.
 
@@ -159,6 +159,46 @@ def verify(path: pathlib.Path) -> int:
             assert name[0] == _column_letter(c), (
                 f"{path.name}: header {name!r} sits in column {_column_letter(c)}")
     return len(body)
+
+
+def verify_transposed(path: pathlib.Path, n_securities: int, months) -> None:
+    """Reopen the transposed factor sheet and check the things its shape makes easy to break.
+
+    ⭐ Written because 03 was the file most in need of checking and the only one with none.
+    :func:`verify` assumes securities run DOWN the rows; 03 runs them ACROSS, so it was
+    written with ``check=False`` — and it is also the file that shipped, for one commit,
+    with the formulas on row 5 and the months starting on row 6. Every value would have sat
+    one month above its own label: a sheet of entirely plausible numbers, each attributed to
+    the wrong date, with nothing on its face to reveal the shift.
+
+    The four assertions below are exactly the ones that would have caught it.
+    """
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        rows = list(csv.reader(fh))
+    header, body = rows[0], rows[4:]        # rows 2-4 are the descriptive labels
+
+    assert len(header) == n_securities + 1, (
+        f"{path.name}: {len(header) - 1} columns for {n_securities} securities")
+    assert [r[0] for r in body] == list(months), (
+        f"{path.name}: the month column does not match the requested calendar")
+
+    # ⚠️ THE OFF-BY-ONE. The formulas must sit on the row carrying the FIRST month, because
+    # each one spills downward from where it stands.
+    assert body[0][0] == months[0], (
+        f"{path.name}: the formula row carries {body[0][0]}, not {months[0]} — every value "
+        "would land one month away from its label")
+    assert not any(c.startswith("=") for r in body[1:] for c in r), (
+        f"{path.name}: a formula below the first row would be overwritten by the spill")
+
+    # each formula must read ITS OWN column's ticker, and declare the height it will fill
+    for i, cell in enumerate(body[0][1:], start=1):
+        want = f"({_column_letter(i)}$1,"
+        assert want in cell, (
+            f"{path.name}: the formula in column {_column_letter(i)} references "
+            f"{cell[cell.index('(') : cell.index(',')]}, not its own header {want[1:-1]}")
+        assert f"rows={len(months)}" in cell, (
+            f"{path.name}: column {_column_letter(i)} declares a row count that is not "
+            f"{len(months)}, so its series will not line up with the month column")
 
 
 def _write(name: str, header, rows, check=True) -> pathlib.Path:
@@ -430,6 +470,7 @@ def write_factor_list(u: pd.DataFrame) -> int:
     rows += [[m] + [""] * len(d) for m in months[1:]]
 
     p = _write("03_factor_history.csv", header, rows, check=False)
+    verify_transposed(p, n_securities=len(d), months=months)
     n_dead = sum(1 for x in dead[1:] if x == "yes")
     print(f"   {p.name:32s} {len(d)} securities ACROSS x {n} months DOWN "
           f"({len(tr)} tranches + {len(arm)} ARM + {len(pools)} validation; "
@@ -528,6 +569,11 @@ Bloomberg 数据请求 - 2026-09-29
 
 全部都是"打开 → 让 Bloomberg 插件算 → 发回来",没有别的操作。
 
+⚠️ **有一个字段名是我们猜的**:03 和 01b 里的 MTG_FACTOR。如果 01b 那
+两列全是 #N/A,多半就是它 —— 麻烦用 FLDS 看一下真名告诉我们,我们改一
+个字重出就行。七月那次 882 只全返回 Invalid Field,就是猜字段名猜错的,
+所以这次先用 3 行试。
+
 ⚠️ 上一版的 03 我发了一份**只有 CUSIP 清单、没有公式**的文件,你说看不懂
 是对的 —— 那份东西确实没法用。当时我的想法是"时间序列不知道该怎么排版,
 等你在终端上看过再定",但那等于把一个本该我们做的决定丢给你。已经改成
@@ -613,12 +659,15 @@ factor 是每月公布的**事实**,带日期的,本来就是 BDH 该干的事�
 抵押品状态算出来的,倒不回去。
 
 ⚠️ 先说清楚工作量,免得你按第一件的规模安排时间:**第二件比第一件大
-得多**。376 只 x 每只一条 2009 到今天的月度序列,按数据点算是几万,
+得多**。376 只 x 每只一条 2009 到今天的月度序列 = **79,336 个数据点**,
 远超七月那次的 7056。
 
 但形式完全不同,这也正是它值得试的原因:**一只证券一次 BDH 调用,
-返回一列**,这本来就是 BDH 在做的事,不是几万次单点查询。真正的未知
-数是排版,所以才要先跑 01b 看一只长什么样。
+返回一列**,这本来就是 BDH 在做的事,不是八万次单点查询。
+
+排版这次我们定好了(见下)。所以 01b 要验的不是"长什么样",而是
+**那个写法到底能不能用** —— 01b 用的参数和 03 一模一样,只是 12 个月
+而不是 211 个。在 01b 试出来能用的,原样贴进 03 就行。
 
 ** 03 长得和别的表不一样,是横过来的 **
 因为 factor 是时间序列,一只证券占**一列**,不是一行:
@@ -629,10 +678,13 @@ factor 是每月公布的**事实**,带日期的,本来就是 BDH 该干的事�
     A 列       2009-03 到 2026-09 共 211 个月,已经写好了
 
 所以打开之后应该是一块 376 列 x 211 行的整齐矩形,每一列一只证券,
-每一行一个月,已经还清的那些后面自然是空的。⚠️ 如果太慢,删掉一半
-列分两次跑就行,月份那一列留着别动。
+每一行一个月,已经还清的那些后面自然是空的。
 
-清单里分三组,request_group 那列标了:
+⚠️ 79,336 个数据点量不小。Bloomberg 有些账号对 BDH 有取数额度,这个你
+比我清楚 —— 如果超了或者太慢,**删掉一半列分两次跑就行**(A 列的月份
+留着别动),或者说一声,我们直接按 100 只一份切好发给你。
+
+376 只分三组,标在**第 2 行**(不是某一列 —— 这张表是横过来的):
 
   tranche-unpriced   344  需要 waterfall 的那批
   arm-pool-unpriced   12  浮动利率 pool(下面单独说)
@@ -674,7 +726,7 @@ WAC 差 0.5 个百分点,算出来的 spread 才动 0.24bp(最差 0.87bp)。
 
 
 ================================================================
-04_cmo_terminal_questions.csv  (附带,看到顺手回答)
+04_questions.txt  (附带,看到顺手回答)
 ================================================================
 
 3 只证券 x 5 个问题,不是公式,是想请你在终端上看一眼告诉我们。
