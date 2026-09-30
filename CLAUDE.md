@@ -90,13 +90,23 @@ checks — those are decided here, from the repo.
   2026-08-15). Structure originally copied from the user's csi1000 `handoff_2` pattern.
 
 ## ⭐ Deliverables — audience & toolchain (user, 2026-08-25)
-- **The Google/cloud team now ATTENDS the briefing in person**, alongside Mario — they no longer
-  just receive the code afterwards. Every outward report must therefore serve two audiences at
-  once: **plain language throughout** (define each bond term in a clause where it first appears —
-  "callable = the borrower may repay early"), plus **one clearly-labelled engineering section**
-  (architecture, the single entry point, how to run it, determinism, parallelism) that the finance
-  reader can skip. Say in the opening which section is for whom. Never assume fixed-income
-  vocabulary; never talk down to Mario either.
+- **⚠️ CORRECTED 2026-09-30 — MARIO IS THE AUDIENCE; the Google/cloud team attends only
+  SOMETIMES** (user: "周会大部分时候是和 mario 开 google team 有时候不在 所以不用
+  technical"). This supersedes the 08-25 "two audiences at once" rule, which produced a
+  co-equal engineering half nobody in the room wanted. **Default now: write for Mario
+  alone.** ⭐ The right calibration is **keep the FINANCE precise, strip the ENGINEERING** —
+  he redefined OAS as a calibration and knows spreads and duration cold, so plain language
+  means no software vocabulary, NOT simplified finance. Never talk down to him.
+  **Still required:** define each bond term in a clause where it first appears ("callable =
+  the borrower may repay early"). **Changed:** the engineering section shrinks to a short
+  optional appendix (how to run it, where the outputs land); any *modelling* decision that
+  was living in it moves up into the body in plain language, because that is Mario's
+  content and it was in the wrong place. Jargon that does not belong in the body:
+  byte-for-byte, fixture, endpoint, JSON/HTTP, worker, module paths, tolerance, calibrate
+  (as a verb of art). A scripted sweep for those is cheap — `docs/weekly_report_2026-09-30.md`
+  and `docs/azure_service_2026-09-30.md` (2,491 / 769 words) are the worked examples.
+  ⚠️ When the cloud team IS confirmed present, add the technical note as a SEPARATE
+  document rather than re-merging it — that is why Azure got its own one-pager.
 - **Package = the git-ignored staging FOLDER `code_structure_sample/` only. ⚠️ NO ZIP
   (user, 2026-08-31: "google drive可以直接传folder") — Drive uploads folders directly, so
   zipping was pure overhead. All packaging zips were deleted; regenerate none.** Contents:
