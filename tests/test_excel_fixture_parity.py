@@ -225,51 +225,11 @@ def test_the_cross_platform_noise_floor_is_still_where_we_measured_it():
         f"noise floor moved: {worst[1]} now uses {worst[0]:.1%} of its tolerance"
 
 
-def _shortfalls(frozen, fresh, path=""):
-    """Every field the frozen document carries, still present with the same value.
-
-    Inputs
-    ------
-    1. frozen : the committed v1.0 document (or a fragment of it).
-    2. fresh  : today's answer to the same request.
-    3. path   : dotted path, for the failure message.
-
-    Returns: list[str] — empty when today's answer is a superset of the frozen one.
-
-    Two exemptions, each for a stated reason rather than to make the test pass:
-    ``schema_version`` (1.0 -> 1.1 is the version string doing its job) and free-text
-    ``message`` fields (human-readable; the machine-readable ``code`` and ``field``
-    beside them are NOT exempt and are compared exactly). Numbers use the same tolerance
-    as the goldens, for the same measured reason.
-    """
-    if path == ".schema_version":
-        return []
-    if path.split(".")[-1] in _FREE_TEXT:
-        return [] if isinstance(fresh, str) == isinstance(frozen, str) else \
-               [f"{path}: text field changed type"]
-    if _numeric(frozen) and _numeric(fresh):
-        used = _budget_used(path, frozen, fresh)
-        return [] if used <= 1.0 else [f"{path}: {frozen!r} -> {fresh!r}"]
-    if isinstance(frozen, dict):
-        if not isinstance(fresh, dict):
-            return [f"{path}: was an object, now {type(fresh).__name__}"]
-        out = []
-        for key in frozen:
-            if key not in fresh:
-                out.append(f"{path}.{key}: dropped")
-            else:
-                out += _shortfalls(frozen[key], fresh[key], f"{path}.{key}")
-        return out
-    if isinstance(frozen, list):
-        if not isinstance(fresh, list):
-            return [f"{path}: was an array, now {type(fresh).__name__}"]
-        if len(fresh) < len(frozen):
-            return [f"{path}: had {len(frozen)} entries, now {len(fresh)}"]
-        out = []
-        for i, entry in enumerate(frozen):     # prefix semantics: extra entries are additive
-            out += _shortfalls(entry, fresh[i], f"{path}[{i}]")
-        return out
-    return [] if frozen == fresh else [f"{path}: {frozen!r} -> {fresh!r}"]
+# ⭐ The implementation now lives in ``pricer.endpoints.tolerances``, because
+# scripts/remote_smoke.py asks the identical question of a DEPLOYED service and a second
+# copy of a comparison rule is one more thing to keep true. The reasoning above stays
+# here; only the code moved.
+_shortfalls = _t.shortfalls
 
 
 @pytest.mark.parametrize("request_path,response_path",

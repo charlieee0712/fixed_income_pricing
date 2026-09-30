@@ -53,6 +53,64 @@ def tolerance(path: str) -> float:
     return TOL_CONVEXITY if path.endswith("convexity") else TOL_DEFAULT
 
 
+#: Human-readable fields, exempt from an exact match when comparing against the frozen
+#: v1.0 corpus. ⚠️ The machine-readable ``code`` and ``field`` beside them are NOT exempt.
+FREE_TEXT = ("message",)
+
+
+def is_number(value) -> bool:
+    """A JSON number, excluding bool — which is an int in Python and is not a measurement."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def shortfalls(frozen, fresh, path: str = ""):
+    """Everything the frozen document carries that today's answer does NOT still honour.
+
+    Returns an empty list when ``fresh`` is a SUPERSET of ``frozen``: every key present,
+    every number within tolerance, extra keys allowed. That asymmetry is the point — the
+    contract is additive, so a v1.1 answer legitimately carries fields a v1.0 document
+    never had, and comparing the two with plain equality would report the contract working
+    as a failure.
+
+    Two exemptions, each for a stated reason rather than to make a check pass:
+    ``schema_version`` (1.0 -> 1.1 IS the version string doing its job) and the free-text
+    ``message`` fields listed in :data:`FREE_TEXT`.
+
+    ⭐ Shared by ``tests/test_excel_fixture_parity.py`` and ``scripts/remote_smoke.py``.
+    The gate needs it to check the two frozen fixtures numerically instead of merely
+    confirming they are accepted; a second copy of this rule would be one more thing to
+    keep true.
+    """
+    if path == ".schema_version":
+        return []
+    if path.split(".")[-1] in FREE_TEXT:
+        return [] if isinstance(fresh, str) == isinstance(frozen, str) else \
+               [f"{path}: text field changed type"]
+    if is_number(frozen) and is_number(fresh):
+        used = budget_used(path, frozen, fresh)
+        return [] if used <= 1.0 else [f"{path}: {frozen!r} -> {fresh!r}"]
+    if isinstance(frozen, dict):
+        if not isinstance(fresh, dict):
+            return [f"{path}: was an object, now {type(fresh).__name__}"]
+        out = []
+        for key in frozen:
+            if key not in fresh:
+                out.append(f"{path}.{key}: dropped")
+            else:
+                out += shortfalls(frozen[key], fresh[key], f"{path}.{key}")
+        return out
+    if isinstance(frozen, list):
+        if not isinstance(fresh, list):
+            return [f"{path}: was an array, now {type(fresh).__name__}"]
+        if len(fresh) < len(frozen):
+            return [f"{path}: had {len(frozen)} entries, now {len(fresh)}"]
+        out = []
+        for i, entry in enumerate(frozen):   # prefix semantics: extra entries are additive
+            out += shortfalls(entry, fresh[i], f"{path}[{i}]")
+        return out
+    return [] if frozen == fresh else [f"{path}: {frozen!r} -> {fresh!r}"]
+
+
 def budget_used(path: str, committed: float, fresh: float) -> float:
     """How much of this field's tolerance the difference consumes, as a fraction.
 
