@@ -128,10 +128,38 @@ find "$STAGE" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null |
 find "$STAGE" -name '.pytest_cache' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 echo "package: $(du -sh "$STAGE" | cut -f1)"
 
-( cd "$STAGE" && zip -qr app.zip . )
+ZIP=/tmp/fip-app-$$.zip
+( cd "$STAGE" && zip -qr "$ZIP" . )
+
+# ⭐ ASSERT THE ARCHIVE SHAPE. Oryx decides there is a Python app to build by finding
+# `requirements.txt` at the ROOT of what it extracts. If the archive stores entries as
+# `./requirements.txt`, or the file sits one directory down, Oryx detects nothing, does
+# nothing, and reports "Build successful" in about a second -- which is exactly the
+# symptom seen twice on 2026-09-30. This is two lines and it tests that hypothesis
+# directly instead of assuming it either way.
+if ! unzip -l "$ZIP" | awk '{print $4}' | grep -qx 'requirements.txt'; then
+  echo "REFUSING to deploy: requirements.txt is not at the archive root." >&2
+  echo "Oryx would detect no Python application and skip the build silently." >&2
+  unzip -l "$ZIP" | head -20 >&2
+  exit 1
+fi
+echo "archive verified: requirements.txt at the root, $(unzip -l "$ZIP" | tail -1 | awk '{print $2}') entries"
+
 echo "deploying — the FIRST build installs numpy/pandas/scipy and takes several minutes."
 echo "⚠️ If this reports 'Build successful' in about a second, the build did NOT run."
-az webapp deploy -g "$RG" -n "$APP" --src-path "$STAGE/app.zip" --type zip -o none
+# ⚠️ The deployment ENDPOINT is switchable, because which one triggers an Oryx build is
+# the open question of 2026-09-30. `az webapp deploy --type zip` uses the newer OneDeploy
+# API; `config-zip` uses the older /api/zipdeploy, which is the path Python-on-Linux build
+# automation was originally built around. Both are documented to honour the app settings;
+# only one of them is observed to.
+case "${FIP_DEPLOY_METHOD:-zipdeploy}" in
+  zipdeploy)
+    az webapp deployment source config-zip -g "$RG" -n "$APP" --src "$ZIP" -o none ;;
+  onedeploy)
+    az webapp deploy -g "$RG" -n "$APP" --src-path "$ZIP" --type zip -o none ;;
+  *) echo "FIP_DEPLOY_METHOD must be zipdeploy or onedeploy" >&2; exit 1 ;;
+esac
+rm -f "$ZIP"
 
 # ⭐ The platform's own verdict is not the one that matters. Poll until the app answers, so
 # a failure here is "it never came up" rather than a green deployment and a dead URL.
