@@ -42,6 +42,8 @@ import pathlib
 
 import pytest
 
+from pricer.endpoints import tolerances as _t
+
 from pricer.endpoints.main import analyze_payload
 
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -85,40 +87,15 @@ _FREE_TEXT = ("message",)
 #   everything else  1e-10  measured 3.87e-13   258x headroom, and a 1e-4 price move now fails
 # ---------------------------------------------------------------------------------------
 
-#: Per-fixture gate for the one quantity a second difference amplifies by 1e8.
-_TOL_CONVEXITY = 1e-6
-
-#: Per-fixture gate for every other number: prices, spreads, durations, accrued, residuals.
-_TOL_DEFAULT = 1e-10
-
-#: Set-level: the worst deviation anywhere, as a FRACTION OF ITS OWN BUDGET, must stay under
-#: this. Measured 0.021 — convexity using 2% of its allowance. Separate from the gates on
-#: purpose: the floor could grow tenfold with every per-fixture test still passing, and
-#: nobody would hear about it.
-_BUDGET_USED_MAX = 0.10
-
-
-def _tolerance(path):
-    """The applicable bound for a numeric field, by name.
-
-    Inputs
-    ------
-    1. path : str — the dotted path of the field.
-
-    Returns: float — :data:`_TOL_CONVEXITY` for convexity, :data:`_TOL_DEFAULT` otherwise.
-    """
-    return _TOL_CONVEXITY if path.endswith("convexity") else _TOL_DEFAULT
-
-
-def _budget_used(path, committed, fresh):
-    """How much of this field's tolerance the difference consumes, as a fraction.
-
-    Scaled by ``max(1, |committed|)`` rather than by ``|committed|``: several fields here
-    are near zero by construction (a calibration residual, an inactive option's price
-    effect), and a relative measure on those reports enormous differences that are in fact
-    machine epsilon.
-    """
-    return (abs(fresh - committed) / max(1.0, abs(committed))) / _tolerance(path)
+# ⭐ The bounds and the scaling rule now live in ``pricer.endpoints.tolerances`` -- one
+# owner, because scripts/remote_smoke.py asks the identical question of a deployed
+# instance. The rationale above is kept here; the NUMBERS are imported, so the two callers
+# cannot drift apart.
+_TOL_CONVEXITY = _t.TOL_CONVEXITY
+_TOL_DEFAULT = _t.TOL_DEFAULT
+_BUDGET_USED_MAX = _t.BUDGET_USED_MAX
+_tolerance = _t.tolerance
+_budget_used = _t.budget_used
 
 
 @pytest.fixture(autouse=True)

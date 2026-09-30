@@ -1,5 +1,17 @@
-numpy>=1.26
-pandas>=2.0
-openpyxl>=3.1
-scipy>=1.11
-pytest>=7.4
+# The TESTED range, for developers, the 47 box and Azure Cloud Shell.
+#
+# ⚠️ Upper bounds added 2026-09-29. There were none, and meeting pandas 3.0 on Cloud Shell
+# was luck that happened to pay off (495 tests passed on a major version this machine has
+# never run). Luck is not a dependency policy, and the next major will not announce itself.
+#
+# The range is what has actually been verified, not a guess: numpy 2.3-2.5, pandas 2.3-3.0
+# and scipy 1.16-1.18 all pass the full suite across Windows, 47 and Cloud Shell.
+#
+# ⭐ The DEPLOYED service does not use this file. deploy/azure/requirements.txt pins the
+# numerical stack exactly, because a redeploy must not quietly move a price -- see the
+# reasoning there.
+numpy>=1.26,<3
+pandas>=2.0,<4
+openpyxl>=3.1,<4
+scipy>=1.11,<2
+pytest>=7.4,<9

@@ -69,6 +69,12 @@ endpoints/ — the outside world's single door
                                    Function App and the local runner each call it in ten
                                    lines, so the host stays a deployment decision rather
                                    than a code one. Driven by scripts/serve_local.py
+  endpoints/routes/wsgi.py   DONE  the Azure App Service entry point (2026-09-29). The
+                                   adapter that adds nothing: environ in, handle() out,
+                                   asserted byte-identical. Deployed by deploy/azure/
+  endpoints/tolerances.py    DONE  how close is close enough between two machines. One
+                                   owner for the per-quantity bounds, asked by both the
+                                   fixture parity test and scripts/remote_smoke.py
   errors.py                  DONE  the domain exception family, rooted at Exception so a
                                    solver's ``except ValueError`` cannot swallow a
                                    contract refusal and report it as a failed calibration

@@ -1,0 +1,25 @@
+# Pinned for the DEPLOYED service. Not the same file as the repo root's, on purpose.
+#
+# ⭐ The rule: PIN WHAT CAN CHANGE A NUMBER, RANGE WHAT CANNOT.
+#
+# The numerical stack is pinned exactly, because a redeploy three months from now must not
+# quietly pick up a different numpy and move a price. The repo root's requirements.txt
+# keeps the wide TESTED range instead (numpy 2.3-2.5, pandas 2.3-3.0, verified across
+# Windows, the 47 box and Azure Cloud Shell) because a developer or a colleague's machine
+# should not be forced onto one build.
+#
+# gunicorn is deliberately a RANGE. It is the worker, not the arithmetic -- it never sees a
+# number, only bytes -- and tests/test_wsgi_adapter.py asserts the bytes leaving our
+# adapter equal the bytes handle() returns. If transport could change a number, that test
+# would be the thing that failed.
+#
+# ⚠️ These exact versions have NOT been built on App Service from this machine. That is
+# what scripts/remote_smoke.py is for: it compares the deployed answers against the
+# committed fixtures and exits nonzero if they differ, so the build does not have to be
+# trusted in advance.
+numpy==2.3.4
+pandas==2.3.3
+scipy==1.16.3
+openpyxl==3.1.5
+
+gunicorn>=21.2,<24
