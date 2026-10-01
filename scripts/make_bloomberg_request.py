@@ -820,6 +820,33 @@ XLSX_NOTES = {
         "",
         "哪一格没数据就留空,不要补 —— 看得见的缺口比看不见的错数便宜得多。",
     ],
+    "05_factor_other_classes": [
+        "05 — 另外三类的 factor 历史(CMO / CMBS / ABS)",
+        "",
+        "⚠️ 这一批上次漏了,是我们的疏忽,不是你的。",
+        "上次只覆盖了 Government MBS,但同一天给 Mario 的报告写的是 756 只。",
+        "",
+        "格式和上次的 03 完全一样,横过来的:",
+        "    第 1 行  证券代码,横着排",
+        "    第 5 行  公式在这一行,每个自动往下填 211 行",
+        "    A 列     2009-03 到 2026-09 共 211 个月,已写好",
+        "",
+        "字段和参数都和 03 一模一样 —— 上次那张表整个成功了,所以这张照搬。",
+        "已经还清的证券后面是空的,正常。",
+    ],
+    "06_coupon_classify": [
+        "06 — 票息,只要 4 个日期,用来分类",
+        "",
+        "⚠️ 上次 03 只问了 factor、没问票息,也是我们漏了 ——",
+        "试跑表 01b 两个都问了、都成功,主表却只继承了 factor。",
+        "",
+        "⭐ 但这张表故意做得很小:751 只 × 4 个日期,不是月度序列。",
+        "因为我们只需要知道「这个票息会不会变」—— 浮息会变,固息不会。",
+        "四个日期就够分辨,真正需要完整月度序列的只有会变的那些,",
+        "等分出来之后再单独拉,不用现在就拉几万个点。",
+        "",
+        "所以这张几分钟就能跑完。",
+    ],
     "03_factor_history": [
         "03 — 历史 factor,等 01b 确认写法之后再跑",
         "",
@@ -838,6 +865,94 @@ XLSX_NOTES = {
         "或者说一声,我们按 100 只一份切好再发给你。",
     ],
 }
+
+
+# ------------------------------------------------------- round 2: what 09-29 should have had
+
+#: The three securitised classes the 09-29 request never reached. ⚠️ Not a scoping
+#: decision -- 03 was built from `build_pool_universe`, which is Government MBS by
+#: construction, while the weekly report of the same day told Mario the factor route
+#: might solve 756 securities across all four.
+OTHER_CLASSES = ("Non-Government Backed C.M.O.s", "Commercial Mortgage-Backed",
+                 "Asset Backed Securities")
+
+#: Enough dates to tell a moving coupon from a fixed one. ⭐ Deliberately NOT a monthly
+#: series: a full one for every security would be 158,000 points, and the question here is
+#: only "does this number change?". The full series is a follow-up for whatever floats.
+CLASSIFY_DATES = ("20090401", "20100401", "20120401", "20150401")
+
+
+def _cusip_from_isin(isin):
+    """US ISINs carry the CUSIP in positions 3-11. Returns None when it is not that shape.
+
+    ⚠️ ``isin or ""`` raises on ``pd.NA`` -- "boolean value of NA is ambiguous". The same
+    trap the MBS data check hit on 2026-07-30: a missing value arrives as NAType, not as a
+    float NaN, and sails straight past an ``isinstance(float)`` guard while exploding on a
+    truth test. Check with ``pd.isna`` and nothing else.
+    """
+    if isin is None or pd.isna(isin):
+        return None
+    s = str(isin)
+    return s[2:11] if len(s) == 12 and s[:2] == "US" else None
+
+
+def write_round2(u: pd.DataFrame) -> None:
+    """05 (factor, the other three classes) and 06 (coupon, to classify everything)."""
+    import os
+    import sys
+    sys.path[:0] = ["src", "scripts"]
+    os.environ.setdefault("FIP_DATA_DIR", "data")
+    import pool_risk as D
+    from dataio.phase2 import load_master_phase2
+
+    m = load_master_phase2(D.WB).drop_duplicates("asset_id")
+    other = m[m["sub_category"].isin(OTHER_CLASSES)].copy()
+    other["cusip"] = other["isin"].map(_cusip_from_isin)
+    missing = other["cusip"].isna().sum()
+    other = other[other["cusip"].notna()].copy()
+    other["security"] = other["cusip"] + " Mtge"
+
+    months = _month_ends(FACTOR_START, FACTOR_END)
+    n = len(months)
+
+    # ---------------------------------------------------------------- 05
+    header = ["date (formulas on row 5 spill 211 rows DOWN, beside these months)"] \
+        + list(other["security"])
+    cls = ["sub_category"] + list(other["sub_category"])
+    ident = ["asset_id"] + list(other["asset_id"])
+    blank = ["", *[""] * len(other)]
+    formulas = [months[0]]
+    for i in range(len(other)):
+        col = _column_letter(i + 1)
+        formulas.append(
+            f'=BDH({col}$1,"{FACTOR_FIELD}","{FACTOR_START}","{FACTOR_END}",'
+            f'"Per=M","Dts=H","Fill=B","cols=1;rows={n}")')
+    rows = [cls, ident, blank, formulas] + [[mm] + [""] * len(other) for mm in months[1:]]
+    p = _write("05_factor_other_classes.csv", header, rows, check=False)
+    verify_transposed(p, n_securities=len(other), months=months)
+    x = write_xlsx(p, "05_factor_other_classes")
+    p.unlink()
+    print(f"   {x.name:34s} {len(other)} securities ACROSS x {n} months DOWN"
+          # GBK console: no symbols in a print(). Fourth time this has bitten.
+          + (f"   !! {missing} had no usable ISIN" if missing else ""))
+
+    # ---------------------------------------------------------------- 06
+    already = [c for c in u.loc[u["structure"].isin(TRANCHES)
+                                | u["asset_id"].isin(_refused_arm_ids()), "security"]]
+    everything = list(dict.fromkeys(already + list(other["security"])))
+    head6 = ["security"] + [f"CPN_{d}" for d in CLASSIFY_DATES]
+    rows6 = []
+    for i, sec in enumerate(everything, start=2):
+        row = [sec]
+        for d in CLASSIFY_DATES:
+            row.append(f'=BDH($A{i},"{COUPON_FIELD}","{d}","{d}",'
+                       f'"Dts=H","cols=1;rows=1")')
+        rows6.append(row)
+    p6 = _write("06_coupon_classify.csv", head6, rows6, check=False)
+    x6 = write_xlsx(p6, "06_coupon_classify")
+    p6.unlink()
+    print(f"   {x6.name:34s} {len(everything)} securities x {len(CLASSIFY_DATES)} dates "
+          f"= {len(everything)*len(CLASSIFY_DATES):,} points")
 
 
 def write_xlsx(csv_path: pathlib.Path, note_key: str) -> pathlib.Path:
@@ -904,6 +1019,7 @@ def main():
     write_cpr(u)
     write_factor_list(u)
     write_probe()
+    write_round2(u)
 
     # ⭐ The formula sheets ship as REAL EXCEL FILES, not CSVs. See write_xlsx for why --
     # a CSV leaves "is this a formula or is it text?" to the reader's Excel build.
