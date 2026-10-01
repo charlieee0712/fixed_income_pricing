@@ -558,16 +558,24 @@ Bloomberg 数据请求 - 2026-09-29
 
   文件                     这是什么              你要做什么
   ----------------------   -------------------   ----------------------
-  01a_PILOT_cpr.csv        公式表,5 行           ⭐ 先跑这个
-  01b_PILOT_factor.csv     公式表,3 行           ⭐ 先跑这个
+  01a_PILOT_cpr.xlsx       Excel 表,5 行         ⭐ 先跑这个
+  01b_PILOT_factor.xlsx    Excel 表,3 行         ⭐ 先跑这个
                                                  (两个加起来几分钟)
                            ↓ 上面两个没问题了再往下 ↓
-  02_cpr_main.csv          公式表,505 行         打开,算,发回来
-  03_factor_history.csv    公式表,376 列         打开,算,发回来
+  02_cpr_main.xlsx         Excel 表,505 行       打开,算,发回来
+  03_factor_history.xlsx   Excel 表,376 列       打开,算,发回来
   04_questions.txt         5 个问题,不是表格     看到顺手答,答不上来
                                                  也没关系
 
 全部都是"打开 → 让 Bloomberg 插件算 → 发回来",没有别的操作。
+
+⚠️ **这次改成了 .xlsx,不再是 .csv** —— 你说 03、04 里看不到 function,
+很可能就是这个原因。.csv 本质上是文本,Excel 打开时把 =BDH(...) 当成公式
+还是当成文字,取决于版本、区域设置,以及文件是不是进了保护视图(从聊天
+工具或邮件下载的文件默认都会)。看到一格文字当然会觉得"这没有函数"。
+.xlsx 不存在这个问题,公式在文件里就是公式。
+
+另外每个文件**第一页是「说明」**,写了这张表要看什么、哪里可能出问题。
 
 ⚠️ **有一个字段名是我们猜的**:03 和 01b 里的 MTG_FACTOR。如果 01b 那
 两列全是 #N/A,多半就是它 —— 麻烦用 FLDS 看一下真名告诉我们,我们改一
@@ -600,7 +608,7 @@ Bloomberg 数据请求 - 2026-09-29
 这部分我们已经有了,只是日期不对。BDP 只能返回"今天的值",要拿到
 2009 年的值必须用 BDH。所以是同一批证券、同一个字段,换个日期。
 
-02_cpr_main.csv       505 只 x 3 个字段 x 2 个日期 = 3030 个数据点
+02_cpr_main.xlsx      505 只 x 3 个字段 x 2 个日期 = 3030 个数据点
                       (七月那次是 7056,这一件比上次小 57%)
 
 字段:MTG_GEN_CPR_3M / 6M / 12M
@@ -717,7 +725,7 @@ servicing 反推当年 WAC,误差约 0.12bp。这话没错但没说到点上:那
 WAC 差 0.5 个百分点,算出来的 spread 才动 0.24bp(最差 0.87bp)。
 
 ⚠️ 那句话只对**能定价的那 493 只固定利率 pool**成立,不对 ARM 成立。
-12 只 ARM 已经按上面说的并进 03 的清单里了,走 factor + 票息那条路,
+12 只 ARM 已经按上面说的并进 03 里了(占 12 列),走 factor + 票息那条路,
 不用单独拉 WAC。
 
 ** MTG_HIST_COLLAT_CPR_LIFE 也不要了 **
@@ -772,6 +780,109 @@ Q1 最重要(factor 字段到底叫什么、有没有历史)。
 """
 
 
+# --------------------------------------------------------------------------- xlsx
+
+#: What each sheet is for, shown on its own first tab. ⚠️ Plain Chinese and no jargon:
+#: the reader is doing us a favour at a terminal, not debugging our file format.
+XLSX_NOTES = {
+    "01a_PILOT_cpr": [
+        "01a — 先跑这个(5 行,一分钟)",
+        "",
+        "打开后 Bloomberg 插件会自动算。算完把整个文件发回来就行。",
+        "",
+        "E 列是今天的值,F/G/H 三列是三种问 2009 年的写法。",
+        "我们要看的是:F 列和 E 列是不是不一样。",
+        "如果 F 列也读出和 E 列差不多的数,说明日期没生效 —— 那正是七月那次的问题。",
+        "",
+        "每一行测的东西不同,最后一列 why_this_row_is_here 写了。",
+        "哪一格没数据就留空,不要补。",
+    ],
+    "01b_PILOT_factor": [
+        "01b — 也先跑这个(3 行)",
+        "",
+        "打开后 Bloomberg 插件会自动算。算完发回来。",
+        "",
+        "⚠️ 这里有个字段名 MTG_FACTOR 是我们猜的,不确定。",
+        "如果 F、G 两列全是 #N/A,多半就是它猜错了 ——",
+        "麻烦用 FLDS 看一下真实的字段名告诉我们,我们改一个字重新发。",
+        "",
+        "这张表用的参数和 03 完全一样,只是 12 个月而不是 211 个。",
+        "在这里试出来能用的写法,原样就能用到 03 上。",
+    ],
+    "02_cpr_main": [
+        "02 — 主表(505 只),等 01a 确认没问题之后再跑",
+        "",
+        "打开后 Bloomberg 插件会自动算。算完发回来。",
+        "",
+        "505 只 × 3 个字段 × 2 个日期 = 3030 个数据点。",
+        "字段:MTG_GEN_CPR_3M / 6M / 12M",
+        "日期:2009-03-31(主)和 2009-06-10(对照)",
+        "",
+        "哪一格没数据就留空,不要补 —— 看得见的缺口比看不见的错数便宜得多。",
+    ],
+    "03_factor_history": [
+        "03 — 历史 factor,等 01b 确认写法之后再跑",
+        "",
+        "⚠️ 这张表是横过来的,和别的表不一样:",
+        "",
+        "    第 1 行    证券代码(376 个,横着排)",
+        "    第 2-4 行  这只是什么(分组、结构、是否已还清)",
+        "    第 5 行    公式在这一行,每个会自动往下填满 211 行",
+        "    A 列       2009-03 到 2026-09 共 211 个月,已经写好了",
+        "",
+        "所以算完应该是一块 376 列 × 211 行的整齐矩形。",
+        "已经还清的证券,后面自然是空的 —— 那是对的,不用管。",
+        "",
+        "⚠️ 一共 79,336 个数据点,量不小。如果太慢或者超额度,",
+        "删掉一半列分两次跑就行(A 列的月份留着别动),",
+        "或者说一声,我们按 100 只一份切好再发给你。",
+    ],
+}
+
+
+def write_xlsx(csv_path: pathlib.Path, note_key: str) -> pathlib.Path:
+    """Rewrite one generated CSV as a real Excel file with an instruction tab first.
+
+    ⚠️ A .csv is not a spreadsheet, it is text Excel interprets — and whether `=BDH(...)`
+    becomes a formula or stays visible text depends on the Excel version, the locale,
+    Protected View (which anything arriving by chat does), and CSV-injection protections.
+    Someone looking at the formula as TEXT is right to say the file has no functions.
+    An .xlsx stores a formula as a formula; there is nothing to interpret.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    with csv_path.open(encoding="utf-8-sig", newline="") as fh:
+        rows = list(csv.reader(fh))
+
+    wb = Workbook()
+    note = wb.active
+    note.title = "说明"
+    for i, line in enumerate(XLSX_NOTES[note_key], start=1):
+        c = note.cell(row=i, column=1, value=line)
+        if i == 1:
+            c.font = Font(bold=True, size=14)
+    note.column_dimensions["A"].width = 76
+
+    ws = wb.create_sheet("data")
+    head = Font(bold=True)
+    grey = PatternFill("solid", fgColor="EEEEEE")
+    for r, row in enumerate(rows, start=1):
+        for c, val in enumerate(row, start=1):
+            cell = ws.cell(row=r, column=c, value=val if val != "" else None)
+            if r == 1:
+                cell.font, cell.fill = head, grey
+                cell.alignment = Alignment(wrap_text=False)
+    ws.freeze_panes = "B2"
+    for c in range(1, min(len(rows[0]), 40) + 1):
+        ws.column_dimensions[get_column_letter(c)].width = 22 if c == 1 else 17
+
+    out = csv_path.with_suffix(".xlsx")
+    wb.save(out)
+    return out
+
+
 def main():
     PACK.mkdir(parents=True, exist_ok=True)
     u = load()
@@ -781,6 +892,17 @@ def main():
     write_cpr(u)
     write_factor_list(u)
     write_probe()
+
+    # ⭐ The formula sheets ship as REAL EXCEL FILES, not CSVs. See write_xlsx for why --
+    # a CSV leaves "is this a formula or is it text?" to the reader's Excel build.
+    print()
+    for stem, key in (("01a_PILOT_cpr", "01a_PILOT_cpr"),
+                      ("01b_PILOT_factor", "01b_PILOT_factor"),
+                      ("02_cpr_main", "02_cpr_main"),
+                      ("03_factor_history", "03_factor_history")):
+        x = write_xlsx(PACK / f"{stem}.csv", key)
+        (PACK / f"{stem}.csv").unlink()          # one format, not two -- two is confusion
+        print(f"   {x.name:32s} real formulas + a 说明 tab")
     (PACK / "00_README.txt").write_text(README, encoding="utf-8-sig")
     print(f"   {'00_README.txt':32s} written")
     print("\n   !! Send the two PILOT sheets first -- 8 rows, a couple of minutes.")
