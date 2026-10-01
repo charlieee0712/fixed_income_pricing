@@ -15,6 +15,7 @@ treated as the only pull we get.**
 | 02 prepayment speeds at 2009 | ⚠️ **failed on the date** — our field has no history; her substitutes are today's |
 | 01a / 01b pilots | ⭐ did exactly their job — both diagnosed the failure before the big pull |
 | coupon history | ⚠️ **never asked for** in 03. Our omission, not hers |
+| `04` five terminal questions | ⚠️ not returned — ⭐ and it costs almost nothing: Q1 ("is the factor field history-enabled?") was answered by 03 working, and the rest were the fallback route the factor path makes unnecessary |
 
 ⭐⭐ **And the failure in row two turns out not to matter much**, because the factor path
 *is* the realised prepayment — see §4, where the 2009 speed is measured for the first time.
@@ -119,9 +120,22 @@ weekly report's spread bands predicted — from an entirely independent measurem
 
 | | count | status |
 |---|---:|---|
-| fixed-coupon tranches + the 20 validation pools | ~317 | ⭐ **unblocked** — factor path + the coupon from the custodian file gives the whole cash flow |
-| floating-rate tranches and the 12 ARM pools | ~59 | ⚠️ **still blocked** — their coupon *moves*, and 03 never asked for coupon history |
+| **principal-only strips** | **76** | ⭐ **unblocked outright** — a PO pays no interest at all, so the factor path is its whole cash flow and coupon is irrelevant |
+| fixed-coupon tranches + the 20 validation pools | ~238 | ⭐ **unblocked** — factor path + the coupon already in the custodian file |
+| whatever genuinely floats | **16 – 62** | ⚠️ **blocked, and the range is honest** — see below |
 | the 458 pools not in 03 | 458 | ⚠️ **stay on the 15/25/35 grid** — now anchored by the measured ~20%, but not individually dated |
+
+⚠️ **The blocked count is a RANGE because two methods disagree and I will not pick the
+flattering one.** Searching the description text for floating-rate language finds **16**;
+taking the class letter `S` (the usual inverse-floater convention) finds **57**; only **8**
+are caught by both. ⭐ And the letter method is the one I *already demonstrated wrong* —
+29 of the 54 `P`-prefixed tranches turned out to be principal-only strips rather than PACs.
+Quoting a number from a method I had disproved was the same mistake twice; the honest
+statement is **16 to 62, with at least 314 of the 376 certainly usable**.
+
+⭐ **What would settle it is one more column.** A floater's coupon differs between two
+dates and a fixed one's does not — and the 01b pilot proved the coupon field has history.
+One observation at two dates classifies all 376 definitively.
 
 ⚠️ **The coupon gap is our omission, not hers.** The 01b pilot asked for factor *and*
 coupon, and both worked — the coupon column returned a clean 12-month series. The main
@@ -140,7 +154,22 @@ Both diagnosed their failure **before** the large pull, which is what they were 
   substitution happened at the terminal, in one sitting, instead of after another round trip.
 * `01b` showed `MTG_FACTOR` history working, which is why 03 was worth running at all.
 
-⚠️ One thing the pilots did **not** catch: that we had asked for only half of what the
-pilot tested. A pilot verifies the fields it carries; it cannot verify the ones the main
-sheet forgot to inherit. ⭐ **Next request: diff the pilot's field set against the main
-sheet's before sending, and fail if the main sheet asks for less.**
+⚠️ One thing neither the pilots nor **four separate pre-send audits** caught: that the
+main sheet asked for only half of what the pilot tested.
+
+⭐ That is worth being precise about, because it was not a lack of rigour. The audits
+checked, repeatedly and successfully, whether the files were **correct** — column letters
+against real positions, every formula against its own row's ticker, the month calendar
+contiguous, the formula row carrying the first month, formulas stored as formulas rather
+than text, the whole thing opened in real Excel. One of those checks
+(`verify_transposed`) is the only reason this pull is usable at all: 03 shipped for one
+commit with its formulas a row above their month labels, which would have attributed all
+79,336 values to the wrong month — invisibly, and *especially* invisibly once Bloomberg's
+own T+1 offset was layered on top.
+
+**What no audit asked was whether the files were COMPLETE against what we had said we
+needed.** A missing question, not a weak one.
+
+⭐ **The rule that closes it: diff the pilot's field set against the main sheet's before
+sending, and fail if the main sheet asks for less.** A pilot can only verify the fields it
+carries; nothing was watching the ones the main sheet forgot to inherit.
