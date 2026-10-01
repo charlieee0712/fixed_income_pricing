@@ -848,6 +848,18 @@ def write_xlsx(csv_path: pathlib.Path, note_key: str) -> pathlib.Path:
     Protected View (which anything arriving by chat does), and CSV-injection protections.
     Someone looking at the formula as TEXT is right to say the file has no functions.
     An .xlsx stores a formula as a formula; there is nothing to interpret.
+
+    ⭐ VERIFIED END TO END IN REAL EXCEL (2026-10-01), and the one-line test is worth
+    keeping. Open the workbook through COM and read a cell back::
+
+        first tab on open : 说明
+        E2 .HasFormula    : True
+        E2 .Text          : #NAME?
+
+    ⭐ **#NAME? is the PROOF, not the problem.** It means Excel parsed the cell as a
+    function call and merely could not find the function — correct on a machine with no
+    Bloomberg add-in. A container that was still wrong would report ``HasFormula=False``
+    and show the literal string. Reach for this instead of guessing next time.
     """
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
