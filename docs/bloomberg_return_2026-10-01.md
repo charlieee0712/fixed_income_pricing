@@ -173,3 +173,79 @@ needed.** A missing question, not a weak one.
 ⭐ **The rule that closes it: diff the pilot's field set against the main sheet's before
 sending, and fail if the main sheet asks for less.** A pilot can only verify the fields it
 carries; nothing was watching the ones the main sheet forgot to inherit.
+
+---
+
+## 7. ⭐⭐⭐ The method is validated — the factor route prices a bond
+
+This is the test the 20 pass-through pools were put in the request for: they are ordinary
+pools **our engine already prices**, so the factor route could be checked against a number
+we already trust before being pointed at a single tranche.
+
+⭐ **Pricing per 100 of CURRENT face needs only factor RATIOS, never the original face** —
+which deletes the `orig_face = par / factor` derivation, and with it the first of the five
+ways this could have gone wrong.
+
+Conventions mirrored exactly from `core.pricing.prepayment` — same monthly grid, same
+`exp(-t(z+s))` discounting, same calibration target. A difference arising from pricing
+conventions rather than from the method would have proved nothing.
+
+### The three checks
+
+| | result |
+|---|---|
+| **A. principal conservation** — an identity, not a tolerance | **100.0000 per 100, worst deviation 1.28e-13** |
+| **B. realised whole-life CPR** | median **23.94%** |
+| **C. factor path vs the existing engine at the same pool's own realised speed** | n=14, median **8.2 bp**, signed median **−2.6 bp** |
+
+⭐ **8.2 bp between two genuinely different calculations** — one assuming a constant speed,
+one using the month-by-month path that actually happened — with **no systematic bias left**.
+That residual is not error; it is the information the path carries and a flat assumption
+cannot.
+
+⚠️ Six of the twenty realised 57–74% CPR, far outside the 15–35% grid. `np.interp` clamps,
+so their "engine" figure is just the 35% number and comparing against it would measure the
+interpolation rather than the method. **Excluded and said so**, rather than left in to
+flatter the median.
+
+### ⭐ And the validation did its job — it found something
+
+The first run showed **median |diff| 21.2 bp with a signed median of −11.4 bp**. A
+consistent sign is not noise, so it had a cause, and the cause was predictable from the
+one check that was already failing: **principal conservation came to 98.4–100.0 rather
+than 100**.
+
+⚠️ The series ends at 2026-09, and a pool still alive then has balance we had simply
+dropped. Too little PV ⇒ too narrow a calibrated spread ⇒ **every still-alive pool reading
+negative**, which is exactly the pattern the table showed. (The one still-alive pool
+reading positive, `312962EA7`, is the only one priced **below** par — the sign reverses
+with the price, as it does throughout this book.)
+
+Repaying the residual at the last observation:
+
+```
+                      tail dropped     tail repaid
+principal identity     98.4 – 100.0    100.0000  (1.28e-13)
+median |diff|             21.2 bp         9.9 bp
+signed median            −11.4 bp        +0.8 bp
+```
+
+⭐ **A hypothesis with a predicted sign, tested, and the bias disappeared.** That is what
+twenty pools in a request buy: the gap was found on twenty securities in an evening rather
+than on three hundred in a report.
+
+⚠️ The residual tail is now a **named modelling item** for the real driver — repaying it at
+the last observation bounds the effect but is not a model. The right treatment is to
+continue amortising at the terminal speed, and the difference between the two is small
+(the residual is 0–1.6% of balance) but it should be a choice rather than an accident.
+
+### What this settles, and what it does not
+
+⭐ **Settles:** the decomposition is arithmetically exact; the factor data prices a real
+bond; the result agrees with an independent engine with no systematic offset. **The route
+is sound and the ~314 unblocked securities can be built.**
+
+⚠️ **Does not settle:** the IO strips (76) — their factor may be a *notional* and their
+coupon a *strip rate*, neither of which this test exercised, since all 20 validation
+securities are ordinary pools. ⭐ That is the next thing to check, and it should be checked
+the same way: on the few, before the many.
