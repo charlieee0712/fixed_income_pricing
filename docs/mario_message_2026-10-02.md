@@ -16,28 +16,29 @@ stand completely on its own.
 
 ## The message
 
-> Hi Mario — a data request, and why it's still outstanding after the last one.
+> Hi Mario — is there someone with a Bloomberg terminal you could pass a file to?
 >
-> Liping ran part of our Bloomberg request at her university terminal — monthly repayment
-> histories for 376 mortgage securities — and that part came back complete. The method
-> works: we checked it against twenty pools we already price a different way, and the two
-> agree closely.
+> **What it's for.** The last 412 securities in the portfolio we can't yet value — the
+> CMOs, the commercial mortgage-backed and the asset-backeds. All we need is how much of
+> each one was repaid in each month since 2009. With that we can value them from what
+> actually happened to them, instead of buying the deal models that describe how each
+> structure divides its payments. That purchase is the alternative, and it isn't cheap.
 >
-> The gap is that her pull only covered one of the four securitised categories, Government
-> MBS. The CMOs, the commercial mortgage-backed and the asset-backeds were never in the
-> request. That was our oversight — we built it from the Government MBS list and didn't
-> extend it. Those 412 securities are the last three types we haven't started on.
->
-> Attached is a folder with four spreadsheets covering them. The formulas are already
-> written in, so whoever has a terminal just opens each file, lets it calculate, saves,
+> **What it takes.** Attached is a folder with four spreadsheets. The formulas are
+> already written in, so whoever runs it just opens each file, lets it calculate, saves,
 > and sends it back — nothing needs typing. The first file is a one-minute check that the
-> terminal returns this kind of data at all, so nobody spends real time before finding out.
+> terminal returns this kind of data at all, so nobody spends real time before finding
+> out. If they're short on time, the second file is the one that matters.
 >
-> Is there someone you could pass it to?
+> **Why it's still outstanding after Liping's pull.** Hers came back complete, and the
+> method works — we checked it against twenty pools we already price a different way and
+> the two agree closely. But it only covered one of the four securitised categories,
+> Government MBS; these three were never in the request. That was our oversight, we built
+> it from the Government MBS list and didn't extend it.
 >
 > One note: 375 of the 412 are in there. The other 37 have no ISIN or CUSIP in the
 > custodian file we were given, so we couldn't build a request line for them — our gap to
-> close, not the terminal's.
+> close.
 
 ---
 
