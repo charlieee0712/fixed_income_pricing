@@ -690,6 +690,98 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
 - **Still open, confirmation-only:** Japan's **CPI ex-fresh-food** series (headline is the wrong
   index for JGBi) — 1 security, priced today, no dependency. And the **KRW 3-31 curve row**.
 
+## Securitised book — the factor route, VALIDATED (2026-10-01/02)
+
+- **⭐⭐⭐ THE DECOMPOSITION, and it is structure-agnostic.** `principal(t) = orig_face
+  × (factor(t−1) − factor(t))`, `interest(t) = orig_face × factor(t−1) × coupon(t)/12`.
+  A PO has no interest term, an IO no principal term, a Z-accrual self-corrects to exactly
+  zero net flow — so **a monthly factor history replaces the deal-structure data we thought
+  needed Intex**. ⭐ **Pricing per 100 of CURRENT face needs only factor RATIOS, never
+  `orig_face`** ⇒ the `orig_face = par/factor` derivation is deleted, not improved.
+  (`orig_face` is empty in the master anyway — checked 10-02.)
+- **VALIDATED on the 20 pass-through pools deliberately put in the request** (ordinary pools
+  the existing engine already prices, so the route is checked against a trusted number
+  before being pointed at a tranche): **principal conservation 100.0000 per 100, worst
+  1.28e-13**; **n=14 in-grid, median |diff| 8.2bp, signed −2.6bp**. ⚠️ 6 of 20 realised
+  57–74% CPR — outside the 15/25/35 grid, where `np.interp` CLAMPS, so their "engine"
+  number is just the 35% one; **excluded and said so**. Evidence
+  `docs/bloomberg_return_2026-10-01.md` §7.
+- **⭐ THE 2009 PREPAYMENT SPEED, MEASURED FOR THE FIRST TIME:** forward from 3-31,
+  **1m 20.4% / 3m 21.4% / 12m 19.1% CPR**, whole-life median 23.94%. The 15/25/35 grid was
+  **correctly centred**; interpolating gives ~257bp against the report's 220–265 band. It
+  also reproduces the OAS smile independently — WAC 3.50% out-of-the-money prepaid 0.91%,
+  WAC 6.50% deep-in prepaid 40.3%.
+- **⚠️ T+1 AGAIN — Bloomberg's month label sits ONE MONTH AHEAD of the custodian's.** Its
+  `2009-04` column IS the 2009-03-31 position (median rel 2.9e-08 on 370/373; the labelled
+  `2009-03` is 1.6e-02 off). **Same house convention as the TIPS index ratios (2026-09-19).**
+  Every reader of `docs/03_factor_history.xlsx` must apply the shift. On `3133T5MR1` reading
+  the labelled row puts the balance out by a factor of six.
+- **⚠️ CORRECTED 10-02 — 79 P/O, 76 I/O, 222 neither** (of the 376). The arrival doc first
+  said "76 PO unblocked outright"; **the 76 was the I/O count wearing the P/O label**, and
+  the two are opposites (a PO needs no coupon ever — `income_rate` is literally 0.000%; an
+  IO needs its strip rate). An earlier pattern found 2 I/O because `\bIO\b` does not match
+  the custodian's `I/O`. ⭐ Custodian duration separates them unaided: IO median **−6.685**,
+  PO **+7.191**.
+- **⭐ THE I/O "NOTIONAL" QUESTION IS SETTLED, AND NOT BY A DATA PULL.** Bloomberg's factor
+  agrees with the custodian's own `paydown_factor` on **75 of 76 I/O strips to a median
+  3.5e-08** — as well as on everything else. The two sources mean the same thing by an IO's
+  factor, which is the only property the pricing needs. **Asked of nobody.**
+- **⚠️ `MTG_GEN_CPR_3M` is a CURRENT-VALUE-ONLY field — not a typo.** `BDP` returns numbers,
+  `BDH` returns `Invalid Field` 505/505 at every date. Different failure from July's
+  `MTG_HIST_COLLAT_CPR_LIFE`, which did not exist. ⚠️ The substitutes are TODAY's
+  (`MTG_PL_PSA_3M` 156.1 → 9.37% CPR vs the same bond's `BDP` 9.34 today); TBA rows read
+  **2281 PSA** — pool-level fields on a generic mean nothing. Flag, never use.
+  For a seasoned pool **CPR ≈ 0.06 × PSA/100**.
+
+## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
+
+- **⭐⭐ DIFF THE REQUEST AGAINST THE CLAIM, as an ASSERTION not a memory.** The 09-29 pack
+  was well-formed and incomplete: four pre-send audits checked whether the files were
+  **CORRECT** (column letters, every formula against its own row's ticker, the month
+  calendar, real formulas in a real container) and **none asked whether they were COMPLETE
+  against what we had told the client**. Two misses, one cause — the request was built from
+  *the data structure that happened to be loaded* (`build_pool_universe` = Government MBS by
+  construction) rather than from the argument it served. `make_mario_request.main()` now
+  **fails** unless `375 requested + 37 no-ISIN == 412 in scope` and `156 + 595 == 751`.
+- **⭐ NEVER SHIP A REQUEST WITH A SECOND ROUND BAKED INTO IT.** The 09-29 round-2 design
+  ("4 dates to classify, pull the movers later") is a second request in a cheap costume.
+  **Measure the suspects and pull them in full in the same sitting:** union of {class letter
+  S} ∪ {desc FLT/VAR/ADJ/INV/ARM/LIBOR} ∪ {I/O} = **156**, monthly; the other **595** get
+  4 dates **as a safety net that proves the union missed nobody**, not as triage.
+  ⚠️ I/O belongs in the union — the list is mostly `CL SA`/`SB`/`SL FLT RT` inverse
+  floaters whose coupon moves monthly; 4 dates would classify and still not price them.
+- **⭐ WHAT ENTERS A REQUEST: a gap that BLOCKS a security, never one that only CONFIRMS a
+  convention.** All of `missing_data.md` G2–G6 stayed OUT of the 10-02 pack on that line
+  (every G5 bond prices today). Second reason, stronger: a pack that is **one field family
+  under one proven function** either works or fails visibly; `DES` lookups and untested
+  field names mixed in are how a stranger's pull fails without them being able to say why.
+- **⚠️ A PILOT ONLY VERIFIES THE FIELDS IT CARRIES.** 01b tested factor AND coupon, both
+  worked; the main sheet inherited factor only and the README promised both. **Diff the
+  pilot's field set against the main sheet's and fail if the main sheet asks for less.**
+- **⭐ A NEW OPERATOR IS A NEW FAILURE MODE — probe entitlements FIRST.** A different account
+  may simply lack the mortgage entitlement, and that presents as hundreds of columns of
+  `#N/A` with nothing naming the cause. `01_CHECK_FIRST.xlsx` = 3 securities × 2 fields,
+  under a minute, and it converts that outcome into a sentence they can send back.
+- **⚠️ A .csv IS NOT A SPREADSHEET** — whether `=BDH(...)` becomes a formula depends on the
+  Excel version, locale, Protected View and CSV-injection defences; Liping twice reported
+  "no functions". **Ship .xlsx.** ⭐ The one-line check, through COM: a correct container is
+  **`HasFormula=True` showing `#NAME?`** (Excel parsed the function, no add-in). A broken one
+  is `HasFormula=False` showing the literal text. Don't guess — reach for this.
+- **⚠️ A transposed sheet's formulas must sit on the row carrying the FIRST month** (each
+  spills downward). 03 shipped one commit with them a row high; `verify_transposed` is the
+  only reason the pull is usable — every value would have sat one month off its label,
+  *especially* invisibly with Bloomberg's own T+1 on top. Row-wise twin = `verify_rowwise`.
+- **The 2026-10-02 pack** = `docs/bloomberg_request_2026-10-02/` (English, self-contained,
+  forwardable): `00_README` · `01_CHECK_FIRST` (3) · `02_factor_history` (375×211) ·
+  `03_coupon_monthly` (156×211) · `04_coupon_classify` (595×4) = **114,421 points**
+  (September's comparable sheet was 79,336 and returned complete). Generator
+  `scripts/make_mario_request.py` — **separate from `make_bloomberg_request.py` on purpose**:
+  that one is the record of what went to Liping and must keep saying what it said.
+  Message + its rationale = `docs/mario_message_2026-10-02.md`.
+- **⚠️ 37 of the 412 carry NO ISIN in the custodian file** — no pull of any shape reaches
+  them. Disclosed in the README and in the message, because `375 ≠ 412` is the first thing
+  a careful reader notices.
+
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`
   store par yields in PERCENT; the other 24 store DECIMALS.** `load_par_curve` multiplied
