@@ -120,10 +120,20 @@ weekly report's spread bands predicted — from an entirely independent measurem
 
 | | count | status |
 |---|---:|---|
-| **principal-only strips** | **76** | ⭐ **unblocked outright** — a PO pays no interest at all, so the factor path is its whole cash flow and coupon is irrelevant |
-| fixed-coupon tranches + the 20 validation pools | ~238 | ⭐ **unblocked** — factor path + the coupon already in the custodian file |
+| **principal-only (P/O) strips** | **79** | ⭐ **unblocked outright** — a PO pays no interest at all, so the factor path is its whole cash flow and coupon is irrelevant |
+| **interest-only (I/O) strips** | **76** | ⚠️ **NOT unblocked** — the mirror case, and it needs *more*, not less: the strip rate, and whether its factor runs on a **notional** balance |
+| everything else in the 376 | **222** | ⭐ **unblocked if the coupon is fixed** — factor path + the custodian's coupon; whatever floats is the range below |
 | whatever genuinely floats | **16 – 62** | ⚠️ **blocked, and the range is honest** — see below |
 | the 458 pools not in 03 | 458 | ⚠️ **stay on the 15/25/35 grid** — now anchored by the measured ~20%, but not individually dated |
+
+⚠️⚠️ **CORRECTED 2026-10-02 — the 76 in the first version of this table was the
+I/O count wearing the P/O label.** Measured over the 376 columns that came back, matching
+the slash forms the custodian actually writes (`P/O`, `I/O`) rather than bare `PO`/`IO`:
+**79 principal-only, 76 interest-only, 1 naming both, 222 neither.** ⭐ The two are
+opposites — a PO has no interest leg and needs no coupon, an IO has no principal leg and
+needs its strip rate *and* its factor's meaning — so the mislabel moved 76 securities from
+"blocked" to "done" on the page. An earlier pattern found only 2 IO because `IO` does
+not match `I/O`.
 
 ⚠️ **The blocked count is a RANGE because two methods disagree and I will not pick the
 flattering one.** Searching the description text for floating-rate language finds **16**;
@@ -132,6 +142,9 @@ are caught by both. ⭐ And the letter method is the one I *already demonstrated
 29 of the 54 `P`-prefixed tranches turned out to be principal-only strips rather than PACs.
 Quoting a number from a method I had disproved was the same mistake twice; the honest
 statement is **16 to 62, with at least 314 of the 376 certainly usable**.
+
+⚠️ And "usable" is doing work in that sentence: 76 of the 314 are I/O strips, which are
+unblocked for *coupon* only once 06 returns, and still owe the notional question.
 
 ⭐ **What would settle it is one more column.** A floater's coupon differs between two
 dates and a fixed one's does not — and the 01b pilot proved the coupon field has history.
