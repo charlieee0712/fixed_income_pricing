@@ -16,13 +16,14 @@ stand completely on its own.
 
 ## The message
 
-> Hi Mario — is there someone with a Bloomberg terminal you could pass a file to?
+> Hi Mario — I know it's been a busy week, so I've kept this short. Is there someone with
+> a Bloomberg terminal you could pass a file to?
 >
 > **What it's for.** The last 412 securities in the portfolio we can't yet value — the
 > CMOs, the commercial mortgage-backed and the asset-backeds. All we need is how much of
 > each one was repaid in each month since 2009. With that we can value them from what
 > actually happened to them, instead of buying the deal models that describe how each
-> structure divides its payments. That purchase is the alternative, and it isn't cheap.
+> structure divides its payments.
 >
 > **What it takes.** Attached is a folder with four spreadsheets. The formulas are
 > already written in, so whoever runs it just opens each file, lets it calculate, saves,
@@ -33,12 +34,15 @@ stand completely on its own.
 > **Why it's still outstanding after Liping's pull.** Hers came back complete, and the
 > method works — we checked it against twenty pools we already price a different way and
 > the two agree closely. But it only covered one of the four securitised categories,
-> Government MBS; these three were never in the request. That was our oversight, we built
-> it from the Government MBS list and didn't extend it.
+> Government MBS; these three were never in the request. That was our oversight — we
+> built it from the Government MBS list and didn't extend it.
 >
 > One note: 375 of the 412 are in there. The other 37 have no ISIN or CUSIP in the
 > custodian file we were given, so we couldn't build a request line for them — our gap to
 > close.
+>
+> No urgency on this at all. What Liping already sent gives us a few weeks of work, so
+> nothing is waiting on it. Thank you.
 
 ---
 
@@ -62,6 +66,29 @@ terminal. It is in the pack and in the report for when he wants it.
 **The oversight is stated once, plainly, and not apologised for twice.** *"We built it
 from the Government MBS list and didn't extend it."* That is what happened. A second
 sentence of contrition would make him manage our feelings.
+
+### ⭐ On tone — the message was deliberately NOT softened overall
+
+Asked whether to make it more deferential, the answer is no, for a reason specific to
+what this message contains: **it carries an admission of our error.** The instinct when
+apologising is to soften everything, and the effect inverts — soft plus apologetic reads
+as *anxious*, and anxiety invites doubt about competence. Crisp ownership with a clear
+fix reads as professional. Mario is a technically fluent client and the standing rule for
+his documents is **never talk down to him**; excess deference is its own form of that.
+
+⭐ **What WAS changed had nothing to do with politeness and everything to do with not
+arguing and not pressuring:**
+
+| | why |
+|---|---|
+| **cut** *"That purchase is the alternative, and it isn't cheap."* | the only sentence in the message that **argues**. He has not pushed back on anything, so pre-emptive persuasion reads as pleading or as leverage — and telling an MD that a purchase is expensive is informing him of something he knows. State the alternative neutrally; he draws the conclusion himself. |
+| **added** *"I know it's been a busy week, so I've kept this short."* | not filler — the meeting was cancelled, we noticed, and saying so pre-excuses a slow reply. It is the user's actual worry (imposing on a busy person) answered in one clause. |
+| **added** *"No urgency on this at all… nothing is waiting on it."* | ending on "our gap to close" was abrupt for a request. ⭐ And it is **true**: the ~314 securities unblocked by Liping's pull are weeks of work. ⚠️ Counter-intuitively this raises the odds of a reply — all three ignored July asks carried implied urgency, and an ask that can be done *whenever* does not have to be deferred. |
+| **fixed** a comma splice before *"we built it from…"* | a client message |
+
+**Left alone on purpose:** the direct opening question (*"is there someone … you could
+pass a file to?"* is already softened by the modal and the indirect form), the bold
+labels (scannable beats formal for a phone), and the admission itself.
 
 **No percentages.** "412 securities" is concrete. "18% of the portfolio" is 18.2% **by
 count** and **4.8% by par value**, and Mario reads a portfolio percentage as value —
