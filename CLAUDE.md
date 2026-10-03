@@ -778,9 +778,20 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   `scripts/make_mario_request.py` — **separate from `make_bloomberg_request.py` on purpose**:
   that one is the record of what went to Liping and must keep saying what it said.
   Message + its rationale = `docs/mario_message_2026-10-02.md`.
-- **⚠️ 37 of the 412 carry NO ISIN in the custodian file** — no pull of any shape reaches
-  them. Disclosed in the README and in the message, because `375 ≠ 412` is the first thing
-  a careful reader notices.
+- **⚠️ 37 of the 412 carry no ISIN or CUSIP in the custodian file** — so no request LINE
+  could be written for them. ⚠️ **Do not escalate this to "unreachable by any pull"** (an
+  earlier draft did): their descriptions carry deal / series / class, and a Bloomberg CMO
+  ticker is `<DEAL> <SERIES> <CLASS> Mtge`, so they are plausibly findable by hand. That
+  route is UNTESTED, which is why it stayed out of a favour pack — a different reason from
+  impossible. Disclosed in the README and the message, because `375 ≠ 412` is the first
+  thing a careful reader notices.
+- **⚠️ THE 412 ARE 18.2% OF THE BOOK BY COUNT AND 4.8% BY PAR VALUE.** Quote both, or say
+  which. Mario reads a portfolio percentage as value, so the count alone overstates by ~4x
+  — and it overstates in the direction that flatters whatever we are asking for.
+- **DECISION — the 505 already-priced pools stay on the 15/25/35 grid; their factor history
+  was NOT requested.** It was considered (it would move them from an assumed speed to a
+  measured path) and dropped under the blocks-vs-confirms rule: they price today, and the
+  grid is now anchored by the measured ~20%. Revisit only if a pull is happening anyway.
 
 ## ⭐ GBP par-yield UNITS BUG — "not arbitrage-free" was OURS (2026-08-30)
 - **`data/*_Yield_Curve.txt` are NOT uniform: `GBP_Yield_Curve.txt` and `DKK_Yield_Curve.txt`

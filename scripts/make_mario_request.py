@@ -460,10 +460,12 @@ ONE THING WE CANNOT ASK FOR
 --------------------------------------------------------------------------
 
 There are 412 securities in these three categories. 375 of them are in
-sheet 02. The remaining 37 have no ISIN recorded in the custodian file we
-were given, so there is no identifier to look them up by. That is a gap on
-our side, not something this request can close, and it is noted here so the
-difference between 412 and 375 is not a mystery.
+sheet 02. The remaining 37 have no ISIN or CUSIP recorded in the custodian
+file we were given, so we could not write a request line for them. Their
+descriptions do carry a deal, series and class, so they are probably
+findable by hand - but that is our problem to solve, not a reason to hold
+up this request. Noted here so the difference between 412 and 375 is not a
+mystery.
 
 --------------------------------------------------------------------------
 IF ANYTHING LOOKS WRONG

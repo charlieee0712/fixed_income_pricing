@@ -5,6 +5,101 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-10-01/02 — The factor route is validated, and the request that follows it
+**Commits:** `b198d1a` `e7bdec3` `b1b27ea` `376c503` `b2a64ba` `89ac58e` `6284265`
+`2dae5c3` `74bc3a9` `54bffeb`
+**Hours:** `[TO FILL]`
+**Author:** charlieee0712
+
+**Liping's pull came back and the one that mattered is complete: 79,336 of 79,336 factor
+values, zero gaps, dating verified.** The 2026-09-29 pack's second sheet failed —
+`MTG_GEN_CPR_3M` is a current-value-only field, alive under `BDP` and `Invalid Field`
+under `BDH`, which is a property of the field rather than a mistake in the list — and it
+turned out barely to matter, because a factor path *is* a record of prepayment.
+
+**⭐⭐ The method is validated.** Twenty ordinary pass-through pools were put in the
+request precisely so the factor route could be checked against numbers the existing engine
+already produces, before being pointed at a single tranche. Principal conservation
+**100.0000 per 100, worst 1.28e-13**; against the engine at each pool's own realised speed,
+**n=14 in-grid, median 8.2bp, signed −2.6bp**. ⚠️ Six of the twenty realised 57–74% CPR,
+outside the 15/25/35 grid where `np.interp` clamps — their "engine" number is just the 35%
+one, so they were excluded and said so rather than left in to flatter the median.
+
+**The validation did its job — it found something.** The first run read median 21.2bp with
+a **signed** median of −11.4bp, and a consistent sign is not noise. The cause was visible
+in the check that was already failing: principal conservation came to 98.4–100.0, because
+the series ends 2026-09 and a pool still alive then had balance we had simply dropped. Too
+little PV ⇒ too narrow a spread ⇒ every still-alive pool reading negative, which is exactly
+what the table showed. Repaying the residual at the last observation: identity 100.0000,
+median 9.9bp, signed **+0.8bp**. A hypothesis with a predicted sign, tested, bias gone.
+⚠️ The residual tail is now a **named modelling item** — the right treatment is to continue
+amortising at the terminal speed, and it should be a choice rather than an accident.
+
+**⭐ The 2009 prepayment speed, measured for the first time:** ~20% CPR forward
+(1m 20.4 / 3m 21.4 / 12m 19.1), whole-life median 23.94%. The grid we had been pricing on
+was 15/25/35 — **correctly centred**. It independently reproduces the OAS smile too: WAC
+3.50% out-of-the-money prepaid 0.91%, WAC 6.50% deep-in prepaid 40.3%.
+
+**⚠️ Bloomberg's month label sits one month ahead of the custodian's** — its `2009-04`
+column IS the 2009-03-31 position (2.9e-08 on 370/373; the labelled `2009-03` is 1.6e-02
+off). Same house convention as the TIPS index ratios on 09-19. On `3133T5MR1` it is a
+factor of six.
+
+**⚠️ Two corrections of record, both ours, both found by re-measuring rather than by
+re-reading.** The blocked count had been quoted from the class-letter method I had
+*already disproved* in the same document — honest range **16–62**, not 59. And **"76
+principal-only strips, unblocked outright" was the interest-only count wearing the
+principal-only label**: measured on the 376 columns, matching the slash forms the custodian
+actually writes, it is **79 P/O, 76 I/O, 222 neither**. The two are opposites — a P/O needs
+no coupon ever (`income_rate` is literally 0.000%), an I/O needs its strip rate — so the
+mislabel moved 76 securities from "blocked" to "done" on the page.
+
+**⭐ The I/O "notional" question was settled without asking anybody.** Bloomberg's factor
+agrees with the custodian's own `paydown_factor` on **75 of 76 I/O strips to a median
+3.5e-08**, as well as it agrees on everything else — the two sources mean the same thing by
+an I/O's factor, which is the only property the pricing needs.
+
+### The request that follows, and the two design rules it is built on
+
+**⚠️ The 09-29 pack was well-formed and incomplete, and the cause is worth more than the
+fix.** It asked for factor but not coupon (while the 01b pilot tested both and both
+worked), and it covered Government MBS only (while the report sent the *same day* told
+Mario the route might reach 756 securities across four classes). Neither was a scoping
+judgement: the request was generated from **the data structure that happened to be
+loaded**. Four pre-send audits checked whether the files were CORRECT; none asked whether
+they were COMPLETE against our own claim. ⭐ `make_mario_request.main()` now **fails** unless
+`375 + 37 == 412` and `156 + 595 == 751` — the rule as an assertion, not a memory.
+
+**⭐ And the round-2 sheet had a second request baked into it.** "Four dates to classify,
+pull the movers later" is a second ask in a cheap costume. The suspects were measured
+instead — union of {class letter S} ∪ {desc FLT/VAR/ADJ/INV/ARM/LIBOR} ∪ {I/O} = **156**,
+pulled monthly in the same sitting; the other **595** get four dates **as a safety net that
+proves the union missed nobody**. I/O belongs in the union because the list is mostly
+`CL SA`/`SB`/`SL FLT RT` inverse floaters.
+
+**`docs/bloomberg_request_2026-10-02/`** — English, self-contained, forwardable to someone
+who has never seen the project: `01_CHECK_FIRST` (3 securities, an entitlement probe,
+because a new terminal may simply lack the mortgage entitlement and that presents as 375
+columns of `#N/A`) · `02_factor_history` (375×211) · `03_coupon_monthly` (156×211) ·
+`04_coupon_classify` (595×4) = **114,421 points**. Verified in real Excel through COM:
+every first tab is READ ME, every probed cell `HasFormula=True` showing `#NAME?`, the month
+column 2009-03..2026-09 with formulas on the row carrying the FIRST month, nothing below
+row 5. **The deferred registry items G2–G6 stayed out** on the line *a gap that BLOCKS a
+security goes in, a gap that only CONFIRMS a convention does not*.
+
+**The message** (`docs/mario_message_2026-10-02.md`) asks Mario whether he can borrow a
+friend's terminal. ⚠️ **Four claims in the first draft were corrected and every one
+overstated in our favour** — "the second ask" (he was asked three times in July), "no
+identifier to request them by" (they carry deal/series/class; the true claim is the smaller
+"no ISIN or CUSIP"), "18% of the portfolio" (18.2% by count, **4.8% by par value**, and he
+reads a percentage as value), and a reference to a report that may not have reached him.
+None was a lie and all four leaned the same way, which is the thing to watch for.
+
+**Tests 656 → 657** (the new generator picked up automatically by the parametrized
+`test_exception_wiring`). No production output moved — this round added no engine code.
+
+---
+
 ## 2026-09-25/26 — The mortgage book: data checked, last engine migrated, 505 priced
 **Commits:** `1a0b152` `579da23` `3b263c2` `3d1449f` `72c8696` `ad1d8ba` `2d111d3`
 **Hours:** `[TO FILL]`
