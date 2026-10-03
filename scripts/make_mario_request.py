@@ -406,9 +406,15 @@ CLASSIFY_NOTE = [
     "   Blank on the later dates means the security had already been repaid.",
 ]
 
+#: ⚠️ THE CLIENT IS DELIBERATELY NOT NAMED IN THE README. This pack leaves our circle --
+#: it reaches whoever has a terminal by way of the client -- and it is already a list of
+#: 751 securities somebody holds. Naming the owner on top of that buys the operator
+#: NOTHING: you do not need to know whose portfolio it is to press Ctrl+Alt+F9. Found by
+#: auditing what the pack REVEALS, which is a different question from whether it is
+#: correct or whether it is complete, and the only one that matters once a file is
+#: forwarded outside.
 README = """BLOOMBERG DATA REQUEST
-URS fixed income pricing project
-Prepared 2026-10-02
+Fixed income pricing project - prepared 2026-10-02
 
 --------------------------------------------------------------------------
 WHAT THIS IS
