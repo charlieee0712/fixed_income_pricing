@@ -1,4 +1,28 @@
-# Message to Mario — 2026-10-02
+# Asking Mario for one more terminal session — 2026-10-02
+
+⭐⭐ **ASK IT AT THE WEEKLY MEETING, NOT BY MESSAGE.** Three asks went to Mario in July
+(`missing_data.md` G1–G4: 07-20, 07-22, 07-30), all asynchronous, and **none came back**;
+Liping's did. The channel is the variable with the evidence against it.
+
+⭐⭐⭐ **And the 09-30 report sets this up almost word for word.** Its §4.1 tells him *"the
+test is built into the request — it includes 20 ordinary pools we already price, so the
+method gets checked against numbers we already trust before it is pointed at a single
+slice"*, and §4.2 promises *"we will know within days whether these 756 securities can be
+valued without buying deal models."* The meeting has not happened yet. So this is not a
+request arriving cold — **it is the result of a prediction he is about to read**, and the
+ask is the next sentence after it.
+
+⚠️ **Do NOT ask for the friend's account.** It is the heaviest of the four options, not
+the lightest:
+
+| | what it costs Mario |
+|---|---|
+| ⭐ **"Is there someone you could put this in front of?"** | one forward, 30 seconds, zero exposure — **do this** |
+| an introduction to the friend | a social favour, but it takes him out of the loop afterwards |
+| ⚠️ borrowing the account | he must ask his friend to breach their employer's terminal agreement, for a vendor they have never met — **and it does not even work**: a Bloomberg login is bound to an enrolled fingerprint plus a physical B-Unit, so a password alone logs nobody in |
+| ⚠️ asking him to run it himself | never ask an MD to operate a spreadsheet |
+
+
 
 **Channel:** WhatsApp. **Attachment:** the folder `docs/bloomberg_request_2026-10-02/`,
 which is self-contained English and can be forwarded to whoever runs it without
@@ -15,7 +39,69 @@ Every number below is traceable: 376 complete / 8 bp over 14 in-grid pools / ~20
 
 ---
 
-## The message
+## A. What to say at the meeting — the primary route
+
+Spoken, after walking him through §4 of the report. About sixty seconds.
+
+> Since I wrote this, the answer came back — and the method works. Liping got the factor
+> history for the Government MBS slices, and we checked it against twenty ordinary pools
+> we already price a different way: they agree to within 8 basis points, with no bias
+> either way. So the branch in section 4 is live — we probably don't need to buy deal
+> models.
+>
+> One thing I got wrong, though. That same trip should have collected the other three
+> categories at the same time — the CMOs, the commercial mortgage-backed and the
+> asset-backeds — and it didn't. It only covered Government MBS. That's 412 securities,
+> and they're the last three types we haven't started on.
+>
+> Is there someone with a Bloomberg terminal you could put this in front of? Everything's
+> prepared — four spreadsheets with the formulas already written in, open and save,
+> nothing to type. The first one is a one-minute check, so nobody wastes time if the
+> terminal can't return it.
+
+⭐ **The ask is for a NAME, not for an account and not for his afternoon.** If he offers
+the account anyway, decline it gently and ask who could run it — the login will not work
+without that person's fingerprint, and saying so is easier before he has made a promise to
+his friend than after.
+
+⭐ **The oversight, phrased to match what he will have just read.** The report said the
+request carried a test of the method. It did, and the test passed. What the same trip
+should *also* have done is collect the other three categories' data while it was being
+paid for. That is a wrong manifest, not a wrong method — a logistics slip, which is both
+the truth and the version a listener forgives.
+
+⚠️ **Be ready for "why didn't it cover all 756 in the first place?"** The honest answer
+is one sentence: the request was generated from the Government MBS list, and nobody
+checked it against the number in the report.
+
+---
+
+## B. The note that follows, with the folder attached
+
+Short on purpose — the context was given live.
+
+> Hi Mario — the Bloomberg files I mentioned, attached as a folder.
+>
+> Four spreadsheets. The formulas are already written in, so whoever runs it just opens
+> each one, lets it calculate, saves, and sends it back — nothing needs typing. Please
+> have them start with **01_CHECK_FIRST**: it takes a minute and confirms the terminal
+> returns this kind of data before anyone spends real time on the rest.
+>
+> The README inside explains everything else, so the folder can be forwarded as it is.
+>
+> One note: 375 of the 412 securities are in there. The other 37 have no ISIN or CUSIP in
+> the custodian file we were given, so we couldn't build a request line for them — our
+> gap to close, not theirs.
+>
+> Thank you — and thanks for asking on our behalf.
+
+---
+
+## C. Fallback — if the meeting slips or he is not there
+
+⚠️ Use this **only** if the live route is unavailable. It carries the context the meeting
+would have carried, which is why it is four times longer.
+
 
 Hi Mario — an update, and one request.
 
@@ -53,6 +139,8 @@ than come back again.
 
 ## Why it is shaped this way
 
+⚠️ The notes below were written for the long version (route C) and apply to all three.
+
 **Liping is credited first and the oversight is named without padding.** "We built it
 from the wrong starting list" is what actually happened — the request was generated from
 the Government-MBS universe object that was loaded at the time, while the report sent the
@@ -73,9 +161,10 @@ the portfolio" (18.2% by count, **4.8% by par value**, and he reads a percentage
 and a reference to a report that may not have reached him. ⭐ None was a lie and all four
 leaned the same way, which is the thing to watch for rather than any one of them.
 
-⚠️ **Still to confirm with the user before sending:** whether the 2026-09-30 mortgage
-report actually reached Mario. The wording above no longer depends on it, but if he has
-not seen it, the validation paragraph is news rather than a follow-up.
+⭐ **ANSWERED 2026-10-02 — the weekly meeting has not happened, so he has NOT seen the
+09-30 report.** That is what moved the ask from a message to the meeting itself: the
+report's own §4.2 promises an answer "within days", and the answer now exists. Delivering
+a result against a prediction is a different conversation from asking for a favour.
 
 **The 37 are disclosed before he can find them.** 375 ≠ 412 is the first thing a careful
 reader notices, and he is a careful reader. Volunteering it costs one sentence; being
