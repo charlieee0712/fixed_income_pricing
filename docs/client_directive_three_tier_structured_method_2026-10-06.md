@@ -247,6 +247,75 @@ classes entire). Three different numbers, easily confused — name the populatio
 
 ---
 
+## 3.6 ⭐⭐⭐ Why Tier 1 first, when its numbers are knowingly worse
+
+The obvious objection is that Tier 1 ships a number we already know is wrong. Five reasons
+it is still the right order, in descending order of how much they actually explain:
+
+1. **⭐⭐ Risk aggregation needs COVERAGE, not precision.** A portfolio VaR computed over
+   43% of the book is not a less-accurate VaR — it is not a VaR. It cannot be aggregated,
+   compared period over period, or reported. **One uniform approximation across 100% beats
+   a precise number across 43%.** This is the whole reason and the rest are supporting.
+2. **⭐⭐ Tier 1 and Tier 2 differ ONLY in the cash-flow generator.** Defensible slide 18
+   puts them side by side: `P = Σ CFₜ·DF(z+s*)` against
+   `P = E[Σ CFₜ(path)·DF(path+OAS)]`. Calibration, DV01/CS01, the Monte Carlo, aggregation
+   and reporting are **identical**. So Tier 1 is not throwaway work — it is the chassis,
+   and Tier 2 swaps one component. Mario says this in writing twice ("improves the
+   reduced-form model rather than replacing it"; "not discarded work").
+3. **⭐ It unblocks other people.** Slides 4 and 9: *"then hand to Ryse's engineer for
+   parallel-computing work."* An engineer cannot build or test a parallel layer that 57% of
+   the book cannot feed, and the Monte Carlo cannot be tested until every security emits a
+   (cash-flow, spread) pair. The quality of the pair does not matter for that.
+4. **⭐ The LEVEL is exact by construction; only the SENSITIVITIES are wrong.**
+   `P₀ = custodian price`, exactly. So market value, exposure and concentration are right
+   today. What Tier 1 gets wrong is ΔP under a shock — a narrower claim than "the results
+   are bad".
+5. **⚠️ The commercial reason, named because it is real.** Both files are Ryse client
+   material and one is titled *"**Defensible** Structured Risk Methodology"*, with academic
+   citations and an explicit "what this does not capture" slide. **"Defensible" names the
+   audience: somebody who will challenge the method.** "Risk on the whole portfolio, by a
+   published-literature method, with the limitations stated" is a sentence he needs;
+   "risk on 43% of it" is not.
+
+⚠️ **And the risk in the order, which is ours to watch:** a phase 2 that is always next
+quarter. Tier 1 reaching "coverage complete" is exactly the moment the pressure to fund
+Tier 2 disappears. Mario guarded against it in writing, which is the best available
+protection, but **the guard is a slide, not a commitment of anybody's time.**
+
+### ⭐⭐⭐ The false dilemma, and how it dissolves
+
+"Either wait for Liping or publish numbers that are 7× wrong" is not the choice, because
+**the ability to amortise is already very unevenly distributed:**
+
+| | n | can amortise TODAY, zero new data |
+|---|---:|---|
+| Gov-MBS pass-through pools, priced | 505 | ✅ level-pay + the measured ~20% CPR |
+| securities with a realised factor path in hand | 376 | ✅ the path itself |
+| **union** | **861** | ✅ **67% of the structured book** |
+| Government MBS not covered by either | **21** | ⚠️ of 882 — i.e. **98% of Gov MBS is solvable now** |
+| **Non-Government CMO / CMBS / ABS** | **412** | ⚠️ **0 of 412 — the entire gap is these three classes** |
+
+⇒ **Government MBS can have a proper, amortising Tier 1 this week with nothing from
+anybody.** The honest difficulty is confined to CMO / CMBS / ABS, where there is no paydown
+profile of any kind and a bullet at a 25-year legal final is the only alternative.
+
+### ⚠️ CORRECTION to §5, made the same day
+
+An earlier version of §5 said sheet 02 **cannot** be deferred because the factor history is
+load-bearing for Tier 1's amortisation. **That was wrong in its emphasis.** It is
+load-bearing for the 412 CMO/CMBS/ABS — and for nothing else, because the 861 above already
+have a paydown profile. So:
+
+- **Sheet 02 CAN wait**, and waiting is where Mario put it. Liping's availability therefore
+  stops blocking the next two weeks of work.
+- What it buys is **412 securities in three classes**, and until it lands those three have
+  no defensible Tier 1 either — so it is not optional, only *later*.
+- ⭐ The sequencing question to put to Mario is therefore narrow and concrete: for those
+  412, does he want a **labelled class-level assumption now** (median realised WAL from the
+  373 measured paths, applied by class, carried as an assumption in the output the way the
+  15/25/35 CPR grid is), or **nothing until the factor history lands**? Everything else
+  proceeds either way.
+
 ## 4. Open questions for Mario
 
 Short, and each one is a decision only he can make.
