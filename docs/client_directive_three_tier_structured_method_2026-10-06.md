@@ -165,7 +165,30 @@ Measured against the realised cash flows on the 373 securities whose factor hist
 against a median legal maturity of 24 years.
 
 ⚠️⚠️⚠️ **A bullet at legal maturity overstates the cash-flow timing by ~6.9× — roughly
-+21 years of duration on the median security.** Mario's own slide 19 says Tier 2 will
++21 years of duration on the median security.**
+
+⭐⭐⭐ **AND THE DIAGNOSIS IS "BULLET", NOT "MATURITY" — checked, not reasoned.**
+`core.pricing.prepayment.pool_cash_flows(wac, wam_months, cpr)` **amortises** over the
+remaining term with SMM prepayment, and it takes `wam_months` from *the master's own
+maturity dates* (`pool_risk.py` docstring, line 83). So the 505 pools already run on
+exactly the maturity called wrong above — and their 10-01 validation was clean. What makes
+a tranche wrong is not the date; it is that **a bullet puts 100% of principal on the final
+day and an amortising schedule spreads it.**
+
+⭐ That reframes the whole question, and favourably: **an amortising bond-equivalent is
+still Tier 1** — fixed cash flows, one calibrated spread, no scenario-dependent CPR — and
+**we already own the engine**, because it is the one pricing the 505. What a tranche needs
+on top is a paydown profile, and there are three populations:
+
+| population | n | where its paydown profile comes from |
+|---|---:|---|
+| Government-MBS pass-through pools | 505 | ✅ already done — level-pay + the measured ~20% CPR |
+| tranches whose factor history returned | 373 | ✅ the **realised** path, in hand since 10-01 |
+| CMO / CMBS / ABS | ~375 | ⚠️ **nothing yet — this is what sheet 02 buys** |
+
+⚠️ Precedent already in the code for not trusting `maturity_master` blindly: TBAs take
+their terms from the DESCRIPTION because *"the master's maturity is wrong for these (a 2009
+thirty-year forward is carried as maturing 2034)"* (`pool_risk.py`). Mario's own slide 19 says Tier 2 will
 *"replace legal-maturity bullet behaviour with a more realistic effective-life
 representation"*, which implies Tier 1 uses legal maturity. Taken literally that publishes
 portfolio durations ~7× too long for **57% of the book by count**, on the one output the
@@ -228,8 +251,14 @@ classes entire). Three different numbers, easily confused — name the populatio
 
 Short, and each one is a decision only he can make.
 
-1. ⭐⭐ **What maturity does the bond-equivalent use — legal, or effective life?** With
-   §3.2 as the evidence. This is the question; the rest are housekeeping.
+1. ⭐⭐ **An AMORTISING bond-equivalent, not a bullet — put as a recommendation, not an
+   open question.** He wrote "Mario's recommendation" on his own slide 11; he will want one
+   back. The proposal: keep Tier 1 exactly as specified — custodian price as anchor, fixed
+   cash flows, one calibrated spread — but let the cash flows amortise instead of
+   repaying in a lump at the legal final. Evidence: §3.2 (6.9×, and the custodian's own
+   duration agreeing the life is short). Cost: none — the engine already prices the 505
+   pools this way. The three populations and where each gets its paydown profile are in the
+   table in §3.2; **only the ~375 CMO/CMBS/ABS need anything new, and it is sheet 02.**
 2. **C.L.O.s:** none in the book by any pattern. A specific holding in mind, or the family
    named generically? If he is planning from a list with a CLO bucket, the lists disagree.
 3. **Agency:** complete on his slide 7 — did he mean the one misfiled REMIC Z, or did
@@ -266,7 +295,21 @@ all of Gov MBS + ABS + CMBS + CMO (+ CLO, which does not exist, + Agency, which 
 the 375 requestable in the other three classes; it does not reach the 505 pools (whose
 coupons we hold) nor the 37 without an identifier.
 
-**Decided here:** the pack is rebuilt against Mario's population before it is sent, and the
-claim assertion in `make_mario_request.main()` is re-pointed at 1,294 so the arithmetic
-cannot drift again. ⚠️ Not sent until the §4 questions come back — question 1 can change
-what the sheets need to carry.
+⭐⭐ **But "rebuild it for all 1,294" would be the GBP mistake with a different field.**
+The coupon-moves bit is already settled or already asked for most of the book:
+
+| population | n | the coupon bit |
+|---|---:|---|
+| Government-MBS pass-through pools | 505 | ✅ **fixed by construction** — a pass-through pays its pool's net coupon; nothing to ask |
+| tranches whose factor history returned | 376 | ✅ **already in the pack**, sheets 03 + 04 |
+| CMO / CMBS / ABS | 375 | ⚠️ **the genuine gap** — both the coupon bit and the factor history |
+| no ISIN or CUSIP in the custodian file | 37 | ⚠️ unreachable by any request line |
+
+⇒ **the pack's 751 is close to right; 1,294 would re-ask for data we hold.** What it needs
+is not more securities but the §4.1 answer, because an amortising Tier 1 makes sheet 02
+load-bearing for the 375 rather than deferrable.
+
+**Decided here:** the pack is **not sent** until the §4 questions come back, and the claim
+assertion in `make_mario_request.main()` is re-pointed at whatever population the answer
+settles on — so the arithmetic cannot drift again. ⚠️ And it is not sent to Liping at all
+until her availability is resolved.
