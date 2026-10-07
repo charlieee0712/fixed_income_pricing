@@ -22,6 +22,9 @@ core/ — the mathematics
   core/pricing/hybrid.py          DONE  was pricing/hybrid.py — fixed leg then floating
   core/pricing/inflation.py       DONE  was pricing/ilb.py — index-linked (2026-09-10)
   core/pricing/prepayment.py      DONE  was pricing/mbs.py — constant-CPR pool
+  core/pricing/observed_paydown.py DONE cash flows from a MEASURED factor path —
+                                        the sibling of prepayment.py: same mathematics,
+                                        one assumed speed, one observed (2026-10-06)
                                         amortisation (2026-09-25, the last engine migrated)
   core/risk/sensitivities.py      DONE  DV01 / duration / convexity, engine-agnostic
   core/market/spreads.py          DONE  implied-spread calibration (Brent) + near-maturity
