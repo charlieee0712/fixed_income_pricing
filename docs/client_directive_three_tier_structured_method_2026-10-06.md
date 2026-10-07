@@ -18,6 +18,50 @@ slide below was read out of the file.
 - **Slide 11 attribution.** Ch-VIII reads "**Mario's** recommendation", Defensible reads
   "**Ryse** recommendation" — i.e. Ch-VIII is the internal copy, Defensible the
   client-facing one.
+- ⚠️ **THE TWO DECKS NUMBER DIFFERENTLY AND BOTH HAVE A SLIDE 13, SAYING DIFFERENT THINGS.**
+  Ch-VIII 13 is the **Tier-2** slide ("Next Round — Use Bloomberg…", where *"replace
+  legal-maturity bullet behavior"* lives); Defensible 13 is **Step 1**, the calibration slide
+  that carries the terminology lock. They share slides 9–12 almost verbatim and diverge after.
+  ⇒ **never cite a bare slide number** — say which deck. Mapping for the ones we quote:
+  Tier ladder = **11 both** · Tier-1 flow = **12 both** · terminology lock = **Defensible 13**
+  · spread-as-state-variable = **Defensible 14** · Tier 2 / "replace…bullet" = **Ch-VIII 13 =
+  Defensible 19** · "tiers differ only in the generator" = **Defensible 18** · econometrics =
+  **Defensible 22–24** · Tier 3 optional = **Ch-VIII 14 = Defensible 25**.
+
+---
+
+## 0. The call itself, in Lichen's words — and each point checked against a slide
+
+⚠️ **Recorded here because it was nearly lost.** It lived only in the conversation until
+2026-10-07; a context compaction elided it to an ellipsis and nothing in the repo carried it.
+It is a **recollection**, reproduced as given, and the check column is the only reason any of
+it may be quoted.
+
+> 我凭和他讨论的印象说 具体的细节你可以细看slides确认
+> 1. 他说把这些type也先当成bullet bond 他说price不是重点 因为我们有custodian
+>    先calibrate算出oas 再算一系列risk metrics才是我们这个项目的重点
+>    他的意思是先把这几类用简单的方法做好 做到只剩futures options那几类小的
+>    之后再回过头用方法2来优化
+> 2. 也就是我说的方法2 他说是我们之前propose出的处理方法的变体 结合econometrics
+>    method to estimate payment timeline and other inputs etc. so that we can imprive
+>    accuracy than method 1
+> 3. 用intex clients有这个具体需求的时候再想办法弄。
+
+In English, and then checked:
+
+| what was recalled | checked against the file | verdict |
+|---|---|---|
+| slides from 10 on are the plan for the classes not yet done | **slide 10 title is literally** `MBS ABS CMO CMBS CLO` | ✅ |
+| **treat these types as bullet bonds first** | ⚠️ **the Tier-1 definition does not say this.** Slide 12 (both decks) reads `Custodian Market Price → Bloomberg Contractual Terms → **Bond-Equivalent Cash Flows** → Calibrate Implied Spread → Shock Rates + Spreads`, and its own limits list is *"cash flows do not yet respond explicitly to CPR, defaults, extension/contraction or waterfall rules"*. The word **bullet** occurs only on the **Tier-2** slide, in *"replace legal-maturity bullet behavior"*. See §3.2 and §4.1. | ⚠️ **partly** |
+| price is not the point — calibrate the spread, then the risk metrics | Defensible 13: the custodian price is the anchor, `P₀ = Σ CFₜ × DF(zₜ + s*)`, and the output is a distribution of ΔP → VaR / ES / stress | ✅ |
+| finish the simple classes until only futures + options remain | the follow-up message says exactly that, verbatim in §2 | ✅ |
+| method 2 is a variant of **our own earlier proposal**, plus econometrics for the payment timeline | slide 11: *"Build on the historical Bloomberg extraction already developed by Lichen"* (Ch-VIII wording; Defensible drops the name). Defensible 22–24 estimate `CPR = f(refi incentive, seasoning, seasonality, burnout)` from history | ✅ |
+| method 3 only when a client specifically needs it | Ch-VIII 14 / Defensible 25: **OPTIONAL**, *"only when the analytical requirement justifies the cost"* | ✅ |
+
+⭐ **The one correction the decks make to the recollection is the load-bearing one**, and it
+runs in our favour: *bond-equivalent* is not *bullet*. An observed monthly factor path is a
+fixed schedule that responds to nothing — it satisfies slide 12's definition of Tier 1 in
+full, including both of its stated limits.
 
 ---
 
@@ -188,10 +232,19 @@ on top is a paydown profile, and there are three populations:
 
 ⚠️ Precedent already in the code for not trusting `maturity_master` blindly: TBAs take
 their terms from the DESCRIPTION because *"the master's maturity is wrong for these (a 2009
-thirty-year forward is carried as maturing 2034)"* (`pool_risk.py`). Mario's own slide 19 says Tier 2 will
-*"replace legal-maturity bullet behaviour with a more realistic effective-life
-representation"*, which implies Tier 1 uses legal maturity. Taken literally that publishes
-portfolio durations ~7× too long for **57% of the book by count**, on the one output the
+thirty-year forward is carried as maturing 2034)"* (`pool_risk.py`).
+
+⭐⭐ **Two slides point different ways, and the one that DEFINES Tier 1 is the one we follow.**
+**Ch-VIII 13 = Defensible 19** (the Tier-2 slide) says Tier 2 will *"replace legal-maturity
+bullet behavior with a more realistic effective-life representation"* — which implies its
+author expected Tier 1 to be a bullet at the legal final, and Lichen's recollection of the call
+(§0) says Mario put it that way outright. But **slide 12, the slide that actually specifies
+Tier 1, never says bullet**: it says *Bond-Equivalent Cash Flows*, and states its own two
+limits as *"cash flows do not yet respond explicitly to CPR, defaults, extension/contraction or
+waterfall rules"* and *"sensitivities are therefore bond-equivalent risk measures"*. A realised
+factor path is a **fixed** schedule — it is history, it responds to nothing — so it meets that
+specification exactly, both limits included. Taken as a bullet instead, the same table would
+publish portfolio durations ~7× too long for **57% of the book by count**, on the one output the
 project exists to produce. (Mario, 2026-10-06, as recalled: *price is not the point — we
 have the custodian — calibrating the spread and then the risk metrics is the point.*)
 
@@ -328,6 +381,17 @@ Short, and each one is a decision only he can make.
    duration agreeing the life is short). Cost: none — the engine already prices the 505
    pools this way. The three populations and where each gets its paydown profile are in the
    table in §3.2; **only the ~375 CMO/CMBS/ABS need anything new, and it is sheet 02.**
+
+   ⚠️ **Say plainly that this differs from what he said on the call**, which was to treat
+   these as bullet bonds first (§0). It is not a disagreement about the method and must not
+   be presented as one: slide 12's definition of Tier 1 is satisfied in full, and what the
+   amortising path adds is the *"more realistic effective-life representation"* his **own
+   Tier-2 slide** lists as a benefit. It arrives inside Tier 1 at zero cost because the
+   input that slide names as *"Existing Engineering Work"* — *historical monthly principal
+   repayments, observed realized cash-flow behavior, existing validation against pools
+   priced by another method* — is already extracted and already validated (§1.2, 20 pools,
+   median |diff| 8.2 bp). ⭐ **One Tier-2 benefit landed early; nothing was traded away for
+   it.**
 2. **C.L.O.s:** none in the book by any pattern. A specific holding in mind, or the family
    named generically? If he is planning from a list with a CLO bucket, the lists disagree.
 3. **Agency:** complete on his slide 7 — did he mean the one misfiled REMIC Z, or did

@@ -2,7 +2,7 @@
 
 Each of these corresponds to something that went wrong, or could have, in building it:
 
-* the **banned name** — the client's own slide 13 reserves "OAS" for a model whose cash flows
+* the **banned name** — the client's own Defensible-deck slide 13 reserves "OAS" for a model whose cash flows
   respond to rates, so a column called ``implied_oas`` here would contradict the deck;
 * the **I/O refusal** living in the assets layer rather than in the driver, so that any caller
   gets it and not just this one;
@@ -45,7 +45,7 @@ BANNED = ("implied_oas", "oas_bp", "option_adjusted")
 
 
 def test_the_output_never_calls_this_an_OAS():
-    """⚠️ Mario's own slide 13: *"a true OAS requires explicit modeling of option-dependent
+    """⚠️ Mario's own slide 13 (Defensible deck — the two decks number differently): *"a true OAS requires explicit modeling of option-dependent
     cash flows such as prepayments."* These cash flows are fixed, so the column is an
     implied, bond-equivalent spread and must not borrow the other name."""
     if not OUT.exists():

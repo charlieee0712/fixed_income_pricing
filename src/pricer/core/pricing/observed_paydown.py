@@ -3,7 +3,7 @@
 :mod:`prepayment` builds a balance schedule from an **assumed** constant CPR.
 This module builds one from the **measured** monthly factor history. Same mathematics —
 a balance schedule becomes cash flows — and the pair is deliberate: Mario's three-tier
-methodology deck (2026-10-06, slide 18) puts the two phases side by side and the only thing
+methodology deck (2026-10-06, Defensible slide 18) puts the two phases side by side and the only thing
 that differs between them is the cash-flow generator. The code says that by having two.
 
     principal(t) = 100 x ( f(t-1) - f(t) ) / f(0)
@@ -304,7 +304,8 @@ def implied_spread_observed(target_price, curve, path, coupon_pct, kind: str = A
 
     ⚠️ **This is an implied, bond-equivalent spread — NOT an OAS.** The cash flows are
     fixed, so nothing option-dependent has been modelled; the client's own methodology deck
-    draws exactly this distinction (2026-10-06, slide 13: *"a true OAS requires explicit
+    draws exactly this distinction (2026-10-06, Defensible deck slide 13 — ⚠️ the other
+    deck's slide 13 is a different slide: *"a true OAS requires explicit
     modeling of option-dependent cash flows such as prepayments"*). For an interest-only
     strip it absorbs prepayment expectation rather than credit, which is why its level runs
     to thousands of basis points and why :mod:`assets.securitized` refuses to publish it.

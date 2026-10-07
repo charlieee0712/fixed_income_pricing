@@ -76,7 +76,7 @@ one-sided rather than merely approximate: all 27 are premiums, median 2.85y agai
 proportion as the 478 spot pools (21%), but in one direction only.
 
 ⚠️ **Not an OAS, and the name is locked.** The spread here is an *implied, bond-equivalent*
-spread; the client's own slide 13 says *"a true OAS requires explicit modeling of
+spread; the client's own Defensible-deck slide 13 says *"a true OAS requires explicit modeling of
 option-dependent cash flows such as prepayments."* ``tests/test_tier1_structured.py`` injects
 the banned name and fails.
 

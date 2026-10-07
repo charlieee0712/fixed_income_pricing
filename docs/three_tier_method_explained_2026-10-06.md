@@ -207,10 +207,15 @@ things.
 ⚠️ **`766` is not the structured book**, which is the natural first reading. It is "priced
 inside the finished classes". Always name the population.
 
-⭐ And the number this week's work is built on: **861** — the Government-MBS securities that
-can carry an amortising cash flow today. `505` already priced on the pool engine, `376` with a
-factor path in hand, **overlapping by 20** (the validation pools, which were *deliberately*
-in both so the new method could be checked against the old). 505 + 376 − 20 = **861**, of 882.
+⭐ And the number this week's work is built on — **858 of 882**, and where it comes from.
+**505** securities the pool driver already prices (478 spot pools + 27 TBA forwards). **376**
+have a measured factor path. **20** are in both, because validation pools were put into the
+request on purpose so the new method could be checked against the old. 505 + 376 − 20 = **861**,
+which is what the plan said. The run delivered **858**: three securities have a factor path
+with nothing left in it — two whose factor is already zero on the valuation date, one whose
+path produces no net cash at all — and **no estimate could have known that before reading the
+path**. The other **24 − 3 = 21** named rows are 19 with neither a path nor a usable pool
+coupon, and 2 forwards whose description does not state a settlement month.
 ⭐⭐ The 20 that make the addition fail to balance are the 20 that proved the method works.
 
 ---

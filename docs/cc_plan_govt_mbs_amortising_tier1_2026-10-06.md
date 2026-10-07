@@ -178,3 +178,48 @@ sniff. The `PAR_YIELD_UNITS` lesson: an explicit registry, not a threshold.
   `client_directive_three_tier_structured_method_2026-10-06.md` §3.3.
 - **The Monte Carlo layer.** Tier 1 feeds it; it is not built here.
 - **Re-anchoring `pool_risk_*.csv`.** Deliberately untouched.
+
+
+---
+
+## Outcome — recorded 2026-10-07, after the run
+
+⚠️ **This section is appended, and the body above is left as it was written.** A plan is a
+record of what was planned; editing its numbers to match the result destroys the only evidence
+of what was foreseen. Four previous rounds needed exactly such a section (§21 / §16 / §26 /
+§14), and the one that put Gate 0 first did not.
+
+**The plan said 861 of 882 and 21 named. Delivered: 858 and 24** — and the three that moved
+reconcile exactly.
+
+```
+505   pool_risk priced today (478 spot pools + 27 TBA forwards)
+376   securities with a measured factor path          (verified: 376 cusips in
+ -20  in BOTH -- the validation pools put in the request deliberately    factor_history,
+= 861 the plan's figure                                                 all 376 of the 882)
+
+861
+ -3   degenerate paths: 2 whose factor is already ZERO at the valuation date,
+      1 whose measured path produces no net cash at all
+= 858 delivered, as 373 observed-path + 458 assumed-CPR + 27 TBA forward
+ 24   named = 19 no path and no usable pool WAC + 3 degenerate + 2 forwards whose
+      description states no settlement month
+```
+
+⭐ **None of the three is a shortfall: they are securities with no remaining cash flow to
+price, and nothing short of reading the path could have told us.** The estimate was as good as
+it could have been made.
+
+**Two things the plan did not foresee at all:**
+
+1. **The 29 TBA forwards.** The plan counted them among the amortisable. They are **forwards on
+   a generic pool**, and pricing one as a spot pool silently drops the settlement adjustment
+   that `assets/securitized/tba.py` exists to apply — caught on 2026-10-06 because the driver
+   priced 2 securities `pool_risk.py` had deliberately skipped, and a cover that is a strict
+   superset of an existing driver's is a question, not a win. They were named that day and
+   **priced properly on 2026-10-07**, once `tba.py` acquired duration / DV01 / convexity.
+2. ⭐⭐ **That a forward separates DV01 from CS01.** Every other security in this book is
+   discounted at `z(t) + s`, so a rate bump and a spread bump are one number — across the 757
+   rows priced before the forwards the two columns differed by **exactly 0.0, every row**. A
+   forward's spread sits in the numerator only, so its rate duration is shorter than its
+   spread duration by **exactly the settlement lag**. The schema already had both columns.
