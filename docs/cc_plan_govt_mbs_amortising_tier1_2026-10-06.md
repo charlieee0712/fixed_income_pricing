@@ -49,7 +49,30 @@ validation securities were ordinary pools). **Check the few before the many.**
 ordinary tranche. And **8 of 8** test cases calibrated to a finite, positive spread under
 an interest-only treatment. ⇒ `par` is a notional, the price is per 100 of notional, and
 `interest(t) = 100 · f(t−1)/f₀ · coupon/12` with **no principal term** is the right
-decomposition. **The 76 are buildable.**
+decomposition.
+
+⚠️⚠️ **CORRECTED the same day — "the 76 are buildable" was read off 8 samples and the
+population refuted it.** Run over all 74 that price:
+
+* **74 of 74** come out with a POSITIVE effective duration, while **49 of 74** have a
+  custodian duration that is NEGATIVE;
+* the calibrated spreads run **−56,670 to +6,719 bp**, with 55 of 74 beyond ±2,000.
+
+They are *computable*, not *usable*. ⭐ The rule that settles it: **publish a risk number
+only when its sign is known to be right.** For the 221 amortising and 78 P/O the duration
+sign is positive and the custodian agrees in aggregate; for an I/O it is structurally wrong,
+because the only sensitivity Tier 1 can see (discounting) is the smaller of the two and the
+larger (prepayment response) is what Tier 1 by construction cannot model.
+
+**Decided:** the 76 ship with price and market value — which are exact, being calibrated to
+the custodian's own mark — and with `implied_spread_bp` and the duration **blank**, route
+`io-strip-prepayment-dominated`, and the custodian's duration in its own column as the
+evidence. ⚠️ **Our column is never filled with their number**: that is the standing
+"custodian duration is evidence, never a router" rule (2026-09-03), and a column that
+sometimes holds our model and sometimes theirs is worse than a blank.
+
+⭐ This is stated in the report as a Tier-1 **boundary**, not a shortfall — it belongs on the
+list his own slide 12 already keeps of what Phase 1 does not capture.
 
 ⚠️⚠️ **But one limit must be named now rather than discovered in a report.** The I/O
 spreads come out **301–4,847 bp**, and the custodian's own duration is **negative**
