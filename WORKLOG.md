@@ -5,6 +5,86 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-10-06/07 — Mario's three-tier method, and Tier 1 for the whole Government-MBS book
+
+**The directive.** A phone call plus two decks (`Chapter_VIII_…`, 15 slides, the fresher status
+column; `Ryse_…_Defensible_…`, 27, the full methodology) and one follow-up message. Intex "is
+very expensive and difficult to get" ⇒ **three tiers, the custodian price the anchor in all
+three**: reduced-form now, Bloomberg + empirical next (⭐ his slides name our own factor
+extraction as its input), Intex optional. Decision record
+`docs/client_directive_three_tier_structured_method_2026-10-06.md`; plain-language companion
+`docs/three_tier_method_explained_2026-10-06.md`; plan
+`docs/cc_plan_govt_mbs_amortising_tier1_2026-10-06.md` with **Gate 0 as §1** — four checks,
+all passed before any code (input sha `7e1c445be421f7d8`, 376 × 211 = 79,336 points).
+
+**DECISION — the cash flows AMORTISE, and the deck settles it.** Slide 12, which *defines*
+Tier 1, says "Bond-Equivalent Cash Flows" and limits itself to flows that "do not yet respond
+explicitly to CPR, defaults, extension/contraction or waterfall rules". A measured factor path
+is a fixed schedule that responds to nothing, so it satisfies that in full. "Bullet" appears
+only on the Tier-2 slide ("replace legal-maturity bullet behavior"); ⚠️ **the call, as
+recalled, did say to use bullets**, so the recommendation is put to Mario with that stated.
+Cost of getting it wrong, measured on the 373 real paths: legal life median **24.32y** against
+a realised WAL of **2.99y** — **6.87×**, ~+21 years of duration on 57% of the book by count.
+⭐ The diagnosis is **"bullet", not "maturity"**: the 505 pools already use the master's legal
+maturity and are fine, because they amortise.
+
+**Built.** `core/pricing/observed_paydown.py` as a **new sibling** of `prepayment.py` (whose
+body is sha-locked), `assets/securitized/observed.py` as the legacy-unit wrapper and the owner
+of the one refusal, `dataio/factor_history.py` as the single owner of the T+1 shift, driver
+`scripts/tier1_structured.py`. **`outputs/tier1_structured_2009-03-31.csv` = 882 rows, 858
+priced + 24 named**: observed-factor-path **373** · assumed-cpr **458** ·
+tba-forward-generic-pool **27**. The plan's 861/21 reconciles exactly — `505 + 376 − 20 = 861`,
+`− 3 degenerate = 858` — and the three (2 at a zero factor, 1 producing no net cash) are
+invisible until the path is read.
+
+**Validation = two generators, two populations, 10 bp apart:** observed-path median
+**261.3 bp** (223) against assumed-CPR **250.9 bp** (458); observed duration median **2.62y**
+against the custodian's own **2.45y**; principal conservation worst **1.42e-14** across 374.
+`BOOK_CPR_PCT = 25.0` is measured (whole-life 25.05%, forward-12m 25.83% on the 32 pools with
+real paths).
+
+**⭐ The 76 I/O strips publish a price and no risk numbers.** 74 of 74 positive durations
+against 49 negative custodian figures, spreads −56,670 to +6,719 bp. The rule: **publish a risk
+number only when its sign is known to be right.** The refusal lives in the assets layer, not
+the driver, and `UnpublishableRiskMetric` is rooted at `PricingDomainError` and not
+`ValueError` — a solver that caught it would report "no spread reprices this security".
+
+**⭐⭐ 2026-10-07 — the 27 TBA forwards, and DV01 ≠ CS01 for the first time in this book.**
+`tba.py` had a price, a spread and a WAL but no sensitivity, so 276.1M net par carried no risk
+number anywhere. Six new functions rather than three, because a forward's spread sits in the
+numerator only: `rate_duration == spread_duration − settle` **exactly** (measured residual max
+9.99e-09; pinned at 1e-7 as a finite-bump bound, which is still 400,000× smaller than the
+smallest settle it must distinguish). Across the 757 rows priced before them the two columns
+differed by exactly 0.0, every row. Each table in its own vocabulary — `pool_risk`'s column is
+literally `spread_dur_years` and gets spread bumps; `tier1`'s `eff_duration`/`dv01`/`convexity`
+all come from the rate bump and only `cs01` from the spread bump, because one row must not mix
+bump kinds. Verified: `pool_risk_2009-06-10.csv` byte-identical, `2009-03-31` moved 4 columns
+× 27 rows all previously blank with its text digest unchanged, the tier1 forward set EQUALS
+pool_risk's (27 == 27, not a superset — which is how the original defect presented), and the
+spread is bit-identical across the two tables.
+
+**Self-audit, and it found three code defects plus five process slips.** A sub-floor residual
+was silently dropped (principal summed to 99.9500 while the label claimed "repaid") — that
+breaks the identity the whole method rests on; the tail treatment was *inferred* after the fact
+so a decision and a fallback produced the same label; `terminal_smm` returned 20.6%/month on a
+flat tail (caught by a test, not production). All three fixed with tests. The five process
+slips became the **ninth habit** in h2 `06_feedback_on_previous_plans`: *a check that runs
+after the commit is a check that did not run.*
+
+**⚠️ 2026-10-07 — compaction audit, at the user's request.** Nine context compactions have
+fallen in this session (08-17 → 10-07). The summaries were faithful; the two things lost had
+**never been written down anywhere else** — Mario's three numbered phone points (elided to an
+ellipsis) and the point-by-point corroboration of them against the decks. Both recovered into
+§0 of the directive doc. Also found: **the two decks number differently and both have a slide
+13 saying different things**, so every bare slide citation in the code, tests and docs now
+names its deck. ⭐ The structural finding: `CLAUDE.md` and this file were **two rounds behind**,
+so the round existed only in two docs and the conversation. A round is not recorded until it is
+in both.
+
+**Tests 696 → 716.** Still open: the 412 CMO/CMBS/ABS (no paydown profile of any kind),
+`COVERAGE.md` / `PROJECT_STATUS.md` for the mortgage book, the four questions for Mario, and
+`git push 47 main` once the VPN is back.
+
 ## 2026-10-01/02 — The factor route is validated, and the request that follows it
 **Commits:** `b198d1a` `e7bdec3` `b1b27ea` `376c503` `b2a64ba` `89ac58e` `6284265`
 `2dae5c3` `74bc3a9` `54bffeb`

@@ -733,6 +733,143 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   **2281 PSA** — pool-level fields on a generic mean nothing. Flag, never use.
   For a seasoned pool **CPR ≈ 0.06 × PSA/100**.
 
+## Three-tier method + Tier 1 for Government MBS (Mario 2026-10-06/07) — DONE, 716 tests
+
+- **The directive** (`docs/client_directive_three_tier_structured_method_2026-10-06.md` =
+  the decision record; `docs/three_tier_method_explained_2026-10-06.md` = the plain-language
+  companion with a glossary, written because the material arrived all at once). Intex "is very
+  expensive and difficult to get", so **three tiers, and the custodian price is the anchor in
+  all three**: **1 Reduced-Form** (now, "Mario's recommendation") · **2 Bloomberg + empirical**
+  (next round — ⭐ **his slides name OUR factor work as its input**) · **3 Full structural /
+  Intex** (OPTIONAL, "only when the analytical requirement justifies the cost").
+- ⚠️⚠️ **TWO DECKS, DIFFERENT NUMBERING, AND BOTH HAVE A SLIDE 13 SAYING DIFFERENT THINGS.**
+  `Chapter_VIII_…` (15 slides, the **fresher** status column, internal — says "Mario's
+  recommendation") and `Ryse_…_Defensible_…` (27, the full methodology + academic refs,
+  client-facing — "Ryse recommendation"). They share 9–12 almost verbatim and diverge after.
+  **Never cite a bare slide number.** Mapping for what we quote: tier ladder **11 both** ·
+  Tier-1 flow **12 both** · terminology lock **Defensible 13** · spread-as-state-variable
+  **Defensible 14** · Tier 2 / "replace…bullet" **Ch-VIII 13 = Defensible 19** · "tiers differ
+  only in the generator" **Defensible 18** · econometrics **Defensible 22–24** · Tier 3
+  optional **Ch-VIII 14 = Defensible 25**.
+- **⭐⭐⭐ THE TERMINOLOGY LOCK — Defensible 13, verbatim:** *"in the initial Ryse model this
+  is best called an **implied or bond-equivalent spread**. A true OAS requires explicit
+  modeling of option-dependent cash flows such as prepayments."* ⇒ no column, flag or
+  document may call this an OAS. `tests/test_tier1_structured.py` **injects the banned name
+  and fails** (mutation-verified).
+- **⭐ Defensible 14 — the spread is a STATE VARIABLE, not the risk number:** the MC moves
+  `s₀`, reprices, and the price distribution IS the risk. ⇒ a Tier-1 output must be
+  **perturbable**, never a scalar.
+- **⭐⭐ THE BULLET QUESTION, SETTLED FROM THE FILE — and it runs our way.** Slide 12, which
+  *defines* Tier 1, says **"Bond-Equivalent Cash Flows"** and states its own limits as *"cash
+  flows do not yet respond explicitly to CPR, defaults, extension/contraction or waterfall
+  rules"*. A measured factor path is a **fixed** schedule — it is history, it responds to
+  nothing — so it satisfies that in full. **"Bullet" appears nowhere in the Tier-1 definition**;
+  only on the Tier-2 slide, as *"replace legal-maturity bullet behavior"*. ⚠️ But the CALL
+  (Lichen's recollection, §0 of the directive doc) said to treat them as bullet bonds first
+  ⇒ **tell Mario the amortising choice differs from what he said, and that it costs nothing**:
+  it is the *"more realistic effective-life representation"* his own Tier-2 slide lists, arriving
+  early because that slide's **"Existing Engineering Work"** — historical monthly principal
+  repayments, observed realised behaviour, validation against pools priced another way — is our
+  factor extraction, already validated. **A bullet at the legal final overstates the timing
+  6.87×**: legal life median 24.32y against a realised WAL of 2.99y, i.e. ~+21 years of
+  duration on 57% of the book by count. ⭐ And the diagnosis is **"bullet", not "maturity"** —
+  the 505 pools already use the master's legal maturity and are fine, because they AMORTISE.
+- **THE DELIVERABLE: `outputs/tier1_structured_2009-03-31.csv`, 882 rows = 858 priced + 24
+  named**, plus a dated disposition sidecar; `scripts/tier1_structured.py`. Three generators,
+  and the row says which: **observed-factor-path 373** · **assumed-cpr 458** ·
+  **tba-forward-generic-pool 27**. Named 24 = 19 no path and no usable pool WAC · 3 degenerate
+  paths · 2 forwards whose description states no settle month.
+  ⭐ **The plan said 861/21 and it reconciles exactly:** `505 priced + 376 with a path − 20
+  deliberate overlap = 861`, then `− 3 degenerate = 858` (2 at a zero factor, 1 producing no
+  net cash). **Verified from source** — 376 cusips in `factor_history`, all 376 among the 882,
+  overlap exactly 20. None of the three is a shortfall; nothing short of reading the path could
+  have known.
+- **Two cross-checks that hold, and they are the validation:** two different generators over
+  two different populations give median spreads **261.3 bp (observed path, 223)** against
+  **250.9 bp (assumed CPR, 458)** — 10 bp apart; and observed-amortising duration median
+  **2.62y** against the **custodian's own 2.45y**. Principal conservation worst deviation
+  **1.42e-14** across 374.
+- **⭐ `BOOK_CPR_PCT = 25.0` is MEASURED, not chosen:** the 32 pass-through pools whose real
+  paths we hold realised a whole-life median **25.05%** and a forward-12-month median
+  **25.83%**; 25 is already the centre of `pool_risk.CPR_GRID_PCT`. It is a BOOK-level
+  assumption and every row that uses it says so in `paydown_source`.
+- **⭐⭐ THE 76 I/O STRIPS SHIP WITH A PRICE AND NO RISK NUMBERS.** An I/O's rate sensitivity
+  is almost entirely prepayment response (rates up → refi slows → the notional survives →
+  more interest), which fixed cash flows cannot express: **74 of 74 come out POSITIVE against
+  49 negative custodian durations**, spreads **−56,670 to +6,719 bp**. ⭐ **The rule: publish
+  a risk number only when its SIGN is known to be right.** Price + MV published (exact, being
+  calibrated to the custodian's mark), spread and duration **blank**, route
+  `io-strip-prepayment-dominated`, custodian duration in its own column as evidence.
+  ⚠️ **The refusal lives in `assets/securitized/observed.py`, not in the driver** — a
+  modelling choice left to "the caller" is a choice nobody makes the same way twice — and
+  `UnpublishableRiskMetric` is rooted at **`PricingDomainError`, NOT `ValueError`**, because the
+  solvers catch `ValueError` and a swallowed refusal returns as "no spread reprices this
+  security", which is a different and false statement. ⚠️ `cash_flow_life` is deliberately
+  UNGUARDED and documents that it must not be read as a duration — a refusal should say what
+  it does not prevent.
+- **⭐⭐ THE 27 TBA FORWARDS ARE THE ONLY PLACE IN THIS BOOK WHERE DV01 ≠ CS01** (2026-10-07).
+  Everything else is discounted at `z(t) + s`, so a parallel rate bump and a spread bump are
+  one number — across the 757 Tier-1 rows priced before the forwards the two columns differed
+  by **exactly 0.0, every row**. A forward's spread sits in the **numerator only** and the
+  financing leg carries the rate without it, so **`rate_duration == spread_duration − settle`
+  exactly**. Measured residual on the real 27 at the real curve: **max 9.99e-09**, pinned at
+  1e-7 with the note that it is a finite-bump bound and not an equality.
+  `assets/securitized/tba.py` gains **six** functions, not three: `duration`/`dv01`/`convexity`
+  bump the SPREAD, `rate_duration`/`rate_dv01`/`rate_convexity` bump the CURVE.
+  ⚠️ **One row, one bump kind** — a rate duration beside a spread convexity cannot be used
+  together for a convexity-adjusted move. So: `pool_risk_<date>.csv`'s column is literally
+  `spread_dur_years` and gets SPREAD bumps; `tier1_structured_*.csv` has both columns and takes
+  `eff_duration_years`/`dv01`/`convexity` from the RATE bump, `cs01` from the spread bump.
+  ⚠️ Their static duration is **one-sided**, not merely approximate: all 27 are premiums
+  (BT 101.66–105.31), median 2.85y against a custodian 1.82y, 5 of 27 beyond the 1.5y
+  threshold — the same shape and nearly the same proportion as the 478 spot pools (21%), but
+  in one direction only. ⚠️ 5 of the 27 are SHORTS (−124.4M against +400.5M, net +276.1M):
+  dollar duration is `par × dv01` with **par's own sign**, which lives on `par_current_face`
+  and nowhere else.
+- **New code, and why each file exists where it does:**
+  `src/pricer/core/pricing/observed_paydown.py` = a **NEW SIBLING** of `prepayment.py`, never
+  an edit — that file's body is sha256-locked (`45a0ef7d5d98d893`) to prove it was spliced
+  unchanged. 7 named residual treatments, `RESIDUAL_FLOOR = 1e-3` (**measured**: at 1e-9 the
+  advertised default fired on 0 of 258; at 1e-3 it fires on 24). `max_months` bounds the
+  projected tail to the LEGAL maturity — one security projected 809 months before that.
+  `src/pricer/assets/securitized/observed.py` = the legacy-unit wrapper (percent in, bp out)
+  and the owner of the refusal. `src/dataio/factor_history.py` = **the single owner of the T+1
+  shift**; `data/factor_history.csv` keeps Bloomberg's own labels UNSHIFTED so the record stays
+  checkable, and the loader owns the reading.
+- **Artifacts:** `tier1_structured_2009-03-31.csv` (882) + its disposition are NEW.
+  ⚠️ **`pool_risk_2009-03-31.csv` CHANGED on 2026-10-07** — 4 columns × 27 rows, all
+  previously blank; **text digest unchanged at `d4d022e3b04735bb`**; and
+  `pool_risk_2009-06-10.csv` is **BYTE-IDENTICAL** (no forward survives that date, so the new
+  path never executes). Regenerate `release_facts` after any of this.
+- **⚠️ FOUR OPEN QUESTIONS FOR MARIO, none of them ours to decide** (directive doc §4):
+  ① the amortising-vs-bullet **recommendation** (above — and say it differs from the call);
+  ② **C.L.O.s: there are none** — zero matches for CLO/CDO/CBO across all 2,260 securities,
+  and no master bucket, yet he names them twice; ③ **Agency** reads `Complete` on his own
+  slide 7 — did he mean the one misfiled REMIC Z?; ④ **futures + options in scope now?** 16
+  securities and a NEW ENGINE, not a data gap — `CLAUDE.md` has carried them as out of scope
+  since July and his message says they are all that is left.
+  ⚠️ **And one thing he does not know: Liping said on 2026-10-01 she is not expected back at
+  a terminal for some time**, while his instruction is "focus on Liping". State it; do not
+  build a request that assumes she is available.
+- **Named follow-ups, not done:** the **412 CMO/CMBS/ABS** have no paydown profile of any kind
+  (sheet 02 of the 10-02 pack is what buys it) · `pool_structure`'s `CL PO` pattern calls two
+  tranches `remic-tranche` (numerically inert at a 0% coupon, pinned by a test) · the 12 ARM
+  pools via a derived WAC · re-anchoring `pool_risk_*.csv` · **`COVERAGE.md` and
+  `PROJECT_STATUS.md` are not yet updated for the mortgage book**.
+- ⚠️ **A check that runs AFTER the commit is a check that did not run** — the **ninth habit**,
+  added to h2 `06_feedback_on_previous_plans` 2026-10-06 from five process slips in one
+  session: `pytest -q | tail` swallowing the exit code and committing over a red suite · a
+  commit message asserting a change not made · Python through a bash heredoc (forbidden since
+  09-26) · a ⭐ in `print()` on a GBK console · and calling a `core/` engine past the
+  `assets/` layer, which shipped a **46,478 bp** spread on 487 pools. Common cause: **speed at
+  the end of a long turn.**
+- ⚠️ **NINE context compactions have fallen in this session (08-17 → 10-07).** The summaries
+  were faithful; what they cannot preserve is **anything never written down**. The 10-07 audit
+  found exactly two losses and both were of that kind — Mario's three numbered phone points
+  and their slide-by-slide corroboration, now §0 of the directive doc. ⭐ **The rule: a round
+  is not recorded until it is in `CLAUDE.md` and `WORKLOG.md`.** This section and the matching
+  WORKLOG entry were two rounds late, which is how the gap opened.
+
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
 
 - **⭐⭐ DIFF THE REQUEST AGAINST THE CLAIM, as an ASSERTION not a memory.** The 09-29 pack

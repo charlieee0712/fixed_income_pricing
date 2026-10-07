@@ -41,11 +41,17 @@ PRODUCTION = ("implied_oas_2009-03-31.csv", "implied_oas.csv", "callable_risk.cs
               # The mortgage book, added 2026-09-26. Its spreads carry a prepayment
               # ASSUMPTION rather than a sourced rate, so the rows are listed here for
               # reproducibility and must not be quoted as final -- see the driver docstring.
-              "pool_risk_2009-03-31.csv", "pool_risk_2009-06-10.csv")
+              "pool_risk_2009-03-31.csv", "pool_risk_2009-06-10.csv",
+              # Tier 1 for the Government-MBS book, added 2026-10-07. ⚠️ Its spread is an
+              # IMPLIED, BOND-EQUIVALENT spread and never an OAS -- the client's own
+              # Defensible-deck slide 13 reserves that name for a model whose cash flows
+              # respond to rates. 882 rows: 858 priced, 24 named.
+              "tier1_structured_2009-03-31.csv")
 DISPOSITIONS = ("corporate_disposition_2009-03-31.csv", "corporate_disposition_2009-06-10.csv",
                 "callable_disposition_2009-03-31.csv", "callable_disposition_2009-06-10.csv",
                 "sovereign_disposition_2009-03-31.csv", "sovereign_disposition_2009-06-10.csv",
-                "pool_disposition_2009-03-31.csv", "pool_disposition_2009-06-10.csv")
+                "pool_disposition_2009-03-31.csv", "pool_disposition_2009-06-10.csv",
+                "tier1_structured_disposition_2009-03-31.csv")
 
 
 def sha256(path) -> str:
