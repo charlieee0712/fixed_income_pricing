@@ -33,6 +33,10 @@ What is genuinely different about a pool's inputs
   unknown. The delivered Bloomberg pull is as-of 2026 (``scripts/mbs_data_check.py``), so its
   trailing CPRs cannot serve as the 2009 input; the adopted route fixes the spread near zero
   for government-guaranteed paper and solves for the CPR. See :func:`pool.implied_cpr_pct`.
+* ⭐ **``settle`` (12) is the only input that separates a rate bump from a spread bump.** Every
+  security in this layer but the TBA forward is discounted at ``z(t) + s``, so its DV01 and
+  its CS01 are one number; a forward's spread sits in the numerator only, and the two
+  sensitivities then differ by exactly ``settle``. See ``tba.py``.
 * **``wala`` (10) and ``aols`` (11) drive nothing.** They are carried because the Bloomberg
   request returned them and because a later prepayment model will want them — seasoning and
   loan size are classic S-curve covariates. Under a constant CPR they are descriptive only, and
@@ -114,6 +118,15 @@ INPUT_CATALOGUE = [
      "description": "Average ORIGINAL loan size. NOT USED by the constant-CPR model — carried "
                     "for the same reason as wala (loan size drives refinancing incentive).",
      "used": "none (carried)"},
+    {"n": 12, "field": "settle", "type": "float",
+     "external": "-",
+     "options": "YEARS from valuation; 0 = spot",
+     "description": "Settlement lag of a TBA FORWARD, in years. Only the tba functions take "
+                    "it, and at 0 they delegate to the spot pool bit-for-bit. ⭐ It is also "
+                    "the exact difference between a forward's spread duration and its rate "
+                    "duration, which is the one place in this layer where DV01 and CS01 are "
+                    "different numbers.",
+     "used": "the tba.* functions only"},
 ]
 
 

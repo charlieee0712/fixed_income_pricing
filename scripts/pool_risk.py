@@ -236,6 +236,15 @@ def _price_tba(r, curve, curve_error, skipped):
 
     mid = CPR_GRID_PCT[len(CPR_GRID_PCT) // 2]
     lo, hi = CPR_GRID_PCT[0], CPR_GRID_PCT[-1]
+    # ⭐ SPREAD bumps, matching the column this table calls `spread_dur_years` and every
+    # other row in it. ⚠️ A forward is the one security in this book whose RATE bump is a
+    # DIFFERENT number -- shorter by exactly the settlement lag, because the financing leg
+    # carries the rate and not the spread -- and that pair is published by
+    # `tier1_structured.py`, whose schema has separate dv01 and cs01 columns.
+    aq = r.get("dur_eff_custodian")
+    have = pd.notna(spreads[mid])
+    risk = dict(settle=settle, spread=spreads[mid]) if have else None
+    dur = tba.duration(coupon, term, mid, curve, **risk) if have else float("nan")
     rec = {
         "asset_id": aid, "isin": r["isin"], "structure": r["structure"], "route": "tba-forward",
         "desc_short": r["desc_short"],
@@ -257,8 +266,11 @@ def _price_tba(r, curve, curve_error, skipped):
     rec.update({
         "risk_at_cpr_pct": mid,
         "wal_years": tba.weighted_average_life(coupon, term, mid),
-        "spread_dur_years": float("nan"), "dv01": float("nan"), "convexity": float("nan"),
-        "aq_custodian": r.get("dur_eff_custodian"), "aq_divergence": float("nan"),
+        "spread_dur_years": dur,
+        "dv01": tba.dv01(coupon, term, mid, curve, **risk) if have else float("nan"),
+        "convexity": tba.convexity(coupon, term, mid, curve, **risk) if have else float("nan"),
+        "aq_custodian": aq,
+        "aq_divergence": (dur - aq) if (pd.notna(aq) and pd.notna(dur)) else float("nan"),
         "wac_source": "coupon + %.2f convention (measured worth 0.1bp)" % tba.TBA_SERVICING_SPREAD_PCT,
         "wac_as_of": "-", "wam_source": "description (original term)",
         "cpr_status": "ASSUMED (no 2009-dated prepayment speed exists; see G1)",

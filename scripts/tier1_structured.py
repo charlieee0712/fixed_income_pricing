@@ -1,8 +1,13 @@
 """Tier-1 driver: an amortising, market-calibrated spread and risk for the Government-MBS book.
 
 **What this produces.** One row for **every** one of the 882 Government Mortgage-Backed
-securities, of which **861** carry an amortising cash flow and the remaining 21 are named.
-Nothing else in the portfolio moves and no existing artifact is touched.
+securities, of which **858** carry a modelled amortising cash flow and the remaining **24** are
+named. Nothing else in the portfolio moves.
+
+⭐ The plan written before any of it ran said 861 and 21, and the difference is exactly three
+securities: two whose factor is already zero at the valuation date and one whose measured path
+produces no net cash at all. **Neither is visible until the path is read**, which is why the
+estimate could not have been better and why the three are named rather than absorbed.
 
 Phase 1 of the client's three-tier method (`docs/cc_plan_govt_mbs_amortising_tier1_2026-10-06.md`
 and the two decks of 2026-10-06): the custodian's own price is the anchor, the cash flows are
@@ -20,17 +25,22 @@ flows, one spread, no response to rates.
 
 **Two cash-flow generators, and which one a row used is on the row.**
 
-===========================  =====  ===================================================
+==========================  =====  ====================================================
 ``paydown_source``             n    where the balance schedule comes from
-===========================  =====  ===================================================
-``observed-factor-path``       376  :mod:`pricer.core.pricing.observed_paydown` — the
-                                    MEASURED monthly factor history from Bloomberg
-``assumed-cpr``                458  :mod:`pricer.assets.securitized.pool` — level-pay at
-                                    :data:`BOOK_CPR_PCT`
-(named, no numbers)             51  3 degenerate paths, 29 TBA forwards whose settlement
-                                    this table does not model, 19 with neither a path nor a
-                                    usable pool WAC
-===========================  =====  ===================================================
+==========================  =====  ====================================================
+``observed-factor-path``      373  :mod:`pricer.core.pricing.observed_paydown` — the
+                                   MEASURED monthly factor history from Bloomberg
+``assumed-cpr``               458  :mod:`pricer.assets.securitized.pool` — level-pay at
+                                   :data:`BOOK_CPR_PCT`
+``tba-forward-generic-pool``   27  :mod:`pricer.assets.securitized.tba` — the generic pool
+                                   the forward delivers, discounted to its settlement date
+(named, no numbers)            24  19 with neither a path nor a usable pool WAC, 3 degenerate
+                                   paths, 2 forwards whose description states no settlement
+                                   month
+==========================  =====  ====================================================
+
+⚠️ 376 securities have a factor path; 373 of them produce numbers. The other three are the
+degenerate ones above, and they are counted as named, not as a source.
 
 ⭐ :data:`BOOK_CPR_PCT` is **measured, not chosen**: the 32 pass-through pools whose real paths
 we hold realised a whole-life median of **25.05%** and a forward-12-month median of **25.83%**.
@@ -51,6 +61,20 @@ evidence. ⚠️ Our column is never filled with their number — the standing r
 duration is evidence, never a router, and a column that sometimes holds our model and sometimes
 theirs is worse than a blank.
 
+⭐⭐ **THE 27 TBA FORWARDS ARE THE ONLY ROWS IN THIS BOOK WHERE DV01 AND CS01 ARE DIFFERENT
+NUMBERS.** Every other security here is discounted at ``z(t) + s``, so a parallel rate bump and
+a spread bump are the same arithmetic and the two columns hold one number twice — across the
+757 rows priced before these forwards the difference was exactly 0.0, every row. A TBA is a
+forward: its price is struck for a settlement date weeks out, the spread sits in the numerator
+only, and the financing leg carries the rate without the spread. So its rate duration is
+shorter than its spread duration by EXACTLY the settlement lag (15 or 45 days here, measured
+residual 1.0e-08). ``eff_duration_years``, ``dv01`` and ``convexity`` are all taken from the
+RATE bump and only ``cs01`` from the spread bump, because a rate duration beside a spread
+convexity cannot be used together to approximate a move. ⚠️ Their static duration is also
+one-sided rather than merely approximate: all 27 are premiums, median 2.85y against a custodian
+1.82y, 5 of 27 beyond the 1.5y reporting threshold — the same shape and nearly the same
+proportion as the 478 spot pools (21%), but in one direction only.
+
 ⚠️ **Not an OAS, and the name is locked.** The spread here is an *implied, bond-equivalent*
 spread; the client's own slide 13 says *"a true OAS requires explicit modeling of
 option-dependent cash flows such as prepayments."* ``tests/test_tier1_structured.py`` injects
@@ -66,7 +90,7 @@ Inputs
 
 Outputs
 -------
-* ``outputs/tier1_structured_<date>.csv``              882 rows
+* ``outputs/tier1_structured_<date>.csv``              882 rows (858 priced, 24 named)
 * ``outputs/tier1_structured_disposition_<date>.csv``  every security and its disposition
 """
 import datetime
@@ -81,12 +105,14 @@ import pool_risk as D  # noqa: E402  — reuse its loaders rather than copy them
 from curves.zero_curve import ZeroCurve  # noqa: E402
 from dataio.dispositions import reconcile  # noqa: E402
 from dataio.factor_history import factor_path, load_factor_history  # noqa: E402
-from dataio.phase2 import build_pool_universe, load_master_phase2  # noqa: E402
+from dataio.phase2 import (build_pool_universe, load_master_phase2,  # noqa: E402
+                           parse_tba_terms)
 # ⚠️ Through the ASSETS layer, never the core. That layer owns the percent/decimal
 # boundary and the one refusal; reaching past it into the core produced a calibrated spread
 # of 46,478 bp on 487 pools -- a 465% spread, from passing 6.000 where 0.06000 was wanted.
 from pricer.assets.securitized import observed as obs  # noqa: E402
 from pricer.assets.securitized import pool  # noqa: E402
+from pricer.assets.securitized import tba  # noqa: E402
 
 VAL = os.environ.get("FIP_VAL_DATE", "2009-03-31")
 VAL_DATE = datetime.date.fromisoformat(VAL)
@@ -134,12 +160,17 @@ _REASON = {
     "pool-maturity-unavailable": "no maturity date, so the remaining term cannot be computed",
     "pool-coupon-inconsistent": "income rate exceeds the gross WAC: not a fixed-rate pool",
     "curve-blocked": "the USD curve could not be built at this date",
-    "tba-forward-settlement-not-modelled":
-        "a TBA is a forward on a GENERIC pool: its price carries a settlement adjustment that "
-        "assets/securitized/tba.py applies and this table does not model. Pricing it as a "
-        "spot pool would drop that correction silently, so it is named here and its spread is "
-        "taken from pool_risk_<date>.csv, which does apply it",
+    # ⚠️ The three TBA reasons are worded as `pool_risk.py` words them, deliberately: the
+    # two dispositions name the same security with the same words, so a reader comparing them
+    # does not have to work out whether two phrasings mean one thing.
+    "tba-terms-unreadable": "the description does not state ",
+    "tba-spread-not-solvable":
+        "no spread reproduces the quoted forward at the assumed CPR: ",
 }
+
+#: The four description-derived terms a forward cannot be priced without. ``parse_tba_terms``
+#: is the one owner of the reading; this driver only checks that it succeeded.
+TBA_REQUIRED_TERMS = ("issuer", "term_months", "coupon_pct", "settle_month")
 
 
 class _ZeroCurve:
@@ -218,6 +249,40 @@ def price_assumed_row(r, curve, wac, net, wam, bt):
     ), ""
 
 
+def price_tba_row(curve, terms, settle, bt):
+    """One TBA FORWARD at the same assumed speed as the pools. Returns ``(fields, flag)``.
+
+    ⭐⭐ **The only row shape in this table where ``dv01`` and ``cs01`` are different
+    numbers.** Every other security here is discounted at ``z(t) + s``, so a parallel rate
+    bump and a spread bump are the same arithmetic and the two columns hold one number twice
+    (maximum difference exactly 0.0 across the 757 rows priced before these). A forward's
+    spread sits in the NUMERATOR only — the financing leg carries the rate and not the spread
+    — so its rate duration is shorter than its spread duration by EXACTLY the settlement lag.
+
+    ⚠️ ``eff_duration_years``, ``dv01`` and ``convexity`` are therefore all taken from the
+    RATE bump, and only ``cs01`` from the spread bump. A rate duration beside a spread
+    convexity cannot be used together to approximate a move, and mixing them would be
+    invisible in every other row of this table.
+    """
+    coupon, term = float(terms["coupon_pct"]), int(terms["term_months"])
+    at = (coupon, term, BOOK_CPR_PCT, curve, settle)
+    spread = tba.implied_spread_bp(coupon, term, BOOK_CPR_PCT, bt, curve, settle)
+    rate_dur = tba.rate_duration(*at, spread)
+    lag_days = round(settle * 365.0)
+    return dict(
+        implied_spread_bp=spread,
+        eff_duration_years=rate_dur,
+        dv01=tba.rate_dv01(*at, spread),
+        cs01=tba.dv01(*at, spread),                  # ⭐ a DIFFERENT number for a forward
+        convexity=tba.rate_convexity(*at, spread),
+        wal_years=tba.weighted_average_life(coupon, term, BOOK_CPR_PCT),
+        cf_life_years=None, residual_pct=None, residual_treatment=None,
+        months_observed=None, months_projected=None,
+    ), (f"forward on a generic {term // 12}-year pool, settling in {lag_days} days: dv01 is "
+        f"the rate bump and cs01 the spread bump, and for a forward they differ by exactly "
+        f"that lag ({tba.duration(*at, spread) - rate_dur:.4f}y)")
+
+
 def main():
     data_dir = os.environ.get("FIP_DATA_DIR", "data")
     master = load_master_phase2(D.WB)
@@ -293,14 +358,41 @@ def main():
             named[aid] = ("dead-path", _REASON["dead-path"])
             continue
 
-        # ---------------------------------------------------------- otherwise the pool engine
-        # ⚠️ A TBA is NOT a spot pool. Its price embeds a forward settlement that
-        # `assets/securitized/tba.py` adjusts for and this table does not model, so it is
-        # named rather than priced as if it settled today.
+        # ---------------------------------------------------------- the forward, on its own route
+        # ⚠️ A TBA is NOT a spot pool: its price is struck for a settlement date weeks out,
+        # and pricing it as if it settled today drops that adjustment silently. The terms come
+        # from the DESCRIPTION, because the master's maturity is wrong for a forward and its
+        # income rate is 0.000 for three of them; `parse_tba_terms` owns that reading and
+        # `pool_risk.py` makes the same call, so the two tables cannot disagree about what a
+        # given forward is.
         if r["route"] == "tba-forward":
-            named[aid] = ("tba-forward-settlement-not-modelled",
-                          _REASON["tba-forward-settlement-not-modelled"])
+            terms = parse_tba_terms(r.get("desc_short"), r.get("desc_long"), cpn)
+            missing = [k for k in TBA_REQUIRED_TERMS if terms[k] is None]
+            if missing:
+                named[aid] = ("tba-terms-unreadable",
+                              _REASON["tba-terms-unreadable"] + ", ".join(missing)
+                              + " and no other source carries it")
+                continue
+            try:
+                settle = tba.settle_years(
+                    VAL_DATE, tba.settlement_date(VAL_DATE, terms["settle_month"]))
+            except ValueError as exc:
+                # The holdings file is a 2009-03-31 snapshot; at a later control date these
+                # April and May forwards have delivered and are no longer forwards.
+                named[aid] = ("tba-already-settled", str(exc)[:200])
+                continue
+            try:
+                fields, flag = price_tba_row(curve, terms, settle, bt)
+            except ValueError as exc:
+                named[aid] = ("tba-spread-not-solvable",
+                              _REASON["tba-spread-not-solvable"] + str(exc)[:160])
+                continue
+            records.append({**base, **fields, "paydown_source": "tba-forward-generic-pool",
+                            "cash_flow_kind": obs.AMORTISING, "route": "tba-forward",
+                            "cpr_assumed_pct": BOOK_CPR_PCT, "flag": flag})
             continue
+
+        # ---------------------------------------------------------- otherwise the pool engine
         wac, net, wam = _num(r["wac_pct"]), cpn, _num(r["wam_months"])
         if r["route"] != "pool" or wac is None:
             named[aid] = ("no-path-no-pool-terms", _REASON["no-path-no-pool-terms"])

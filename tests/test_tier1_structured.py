@@ -179,10 +179,61 @@ def test_interest_only_rows_carry_a_price_and_no_risk_numbers():
 
 
 @pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
-def test_tba_forwards_are_named_rather_than_priced_as_spot_pools():
-    rows = [r for r in _rows(OUT) if r["route"] == "tba-forward-settlement-not-modelled"]
-    assert len(rows) == 29, f"{len(rows)} TBA rows, expected 29"
-    assert all(not r["implied_spread_bp"] for r in rows)
+def test_the_forwards_are_priced_as_forwards_and_the_unreadable_two_are_named():
+    """⚠️ They were a NAMED route until 2026-10-07, because pricing a forward as a spot pool
+    drops its settlement adjustment silently. Now ``tba.py`` carries the bump metrics, so the
+    27 whose description states a settlement month are priced AS forwards; the 2 whose
+    description states none keep the same reason ``pool_risk.py`` gives them."""
+    rows = _rows(OUT)
+    priced = [r for r in rows if r["route"] == "tba-forward"]
+    unreadable = [r for r in rows if r["route"] == "tba-terms-unreadable"]
+    assert len(priced) == 27, f"{len(priced)} priced forwards, expected 27"
+    assert len(unreadable) == 2, f"{len(unreadable)} unreadable, expected 2"
+    assert all(r["implied_spread_bp"] and r["eff_duration_years"] for r in priced)
+    assert all(not r["implied_spread_bp"] for r in unreadable)
+    assert all(r["paydown_source"] == "tba-forward-generic-pool" for r in priced)
+
+
+@pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
+def test_only_the_forwards_separate_dv01_from_cs01_and_by_exactly_the_settlement_lag():
+    """⭐⭐ The property that makes two columns worth having.
+
+    With fixed cash flows the price depends only on ``z + s``, so a rate bump and a spread
+    bump are one number: across every spot row in this table the two columns differ by exactly
+    0.0. A forward's spread sits in the numerator only, so the two separate — and they
+    separate by precisely the settlement lag, which is the arithmetic, not an estimate.
+    """
+    rows = [r for r in _rows(OUT) if r["dv01"] and r["cs01"]]
+    assert len(rows) > 700, f"only {len(rows)} rows carry both numbers"
+    differ = [r for r in rows if float(r["dv01"]) != float(r["cs01"])]
+    assert {r["route"] for r in differ} == {"tba-forward"}, (
+        "dv01 and cs01 may differ only for a forward; they differ on "
+        f"{sorted({r['route'] for r in differ})}")
+    assert len(differ) == 27, f"{len(differ)} rows differ, expected the 27 forwards"
+    # and the spread bump is the LONGER of the two, never the other way round
+    for r in differ:
+        assert float(r["cs01"]) > float(r["dv01"]) > 0, r["asset_id"]
+
+
+@pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
+def test_the_forward_numbers_are_the_same_numbers_the_pool_driver_publishes():
+    """⚠️ Two tables, one security, two spreads would be the worst outcome of adding this
+    route. The spread must be BIT-IDENTICAL to ``pool_risk``'s grid-mid column: same engine,
+    same terms, same 25% CPR. Anything else means one of them reads the description
+    differently."""
+    pool_out = ROOT / "outputs" / "pool_risk_2009-03-31.csv"
+    if not pool_out.exists():
+        pytest.skip("pool_risk output not present")
+    mine = {r["asset_id"]: r for r in _rows(OUT) if r["route"] == "tba-forward"}
+    theirs = {r["asset_id"]: r for r in _rows(pool_out) if r["route"] == "tba-forward"}
+    assert set(mine) == set(theirs), "the two tables disagree about WHICH forwards price"
+    for aid, r in mine.items():
+        assert float(r["implied_spread_bp"]) == float(theirs[aid]["implied_spread_bp_at_cpr_25"]), \
+            f"{aid}: two tables, two spreads"
+        # pool_risk publishes the SPREAD bump in a column called spread_dur_years; this table
+        # publishes the RATE bump. The difference is the settlement lag, exactly.
+        gap = float(theirs[aid]["spread_dur_years"]) - float(r["eff_duration_years"])
+        assert abs(gap - float(theirs[aid]["settle_years"])) < 1e-7, f"{aid}: gap {gap}"
 
 
 @pytest.mark.skipif(not OUT.exists(), reason="driver output not present")

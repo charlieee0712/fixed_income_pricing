@@ -35,6 +35,45 @@ WHAT IS ASSUMED HERE, AND WHAT EACH ASSUMPTION IS WORTH (measured 2026-09-25, no
 
 So a TBA carries exactly one real assumption, the same one every other pool in this book
 carries, plus a settlement date worth single-digit basis points.
+
+⭐⭐ AND IT IS THE ONE PLACE IN THIS BOOK WHERE DV01 AND CS01 ARE DIFFERENT NUMBERS
+---------------------------------------------------------------------------------------
+Every other security here is discounted at ``z(t) + s``, so a parallel curve bump and a spread
+bump are the same arithmetic and the two sensitivities are one number wearing two names (the
+Tier-1 table's ``dv01`` and ``cs01`` columns are identical on all 757 rows priced before these
+forwards -- maximum difference exactly 0.0). A forward separates them, because **the spread
+sits in the numerator only**:
+
+    F(d) = [ Σ c_i e^{-(t_i+u)(z_i + d + s)} ] / e^{-u(z(u) + d)}
+
+Differentiating the log in ``d`` (a parallel rate shift) picks up ``+u`` from the denominator;
+differentiating in ``s`` does not, because the financing leg carries the rate and not the
+spread. So, exactly:
+
+    rate_duration  ==  spread_duration  −  settle
+
+⚠️ **Which means all three metrics on one published row must come from the same bump.** A rate
+duration beside a spread convexity cannot be used together to approximate a move, and the two
+are not interchangeable here even though they are everywhere else. :func:`duration`,
+:func:`dv01` and :func:`convexity` bump the SPREAD; :func:`rate_duration`,
+:func:`rate_dv01` and :func:`rate_convexity` bump the CURVE.
+
+⚠️ **The static duration is one-sided here, not merely approximate.** All 27 forwards in
+this book are premiums (custodian price 101.66 to 105.31, coupon 0.85% below to 1.65% above the
+prevailing 30-year rate), so fixed cash flows overstate their life in the SAME direction for
+every one of them. MEASURED at the 2009-03-31 curve and a 25% CPR: median spread duration
+**2.894y**, median rate duration **2.851y**, against a custodian median of **1.821y** — a
+median absolute gap of 1.05y, with 5 of the 27 beyond the 1.5y reporting threshold. The 478
+spot pools show the same shape and nearly the same proportion (2.799 vs 2.280, 102 of 478 =
+21% beyond 1.5y) but scattered in both directions. The gap IS the prepayment option that
+Tier 1 does not model, which is why it is published with the custodian's own figure beside it
+rather than withheld.
+
+⚠️ **A short's dollar duration carries the sign of its position, and that sign lives on the
+par column alone.** 5 of these 27 are shorts (−124.4M against +400.5M long, net +276.1M par),
+and the metrics below are properties of the SECURITY: dollar duration is ``par × dv01`` with
+par's own sign. An aggregation that takes an absolute value of par will get the book's net
+mortgage risk badly wrong, and nothing in these numbers can warn it.
 """
 from __future__ import annotations
 
@@ -169,3 +208,144 @@ def weighted_average_life(coupon: float, term_months: int, cpr: float, wac=None,
     """
     gross = coupon + TBA_SERVICING_SPREAD_PCT if wac is None else wac
     return pool.weighted_average_life(gross, term_months, cpr, net_coupon=coupon, face=face)
+
+#: Size of the central bump used by every metric below, in BASIS POINTS. The same 1 bp
+#: ``core.pricing.prepayment.pool_risk_metrics`` uses, so a TBA number and a pool number are
+#: produced by the same arithmetic and may sit in the same column.
+RISK_BUMP_BP = 1.0
+
+
+class _Shifted:
+    """``curve`` with every zero rate moved by a parallel shift, in DECIMALS.
+
+    ⭐ Here rather than in ``core/market/curves.py`` on purpose: the forward is the only
+    instrument in this layer whose rate bump is not a spread bump, so it is the only caller.
+    Relocation trigger = a second one. Deliberately duck-typed on ``zero_rate(t)`` alone, so
+    it wraps a real :class:`~curves.zero_curve.ZeroCurve` and a one-line test curve alike.
+    """
+
+    __slots__ = ("_curve", "_shift")
+
+    def __init__(self, curve, shift: float):
+        self._curve = curve
+        self._shift = shift
+
+    def zero_rate(self, t):
+        return float(self._curve.zero_rate(t)) + self._shift
+
+
+def _priced(coupon, term_months, cpr, curve, settle, spread, wac, face, what, bp):
+    """One repricing with either the SPREAD or the whole CURVE moved by ``bp`` basis points."""
+    if what == "spread":
+        return forward_price(coupon, term_months, cpr, curve, settle, spread + bp, wac, face)
+    return forward_price(coupon, term_months, cpr, _Shifted(curve, bp * _BP), settle,
+                         spread, wac, face)
+
+
+def _metrics(coupon, term_months, cpr, curve, settle, spread, wac, face, what) -> dict:
+    """Central-difference duration / DV01 / convexity, in the shape the pool engine returns.
+
+    ``what`` is ``"spread"`` or ``"rate"`` and is the whole difference between the two metric
+    families; see the module docstring for why a forward has two.
+    """
+    def at(bp):
+        return _priced(coupon, term_months, cpr, curve, settle, spread, wac, face, what, bp)
+
+    p0 = forward_price(coupon, term_months, cpr, curve, settle, spread, wac, face)
+    p_up, p_dn = at(RISK_BUMP_BP), at(-RISK_BUMP_BP)
+    h = RISK_BUMP_BP * _BP
+    if p0 == 0:
+        return {"price": p0, "dv01": float("nan"), "eff_duration": float("nan"),
+                "convexity": float("nan")}
+    return {
+        "price": p0,
+        "dv01": (p_dn - p_up) / (2.0 * h) * 1e-4,
+        "eff_duration": (p_dn - p_up) / (2.0 * h * p0),
+        "convexity": (p_up + p_dn - 2.0 * p0) / (h * h * p0),
+    }
+
+
+def duration(coupon: float, term_months: int, cpr: float, curve, settle: float,
+             spread: float = 0.0, wac=None, face: float = 100.0) -> float:
+    """SPREAD duration of the forward price, in YEARS.
+
+    Inputs: 1-8 as :func:`forward_price`.
+    Returns: float — relative price move per unit parallel SPREAD shift.
+
+    ⚠️ Under a constant CPR the cash flows do not move when rates move, so this is the
+    discounting effect only; a real pool prepays faster as rates fall, which shortens it
+    exactly when a bond would lengthen. That missing response is the negative convexity
+    mortgage investors are paid for, and it is absent here by construction.
+
+    ⚠️ **Not the same number as :func:`rate_duration`** — it is longer by exactly ``settle``,
+    because the forward's own discount leg carries the rate and not the spread.
+    """
+    return _metrics(coupon, term_months, cpr, curve, settle, spread, wac, face,
+                    "spread")["eff_duration"]
+
+
+def dv01(coupon: float, term_months: int, cpr: float, curve, settle: float,
+         spread: float = 0.0, wac=None, face: float = 100.0) -> float:
+    """Forward-price change per +1 bp of SPREAD, per 100 face (this is the CS01).
+
+    Inputs: 1-8 as :func:`forward_price`. Returns: float — same sign convention as the
+    bond and pool surfaces. See :func:`rate_dv01` for the rate bump, which differs.
+    """
+    return _metrics(coupon, term_months, cpr, curve, settle, spread, wac, face,
+                    "spread")["dv01"]
+
+
+def convexity(coupon: float, term_months: int, cpr: float, curve, settle: float,
+              spread: float = 0.0, wac=None, face: float = 100.0) -> float:
+    """Second-order SPREAD sensitivity of the forward price.
+
+    Inputs: 1-8 as :func:`forward_price`. Returns: float — convexity of the FIXED flows.
+
+    ⚠️ Positive, like any fixed stream; the market's mortgage convexity is negative. The
+    difference is the entire prepayment option, and quoting this as a TBA's convexity without
+    that sentence attached would be a real misstatement.
+    """
+    return _metrics(coupon, term_months, cpr, curve, settle, spread, wac, face,
+                    "spread")["convexity"]
+
+
+def rate_duration(coupon: float, term_months: int, cpr: float, curve, settle: float,
+                  spread: float = 0.0, wac=None, face: float = 100.0) -> float:
+    """Effective duration of the forward price under a parallel CURVE shift, in YEARS.
+
+    Inputs: 1-8 as :func:`forward_price`.
+    Returns: float — relative price move per unit parallel shift of the whole zero curve.
+
+    ⭐ **Shorter than :func:`duration` by exactly ``settle``** — see the module docstring for
+    the one-line derivation. This is the number comparable to the custodian's own effective
+    duration, and the one the Tier-1 table publishes, because that table's ``dv01`` column is
+    a rate bump on every other row too (where it happens to coincide with the spread bump).
+    """
+    return _metrics(coupon, term_months, cpr, curve, settle, spread, wac, face,
+                    "rate")["eff_duration"]
+
+
+def rate_dv01(coupon: float, term_months: int, cpr: float, curve, settle: float,
+              spread: float = 0.0, wac=None, face: float = 100.0) -> float:
+    """Forward-price change per +1 bp parallel CURVE shift, per 100 face.
+
+    Inputs: 1-8 as :func:`forward_price`. Returns: float — smaller in magnitude than
+    :func:`dv01` by ``settle × price × 1e-4``, which is the carry on the financing leg.
+    """
+    return _metrics(coupon, term_months, cpr, curve, settle, spread, wac, face,
+                    "rate")["dv01"]
+
+
+def rate_convexity(coupon: float, term_months: int, cpr: float, curve, settle: float,
+                   spread: float = 0.0, wac=None, face: float = 100.0) -> float:
+    """Second-order sensitivity of the forward price to a parallel CURVE shift.
+
+    Inputs: 1-8 as :func:`forward_price`. Returns: float.
+
+    ⚠️ Carried as its own function for one reason: a convexity-adjusted move needs the
+    SECOND derivative that matches the FIRST one it is used with. Mixing this with
+    :func:`dv01`, or :func:`convexity` with :func:`rate_dv01`, silently prices the wrong
+    adjustment. Same positive-sign caveat as :func:`convexity`.
+    """
+    return _metrics(coupon, term_months, cpr, curve, settle, spread, wac, face,
+                    "rate")["convexity"]

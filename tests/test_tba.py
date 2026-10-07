@@ -165,3 +165,121 @@ def test_the_wac_convention_barely_moves_the_answer():
           for w in (6.0, 6.25, 6.5)}
     assert max(at.values()) - min(at.values()) < 1.0, \
         f"WAC convention is supposed to be worth under a basis point, got {at}"
+
+
+# ----------------------------------------------------------------- the two bump kinds (2026-10-07)
+
+class SlopedCurve:
+    """z(t) = base + slope*t, so the denominator's rate differs from every flow's."""
+
+    def __init__(self, base, slope):
+        self.base, self.slope = base, slope
+
+    def zero_rate(self, t):
+        return self.base + self.slope * float(t)
+
+
+#: The two settlement lags that actually occur in this book: an April 15 and a May 15 settle
+#: seen from 2009-03-31, i.e. 15 and 45 days on an Act/365 clock.
+REAL_SETTLES = (15 / 365.0, 45 / 365.0)
+
+#: Measured residual of the identity below, on the real 27 at the real 2009-03-31 curve: max
+#: 9.99e-09, median 3.25e-09. It is NOT zero — the identity is exact in the derivative and the
+#: metrics use a finite 1 bp central bump — so the lock is a measured bound with a 10x margin,
+#: not an equality. ⚠️ And it is still 4,000x smaller than the smallest settle it has to
+#: distinguish, so a rate bump that silently became a spread bump cannot hide inside it.
+IDENTITY_TOLERANCE = 1e-7
+
+
+@pytest.mark.parametrize("curve", [FlatCurve(0.04), SlopedCurve(0.01, 0.002)])
+@pytest.mark.parametrize("settle", REAL_SETTLES)
+@pytest.mark.parametrize("coupon,term,cpr,spread", [(5.5, 360, 25.0, 250.0),
+                                                    (4.5, 180, 15.0, 180.0),
+                                                    (6.5, 360, 35.0, 300.0)])
+def test_the_forward_separates_rate_risk_from_spread_risk_by_exactly_the_settlement_lag(
+        curve, settle, coupon, term, cpr, spread):
+    """⭐⭐ The one place in this book where DV01 and CS01 are different numbers.
+
+    Every other security is discounted at ``z(t) + s``, so a curve bump and a spread bump are
+    the same arithmetic. A forward's spread sits in the NUMERATOR only — the financing leg
+    carries the rate and not the spread — so differentiating the log picks up ``+settle`` from
+    the denominator in the rate case and nothing in the spread case.
+    """
+    a = (coupon, term, cpr, curve, settle, spread)
+    spread_dur, rate_dur = tba.duration(*a), tba.rate_duration(*a)
+    assert abs((spread_dur - settle) - rate_dur) < IDENTITY_TOLERANCE, (
+        f"spread duration {spread_dur:.9f} minus settle {settle:.9f} should be the rate "
+        f"duration {rate_dur:.9f}")
+    assert spread_dur > rate_dur, "a forward's spread duration is the longer of the two"
+
+
+def test_the_identity_lock_is_not_decorative():
+    """Mutation: a ``rate_duration`` that silently bumped the spread instead would miss by the
+    whole settlement lag, which is four hundred thousand times the tolerance above."""
+    curve = FlatCurve(0.04)
+    settle = REAL_SETTLES[0]
+    spread_dur = tba.duration(5.5, 360, 25.0, curve, settle, 250.0)
+    rate_dur = tba.rate_duration(5.5, 360, 25.0, curve, settle, 250.0)
+    assert abs((spread_dur - settle) - rate_dur) < IDENTITY_TOLERANCE, "the true pair"
+    # the substitution: a rate_duration that returned the spread duration instead
+    assert abs((spread_dur - settle) - spread_dur) > 1000 * IDENTITY_TOLERANCE, \
+        "the check cannot detect the substitution it exists to forbid"
+
+
+def test_at_zero_settle_the_two_durations_coincide_and_match_the_spot_pool():
+    """The degenerate limit, for the metrics as well as the price.
+
+    ⚠️ Not ``==`` for the rate/spread pair: the two paths convert percent to decimal in a
+    different ORDER (``(s+bump)*1e-4`` against ``z + bump*1e-4`` then ``+ s*1e-4``), so
+    bit-equality is observed here but is not something the arithmetic guarantees. The spot
+    comparison is a true delegation and is held to 1e-12 for the same reason — the pool
+    wrapper converts its own bump independently.
+    """
+    curve = SlopedCurve(0.02, 0.001)
+    for coupon, term, cpr, spread in ((5.5, 360, 25.0, 200.0), (4.0, 180, 15.0, 0.0)):
+        a = (coupon, term, cpr, curve, 0.0, spread)
+        assert abs(tba.rate_duration(*a) - tba.duration(*a)) < 1e-12 * tba.duration(*a)
+        spot = pool.duration(coupon + tba.TBA_SERVICING_SPREAD_PCT, term, cpr, curve, spread,
+                             net_coupon=coupon)
+        assert abs(tba.duration(*a) - spot) < 1e-12 * spot, \
+            f"{coupon}%/{term}m: the forward at zero settle is not the spot pool"
+
+
+def test_a_rate_bump_actually_moves_the_curve():
+    """Mutation: a ``_Shifted`` that forgot to add its shift would return a zero duration."""
+    curve = FlatCurve(0.04)
+    shifted = tba._Shifted(curve, 0.01)
+    assert shifted.zero_rate(3.0) == pytest.approx(0.05)
+    assert tba.rate_duration(5.5, 360, 25.0, curve, REAL_SETTLES[0], 250.0) > 1.0
+
+
+def test_dv01_is_the_duration_times_the_price_in_both_families():
+    """⚠️ The arithmetic that catches a units slip: a DV01 is a duration times a price times
+    1e-4, and the two families must each be internally consistent."""
+    curve = FlatCurve(0.035)
+    settle = REAL_SETTLES[1]
+    a = (5.5, 360, 25.0, curve, settle, 250.0)
+    price = tba.forward_price(*a)
+    assert tba.dv01(*a) == pytest.approx(tba.duration(*a) * price * 1e-4, rel=1e-9)
+    assert tba.rate_dv01(*a) == pytest.approx(tba.rate_duration(*a) * price * 1e-4, rel=1e-9)
+    assert tba.dv01(*a) > tba.rate_dv01(*a) > 0
+
+
+def test_both_convexities_are_positive_and_the_rate_one_is_smaller():
+    """⚠️ Positive because the flows are fixed; the market's mortgage convexity is negative and
+    the difference is the whole prepayment option. The rate convexity is the smaller of the two
+    by roughly ``settle x (2D - settle)``, which is the same cross term the durations show."""
+    curve = FlatCurve(0.04)
+    a = (6.0, 360, 25.0, curve, REAL_SETTLES[1], 275.0)
+    assert tba.convexity(*a) > 0 and tba.rate_convexity(*a) > 0
+    assert tba.convexity(*a) > tba.rate_convexity(*a)
+    gap = tba.convexity(*a) - tba.rate_convexity(*a)
+    settle, dur = REAL_SETTLES[1], tba.duration(*a)
+    assert abs(gap - settle * (2 * dur - settle)) < 0.05 * gap
+
+
+def test_the_metrics_refuse_a_settlement_that_has_already_passed():
+    """The 06-10 lesson, extended to the new surface: a delivered forward is not a forward.
+    ``settle_years`` is the one owner of that refusal, so the metrics inherit it."""
+    with pytest.raises(ValueError, match="already delivered"):
+        tba.settle_years(VAL, datetime.date(2009, 3, 1))
