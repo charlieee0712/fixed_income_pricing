@@ -153,12 +153,18 @@ def populations():
     other = other[other["cusip"].notna()].copy()
 
     # (b) the Government-MBS securities whose factor ALREADY came back on 2026-10-01 —
-    #     these need only a coupon, and only if they might float
-    ws = load_workbook("docs/03_factor_history.xlsx", data_only=True)["data"]
-    returned = pd.DataFrame({"cusip": [
-        str(ws.cell(row=1, column=c).value or "").replace(" Mtge", "")
-        for c in range(2, ws.max_column + 1)]})
-    returned = returned.merge(chk, on="cusip", how="left").merge(
+    #     these need only a coupon, and only if they might float.
+    # ⚠️ Read from the TRACKED DATA FILE, not from the workbook in docs/. The same list used
+    # to be recovered by reopening `docs/03_factor_history.xlsx` and parsing its header row,
+    # which made two owners of one fact: the request generator and the pricing loader would
+    # have drifted apart the moment either file moved. `dataio.factor_history` is the owner.
+    from dataio.factor_history import load_request_groups
+
+    groups = load_request_groups(os.environ["FIP_DATA_DIR"])
+    if not groups:
+        raise SystemExit("data/factor_history_securities.csv is missing; it names the "
+                         "securities whose factor history has already been returned")
+    returned = pd.DataFrame({"cusip": list(groups)}).merge(chk, on="cusip", how="left").merge(
         m[["asset_id", "desc_long"]], on="asset_id", how="left")
 
     for f in (other, returned):
