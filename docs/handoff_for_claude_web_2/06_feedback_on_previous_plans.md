@@ -308,3 +308,29 @@ and is simply untrue.
   number, so the report leads with what the inflation-linked output *means* -- a
   deflation curve from -34 bp to +139 bp, and a Japanese bond at -229 bp whose sign flips
   the right way. "We restructured two classes" would have been a weak thing to present.
+
+## 9. A check that runs AFTER the commit is a check that did not run
+
+Added 2026-10-06, from a session that produced **five** process slips rather than one:
+
+1. `pytest -q | tail -5 && git commit` — **the pipe swallows the exit code**, `tail` always
+   succeeds, so the `&&` chain committed over a red suite. Check the status of pytest itself,
+   never of whatever is reading its output.
+2. A commit message asserting a change that had **not been made** (pointing a generator at a
+   tracked file). Worse than the omission, because the record then reads as though the gap
+   were closed.
+3. Writing a Python patch through a **bash heredoc** — forbidden in `CLAUDE.md` since
+   2026-09-26, and it failed on the quoting exactly as recorded.
+4. A `⭐` in a `print()`, killing the run on this machine's **GBK console**. Fifth occurrence.
+5. Calling a `core/` engine **past the `assets/` layer**, which owns the percent/decimal
+   boundary — and shipping a **46,478 bp** spread on 487 pools as a result.
+
+⭐ The common thread is not carelessness about any one of them: it is **speed at the end of a
+long turn**, when the work feels finished and the remaining steps feel clerical. Every one was
+caught, but three were caught *after* being committed, and the two locks that saved the round
+(the module map, the superset check against an existing driver) were locks somebody had written
+earlier for exactly that reason.
+
+**The habit:** the last three actions of a long turn — run the suite, read its exit code, read
+the diff — are the ones most likely to be skipped and the ones that cost most when they are.
+Put them before the commit, not after it.

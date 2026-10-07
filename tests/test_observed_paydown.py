@@ -163,15 +163,22 @@ def test_the_engine_reproduces_the_2026_10_01_validation():
     cprs.sort()
     median_cpr = cprs[len(cprs) // 2 - 1:len(cprs) // 2 + 1]
     median_cpr = sum(median_cpr) / len(median_cpr)
-    assert worst < 1e-9, f"principal conservation worst deviation {worst:.2e}"
-    assert abs(100 * median_cpr - 23.94) < 0.05, f"realised CPR median {100*median_cpr:.2f}%"
+    # ⚠️ PINNED TO THE MEASURED VALUE, not to the rounded one that appears in prose.
+    # An earlier version allowed 0.15 bp around "8.2" — but 8.2 is a one-decimal print, so
+    # the true figure lives in [8.15, 8.25) and a 0.1 bp drift passed this lock silently.
+    # A tolerance wider than the precision of the thing it guards is not a lock.
+    assert worst == 0.0, f"principal conservation worst deviation {worst:.2e}"
+    assert abs(100 * median_cpr - 23.937074) < 5e-4, \
+        f"realised CPR median {100*median_cpr:.6f}%, measured 23.937074"
     assert len(diffs) == 14, f"{len(diffs)} in-grid pools, expected 14"
     ab = sorted(abs(d) for d in diffs)
     med_abs = (ab[6] + ab[7]) / 2
     sg = sorted(diffs)
     med_signed = (sg[6] + sg[7]) / 2
-    assert abs(med_abs - 8.2) < 0.15, f"median |diff| {med_abs:.2f} bp, record 8.2"
-    assert abs(med_signed - (-2.6)) < 0.15, f"signed median {med_signed:+.2f} bp, record -2.6"
+    assert abs(med_abs - 8.226416) < 5e-4, \
+        f"median |diff| {med_abs:.6f} bp, measured 8.226416"
+    assert abs(med_signed - (-2.565568)) < 5e-4, \
+        f"signed median {med_signed:+.6f} bp, measured -2.565568"
 
 
 # --------------------------------------------------------------------------- 3. dv01 == cs01

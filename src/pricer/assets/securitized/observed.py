@@ -184,8 +184,13 @@ def cash_flow_life(path, coupon_pct: float, kind: str, *,
                    max_months: int | None = None, face: float = 100.0) -> float:
     """Total-cash-flow-weighted average life in YEARS — defined for all three kinds.
 
-    ⭐ The measure comparable to the duration, and the one to quote for an I/O, where the
-    principal-weighted WAL does not exist.
+    ⭐ The measure to quote for an I/O, where the principal-weighted WAL does not exist.
+
+    ⚠️ **This is a TIMING measure, not a rate sensitivity, and for an interest-only strip it
+    must not be read as one.** It is deliberately unguarded — it is a fact about when cash
+    arrives — but that leaves a path around the refusal in :func:`duration`: a caller could
+    take this number and call it a duration. An I/O's rate risk cannot be read off its
+    cash-flow timing at all, because the timing itself is what moves when rates move.
     """
     _validate(path, coupon_pct, kind)
     return observed_risk_metrics(_NoCurve(), path, coupon_pct, kind, 0.0,
