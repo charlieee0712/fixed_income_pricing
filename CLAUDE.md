@@ -870,6 +870,88 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   is not recorded until it is in `CLAUDE.md` and `WORKLOG.md`.** This section and the matching
   WORKLOG entry were two rounds late, which is how the gap opened.
 
+## Coupon STRUCTURE arrives (Mario 2026-10-07/08) — DONE, 732 tests
+
+- **Three files, 2026-10-07 21:18**, all tracked in `data/`: `formulas_for_cpn_pmts.xlsx`,
+  `Yield  Reference for CPN.xlsx`, `Agencies CPN Data.xlsx`, with the note *"they are all
+  Fixed or Zeros, and no FRN or variables, so easy to do."* Commits `0eb7711` (data layer) ·
+  `2164be3` (the 132 disclosed) · `cfcd0b0` (release facts). Record: WORKLOG 2026-10-07/08.
+- **⭐⭐ Coverage is the whole securitised book exactly — 1,347 rows / 1,333 securities**,
+  row-for-row the master (888 + 265 + 79 + 73 + 42), and the 14 extra rows over 13 repeated
+  ids ARE the master's own row-vs-unique gap.
+- **⚠️ The note is true of the file it names LAST and false of the first.** Over 1,347: fixed
+  800 + zero 109 = 909 (67.5%) against **FLOATING 283 + VARIABLE 106 + STEP 6 = 395 (29.3%)**.
+  `Agencies CPN Data.xlsx` really is 36 FIXED + 2 ZERO of 42; file 1's own agency block is
+  41-of-42 `#N/A`, which is why a third file exists. Non-fixed share, deduped per security:
+  **ABS 54.4% · Non-Gov CMO 48.9% · CMBS 42.0% · Govt MBS 21.8% · Agencies 0%** — worst
+  exactly where we have not started. ⭐ Tell him this way: his sentence describes his third file.
+- **⭐⭐⭐ Their `Coupon` is right for fixed and STALE for floating — one measurement, two
+  conclusions.** Against master BG (`net_coupon_pct`, what `tier1_structured.py` reads at
+  203/320 for all 882): **259/259 FIXED agree within 1bp, median difference exactly 0.0000;
+  0/59 FLOATING agree**, median **+1.21 points**, every difference positive. The fixed match
+  proves the KEYING, so the floating gap is real. ⭐ Third source decides: the custodian's own
+  description embeds the rate and matches the master on **48** rows, the file on **none**. ⇒ BG
+  is the valuation-date coupon, **the coupon LEVEL in every published cash flow is right**, and
+  this is a DISCLOSURE not a reprice. Their `Coupon` is deliberately NOT imported; a test fails
+  if a coupon ever appears in `coupon_structure.csv`.
+- **⚠️⚠️ The formula block is NOT keyed to its rows, proved by a NULL.** A fixed 6.5% FNMA
+  pass-through carries `1.000 * US0001M + 0.390%`; inverting each row's formula scatters the
+  implied as-of date over twelve months 2000–2023; and the agreement rate is **BELOW chance** —
+  38.2% observed vs **56.2%** random, because US0001M holds 297 points over 6.7pp. ⇒ "13 of 34
+  within 2bp" measured **nothing**. ⭐ Running the null is the only reason it was caught. Only
+  **7 of 283** FLOATING rows carry a formula, so even keyed it supplies no margins.
+- **`data/coupon_structure.csv` (1,333) + `src/dataio/coupon_structure.py` +
+  `tests/test_coupon_structure.py` (11).** Agencies from file 3 by documented precedence, both
+  CUSIP sets asserted identical first ⇒ **`unresolved` 43 → 5**. Contract as `term_overrides`
+  /`inflation`: missing file = no data, unrecognised token REFUSED, disagreeing duplicate
+  raises. ⭐ `rate_behaviour()` keeps **STEP apart from FLOATING** — a step moves on known dates,
+  not with rates, so it keeps a fixed-cash-flow duration and wants a coupon SCHEDULE. Both
+  load-bearing locks mutation-verified.
+- **⭐ THE 132, DISCLOSED ADDITIVELY.** 192 of the 882 are non-fixed (189 FLOATING + 3 VARIABLE;
+  **no STEP in Government MBS**), 132 carry a published duration and now say so in `flag`; the
+  other 60 already withheld (54 I/O + 5 unclassified + 1 ARM). Verified cell-for-cell: same 882
+  ids in order, all 26 pre-existing columns in position, **only `flag` changed, on exactly 132
+  rows, every change a pure APPEND**, one column added. ⚠️ **TWO TEXTS:**
+  `observed-factor-path` **71** → principal timing is history, interest leg only, bounded
+  **1.77y**; `assumed-cpr` **61** → no measured path, the modelled amortisation rests on the
+  same assumption, **the bound does NOT transfer** and the row says so. One sentence for both
+  is how the weaker claim borrows the stronger's number.
+- **⚠️⚠️ Our own floater detection was 40.3% recall against ground truth.** Over the **751** the
+  unsent 10-02 pack covered (376 Govt MBS with a factor + 375 of the CMO/CMBS/ABS), of **320**
+  that really move we caught **129** — **63% on agency pools, 26% on private-label**. A
+  private-label description does not say: `2006-AR3` is a series, `2007-OA4` an option ARM with
+  no token. ⭐ **So sheet 04 (595 × 4, "a safety net that proves the union missed nobody") was
+  the load-bearing part of that pack** — the design rule held, the heuristic did not. Sheet 04
+  retires (answered for all 1,347); **sheet 03's population must be rebuilt from `Type of
+  Coupon`, never from our patterns.** ⭐ The 27 false alarms: `CL SO` tripped the `CL S*`
+  inverse-floater rule but is **principal-only**, and `CL PI/HI/AI` are **fixed-rate I/O
+  strips** — an I/O can have a fixed strip rate.
+- **⭐⭐ DECISION — the right ask is a monthly coupon HISTORY, not the formula**, and it is the
+  argument that won for factors: a history records what the formula, the index, the reset lag
+  **and the caps** all did. The formula route needs four things we lack — index histories
+  (`COF 11`, `12MTA`, `US0003M/6M/12M` named in the formulas, absent from file 2), the reset
+  convention, the lookback, and ⚠️ periodic + lifetime **caps**, without which a 2009 ARM's
+  reset is wrong. ⚠️ **This reverses the 10-07 plan**, which had the formula re-export primary.
+  Size **393 × 211 = 82,923** against September's complete 79,336, and ⭐ all 393 have a CUSIP
+  (the list is his own file filtered) — no "375 of 412" caveat.
+- **`missing_data.md` G7** = the delivery + **G7a** margins · **G7b** the mis-keyed block ·
+  **G7c** two `#N/A` holdings (`TNTD04236110` PATRONS LEGACY, CUSIP `70337U100` — the `100`
+  suffix is an equity shape, so the master is the likelier fault; `TNTD04767793` FNMA SER
+  1-PRIN PMT, **inside** the published 882).
+- **Message DRAFTED, NOT SENT:** `docs/mario_message_2026-10-08.md`, 498 words. ⚠️ **WhatsApp
+  markup, not Markdown** — `*text*` is bold there and **tables do not render at all**; a first
+  draft used a table and the table checker missed it because it only reads lines starting with
+  `|` and these sat in a blockquote (same class as "a .csv is not a spreadsheet"). Order: **what
+  it bought → what we did → one thing to know → one ask**, our 40% ahead of his correction.
+  Deliberately absent: the 412 factor ask (sequenced), the formula re-export as a *request*, the
+  below-chance proof, and anything about who is at a terminal.
+- **⚠️ Noticed, not resolved: his message is signed "Mario & Lipping"**, while our record says
+  Liping was not expected at a terminal for some time (2026-10-01). The co-signature may make
+  that stale. Not raised with him.
+- **`US0001M` monthly 2000-01…2024-09 is now in the repo and `2009-03-31 = 0.50063%`** — ⚠️ NOT
+  landed as a data layer: with no margins it has no consumer, and the blocks-vs-confirms rule
+  says that is premature. `TSFR1M` starts 2019 and cannot bear on a 2009 valuation.
+
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
 
 - **⭐⭐ DIFF THE REQUEST AGAINST THE CLAIM, as an ASSERTION not a memory.** The 09-29 pack
