@@ -103,6 +103,8 @@ import pandas as pd  # noqa: E402
 
 import pool_risk as D  # noqa: E402  — reuse its loaders rather than copy them
 from curves.zero_curve import ZeroCurve  # noqa: E402
+from dataio.coupon_structure import (load_coupon_structure,  # noqa: E402
+                                     rate_behaviour)
 from dataio.dispositions import reconcile  # noqa: E402
 from dataio.factor_history import factor_path, load_factor_history  # noqa: E402
 from dataio.phase2 import (build_pool_universe, load_master_phase2,  # noqa: E402
@@ -166,6 +168,38 @@ _REASON = {
     "tba-terms-unreadable": "the description does not state ",
     "tba-spread-not-solvable":
         "no spread reproduces the quoted forward at the assumed CPR: ",
+}
+
+#: ⚠️ Bloomberg's coupon STRUCTURE arrived 2026-10-07 and says **192 of these 882 securities
+#: do not have a fixed coupon** -- the one bit the custodian's ``income_rate`` can never
+#: carry, because it reports a rate and never says whether that rate moves.
+#:
+#: ⭐ The cash flows here are NOT wrong. The coupon LEVEL is the custodian's own figure at the
+#: valuation date, and that was measured rather than assumed: 259 of 259 fixed-coupon rows
+#: match it to within 1 bp (median difference exactly 0.0000) while 0 of 59 floating rows match
+#: the Bloomberg file, and the custodian's own description -- a third source -- agrees with the
+#: master on 48 of those rows and with the file on none. What a fixed-schedule duration bump
+#: assumes is not the level but that the level STAYS. So this is a disclosure, and no number
+#: in this table moves because of it.
+#:
+#: ⚠️ TWO TEXTS, because the bound has two populations and one sentence covering both is how
+#: the smaller one gets hidden. On a MEASURED path the principal timing is history, so only the
+#: interest leg is in doubt and the error is bounded by that leg's share of PV times its own
+#: life. On an ASSUMED CPR there is no measured principal, so the modelled amortisation rests
+#: on the same assumption and that bound does not transfer.
+_COUPON_STRUCTURE_NOTE = {
+    "observed-factor-path": (
+        "coupon-structure: Bloomberg reports {kind}; this duration assumes the coupon stays "
+        "at the custodian's valuation-date level. Principal timing comes from the measured "
+        "factor path, so only the interest leg is affected -- bounded at 1.77y (p90 interest "
+        "share 36.7% x p90 interest life 4.83y; about 0.42y at the median)."
+    ),
+    "assumed-cpr": (
+        "coupon-structure: Bloomberg reports {kind}; this duration assumes the coupon stays "
+        "at the custodian's valuation-date level. There is no measured path here, so BOTH the "
+        "interest leg and the modelled amortisation rest on that assumption and the 1.77y "
+        "interest-leg bound does NOT apply to this row."
+    ),
 }
 
 #: The four description-derived terms a forward cannot be priced without. ``parse_tba_terms``
@@ -426,6 +460,25 @@ def main():
 
     out = pd.DataFrame(records)
     out["aq_divergence"] = (out["eff_duration_years"] - out["aq_custodian"]).abs()
+
+    # ⚠️ ADDITIVE, and deliberately placed after every number is computed: this block appends
+    # ONE column and extends a TEXT column, and touches no arithmetic at all. A missing
+    # `data/coupon_structure.csv` leaves the column blank and changes nothing else, which is
+    # the same contract the override tables have. See `_COUPON_STRUCTURE_NOTE` for why the
+    # numbers are right and only the assumption needs saying, and why there are two texts.
+    structure = load_coupon_structure()
+    out["coupon_structure"] = out["asset_id"].map(
+        lambda aid: (structure.get(aid) or {}).get("coupon_type") or "")
+    moves = out["coupon_structure"].map(
+        lambda kind: bool(kind) and rate_behaviour(kind) == "rate-sensitive")
+    disclose = moves & out["eff_duration_years"].notna()
+    for i in out.index[disclose]:
+        note = _COUPON_STRUCTURE_NOTE.get(out.at[i, "paydown_source"])
+        if note is None:                      # a source with no text of its own: say nothing
+            continue
+        text = note.format(kind=out.at[i, "coupon_structure"].upper())
+        out.at[i, "flag"] = " ".join(x for x in (out.at[i, "flag"], text) if x)
+
     out = out.sort_values(["paydown_source", "route", "asset_id"], na_position="last")
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     out.to_csv(OUT, index=False)
@@ -442,6 +495,12 @@ def main():
     print(f"\n  {len(out)} rows written to {OUT}")
     print(f"  with an amortising cash flow : {priced}")
     print(f"  named without one            : {len(out) - priced}")
+    if structure:
+        print(f"\n  coupon structure (Bloomberg via Mario, 2026-10-07):")
+        print(f"     not a fixed coupon            : {int(moves.sum()):4d} of {len(out)}")
+        print(f"     ...carrying a published duration, so flagged : {int(disclose.sum()):4d}")
+        for src, g in out[disclose].groupby("paydown_source"):
+            print(f"        {src:24s} {len(g):4d}")
     print("\n  by paydown source:")
     for src, g in out.groupby("paydown_source"):
         print(f"     {src:24s} {len(g):4d}")

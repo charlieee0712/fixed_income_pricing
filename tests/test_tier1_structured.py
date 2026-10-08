@@ -268,3 +268,76 @@ def test_the_two_CL_PO_tranches_are_numerically_inert():
     po = obs.calculated_price(path, 0.0, obs.PRINCIPAL_ONLY, FlatCurve(), 0.0)
     assert amort == po, "at a zero coupon the two treatments must be indistinguishable"
     assert spec is not None
+
+
+# --------------------------------------------------------------- the coupon-structure note
+
+@pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
+def test_every_row_carries_a_coupon_structure():
+    """Bloomberg's structure column covers all 882, so none of them is blank. 192 are not
+    fixed-coupon, which is the fact the note exists to state: FLOATING 189 + VARIABLE 3, and
+    no stepped security inside Government MBS."""
+    rows = _rows(OUT)
+    kinds = {}
+    for r in rows:
+        assert r["coupon_structure"], f"{r['asset_id']} has no coupon structure"
+        kinds[r["coupon_structure"]] = kinds.get(r["coupon_structure"], 0) + 1
+    assert kinds == {"fixed": 607, "floating": 189, "variable": 3, "zero": 82,
+                     "unresolved": 1}, kinds
+    assert kinds["floating"] + kinds["variable"] + kinds.get("step", 0) == 192
+
+
+@pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
+def test_the_note_fires_on_a_published_duration_and_nowhere_else():
+    """⭐ The disclosure qualifies a number we published. A row with no duration has no number
+    to qualify -- the 54 I/O strips already withhold theirs -- and a fixed-coupon row has
+    nothing to disclose. Both directions are checked, because a note that fires everywhere
+    says as little as one that fires nowhere."""
+    rows = _rows(OUT)
+    noted = [r for r in rows if "coupon-structure:" in r["flag"]]
+    assert len(noted) == 132, f"{len(noted)} noted rows, expected 132"
+    for r in noted:
+        assert r["coupon_structure"] in ("floating", "variable", "step")
+        assert r["eff_duration_years"], "the note qualifies a PUBLISHED duration"
+    moving_blank = [r for r in rows
+                    if r["coupon_structure"] in ("floating", "variable", "step")
+                    and not r["eff_duration_years"]]
+    assert len(moving_blank) == 60, f"{len(moving_blank)} withheld, expected 60"
+    for r in moving_blank:
+        assert "coupon-structure:" not in r["flag"], (
+            f"{r['asset_id']} withholds its duration, so there is nothing to qualify")
+    for r in rows:
+        if r["coupon_structure"] in ("fixed", "zero"):
+            assert "coupon-structure:" not in r["flag"], r["asset_id"]
+
+
+@pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
+def test_the_bound_is_claimed_only_where_a_measured_path_earns_it():
+    """⭐⭐ The load-bearing distinction. On a MEASURED factor path the principal timing is
+    history, so only the interest leg is in doubt and 1.77y bounds it. On an ASSUMED CPR the
+    modelled amortisation rests on the same constant-coupon assumption, so that bound does not
+    transfer -- and a single sentence covering both populations is exactly how the weaker claim
+    would get the stronger one's number."""
+    noted = [r for r in _rows(OUT) if "coupon-structure:" in r["flag"]]
+    observed = [r for r in noted if r["paydown_source"] == "observed-factor-path"]
+    assumed = [r for r in noted if r["paydown_source"] == "assumed-cpr"]
+    assert len(observed) == 71 and len(assumed) == 61, (len(observed), len(assumed))
+    for r in observed:
+        assert "bounded at 1.77y" in r["flag"]
+        assert "measured factor path" in r["flag"]
+    for r in assumed:
+        assert "does NOT apply to this row" in r["flag"]
+        assert "bounded at 1.77y" not in r["flag"], (
+            f"{r['asset_id']} has no measured path and must not claim the interest-leg bound")
+
+
+@pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
+def test_the_note_only_appends_and_never_replaces_a_routing_reason():
+    """A row can carry both a routing reason and this note. The note is appended, so an
+    existing reason must still be there -- the 74 I/O rows prove the converse (they keep their
+    reason and take no note), and any noted row that also has a route reason keeps it first."""
+    noted = [r for r in _rows(OUT) if "coupon-structure:" in r["flag"]]
+    for r in noted:
+        head = r["flag"].split("coupon-structure:")[0]
+        assert not head or head.endswith(" "), (
+            f"{r['asset_id']}: the note must be appended to the existing flag, not spliced")

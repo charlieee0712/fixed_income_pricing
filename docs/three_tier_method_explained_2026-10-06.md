@@ -404,10 +404,18 @@ realised **decay**. Same class of fix as 376 → 373: the word, not the method.
 
 ### 3.12 The floating-coupon unknown, and why 1.77 years is the whole of it
 
-`income_rate` reports a *rate*, never a *structure*, so for **104 of the 376** nothing in the
-custodian file says whether the coupon floats — and that single bit normally decides whether a
-security's duration is ~0 or its whole remaining life. Liping's coupon history would settle it,
-and she is not expected at a terminal for some time.
+`income_rate` reports a *rate*, never a *structure*, so nothing in the custodian file says
+whether a coupon floats — and that single bit normally decides whether a security's duration is
+~0 or its whole remaining life.
+
+⭐⭐ **ANSWERED 2026-10-07, and the estimate was badly short.** Mario sent Bloomberg's own
+`Type of Coupon` for all 1,347 securitised and agency rows (`data/coupon_structure.csv`, G7 in
+`missing_data.md`). Inside the 882 published here it names **192** non-fixed securities — 189
+FLOATING and 3 VARIABLE — of which **132 carry a published duration** and now say so in their
+`flag`. Our own description patterns had scored **40.3% recall** against that answer, so the
+earlier guess at "about a hundred suspects" was not conservative, it was low. ⚠️ The margins
+did **not** arrive, so nothing has been re-routed; the bound below is still what carries the
+decision, and it is now attached to a named population rather than an estimate.
 
 ⭐ **On an amortising observed path the question shrinks, because the principal timing is already
 fixed by the path.** A measured factor series is a record of what happened; it does not depend

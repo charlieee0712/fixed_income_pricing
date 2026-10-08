@@ -34,6 +34,7 @@ Working rules derived:
 | G4 | call schedule | 1 (AssuredGty US04622DAA90) | the unpriced 5th corporate callable | one `call_schedules.csv` row | ⏳ Liping 07-30 (first ask) |
 | G5 | deferred / confirmation-only | KTBi · ~~GBP~~+KRW curves · **3 corp + 5 AGY call-schedule confirms** · 1 rating quirk · FHR 3122 ZB | 1 ILB; rest = confirmation | curve txt rows / `call_schedules.csv` / master fix | ⏳ Liping 07-30 (opportunistic); standing plan = Mario MBS touchpoint. **GBP WITHDRAWN 2026-08-30 — see below** |
 | G6 | sovereign curve rows + 2 term gaps | 4 securities (+3 KRW under G5) | 4 Government Bonds unpriced @3-31 | curve txt rows / a coupon-path table | **no request opened (2026-09-03)** |
+| G7 | coupon STRUCTURE for the securitised book | 1,333 | the one bit `income_rate` cannot carry | `data/coupon_structure.csv` + `dataio.coupon_structure` | ⭐ **DELIVERED by Mario 2026-10-07 — 1,328 of 1,333 resolved; see below for the 3 parts still open** |
 
 Channels: **Mario** (client side, owns G1/G2/G3 since 07-20/07-22, no reply yet) and **Liping**
 (colleague, occasional campus Bloomberg access; full request incl. BDP template sent 2026-07-30).
@@ -252,6 +253,83 @@ It is not: the 15-year JGB series resets off the **10-year JGB auction yield**, 
 effective duration of −0.475 is inconsistent with a short-rate floater priced at 97.64.
 Filling a margin would not have made it right. Naming the gap correctly changed it from a
 request into an engine limitation.
+
+## G7 — coupon STRUCTURE for the securitised book (⭐ DELIVERED 2026-10-07)
+
+**The gap it closes.** The custodian's `income_rate` (master column BG) reports a *rate* and
+can never say whether that rate moves, and that one bit decides whether a security's effective
+duration is its own remaining life or close to zero. Until 2026-10-07 we estimated it from
+description text, and `three_tier_method_explained` §3.12 carried a 1.77-year bound for the
+securities we could not classify.
+
+**What arrived.** Three files from Mario after the weekly call, now tracked in `data/`:
+`formulas_for_cpn_pmts.xlsx` (1,347 rows / 1,333 securities = the whole securitised book plus
+agencies, row-for-row the master), `Yield  Reference for CPN.xlsx` (`US0001M` monthly 2000-01
+to 2024-09, and **2009-03-31 = 0.50063%**; plus `TSFR1M`, which starts 2019 and so cannot bear
+on a 2009 valuation), `Agencies CPN Data.xlsx` (42 rows). Landed as
+**`data/coupon_structure.csv`** via `dataio.coupon_structure`; **`unresolved` 43 → 5**, because
+agencies are taken from the third file by documented precedence.
+
+⚠️ **His covering note said "they are all Fixed or Zeros, and no FRN or variables".** That is
+true of the agencies file (36 FIXED + 2 ZERO of 42) and not of the securitised one: over the
+1,347 rows, **FLOATING 283 + VARIABLE 106 + STEP 6 = 395 (29.3%)**, worst in the classes not
+yet started — ABS 54.4% non-fixed, Non-Gov CMO 49.1%, CMBS 41.1%, Government MBS 21.6%.
+
+⭐ **Consequence already taken:** `tier1_structured_2009-03-31.csv` gains a `coupon_structure`
+column, and the **132** rows that carry a published duration on a non-fixed-coupon security say
+so in `flag`. Additive and verified cell-for-cell: 26 columns kept their positions, only `flag`
+changed, on exactly those 132 rows, every change a pure append. **No number moved**, because the
+coupon *level* is the custodian's own valuation-date figure — measured, not assumed (259 of 259
+fixed rows match it to within 1 bp while 0 of 59 floating rows match Bloomberg's file, and the
+custodian's own description agrees with the master on 48 and with the file on none).
+
+### ⚠️ Three parts of G7 are still open
+
+| part | n | blocks | what would close it |
+|---|---:|---|---|
+| **G7a — the margins** | 395 non-fixed (132 with a published duration) | the 1.77y bound stays open; no floater can be re-routed | ⭐ a **monthly coupon history**, not the formula. 211 months × 395 = 83,345 points, against September's 79,336 that returned complete |
+| **G7b — the mis-keyed formula block** | 60 formulas | nothing today; it is unusable as delivered | a re-export of `STRUCTURED_NOTE_CPN_FORMULA` keyed one row per CUSIP |
+| **G7c — two `#N/A Invalid Security` holdings** | 2 | 1 sits inside the published 882 with no coupon type | a working identifier: `TNTD04236110` *PATRONS LEGACY 2003-IV* (CUSIP `70337U100` — the `100` suffix is an equity shape, so the master is the likelier fault) · `TNTD04767793` *FNMA SER 1-PRIN PMT ON 9% 2019 CAP DEB* (`31358BAA6`) |
+
+⭐⭐ **Why a coupon HISTORY and not the formula — the argument that already won for factors.**
+A monthly factor history replaced the deal-structure data we thought needed Intex, *because the
+factor already records what the waterfall did*. The same holds here: a monthly coupon history
+records what the formula, the index, the lookback **and the caps** all did, and we model none of
+them. The formula route needs four further things we do not have — the index histories (`COF 11`,
+`12MTA`, `US0003M/6M/12M` are named in the delivered formulas and absent from the reference
+file), the reset convention, the lookback, and ⚠️ the **periodic and lifetime caps**, without
+which a 2009 ARM's computed reset is simply wrong.
+
+⚠️ **The formula block as delivered is not keyed to its rows, and this was measured.** A fixed
+6.5% FNMA pass-through carries `1.000 * US0001M + 0.390%`; inverting each row's formula against
+its own coupon scatters the implied as-of date across twelve months from 2000 to 2023; and the
+agreement rate is **below chance** — 38.2% observed against 56.2% for a random in-range value,
+because the index holds 297 monthly points across 6.7 percentage points. Only 7 of 283 floating
+rows carry a formula at all.
+
+### ⚠️ And G7 retires sheet 04 of the unsent 2026-10-02 pack — after showing it was the part that worked
+
+That pack split 751 Government-MBS securities into a 156-security description-pattern union and
+a 595-security "safety net" classify sheet. Scored against Bloomberg's own answer (via
+`make_mario_request.populations()`, the code that built the pack):
+
+```
+suspected and really non-fixed      129          recall     40.3%
+suspected but actually fixed/zero    27          precision  82.7%
+NOT suspected but really non-fixed  191   <-- FLOATING 102 · VARIABLE 83 · STEP 6
+not suspected and really fixed       403
+```
+
+⚠️⚠️ **The union would have missed 191 of the 320 securities that really have a moving coupon.**
+A private-label deal's description does not say: `2006-AR3` is a series name, `2007-OA4` is an
+option ARM without the token `ARM`, `C BASS 2007-CB4` is stepped. ⇒ **sheet 04 — written as "a
+safety net that proves the union missed nobody" — was the load-bearing part of that pack**, and
+the design rule held while the heuristic did not. Sheet 04 is now answered for all 1,347 and can
+be deleted; sheet 03's population must be rebuilt from `Type of Coupon`, never from our patterns.
+
+⭐ The 27 false alarms are also informative: `CL SO` tripped the `CL S*` inverse-floater rule but
+is **principal-only** (ZERO), and `CL PI / HI / AI` tripped the I/O rule but are **fixed-rate**
+I/O strips. **An I/O can have a fixed strip rate** — a distinction we had been collapsing.
 
 ## Closed by us, not by data (2026-08-30)
 
