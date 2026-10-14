@@ -282,8 +282,11 @@ def test_every_row_carries_a_coupon_structure():
     for r in rows:
         assert r["coupon_structure"], f"{r['asset_id']} has no coupon structure"
         kinds[r["coupon_structure"]] = kinds.get(r["coupon_structure"], 0) + 1
-    assert kinds == {"fixed": 607, "floating": 189, "variable": 3, "zero": 82,
-                     "unresolved": 1}, kinds
+    # ⭐ 2026-10-14: `data/mtge.xlsx` resolved the last `unresolved` row in this table
+    # (`TNTD04767793`, FNMA PRIN STRIP -> ZERO COUPON), so every one of the 882 published rows
+    # now carries a resolved coupon structure and `unresolved` is absent entirely.
+    assert kinds == {"fixed": 607, "floating": 189, "variable": 3, "zero": 83}, kinds
+    assert "unresolved" not in kinds
     assert kinds["floating"] + kinds["variable"] + kinds.get("step", 0) == 192
 
 

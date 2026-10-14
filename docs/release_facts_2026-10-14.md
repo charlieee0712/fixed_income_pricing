@@ -1,6 +1,6 @@
 # Release facts — Round 2b hardening
 
-**Generated from the live repository at `da556e7` (working tree DIRTY) on 2026-10-14.** Every number below is
+**Generated from the live repository at `73164db` (working tree DIRTY) on 2026-10-14.** Every number below is
 read out of a file a driver just wrote. Regenerate with `PYTHONPATH=src python
 scripts/release_facts.py` after any code-bearing change, and re-run the drivers first.
 
@@ -17,7 +17,7 @@ scripts/release_facts.py` after any code-bearing change, and re-run the drivers 
 | `sovereign_risk_2009-06-10.csv` | 154 | `d91e3c8ff42724a48ce5e4ceb0855202` |
 | `pool_risk_2009-03-31.csv` | 505 | `3aa9f3baa89627f60acc18181a070b4c` |
 | `pool_risk_2009-06-10.csv` | 478 | `86891918319bb0d6af70a1cc76b49661` |
-| `tier1_structured_2009-03-31.csv` | 882 | `06b0fa1087ca77b8d1d0fb728e1a4cfe` |
+| `tier1_structured_2009-03-31.csv` | 882 | `70955072494509a68fb1ecd15d636565` |
 
 ## Disposition sidecars — every security accounted for, at both dates
 
@@ -62,7 +62,7 @@ Checked on any machine by `PYTHONPATH=src python scripts/platform_parity.py`.
 | `sovereign_risk_2009-06-10.csv` | 20 | `b9519b9260184405` |
 | `pool_risk_2009-03-31.csv` | 12 | `d4d022e3b04735bb` |
 | `pool_risk_2009-06-10.csv` | 10 | `f56d434a13554d91` |
-| `tier1_structured_2009-03-31.csv` | 11 | `a4cd8b7065122289` |
+| `tier1_structured_2009-03-31.csv` | 11 | `145a5bf21bd5b3fe` |
 | `corporate_disposition_2009-03-31.csv` | 5 | `d7a83a7b1f377094` |
 | `corporate_disposition_2009-06-10.csv` | 5 | `df819ce056b736f9` |
 | `callable_disposition_2009-03-31.csv` | 5 | `605e56988db3808b` |
@@ -106,5 +106,5 @@ says so in the row it appears in — not only in prose somewhere else.
 
 ## Test suite
 
-`pytest -q` → **732 passed in 59.80s** (local, Python 3.13.5).
+`pytest -q` → **752 passed in 61.46s (0:01:01)** (local, Python 3.13.5).
 

@@ -496,7 +496,10 @@ def main():
     print(f"  with an amortising cash flow : {priced}")
     print(f"  named without one            : {len(out) - priced}")
     if structure:
-        print(f"\n  coupon structure (Bloomberg via Mario, 2026-10-07):")
+        # ⚠️ The as-of comes from the TABLE, never from a literal here: two rows were
+        # re-sourced on 2026-10-14 and a hardcoded date started lying the moment they were.
+        asof = sorted({(r.get("as_of") or "") for r in structure.values()} - {""})
+        print(f"\n  coupon structure (Bloomberg via Mario, {' / '.join(asof) or 'undated'}):")
         print(f"     not a fixed coupon            : {int(moves.sum()):4d} of {len(out)}")
         print(f"     ...carrying a published duration, so flagged : {int(disclose.sum()):4d}")
         for src, g in out[disclose].groupby("paydown_source"):

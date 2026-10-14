@@ -1038,7 +1038,7 @@ TNTD04234111,361849ZS4,US361849ZS42,Commercial Mortgage-Backed,GMAC COML MTG SEC
 TNTD04234552,36185ND80,US36185ND806,Non-Government Backed C.M.O.s,GMACM MTG LN TR 2003-J7 MTG PASSTHRU CTF,fixed,FIXED,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04235200,17307GCU0,US17307GCU04,Non-Government Backed C.M.O.s,CITIGROUP MTG LN TR 2003-HE3 ASSET BKD,floating,FLOATING,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04236104,45660NXN0,US45660NXN01,Asset Backed Securities,INDYMAC MBS INC 2003-A14 MTG PASSTHRU,fixed,FIXED,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
-TNTD04236110,70337U100,US70337U1007,Asset Backed Securities,PATRONS LEGACY 2003-IV LIFE INS & LIFE,unresolved,#N/A Invalid Security,,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
+TNTD04236110,70337U100,US70337U1007,Asset Backed Securities,PATRONS LEGACY 2003-IV LIFE INS & LIFE,fixed,FIXED,12,mtge.xlsx,Bloomberg via Mario 2026-10-14 (resolved; was #N/A on the 2026-10-07 pull),2026-10-14
 TNTD04236433,05946XEN9,US05946XEN93,Non-Government Backed C.M.O.s,BANC AMER FDG CORP 2003-3 MTG PASSTHRU,fixed,FIXED,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04236900,86359ADL4,US86359ADL44,Non-Government Backed C.M.O.s,STRUCTURED ASSET SECS CORP FOR FUTURE,step,STEP,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04241069,05948XT27,US05948XT270,Non-Government Backed C.M.O.s,BANC AMER MTG SECS INC FOR FUTURE ISSUES,variable,VARIABLE,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
@@ -1272,7 +1272,7 @@ TNTD04758620,76116ECK4,US76116ECK47,Government Agencies,RESOLUTION FDG CORP FED 
 TNTD04758709,76116EFS4,US76116EFS46,Government Agencies,RESOLUTION FDG CORP FED BOOK ENTRY CPN,zero,#N/A Invalid Security,,Agencies CPN Data.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04761424,76110WMC7,US76110WMC72,Asset Backed Securities,RESIDENTIAL ASSET SECURITIES CORP MTG,variable,VARIABLE,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04765269,86360JAE1,US86360JAE10,Non-Government Backed C.M.O.s,STRUCTURED ASSET MTG INVTS II TR,floating,FLOATING,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
-TNTD04767793,31358BAA6,US31358BAA61,Government Mortgage Backed Securities,FNMA SER 1-PRIN PMT ON 9% 2019 CAP DEB,unresolved,#N/A Invalid Security,,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
+TNTD04767793,31358BAA6,US31358BAA61,Government Mortgage Backed Securities,FNMA SER 1-PRIN PMT ON 9% 2019 CAP DEB,zero,ZERO COUPON,,mtge.xlsx,Bloomberg via Mario 2026-10-14 (resolved; was #N/A on the 2026-10-07 pull),2026-10-14
 TNTD04768781,313771AA5,US313771AA51,Government Agencies,FEDERAL HOME LN BK CHICAGO SUB NT 5.625%,fixed,#N/A Invalid Security,2,Agencies CPN Data.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04771626,92977FAC6,US92977FAC68,Asset Backed Securities,WACHOVIA AUTO OWNER TR 2006-A ASSET BKD,fixed,FIXED,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07
 TNTD04776828,22545BAC5,US22545BAC54,Commercial Mortgage-Backed,CREDIT SUISSE FIRST BOSTON MTG TR SER,variable,VARIABLE,12,formulas_for_cpn_pmts.xlsx,Bloomberg via Mario 2026-10-07,2026-10-07

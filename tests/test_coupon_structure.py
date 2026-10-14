@@ -133,7 +133,12 @@ def test_the_tracked_table_says_a_third_of_the_book_is_not_fixed():
     assert kinds["floating"] == 282
     assert kinds["variable"] == 105
     assert kinds["step"] == 6
-    assert kinds["unresolved"] == 5          # down from 43, via the agencies file
+    # ⭐ 43 -> 5 on 2026-10-07 via the agencies file, then 5 -> 3 on 2026-10-14: `data/mtge.xlsx`
+    # resolved both `#N/A Invalid Security` holdings that `missing_data.md` G7c had named.
+    # `70337U100` PATRONS LEGACY reads FIXED 5.775% monthly, and `31358BAA6` FNMA PRIN STRIP
+    # reads ZERO COUPON -- independently consistent with a description saying "PRIN PMT ON".
+    assert kinds["unresolved"] == 3
+    assert kinds["fixed"] == 825 and kinds["zero"] == 112
     assert sum(kinds[k] for k in ("floating", "variable", "step")) == 393
     # the agencies really are all fixed or zero -- his sentence, about his third file
     agency = [r for r in got.values() if r["sub_category"] == "Government Agencies"]
