@@ -24,13 +24,19 @@ file on **none**. ⇒ master BG is the valuation-date coupon, the source file's 
 ``scripts/tier1_structured.py`` was already reading the right one. Importing the other would
 have moved 192 securities' cash flows for no reason.
 
-⚠️ **The source file's ``STRUCTURED_NOTE_CPN_FORMULA`` block is NOT here either, because it is
-not keyed to its rows.** A fixed 6.5% FNMA pass-through carried ``1.000 * US0001M + 0.390%``;
-inverting each row's formula against its own coupon scattered the implied as-of date across
-twelve months from 2000 to 2023; and the agreement rate came out **below chance** (38.2%
-observed against 56.2% for a random in-range value, because the index has 297 monthly points
-over 6.7 percentage points). Only 7 of 283 floating rows carried a formula at all. So the
-margins are still missing, and that is a live request — see ``docs/missing_data.md``.
+⚠️ **The source file's ``STRUCTURED_NOTE_CPN_FORMULA`` block is still not here, but NOT for the
+reason this docstring used to give.** It said the block was "not keyed to its rows", citing a
+fixed 6.5% FNMA pass-through that carried ``1.000 * US0001M + 0.390%`` and an agreement rate
+below chance. ⚠️ **RETRACTED 2026-10-14.** The field returns a **transposed table**, so each
+security occupies SIX sheet rows while the identifier block runs at one; pairing by row number
+fails, which is what that test detected, but the block was sound. The 437 fixed records among
+the 505 priced pools match the custodian's own coupon EXACTLY (max |diff| 0.000000, 437 of 437).
+
+⭐ The formulas live in ``data/mtge.xlsx`` / ``data/corp.xlsx`` and are read by
+``dataio.coupon_formula``, deliberately a SEPARATE table from this one: this file answers
+*does the coupon move*, that one answers *by what rule*. ⚠️ And a rule is still not a coupon —
+an ARM's realised rate needs its own reset anniversary and its caps, neither of which the field
+carries, so ``docs/missing_data.md`` G7a/G7d stay open.
 
 WHY THE AGENCY ROWS COME FROM A DIFFERENT FILE
 ----------------------------------------------

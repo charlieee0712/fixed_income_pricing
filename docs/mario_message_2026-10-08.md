@@ -1,5 +1,15 @@
 # Replying to Mario's coupon files — 2026-10-08
 
+> ⚠️⚠️ **SUPERSEDED 2026-10-14, and one sentence in it is FALSE.** Three further pulls arrived
+> (`data/mtge.xlsx`, `corp.xlsx`, `index.xlsx`) and settled what this message got wrong: the
+> clause *"the formulas in the big file also came through with the rows out of step, a fixed 6.5%
+> Fannie pool sitting next to a LIBOR one"* describes a **row-pitch** problem of our reading, not
+> a defect in his export — the field returns a transposed six-row record per security and the
+> block was correctly keyed all along (`missing_data.md` G7b, retracted). ⭐ **If this message was
+> sent, the next one corrects that clause in a sentence; if it was not, strike it.** The rest of
+> the message — the coverage win, our own 40.3% recall, the per-class table, the ask for a monthly
+> coupon history — all still stands, and the ask is now sharper (see the 2026-10-14 round).
+
 **Channel:** WhatsApp, the same thread his files arrived in. **No attachment** — the ask is a
 list of 393 CUSIPs that is a filter of his own file, so it can go as a spreadsheet when he
 says yes, not before.

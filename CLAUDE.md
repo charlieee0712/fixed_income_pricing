@@ -894,12 +894,19 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   is the valuation-date coupon, **the coupon LEVEL in every published cash flow is right**, and
   this is a DISCLOSURE not a reprice. Their `Coupon` is deliberately NOT imported; a test fails
   if a coupon ever appears in `coupon_structure.csv`.
-- **⚠️⚠️ The formula block is NOT keyed to its rows, proved by a NULL.** A fixed 6.5% FNMA
-  pass-through carries `1.000 * US0001M + 0.390%`; inverting each row's formula scatters the
-  implied as-of date over twelve months 2000–2023; and the agreement rate is **BELOW chance** —
-  38.2% observed vs **56.2%** random, because US0001M holds 297 points over 6.7pp. ⇒ "13 of 34
-  within 2bp" measured **nothing**. ⭐ Running the null is the only reason it was caught. Only
-  **7 of 283** FLOATING rows carry a formula, so even keyed it supplies no margins.
+- ~~**⚠️⚠️ The formula block is NOT keyed to its rows, proved by a NULL.**~~ **⚠️⚠️ RETRACTED
+  2026-10-14 — the detection was right and the CONCLUSION was wrong.** It said the block was
+  mis-keyed (a fixed 6.5% FNMA pool carrying `1.000 * US0001M + 0.390%`; implied as-of dates
+  scattered 2000–2023; agreement **below chance**, 38.2% vs 56.2% random). ⭐ The real fault:
+  `STRUCTURED_NOTE_CPN_FORMULA` returns a **TRANSPOSED table**, so each security occupies **SIX
+  sheet rows** (dates / formulas / day-counts / frequency / 2 blanks) while the identifier block
+  runs at **one**. Pairing by row number therefore fails — which is what the null detected. A
+  fixed security's own record reads `6.500000% Fixed`. **Proof, needing no index and no
+  convention: the 437 fixed records among the 505 priced pools match the custodian's own coupon
+  EXACTLY — median, p90 and max |diff| all 0.000000, 437 of 437.** ⇒ G7b CLOSED; see
+  `missing_data.md` G7b and the 2026-10-14 section below. ⭐ Still true and now G7d: only 7 of
+  283 floating rows in the OLD export carried a formula, and a leveraged record evaluates to
+  about **−14,220%** without its caps.
 - **`data/coupon_structure.csv` (1,333) + `src/dataio/coupon_structure.py` +
   `tests/test_coupon_structure.py` (11).** Agencies from file 3 by documented precedence, both
   CUSIP sets asserted identical first ⇒ **`unresolved` 43 → 5**. Contract as `term_overrides`

@@ -287,25 +287,100 @@ custodian's own description agrees with the master on 48 and with the file on no
 
 | part | n | blocks | what would close it |
 |---|---:|---|---|
-| **G7a — the margins** | 395 non-fixed (132 with a published duration) | the 1.77y bound stays open; no floater can be re-routed | ⭐ a **monthly coupon history**, not the formula. 211 months × 395 = 83,345 points, against September's 79,336 that returned complete |
-| **G7b — the mis-keyed formula block** | 60 formulas | nothing today; it is unusable as delivered | a re-export of `STRUCTURED_NOTE_CPN_FORMULA` keyed one row per CUSIP |
+| **G7a — the realised coupon path** | 393 non-fixed securities (132 with a published duration) | the 1.77y bound stays open; no floater can be re-routed | ⭐ a **monthly coupon history**. 211 months × 393 = 82,923 values, against September's 79,336 that returned complete. ⭐⭐ **2026-10-14 STRENGTHENED this, it did not close it** — the formulas arrived and are sound, and they are still not a substitute: see G7d |
+| **G7d — what a formula cannot supply** (NEW 2026-10-14) | 60 ARM pools in the 505; 74 leveraged records | an ARM's coupon cannot be computed from its formula | **each pool's own reset anniversary** (they scatter through the year — see below), the **periodic and lifetime caps**, and **6 index histories**: `RFUCCT1Y` 30 refs · `RFUCCT6M` 13 · `US0012M` 5 · `EUR003M` 5 · `US0006M` 1 · `H15T5Y` 1. ⚠️ `RFUCCT1Y`+`RFUCCT6M` alone block **42 of the 60** |
+| ~~**G7b — the mis-keyed formula block**~~ | — | — | ⭐ **CLOSED 2026-10-14, and the finding RETRACTED — see G7b below** |
 | **G7c — two `#N/A Invalid Security` holdings** | 2 | 1 sits inside the published 882 with no coupon type | a working identifier: `TNTD04236110` *PATRONS LEGACY 2003-IV* (CUSIP `70337U100` — the `100` suffix is an equity shape, so the master is the likelier fault) · `TNTD04767793` *FNMA SER 1-PRIN PMT ON 9% 2019 CAP DEB* (`31358BAA6`) |
 
-⭐⭐ **Why a coupon HISTORY and not the formula — the argument that already won for factors.**
-A monthly factor history replaced the deal-structure data we thought needed Intex, *because the
-factor already records what the waterfall did*. The same holds here: a monthly coupon history
-records what the formula, the index, the lookback **and the caps** all did, and we model none of
-them. The formula route needs four further things we do not have — the index histories (`COF 11`,
-`12MTA`, `US0003M/6M/12M` are named in the delivered formulas and absent from the reference
-file), the reset convention, the lookback, and ⚠️ the **periodic and lifetime caps**, without
-which a 2009 ARM's computed reset is simply wrong.
+⭐⭐ **Why a coupon HISTORY and not the formula — the argument that already won for factors, and
+it is now MEASURED rather than predicted.** A monthly factor history replaced the deal-structure
+data we thought needed Intex, *because the factor already records what the waterfall did*. The
+same holds here: a monthly coupon history records what the formula, the index, the reset
+anniversary **and the caps** all did, and we model none of them.
 
-⚠️ **The formula block as delivered is not keyed to its rows, and this was measured.** A fixed
-6.5% FNMA pass-through carries `1.000 * US0001M + 0.390%`; inverting each row's formula against
-its own coupon scatters the implied as-of date across twelve months from 2000 to 2023; and the
-agreement rate is **below chance** — 38.2% observed against 56.2% for a random in-range value,
-because the index holds 297 monthly points across 6.7 percentage points. Only 7 of 283 floating
-rows carry a formula at all.
+⭐ **2026-10-14 turned the prediction into a measurement.** The formulas arrived, they are sound
+and they still do not price an ARM. Of the 505 priced pools, 60 carry a floating record in force
+at 2009-03-31 and **17 are testable** (the other 43 wait on `RFUCCT1Y`/`RFUCCT6M`). Every one of
+those 17 residuals is NEGATIVE — the formula sits **0.96 to 3.15 points BELOW** the custodian's
+coupon — and **no single lookback fixes it**, because the residual is non-monotonic in the
+lookback (0d −1.83 · 180d −0.95 · 270d −0.10 · 365d −0.85 · 450d +0.66 · 730d +2.50), the
+1-year Treasury itself having been non-monotonic through 2008.
+
+**The discriminating statistic is not the size of the residual but where each pool's implied
+reset date lands**, because solving for one date per pool always fits:
+
+```
+explained by SOME past index level   17 of 17
+implied index level NEVER OCCURRED    0 of 17
+age of the implied reset date: min 182 · p25 216 · median 251 · p75 439 · max 1,548 days
+within 400 days (an annual reset):   12 of 17 (71%)
+```
+
+⇒ ⭐ nothing is pinned away from the curve, so a periodic cap is **not** the main story: these
+are **annually-resetting ARMs whose anniversaries scatter through the year**, so each pool's
+coupon reflects its own last reset and no book-wide convention can fit them. ⚠️ The five needing
+400–1,548 days (one implying 2005-01-03) are the signature of a **hybrid ARM still inside its
+initial fixed period** — a 5/1 originated in 2004 had not reset once by 2009.
+
+⭐ **One convention settled for free:** the formula tracks the **NET pass-through rate, not the
+gross WAC** — residual against the custodian's net coupon −1.83 against the gross WAC −3.60 at a
+zero lookback.
+
+⚠️⚠️ **And the leveraged records are unbounded without caps.** `2370.000 * US0001M - 15405.000%`
+returns about **−14,220%** at the 2009 LIBOR of 0.50%; there are 74 records of this shape
+(multipliers to 2,370). Any code that evaluates them unguarded publishes that number, so the
+parser must REFUSE rather than return.
+
+⇒ ⭐⭐ **the conclusion for Tier 1 is that the custodian's observed coupon, held constant, remains
+the better input** — it is the actual reset-and-cap-constrained rate, which is more than the
+formula can reconstruct. A realised-coupon path built from formula + index would be the
+valuation-date error repeated monthly. **A coupon HISTORY sidesteps all of it, which is why G7a
+is still the ask.**
+
+### ⚠️⚠️ G7b RETRACTED 2026-10-14 — the formula block was never mis-keyed
+
+This registry said: *"The formula block as delivered is not keyed to its rows, and this was
+measured. A fixed 6.5% FNMA pass-through carries `1.000 * US0001M + 0.390%`; inverting each row's
+formula against its own coupon scatters the implied as-of date across twelve months from 2000 to
+2023; and the agreement rate is below chance — 38.2% observed against 56.2% for a random
+in-range value."*
+
+⭐ **The detection was right; the conclusion was not.** `STRUCTURED_NOTE_CPN_FORMULA` returns a
+**transposed table**, so each security occupies **six sheet rows**, not one:
+
+```
+row k    #  ident │ eff-date-1 │ eff-date-2 │ eff-date-3
+row k+1          │ formula-1  │ formula-2  │ formula-3
+row k+2          │ day-count  │ day-count  │ day-count
+row k+3          │ MNT        │ MNT        │ MNT
+row k+4, k+5     │ (blank separators)
+```
+
+The identifier block runs at **one row per security** and the formula block at **six**, so
+pairing them by row number fails — which is exactly what the null test found. A fixed-rate
+security's own record reads `6.500000% Fixed`, never a LIBOR formula.
+
+**THE PROOF, which needs no index, no lookback and no convention** (`data/mtge.xlsx`,
+2026-10-14): the **437** fixed records among the 505 priced pools, against the custodian's own
+coupon at 2009-03-31 —
+
+```
+median |diff| 0.000000   p90 0.000000   max 0.000000
+within 1 bp   437 of 437 (100%)        EXACTLY EQUAL   437
+```
+
+and the funnel closes with nothing unexplained: `fixed 437 · float 60 · no record for the CUSIP 7
+· record but no period effective by 2009-03-31 1` = **505**.
+
+⇒ **the keying is sound, and the only defect was the earlier export's layout.** ⚠️ The ask that
+went into `docs/mario_message_2026-10-08.md` — "re-export it keyed to CUSIP" — was therefore
+unnecessary. He supplied the key anyway (col 14), so nothing was lost but the claim must not
+survive in the record.
+
+⭐ **What was genuinely learned and still holds:** only 7 of 283 floating rows in the *old* export
+carried a formula, and `2370.000 * US0001M - 15405.000%` evaluates to about **−14,220%** at the
+2009 LIBOR of 0.50% — a leveraged inverse floater's stated formula is not self-sufficient without
+the cap and floor the field does not carry. That is now part of **G7d** below.
 
 ### ⚠️ And G7 retires sheet 04 of the unsent 2026-10-02 pack — after showing it was the part that worked
 
