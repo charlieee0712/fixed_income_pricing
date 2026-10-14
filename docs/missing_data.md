@@ -30,7 +30,7 @@ Working rules derived:
 |---|---|---|---|---|---|
 | G1 | Govt-MBS pool stats, 8 fields | 882 CUSIPs | whole Govt-MBS class (888 rows) | `PoolTerms.from_bloomberg` (+ driver/routing on arrival) | **DELIVERED by Liping 2026-07-30, received 09-25 — 882/882, but as-of the PULL not the valuation date; see below** |
 | G2 | pass-through amortization | 13 uniques (16 tab rows) | 13 corporate securities (out of output) | new schedule table + amortizing-vanilla engine on arrival | ⏳ Mario 07-20 · Liping 07-30 |
-| G3 | FRN/hybrid terms | 11 (3 all-terms + 8 margins) | 8 BT-marked hybrids; 3 FRNs priced imprecisely | `frn_spreads.csv` / `hybrid_switch_terms.csv` — one cell each | ⏳ Mario 07-20 · Liping 07-30 |
+| G3 | FRN/hybrid terms | 11 (3 all-terms + 8 margins) | ~~8 BT-marked hybrids~~ **4 remain** | `frn_spreads.csv` / `hybrid_switch_terms.csv` — one cell each | ⭐ **MOSTLY CLOSED 2026-10-14** — `data/corp.xlsx` filled 4 of the 8 margins and independently confirmed 8 more; 4 Eurobonds remain. See below |
 | G4 | call schedule | 1 (AssuredGty US04622DAA90) | the unpriced 5th corporate callable | one `call_schedules.csv` row | ⏳ Liping 07-30 (first ask) |
 | G5 | deferred / confirmation-only | KTBi · ~~GBP~~+KRW curves · **3 corp + 5 AGY call-schedule confirms** · 1 rating quirk · FHR 3122 ZB | 1 ILB; rest = confirmation | curve txt rows / `call_schedules.csv` / master fix | ⏳ Liping 07-30 (opportunistic); standing plan = Mario MBS touchpoint. **GBP WITHDRAWN 2026-08-30 — see below** |
 | G6 | sovereign curve rows + 2 term gaps | 4 securities (+3 KRW under G5) | 4 Government Bonds unpriced @3-31 | curve txt rows / a coupon-path table | **no request opened (2026-09-03)** |
@@ -173,6 +173,71 @@ bond prices on the hybrid engine, zero code change.**
 Immaterial footnotes (not blocking): Liberty US53079EAN40 freq/day-count; Bear US073928X243
 day-count.
 
+### ⭐⭐ G3 MOSTLY CLOSED 2026-10-14 — `data/corp.xlsx` supplied the post-switch margins
+
+Joined `data/hybrid_switch_terms.csv` to the formula records by ISIN
+(`scratchpad/join_hybrid_margins.py`). **4 gaps filled · 8 independently confirmed · 4 still
+open · 0 genuine disagreements.** Every confirmed row's switch date matched Bloomberg's
+effective date **exactly**.
+
+**FILLED — four rows that had been BT-marked `hybrid-margin-unavailable` since 2026-07-20:**
+
+| asset id | ISIN | Bloomberg record | was |
+|---|---|---|---|
+| `TNTD04509751` | `US17133PAA66` | `US0003M +2.490%` eff **2015-04-15** | Chuo Mitsui, margin "NOT public" |
+| `TNTD04627285` | `US76117JAB44` | `US0003M +2.770%` eff **2016-04-15** | Resona US, margin "NOT public" |
+| `TNTG532803U` | `XS0229704886` | `EUR003M +2.750%` eff **2012-09-27** | Resona EUR, margin "NOT public" |
+| `TNTG532805U` | `XS0229705008` | 4.125% ANN then `EUR003M +2.750%` | ⭐ **LOW confidence, ALL terms unresolved** |
+
+⭐ **And they price.** Corporate output: `hybrid` **10 → 14**, `hybrid-margin-unavailable`
+**8 → 4**, at both dates. Verified cell-for-cell — 31 columns identical, 566 rows both sides, no
+asset id added or removed, and **exactly 4 rows have any changed cell, all four of them these**.
+
+| | BT | implied spread @3-31 | eff dur | to-call |
+|---|---:|---:|---:|---:|
+| Resona US perp 5.85% | 51.0 | **919.6 bp** | 1.749y | 5.023 |
+| Chuo Mitsui perp 5.506% | 42.0 | **1102.5 bp** | 0.291y | 4.391 |
+| Resona EUR perp 4.125% | 40.5 | **1100.7 bp** | −1.802y | 3.089 |
+| Resona EUR sister tranche | 39.504 | **1132.4 bp** | −1.862y | 3.082 |
+
+⭐⭐ **A free consistency check passes:** the two EUR Resona tranches were recorded as *one series
+in two wrappers*, and with identical terms they calibrate to **1100.7** and **1132.4 bp** on
+prices of 40.5 and 39.504. ⚠️ Their negative effective durations are the documented
+deep-discount spread-annuity effect (`frn.py`; CLAUDE.md "4 stay negative … real economics"), not
+a defect, and hybrid spreads stay out of the by-rating medians as before.
+
+**CONFIRMED — eight web-sourced margins, to the basis point, with matching switch dates:**
+Allstate 193.5 · Lincoln 235.75 · Chubb 225 · AmEx 222.75 · GE 228.9 · BofA `EUR003M` 146 ·
+BNP 129 · UniCredit `EUR003M` 176. ⭐ That is an independent validation of the whole 2026-07-20
+ISIN-lookup exercise, which Mario had called "fine as INTERIM but not as precise as bloomberg".
+
+⚠️ **One apparent delta, which is not one.** Liberty Mutual `US53079EAN40`: ours `3M USD LIBOR
++357.6`, Bloomberg `TSFR3M +383.761`. **383.761 − 357.6 = 26.161 bp = exactly the ISDA 3-month
+USD LIBOR spread adjustment** — the same economics restated on the post-transition index, because
+the switch (2037) postdates it. A 2009 valuation discounts on the LIBOR basis, so **ours is kept
+and not overwritten**; the row says why. Lincoln's own second period corroborates the pattern
+(235.75 + 26.161 = 261.911).
+
+⚠️ **One claim of mine corrected in the same pass:** a first reading said the remaining margin
+gaps were "all XS ISINs, so this US-CUSIP file cannot reach them". **`corp.xlsx` carries XS ISINs
+too** — it filled both EUR Resona rows and confirmed BofA and UniCredit. Only **four** are
+genuinely absent.
+
+**STILL OPEN — 4, and all four are Eurobonds the file does not contain:**
+
+```
+TNTG023603W  XS0238543416  BTMU EUR1bn 3.50% sub, switch 2010-12-16
+TNTG527525U  XS0212517550  Resona EUR1bn 3.75% sub due 2015, switch 2010-04-15
+TNTG614042U  XS0244642889  Shinsei LT2 10NC5, 144A tranche, switch 2011-02-23
+TNTG614044U  XS0244642616  Shinsei LT2 10NC5, RegS tranche, same single series
+```
+
+⭐ **Also confirmed for free, and worth keeping:** the records carry Bloomberg's own day counts
+and frequency tokens (`30/360`/`ACT/ACT`/`ACT/360`; `ANN`/`S/A`/`QTL`/`MNT`), and every
+`fixed_freq` we had inferred is right — BofA ANN→1, Lincoln S/A→2, Liberty S/A→2 (previously
+recorded as "freq unverified, s.a. assumed"), UniCredit ANN→1. ⚠️ Our engine runs ACT/364
+throughout by a locked convention, so the day counts are informational, not actionable.
+
 ## G4 — Call schedule: Assured Guaranty US Holdings 6.4% due 2066-12-15
 
 `TNTD04923866 / US04622DAA90`, BT 15.033 — the 5th corporate callable, the only one without a
@@ -180,6 +245,23 @@ day-count.
 — absent from every earlier ask. Need: call schedule (dates + prices); given the 2066 maturity
 and jr-sub profile, also check fixed-to-float terms (if so → `hybrid_switch_terms.csv` too).
 Lands via: one CSV row → the BDT lattice prices it, zero code change.
+
+### ⭐ G4 ADVANCED 2026-10-14 — it is a fixed-to-float, and the ask was half right
+
+`data/corp.xlsx` carries the security: **6.400% Fixed (30/360, S/A) from 2006-12-20, then
+`US0003M +2.380%` (ACT/360, QTL) from 2016-12-15**, and a third period `TSFR3M +2.641610%` from
+2023-09-15 (= 238.0 + 26.161, the same ISDA adjustment as Liberty).
+
+⇒ ⭐ the line above — *"given the 2066 maturity and jr-sub profile, also check fixed-to-float
+terms (if so → `hybrid_switch_terms.csv` too)"* — **was the right instinct and is now answered:
+it IS one.** So this security belongs on the fixed-then-float engine, not on the bare lattice.
+
+⚠️ **What is still missing is what G4 actually asked for: the CALL SCHEDULE.** The file states a
+coupon switch, not a call. In this structure the first call and the switch date coincide almost
+without exception, so **2016-12-15 at par is the overwhelmingly likely first call** — ⚠️ but that
+is an inference about a term the data does not state, so it is recorded here and **NOT written
+into `call_schedules.csv`**. One confirmation from Mario closes it; until then the BT mark stands
+rather than being replaced by a guess.
 
 ## G5 — Deferred / confirmation-only items
 

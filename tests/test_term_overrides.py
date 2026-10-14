@@ -127,12 +127,27 @@ def test_repo_hybrid_terms_lock():
     hyb = load_hybrid_terms(str(_DATA / "hybrid_switch_terms.csv"))
     assert len(hyb) == 18
     with_margin = {a for a, h in hyb.items() if h["margin"] is not None}
-    assert with_margin == {                     # the 10 fully-termed hybrids on the engine
+    assert with_margin == {                     # the 14 fully-termed hybrids on the engine
         "TNTD03009347", "TNTD04735032", "TNTD04967448", "TNTD04986722",   # Allstate/Lincoln/Liberty/Chubb
         "TNTD04794469", "TNTD03057893",                                    # AmEx / GE
         "TNTG010475U", "TNTG522013U",                                      # SMBC / BofA
         "TNTD03020850", "TNTG533596W",                                     # BNP / UniCredit (perps)
+        # ⭐ +4 on 2026-10-14 from Bloomberg's STRUCTURED_NOTE_CPN_FORMULA (`data/corp.xlsx`).
+        # These had been BT-marked `hybrid-margin-unavailable` since 2026-07-20 because no public
+        # source states a post-call reset; `TNTG532805U` had ALL terms unresolved at LOW
+        # confidence. Every switch date we already held matched Bloomberg's effective date exactly.
+        "TNTD04627285", "TNTD04509751",                                    # Resona US / Chuo Mitsui
+        "TNTG532803U", "TNTG532805U",                                      # Resona EUR + its sister
     }
+    # ⭐ the two EUR Resona tranches are one series in two wrappers, so their terms must agree
+    assert (hyb["TNTG532803U"]["margin"] == hyb["TNTG532805U"]["margin"] == 0.0275)
+    assert (hyb["TNTG532803U"]["fixed_rate"] == hyb["TNTG532805U"]["fixed_rate"] == 0.04125)
+    assert hyb["TNTD04509751"]["margin"] == 0.0249                # Chuo Mitsui 3mL+249
+    assert hyb["TNTD04627285"]["margin"] == 0.0277                # Resona US 3mL+277
+    # ⚠️ Liberty NOT overwritten: Bloomberg states TSFR3M+383.761 because the switch postdates
+    # the LIBOR transition, and 383.761 - 357.6 = 26.161bp is exactly the ISDA 3M USD LIBOR
+    # spread adjustment -- the same economics on a different index. A 2009 valuation wants LIBOR.
+    assert hyb["TNTD04967448"]["margin"] == 0.03576
     assert hyb["TNTD03009347"]["margin"] == 0.019350             # Allstate 3mL+193.5
     assert hyb["TNTG010475U"]["margin"] == 0.0225                # SMBC 6mE+225
     assert hyb["TNTG010475U"]["float_freq"] == 2                 # ...paid s.a. after the switch
