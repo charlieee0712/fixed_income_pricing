@@ -959,6 +959,64 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   landed as a data layer: with no margins it has no consumer, and the blocks-vs-confirms rule
   says that is premature. `TSFR1M` starts 2019 and cannot bear on a 2009 valuation.
 
+## The coupon FORMULAS (Mario 2026-10-14) — DONE, 752 tests
+
+- **Three files** in `data/`: `mtge.xlsx` (1,305 securitised rows), `corp.xlsx` (811 corporate),
+  `index.xlsx` (6,697 × 47, DAILY index histories). Commits `f94fef7` · `da556e7` · `73164db` ·
+  `9ae156d`. Full record: WORKLOG 2026-10-14. His instruction is a **user PARAPHRASE flagged as
+  approximate** — treat the wording as such; the data confirms its substance exactly.
+- **⭐⭐ `STRUCTURED_NOTE_CPN_FORMULA` returns a TRANSPOSED six-row record per security**:
+  row k = effective dates · k+1 = formulas · k+2 = day counts · k+3 = frequency · k+4/5 blank,
+  three period columns wide. GREENPOINT `US39538WHF86` is Mario's own example: `US0001M+0.210%`
+  from 2006-04-28, `+0.420%` from 2019, Term SOFR from 2023.
+- **⚠️⚠️ THIS RETRACTED the 2026-10-07 "not keyed to its rows"** — see the retraction in the
+  previous section. Identifiers run at ONE row per security, formulas at SIX. **Proof: 437 of
+  437 fixed records match the custodian's own coupon EXACTLY (max |diff| 0.000000).**
+- **⭐⭐ G3 MOSTLY CLOSED — 4 hybrids BT-marked since 2026-07-20 now price.** Chuo Mitsui
+  `+2.490%`, Resona US `+2.770%`, Resona EUR `+2.750%` and its sister (which had been **LOW
+  confidence, ALL terms unresolved**, and came back IDENTICAL to the sister — confirming they are
+  one series in two wrappers). route `hybrid` **10→14**, `hybrid-margin-unavailable` **8→4**,
+  priced **555→559** @3-31. Spreads 1102.5 / 919.6 / 1100.7 / 1132.4 bp. **Exactly 4 rows of 566
+  changed.** ⭐ **8 more margins CONFIRMED to the basis point**, validating the 07-20 ISIN lookup.
+  ⚠️ **Liberty is NOT a delta and NOT overwritten**: `TSFR3M +383.761` − `3M LIBOR +357.6` =
+  **26.161 bp = the ISDA spread adjustment**; a 2009 valuation wants LIBOR.
+  ⚠️ **The 4 remaining are IN the file with the field EMPTY, not absent** ⇒ re-asking the same
+  mnemonic will not help. ⚠️ **`corp.xlsx` is NOT US-CUSIP-only** — it carries XS and DE ISINs.
+- **⭐ G4 advanced** (AssuredGty is a fixed-to-float, switch 2016-12-15 ⇒ belongs on `hybrid.py`;
+  the CALL schedule is still the ask, and 2016-12-15 at par is an **inference not written in**).
+  **⭐ G7c CLOSED** (`70337U100`→FIXED 5.775%, `31358BAA6` FNMA PRIN STRIP→ZERO); `unresolved`
+  5→3 and **absent from the Tier-1 column**, exactly one cell moving in 882 rows.
+- **`data/coupon_formula.csv` (1,411 rows / 1,227 securities) + `src/dataio/coupon_formula.py`.**
+  ⭐⭐ **A PARSER, NOT A MODEL:** `rule_in_force` returns a rule; `coupon_from_rule` is the only
+  function that makes a number and the only one that refuses. FIVE grammars. ⚠️ Traps: an index
+  name may START WITH A DIGIT (`12MTA`); the margin may be NEGATIVE; `-1.000` is an **ordinary**
+  inverse floater (285 of 451 are |mult|=1). ⭐ `COUPON_BAND_PCT = (0, 20)` is **MEASURED** —
+  every coupon in the book (n=1,983) lies in [0.0000, 9.3500]. ⚠️ **The band is the test, not the
+  multiplier:** `2370 * US0001M − 15405%` gives **−14,220%**, but `-4.000 * US0001M + 28.600%`
+  gives 26.6% while *inside* the continuous multiplier range (which runs to 7.083 then jumps to
+  44.8 / 1,970.6 / 2,370). Both locks mutation-verified.
+- **⭐⭐ THE ARM FINDING — the formulas are sound and still do not price an ARM.** 17 testable of
+  60; every residual NEGATIVE by 0.96–3.15 pts and **non-monotonic in the lookback** (the 1y
+  Treasury was). ⚠️ My first sweep stopped at 120 days, far short of an annual reset. The
+  discriminating statistic is WHERE the implied resets land (solving one date per pool always
+  fits): **17/17 explained, 0 needing a level that never occurred, ages 182–1,548 days, median
+  251, 71% within 400** ⇒ annually resetting ARMs with scattered anniversaries + 5 hybrid ARMs
+  still in their fixed period. ⭐ The formula tracks the **NET** rate, not the gross WAC.
+  ⇒ ⭐⭐ **the custodian's observed coupon held constant remains the better Tier-1 input**; a
+  realised path from formula + index is the valuation-date error repeated monthly. ⚠️ [Fable
+  corrected my first framing, which called that path "the prize".]
+- **Still missing — a six-series ask:** `RFUCCT1Y` 30 refs · `RFUCCT6M` 13 · `US0012M` 5 ·
+  `EUR003M` 5 · `US0006M` 1 · `H15T5Y` 1. The first two block **42 of the 60** ARM pools. Plus
+  the **ARM reset anniversaries** and the **periodic/lifetime caps** (G7d).
+- **⚠️ A TRAP IN OUR OWN RECORD:** `release_facts.py` reads `implied_oas_2009-03-31.csv` as the
+  BASELINE and the **UNDATED `implied_oas.csv` as the 2009-06-10 CONTROL**. The control's date
+  lives only in the driver invocation, never in the filename. I assumed the undated file was the
+  baseline and wrote the wrong artifact once.
+- ⚠️ **Mario's exception rule vs ours, UNSETTLED:** he said floating/variable with no formula ⇒
+  treat as fixed. The mortgage book complies already; the **4 remaining corporate hybrids do
+  not** (BT-marked), and fixing a perpetual's coupon forever at BT 40–52 would give a wild
+  spread. Raise it, do not decide it.
+
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
 
 - **⭐⭐ DIFF THE REQUEST AGAINST THE CLAIM, as an ASSERTION not a memory.** The 09-29 pack

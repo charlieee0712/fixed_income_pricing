@@ -5,6 +5,150 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-10-14 — the coupon FORMULAS arrive: a retraction, G3 closed, and a parser
+
+**Commits:** `f94fef7` (the retraction) · `da556e7` (four hybrids price) · `7e38205` /
+`9ae156d` (release facts, G7c) · `73164db` (the parser). **Suite 732 → 752.**
+
+**What arrived:** `data/mtge.xlsx`, `data/corp.xlsx`, `data/index.xlsx`, 2026-10-14 09:59, with
+a method instruction the user recorded as a PARAPHRASE and flagged as approximate: *"for fixed
+… coupon treated like a constant number, fixed with frequency. And now for floating, variable
+etc. it changes from a constant number to a formula, eg: same bond and different dates,
+2007-2013: LIBOR+60BPS, 2013-2019: LIBOR+120BPS. STRUCTURED_NOTE_CPN_FORMULA is the column
+which has the formulas … transform these formulas into python codes."* Exception: *"if
+floating/variable bonds, but with no formula, treat them as fixed, because no data."*
+⭐ **The checkable part of that recollection is confirmed exactly** — see below.
+
+**⭐⭐ THE STRUCTURE: a TRANSPOSED six-row record per security**, anchored where cols 13/14
+carry `#` and an identifier: row k = effective dates · k+1 = formulas · k+2 = day counts ·
+k+3 = frequency · k+4/k+5 blank. `US39538WHF86` GREENPOINT MTG FDG TR 2006-AR3 is literally
+Mario's example — `US0001M + 0.210%` from 2006-04-28, `+0.420%` from 2019-07-25, then
+`1.000 * (TSFR1M + 0.114%) + 0.420%` from 2023-07-25.
+
+**⚠️⚠️ RETRACTED — "the formula block is NOT keyed to its rows" (2026-10-07) was wrong.** It
+was carried in four places. ⭐ **The detection was right and the conclusion was not:** the
+identifier block runs at ONE row per security and the formula block at SIX, so pairing by row
+number fails — which is exactly what the below-chance null test found. A fixed security's own
+record reads `6.500000% Fixed`, never a LIBOR formula. **Proof, needing no index, no lookback
+and no convention: the 437 fixed records among the 505 priced pools match the custodian's own
+coupon EXACTLY — median, p90 and max |diff| all 0.000000, 437 of 437**, and the funnel closes
+(fixed 437 + float 60 + no record 7 + no period by 2009-03-31 1 = 505). ⚠️ The evidence had
+been in hand: I called the block "ragged, a different KIND of value per row" when those were
+different ROWS OF ONE RECORD, and this session's own decode printed **1,193 date-serials and
+exactly 1,193 day-counts** in one column — equal counts are what a repeating record looks like.
+
+**⭐⭐ G3 MOSTLY CLOSED — four hybrids BT-marked since 2026-07-20 now price.** Joined
+`hybrid_switch_terms.csv` to the records by ISIN: **4 filled · 8 confirmed · 4 open · 0 genuine
+disagreements**, every confirmed row's switch date matching Bloomberg's effective date exactly.
+
+```
+TNTD04509751 US17133PAA66 Chuo Mitsui   US0003M +2.490% 2015-04-15   BT 42.0     1102.5 bp
+TNTD04627285 US76117JAB44 Resona US     US0003M +2.770% 2016-04-15   BT 51.0      919.6 bp
+TNTG532803U  XS0229704886 Resona EUR    EUR003M +2.750% 2012-09-27   BT 40.5     1100.7 bp
+TNTG532805U  XS0229705008 Resona sister 4.125% ANN then the same     BT 39.504   1132.4 bp
+```
+
+route `hybrid` **10 → 14**, `hybrid-margin-unavailable` **8 → 4** at both dates; priced
+**555 → 559** @3-31 and 550 → 554 @6-10. Verified: 31 columns identical, 566 rows, no id added
+or removed, **exactly 4 rows with any changed cell, all four of them these.**
+⭐ **A free consistency check passes:** `TNTG532805U` had been LOW confidence with ALL TERMS
+UNRESOLVED and came back IDENTICAL to its sister, confirming the recorded reading that the two
+are one series in two wrappers — and with identical terms they calibrate to 1100.7 / 1132.4 bp.
+⚠️ Their negative durations are the documented deep-discount spread-annuity effect, not a defect.
+**CONFIRMED to the basis point:** Allstate 193.5 · Lincoln 235.75 · Chubb 225 · AmEx 222.75 ·
+GE 228.9 · BofA `EUR003M` 146 · BNP 129 · UniCredit `EUR003M` 176 — an independent validation of
+the whole 2026-07-20 ISIN-lookup exercise.
+⚠️ **One apparent delta is not one, and is NOT overwritten:** Liberty Mutual, ours
+`3M LIBOR +357.6` against Bloomberg `TSFR3M +383.761`, and **383.761 − 357.6 = 26.161 bp is
+exactly the ISDA 3M USD LIBOR spread adjustment** — the same economics on the post-transition
+index. A 2009 valuation wants the LIBOR basis, so ours stays. Lincoln's own second period
+corroborates (235.75 + 26.161 = 261.911).
+⚠️ **The 4 that remain are PRESENT IN THE FILE WITH THE FIELD EMPTY**, not absent: BTMU
+`XS0238543416`, Resona `XS0212517550`, Shinsei `XS0244642889` / `XS0244642616`. ⇒ **re-asking
+for the same mnemonic will not help** — a materially different ask.
+
+**⭐ G4 ADVANCED:** Assured Guaranty `US04622DAA90` is in the file as a fixed-to-float (6.400%
+30/360 S/A from 2006-12-20, then `US0003M +2.380%` from 2016-12-15, then TSFR3M +2.641610% =
+238.0 + 26.161). That answers the registry's own "also check fixed-to-float terms" line — it IS
+one, so it belongs on `hybrid.py` rather than the bare lattice. ⚠️ But G4 asked for a CALL
+SCHEDULE and the file gives a coupon switch; 2016-12-15 at par is the likely first call and is
+recorded as an **inference, deliberately NOT written into `call_schedules.csv`**.
+
+**⭐ G7c CLOSED.** Both `#N/A Invalid Security` holdings resolved: `70337U100` PATRONS LEGACY →
+FIXED 5.775% monthly; `31358BAA6` FNMA PRIN STRIP → ZERO COUPON (independently consistent with
+a description saying "PRIN PMT ON"). `coupon_structure.csv` `unresolved` 5 → 3, and **exactly
+one cell moved in the 882-row Tier-1 artifact** — `unresolved` is now ABSENT from that column
+(`fixed 607 · floating 189 · variable 3 · zero 83`). ⚠️ It also refutes a speculation of mine:
+the 10-08 entry said `70337U100`'s "`100` suffix is an equity shape, so the master is the
+likelier fault". `US70337U1007` resolves fine with full terms.
+
+**⭐ A FREE CROSS-CHECK of the 10-07 table:** `Type of Coupon` against this pull's `CPN_TYP`,
+two pulls a week apart, 1,294 CUSIPs in both — **1,292 agree (99.85%)** and the 2 that differ
+are the two resolutions above, not conflicts. 37 are in the older table only (the agencies,
+which `mtge.xlsx` excludes by design); **0 the other way.**
+
+**⭐⭐ NEW `data/coupon_formula.csv` (1,411 rows / 1,227 securities) + `src/dataio/
+coupon_formula.py` + 19 tests.** 959 fixed, 451 float, 1 margin-only; periods per security
+{1: 1076, 2: 118, 3: 33}. **A PARSER, NOT A MODEL** — `rule_in_force` returns a rule,
+`coupon_from_rule` is the only function that makes a number and the only one that can refuse.
+FIVE grammars. ⚠️ Three traps, each of which cost a wrong first answer: an index name may START
+WITH A DIGIT (`12MTA`), the margin may be NEGATIVE, and a `-1.000` multiplier is an **ordinary**
+inverse floater (285 of the 451 float periods are |mult| = 1).
+⭐ **The refusal band is MEASURED:** every coupon observed anywhere in this book (n = 1,983)
+lies in **[0.0000, 9.3500]**, so `COUPON_BAND_PCT = (0.0, 20.0)`.
+`2370.000 * US0001M - 15405.000%` returns about **−14,220%** at the 2009 LIBOR and now raises.
+⚠️ **The band is the test, not the multiplier** — multipliers run continuously to 7.083 then
+jump to 44.8 / 1,970.6 / 2,370, but `-4.000 * US0001M + 28.600%` gives 26.6% inside the
+continuous band, so a multiplier rule would pass it. Both locks mutation-verified.
+
+**⭐⭐ THE ARM FINDING — the formulas are sound and still do not price an ARM.** Of the 60
+floating pools in the 505, **17 testable** (43 wait on `RFUCCT*`); every residual NEGATIVE by
+0.96–3.15 points, and **non-monotonic in the lookback** (0d −1.83 · 180d −0.95 · 270d −0.10 ·
+365d −0.85 · 450d +0.66 · 730d +2.50) because the 1-year Treasury was. ⚠️ **My first sweep
+stopped at 120 days — far short of an annual reset — and the median was still falling.**
+The discriminating statistic is WHERE the implied reset dates land, since solving one date per
+pool always fits: **17 of 17 explained by some past index level, 0 needing a level that never
+occurred, ages min 182 / median 251 / max 1,548 days, 71% within 400.** ⇒ annually resetting
+ARMs whose anniversaries scatter, plus five hybrid ARMs still inside their initial fixed period.
+⭐ Settled for free: the formula tracks the **NET** pass-through rate, not the gross WAC (−1.83
+against net, −3.60 against gross).
+⇒ ⭐⭐ **the custodian's observed coupon, held constant, remains the better Tier-1 input**, and
+a realised-coupon path from formula + index would be the valuation-date error repeated monthly.
+⚠️ **[Fable corrected me here]** — my first draft called that path "the prize".
+
+**⭐ `index.xlsx`** — 6,697 rows × 47 cols, DAILY: `US0001M` 6,252 (**2009-03-31 = 0.50063%**) ·
+`US0003M` 6,252 · `H15T1Y` 6,697 · `12MTA` 321 · `COF 11` 264 · `ECOFC` 56 · TSFR1M/3M/6M and
+SOFR30A/90A (post-2018, irrelevant to 2009). ⚠️ **Still missing, and now a six-series ask:**
+`RFUCCT1Y` 30 refs · `RFUCCT6M` 13 · `US0012M` 5 · `EUR003M` 5 · `US0006M` 1 · `H15T5Y` 1 —
+the first two alone block **42 of the 60** ARM pools.
+
+**⚠️ A TRAP IN OUR OWN RECORD, found by tripping over it:** `release_facts.py` reads
+`implied_oas_2009-03-31.csv` as the BASELINE and the **UNDATED** `implied_oas.csv` as the
+**2009-06-10 CONTROL**. The control's date lives only in the driver invocation, never in the
+filename, so the undated file is NOT the baseline — the natural first reading, and the one I
+made. Same hazard `CLAUDE.md` records for `callable_risk.csv`, except load-bearing here.
+
+**⚠️ Own slips, recorded:** Python through a bash heredoc (forbidden since 2026-09-26) for the
+two-row G7c edit — it worked, but the rule exists so that working is not luck; a `⭐` in a
+`print()` on a GBK console, twice; the claim that the remaining margin gaps were "all XS ISINs
+so this US-CUSIP file cannot reach them" (**`corp.xlsx` carries XS and DE ISINs** and filled two
+of them); and a hardcoded `2026-10-07` in the driver's own output, now read from the table.
+
+**Open / next**
+- **The message to Mario.** Lead with G3: his corporate file priced four bonds we could not,
+  and confirmed eight margins to the basis point. Then the six index series, the ARM reset
+  anniversaries and the caps. ⚠️ **The 10-08 message is SUPERSEDED and one clause in it is now
+  false** ("the rows out of step") — strike if unsent, correct in a sentence if sent. **Unknown
+  which, and worth asking.**
+- ⚠️ **A divergence from Mario's own exception rule to settle:** he said floating/variable with
+  no formula ⇒ treat as fixed. The mortgage book already complies (custodian coupon held, with
+  the disclosure). The **4 remaining corporate hybrids do not** — they are BT-marked, and
+  treating a perpetual as fixed-forever at BT 40–52 would give a wild spread. Ours to raise.
+- `BOOK_CPR_PCT` still **25.0**; the gross-vs-net decision still open.
+- `COVERAGE.md` and `PROJECT_STATUS.md` still not updated for the mortgage book.
+
+---
+
 ## 2026-10-07/08 — Mario's coupon files: the structure bit arrives, and a third of the book floats
 
 **Commits:** `39cdc62` (explainer) · `0eb7711` (the data layer) · `2164be3` (the 132 disclosed)
