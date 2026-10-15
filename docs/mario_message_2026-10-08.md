@@ -5,10 +5,21 @@
 > clause *"the formulas in the big file also came through with the rows out of step, a fixed 6.5%
 > Fannie pool sitting next to a LIBOR one"* describes a **row-pitch** problem of our reading, not
 > a defect in his export — the field returns a transposed six-row record per security and the
-> block was correctly keyed all along (`missing_data.md` G7b, retracted). ⭐ **If this message was
-> sent, the next one corrects that clause in a sentence; if it was not, strike it.** The rest of
-> the message — the coverage win, our own 40.3% recall, the per-class table, the ask for a monthly
-> coupon history — all still stands, and the ask is now sharper (see the 2026-10-14 round).
+> block was correctly keyed all along (`missing_data.md` G7b, retracted).
+>
+> ⭐⭐ **NEVER SENT — confirmed by the user 2026-10-14 — so nothing wrong reached Mario and
+> nothing needs correcting to him.** ⚠️ And its central correction is now MOOT: it was built
+> around "your note said all fixed or zeros; a third of the securitised book is not", and his
+> own 2026-10-14 instruction opens *"And now for floating, variable etc."* — he is already
+> there. Restating it would relitigate something he has moved past.
+>
+> ⚠️ **But not sending it also means the 412 CMO/CMBS/ABS factor-history ask has never reached
+> him**, and that is now the largest outstanding gap in the project — the 2026-10-02 pack that
+> carried it was never sent either. It is named in one line of
+> `docs/mario_message_2026-10-14.md` and goes separately.
+>
+> **Superseded by `docs/mario_message_2026-10-14.md`.** Kept because it records the 40.3%-recall
+> measurement and the per-class shares, which remain true and are cited elsewhere.
 
 **Channel:** WhatsApp, the same thread his files arrived in. **No attachment** — the ask is a
 list of 393 CUSIPs that is a filter of his own file, so it can go as a spreadsheet when he
