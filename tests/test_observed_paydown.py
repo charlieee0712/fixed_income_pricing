@@ -136,6 +136,14 @@ def _validation_rows():
 
 @pytest.mark.skipif(not (DATA / "factor_history.csv").exists(),
                     reason="factor history not present")
+# ⚠️ This test also reads two GENERATED files out of `outputs/`, which is git-ignored and is
+# deliberately NOT shipped in the Drive package. Without the second guard it FAILED rather
+# than skipped for anyone who merely opened the folder -- found 2026-10-15 while refreshing
+# that package, where the README promises a green suite on arrival. A check that cannot run
+# must say so; it must not look like a broken engine.
+@pytest.mark.skipif(not (OUTPUTS / f"pool_risk_{VAL}.csv").exists()
+                    or not (OUTPUTS / "mbs_data_check_2026-07-30.csv").exists(),
+                    reason="driver output not present -- run scripts/pool_risk.py first")
 def test_the_engine_reproduces_the_2026_10_01_validation():
     """⭐ The three figures that justified building this route. Pinned so a tidy-up cannot
     drift them without going red: principal 100.0000, realised CPR median 23.94%, and

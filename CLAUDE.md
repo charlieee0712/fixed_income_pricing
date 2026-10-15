@@ -110,13 +110,34 @@ checks — those are decided here, from the repo.
 - **Package = the git-ignored staging FOLDER `code_structure_sample/` only. ⚠️ NO ZIP
   (user, 2026-08-31: "google drive可以直接传folder") — Drive uploads folders directly, so
   zipping was pure overhead. All packaging zips were deleted; regenerate none.** Contents:
-  numbered docs (`00_README` · `01_weekly_report` md+PDF · `02_code_walkthrough` md+PDF ·
-  `03_json_excel_interface` · `04_previous_report` · `05_round_detail` ·
-  `06_delivery_evidence`) + `src/ tests/ scripts/ integrations/` copied in (robocopy `/E`,
+  ⚠️ **the numbering drifted and this list was stale until 2026-10-15 — ACTUAL contents:**
+  `00_README` · `01_weekly_report` md+PDF · `02_azure_service` md+PDF · `03_previous_report`
+  md+PDF · `04_code_walkthrough` md+PDF · `05_json_excel_interface` · `06_delivery_evidence` ·
+  `07_release_facts` + `conftest.py` + `pytest.ini`
+  + `src/ tests/ scripts/ integrations/ data/` copied in (robocopy `/E`,
   **never `/MIR`** — the path guard rejects it; and `Remove-Item` must be its own command,
   the guard reads `/E` in a combined line as a path). User drags the folder to Drive.
   **Refresh the folder's doc copies after ANY late edit to the source docs** — the 08-31
   audit corrected five numbers in the weekly report *after* the folder was built.
+  ⭐⭐ **REFRESHED 2026-10-15: 278 files / 43.9 MB.** On arrival `pytest -q` gives **736 passed,
+  17 skipped, exit 0**; running `tier1_structured.py` then `pool_risk.py` at both dates takes it
+  to **753**, and ⭐ the two mortgage artifacts it produces are **byte-identical** (sha256) to the
+  repo's. Against the 09-30 package: 14 of 17 artifacts unchanged, 2 new, 3 changed (2 from the
+  corporate four, and `pool_risk_2009-03-31.csv` whose **text digest is identical** —
+  `d4d022e3b04735bb` both times — so only previously-blank cells were filled).
+  ⚠️⚠️ **TWO BUGS THE REFRESH FOUND, and only running the package could have found them:**
+  ① `test_observed_paydown.test_the_engine_reproduces_the_2026_10_01_validation` **FAILED rather
+  than skipped** without `outputs/`, so a recipient opening the folder saw a RED suite while the
+  README promised green — it reads two generated files and had a guard for the data file only.
+  Fixed; a check that cannot run must say so, not look like a broken engine.
+  ② ⭐ **`scripts/tier1_structured.py` was NOT RUNNABLE from a fresh package**: it needs
+  `outputs/mbs_data_check_2026-07-30.csv`, which needs `outputs/govt_mtge_bdp_template.csv`,
+  and **nothing regenerates the template**. Both are static records of the July pull — i.e.
+  **INPUTS living in `outputs/`** — so the package now ships exactly those two and the README
+  says what they are. ⚠️ **FOLLOW-UP, not done: move both into `data/`** where inputs belong
+  (touches `tier1_structured.py`, `mbs_data_check.py`, `make_mario_request.py`; no number moves).
+  ⚠️ `04_code_walkthrough` is still the 09-10 one and does not describe the mortgage files added
+  since; the README now says so rather than implying it is current.
   Same for the handoff bundles: `docs/handoff_for_claude_web_1/` and `_2/` are folders the
   user uploads; their zips are gone too and are only worth rebuilding if claude.ai ever
   needs an archive rather than files.
