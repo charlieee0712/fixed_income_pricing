@@ -1071,13 +1071,15 @@ before this file's per-round sections, which are records rather than explanation
   `scripts/make_mario_request.py` — **separate from `make_bloomberg_request.py` on purpose**:
   that one is the record of what went to Liping and must keep saying what it said.
   Message + its rationale = `docs/mario_message_2026-10-02.md`.
-- **⚠️ 37 of the 412 carry no ISIN or CUSIP in the custodian file** — so no request LINE
-  could be written for them. ⚠️ **Do not escalate this to "unreachable by any pull"** (an
-  earlier draft did): their descriptions carry deal / series / class, and a Bloomberg CMO
-  ticker is `<DEAL> <SERIES> <CLASS> Mtge`, so they are plausibly findable by hand. That
-  route is UNTESTED, which is why it stayed out of a favour pack — a different reason from
-  impossible. Disclosed in the README and the message, because `375 ≠ 412` is the first
-  thing a careful reader notices.
+- ~~**⚠️ 37 of the 412 carry no ISIN or CUSIP in the custodian file**~~ **⭐⭐ CLOSED
+  2026-10-14 — all 37 now have a well-formed CUSIP, supplied by `data/mtge.xlsx`, none
+  malformed.** The ask is **412 of 412**, and `scripts/make_412_request.py` ASSERTS 412 so the
+  old number cannot creep back. ⚠️ `scripts/make_mario_request.py` still enforces
+  `375 + 37 == 412` and is therefore the record of what the UNSENT 10-02 pack said — leave it
+  saying that; the new generator is the live one. [Was: no request line could be written for
+  them; their descriptions carry deal / series / class and a Bloomberg CMO ticker is
+  `<DEAL> <SERIES> <CLASS> Mtge`, so they were plausibly findable by hand but the route was
+  untested. It never had to be tested — his own pull carried the identifiers.]
 - **⚠️ THE 412 ARE 18.2% OF THE BOOK BY COUNT AND 4.8% BY PAR VALUE.** Quote both, or say
   which. Mario reads a portfolio percentage as value, so the count alone overstates by ~4x
   — and it overstates in the direction that flatters whatever we are asking for.
