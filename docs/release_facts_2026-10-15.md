@@ -1,6 +1,6 @@
-# Release facts — Round 2b hardening
+# Release facts — 2026-10-15
 
-**Generated from the live repository at `0dff2c7` on 2026-10-15.** Every number below is
+**Generated from the live repository at `420b225` on 2026-10-15.** Every number below is
 read out of a file a driver just wrote. Regenerate with `PYTHONPATH=src python
 scripts/release_facts.py` after any code-bearing change, and re-run the drivers first.
 
@@ -106,5 +106,5 @@ says so in the row it appears in — not only in prose somewhere else.
 
 ## Test suite
 
-`pytest -q` → **753 passed in 69.74s (0:01:09)** (local, Python 3.13.5).
+`pytest -q` → **753 passed in 63.61s (0:01:03)** (local, Python 3.13.5).
 
