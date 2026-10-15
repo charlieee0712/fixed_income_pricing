@@ -66,9 +66,10 @@ building. We do not mention the misreading at all — it would introduce a probl
 > gives them.
 >
 > • Or instead of both — the *realised monthly coupon* for the 192 pools in the government
-> mortgage book that aren't fixed-rate, 2009 onward. Same shape as the factor history, and it
-> makes the other two unnecessary, because it records what the formula, the index and the caps
-> all actually did.
+> mortgage book that aren't fixed-rate, 2009 onward. This isn't a step back from the formulas:
+> they give us the rule, and this gives what the rule produced on each date, which is the part
+> we can't work out ourselves. Same shape as the factor history, and it makes the other two
+> unnecessary.
 >
 > One note so you don't spend time on it: four margins are still missing — BTMU, a Resona euro
 > issue, the two Shinsei tranches — and all four *are* in the file; the formula field just comes
