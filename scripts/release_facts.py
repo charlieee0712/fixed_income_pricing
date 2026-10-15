@@ -80,7 +80,12 @@ def main() -> None:
     out = []
     w = out.append
 
-    w("# Release facts — Round 2b hardening\n")
+    # The title used to read "Round 2b hardening" -- frozen in August 2026 and still
+    # saying it two months and six rounds later, on line 1 of the file the package's
+    # README tells the reader to believe over every other document. A living artifact
+    # must not carry a dead header: name the date it describes, which the generator
+    # knows, rather than the round that happened to birth it.
+    w(f"# Release facts — {dt.date.today()}\n")
     w(f"**Generated from the live repository at `{head}`"
       f"{' (working tree DIRTY)' if dirty else ''} on {dt.date.today()}.** Every number below is")
     w("read out of a file a driver just wrote. Regenerate with `PYTHONPATH=src python")

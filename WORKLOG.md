@@ -108,10 +108,27 @@ README saying **753** beside an `07_release_facts` saying **752**, because of th
 above. ⭐ Regenerating was the entire fix and it also re-proved the round:
 `docs/release_facts_2026-10-15.md` differs from the 10-14 file in **exactly two lines** — the
 provenance header (a **clean** tree at `0dff2c7`, where 10-14's said DIRTY) and the pytest line
-— with **all 13 artifact hashes identical**, i.e. independent evidence that a week of documents
-moved no number. The report's appendix now names the 10-15 file. ⇒ **a package is not refreshed
-until its own cross-references agree**: the numbering, the test count, and the file the README
-tells the reader to trust.
+— with **all 19 artifact hashes identical** (10 production outputs + 9 disposition sidecars),
+i.e. independent evidence that a week of documents moved no number. The report's appendix now
+names the 10-15 file. ⇒ **a package is not refreshed until its own cross-references agree**:
+the numbering, the test count, and the file the README tells the reader to trust.
+
+**⚠️⚠️ AND THE SAME MISTAKE, ONE PARAGRAPH LATER, IN THE SENTENCE ABOUT IT.** That count was
+written **13** first — in CLAUDE.md, here, and in `f734512`'s commit message. 13 is the
+**2026-09-10** figure; the securitised round added `tier1_structured_2009-03-31.csv` and its
+sidecar, and the pool pair and their sidecars landed before that. ⭐ Habit #8 — *do not
+hand-maintain a number that has an authoritative source* — broken inside the paragraph whose
+subject is a hand-maintained number going stale, and caught only because someone counted the
+rows. **Count them; they are in the file.** (The commit message is wrong and stays wrong;
+this is its correction.)
+
+**⚠️ AND LINE 1 OF THAT FILE READ `# Release facts — Round 2b hardening`** — an August round
+name, still there two months and six rounds later, on the first line of the document the
+package's README tells Mario to believe over every other. The *"living doc with a frozen
+header"* trap from h2 §1, shipped that way since 09-30 and never read by anyone who would
+notice. `scripts/release_facts.py` now writes the **generation date**, which it already knows.
+⭐ Re-diffed after the change: line 1, the provenance line and the pytest timing — nothing
+else, all 19 hashes still identical.
 
 **⚠️ Own slip, recorded.** Reflowing one paragraph of the report with `perl -0pi -e` and a
 `\x{2014}` in the replacement **double-encoded 76 sequences** in the file — perl upgrades the

@@ -145,8 +145,17 @@ checks — those are decided here, from the repo.
   `test_exception_wiring` is parametrized per source file, so the suite went 752 → **753 with
   no test written**. ⭐ Regenerating is the whole fix — `docs/release_facts_2026-10-15.md`
   differs from the 10-14 file in **exactly two lines**, the provenance header (now a CLEAN tree
-  at `0dff2c7`, where 10-14's said DIRTY) and the pytest line; **all 13 artifact hashes
-  identical**, which independently proves the deliverables round moved no number. The package
+  at `0dff2c7`, where 10-14's said DIRTY) and the pytest line; **all 19 artifact hashes
+  identical** (10 production + 9 sidecars), which independently proves the deliverables round
+  moved no number. ⚠️ **That count was first written as 13 — habit #8 broken inside the very
+  paragraph about a hand-maintained number going stale.** 13 is the 2026-09-10 figure; the
+  securitised round added `tier1_structured_2009-03-31.csv` and its sidecar, and the pool pair
+  and its sidecars came in before that. **Count the rows in `release_facts`, never recall them.**
+  (⚠️ Commit `f734512`'s message carries the wrong 13; this is the correction.)
+  ⭐ **And line 1 of that file read "Release facts — Round 2b hardening" until 2026-10-15** —
+  an August title on the file the README tells the reader to believe over every other document,
+  the "living doc with a frozen header" trap from h2 §1, shipped that way since 09-30.
+  `scripts/release_facts.py` now writes the generation date instead of a round name. The package
   now ships `07_release_facts_2026-10-15` and the report's appendix names that file.
   ⇒ **the rule to carry: a package is not refreshed until its own cross-references agree** —
   the doc numbering, the test count, and the file the README tells the reader to trust.
