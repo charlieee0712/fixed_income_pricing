@@ -281,8 +281,9 @@ rate caps or the realised coupon for its 192 moving-coupon pools), and a larger 
 **Running it.** `PYTHONPATH=src python scripts/tier1_structured.py` writes
 `outputs/tier1_structured_2009-03-31.csv`, 882 rows, alongside a companion file accounting for
 every security that did not price. The pool and corporate books have their own commands; all
-outputs and their checksums are listed in `docs/release_facts_2026-10-14.md`, which is generated
-from the files rather than typed.
+outputs and their checksums are listed in `docs/release_facts_2026-10-15.md` — the file
+numbered `07_release_facts` in the folder you received — which is generated from the
+files rather than typed.
 
 **Nothing else moved.** Every other output is unchanged from the 2026-10-08 record except the
 corporate book, which gained the four bonds in §5.2 — verified row by row, with the row count,

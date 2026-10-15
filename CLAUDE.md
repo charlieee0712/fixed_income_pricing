@@ -138,18 +138,34 @@ checks — those are decided here, from the repo.
   (touches `tier1_structured.py`, `mbs_data_check.py`, `make_mario_request.py`; no number moves).
   ⚠️ `04_code_walkthrough` is still the 09-10 one and does not describe the mortgage files added
   since; the README now says so rather than implying it is current.
+  ⚠️⚠️ **AND THE PACKAGE CONTRADICTED ITSELF ON ITS OWN AUTHORITY, caught 10-15 on the audit
+  pass:** the README says *"if a number disagrees with `07_release_facts`, believe the release
+  facts"* — and shipped a README saying **753** beside a `07_release_facts` saying **752**.
+  The gap was real and automatic: `762c644` added `scripts/make_412_request.py`, and
+  `test_exception_wiring` is parametrized per source file, so the suite went 752 → **753 with
+  no test written**. ⭐ Regenerating is the whole fix — `docs/release_facts_2026-10-15.md`
+  differs from the 10-14 file in **exactly two lines**, the provenance header (now a CLEAN tree
+  at `0dff2c7`, where 10-14's said DIRTY) and the pytest line; **all 13 artifact hashes
+  identical**, which independently proves the deliverables round moved no number. The package
+  now ships `07_release_facts_2026-10-15` and the report's appendix names that file.
+  ⇒ **the rule to carry: a package is not refreshed until its own cross-references agree** —
+  the doc numbering, the test count, and the file the README tells the reader to trust.
   Same for the handoff bundles: `docs/handoff_for_claude_web_1/` and `_2/` are folders the
   user uploads; their zips are gone too and are only worth rebuilding if claude.ai ever
   needs an archive rather than files.
 - **⭐ THE PACKAGE NOW SHIPS `data/` TOO (user, 2026-09-05: "带客户数据应该没事吧 这是正常的").**
   It is Mario's OWN material coming back to him — the URS portfolio, the two legacy pricing
   workbooks, 26 curve exports, our 6 override CSVs. Consequence: the package is
-  **self-contained — `pytest -q` gives the full 424 there, not 290**, and all four drivers run
-  and reproduce the committed hashes. Package ≈ **36 MB / 206 files** (was 1.9 MB). The
+  **self-contained — `pytest -q` runs the whole suite there, not the 290 that run without data**,
+  and all four drivers run and reproduce the committed hashes. Package was **36 MB / 206 files**
+  at 09-05 (from 1.9 MB) ⚠️ — **for the current size and pass counts read the 10-15 block above**,
+  never these; this bullet records the DECISION, not the measurements. The
   README's "Running it" section now says so, plus a line asking that distribution stay with
   people who already hold the data. ⚠️ The old README text "This folder carries the code, not
   the portfolio" is RETIRED — do not restore it. ⚠️ Still strip `__pycache__` / `.pytest_cache`
-  after any in-package test run, and do NOT ship the generated `outputs/`.
+  after any in-package test run, and do NOT ship the generated `outputs/` — ⚠️ **with the TWO
+  named exceptions found 10-15** (`govt_mtge_bdp_template.csv` + `mbs_data_check_2026-07-30.csv`,
+  static records of the July pull that are inputs, not results; see the block above).
 - **PDF = `python scripts/md_to_pdf.py --input X.md --output Y.pdf`** (2026-08-25). One local
   command; the old pandoc@47 → HTML → local-Edge dance is RETIRED (local Python has `markdown`,
   Edge is installed). The script carries three Edge flags that each fail **silently** —
@@ -989,7 +1005,7 @@ for a reader coming back cold. It deliberately does NOT re-explain the concepts 
 its §13 is a provenance table giving the source of every headline number in it. Start there
 before this file's per-round sections, which are records rather than explanations.
 
-## The coupon FORMULAS (Mario 2026-10-14) — DONE, 752 tests
+## The coupon FORMULAS (Mario 2026-10-14) — DONE, 753 tests
 
 - **Three files** in `data/`: `mtge.xlsx` (1,305 securitised rows), `corp.xlsx` (811 corporate),
   `index.xlsx` (6,697 × 47, DAILY index histories). Commits `f94fef7` · `da556e7` · `73164db` ·

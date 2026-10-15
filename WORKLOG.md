@@ -5,6 +5,137 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-10-14/15 — The deliverables: a walkthrough, two messages, the report, and the package
+
+**Commits:** `1b6e318` (message one, drafted) · `e70bff6` (the walkthrough) · `13c8b50`
+(393 → 192) · `762c644` (message two + the 412 list) · `0c71a5e` (one sentence) · `25b6d55`
+(the report) · `0dff2c7` (the package, and a check that failed instead of skipping).
+**Suite 752 → 753** — ⭐ **+1 with no test written**: `762c644` added
+`scripts/make_412_request.py` and `test_exception_wiring` is parametrized per source file.
+⚠️ **Nothing has been sent.** Everything below is drafted, rendered and staged.
+
+**⭐ THE WALKTHROUGH — the narrative nobody had written down.**
+`docs/mortgage_book_walkthrough_2026-10-14.md`, 395 lines / 3,834 words, seven acts from July's
+engine-with-no-data to 882 published rows. ⭐ It deliberately does **not** re-explain the
+mechanism: the split is **narrative + decisions here, mechanism in
+`three_tier_method_explained_2026-10-06.md`**, and a table at the top says which file answers
+which kind of question. One worked example carries the whole arc — `31402CZR6` FNMA POOL
+#725352 at factor 0.44041654, six months of it printed, the principal column summing to
+**44.041654 = factor(0) × 100**, so the decomposition is checked by hand inside the document
+that explains it. §10 = *measure what happened, don't model what should have*; §11 = *don't
+publish a number whose sign or units you can't vouch for*, with its five instances and "run the
+null"; §13 = a provenance table giving the source of every headline number in the file.
+`CLAUDE.md` gained a **READ FIRST** pointer above its own per-round sections, because those are
+records and this is the explanation.
+
+**TWO MESSAGES, and two is the decision, not an accident of length.**
+`docs/mario_message_2026-10-14.md` (**557 words**) replies to his instruction: the G3 win leads
+(four hybrids priced, eight margins confirmed to the basis point), then the formulas are in the
+code, then the one thing they cannot do, then one ask. `docs/mario_message_2026-10-14_412.md`
+(**348 words**) opens by ranking itself below the first and asks for the 412.
+⭐ **The reason they are separate is that they are a different DECISION for him, not a different
+population:** the first asks him to finish a book that already runs, the second to open a class
+we have not started. He can reasonably say yes to one and defer the other, and bundling forces
+one answer onto unequal things. Both are **WhatsApp markup** — checked: zero pipes, zero `**`,
+zero backticks, zero headers in either body.
+
+**⚠️⚠️ A DEFECT IN THE ASK, caught on review (`13c8b50`).** The third bullet first asked for the
+realised monthly coupon of **"the 393 that aren't fixed-rate"**. Measured: **192 are in the
+government mortgage book, which we price; 201 are in the 412, which we price none of** — no
+factor history, never requested. ⭐ A coupon without a balance builds no cash flow, so half the
+request would have arrived unusable, and it invites the obvious question of why we want coupons
+for bonds we cannot price. **Scoped to 192**, and the 201 moved into message two where they are
+asked for *beside* the balances that make them usable.
+
+**`0c71a5e` — one sentence, and it was the one that mattered.** The same bullet implied the
+coupon history would **replace** the formulas. It completes them: the formula gives the rule,
+the history gives what the rule produced after the caps and the resets — which is precisely the
+part we cannot work out. ⚠️ Read the other way it says "your three files were the wrong thing",
+which is both false and the opposite of the message's own opening.
+
+**⭐⭐ THE "375 ≠ 412" CAVEAT IS GONE, and his own pull is what removed it.** The unsent 10-02
+pack could write only **375** request lines because **37 of the 412 carried no ISIN or CUSIP in
+the custodian file**, and the README had to disclose it. Measured 10-14: **all 37 now have a
+well-formed CUSIP**, supplied by `data/mtge.xlsx`. `docs/bloomberg_412_request_2026-10-14.xlsx`
+= a **LIST, not a pack** (two sheets, 412 rows × 8 columns, 412 distinct CUSIPs, 0 malformed),
+and `scripts/make_412_request.py` **asserts 412** rather than trusting the filter — the
+09-29 lesson applied. Ask = `MTG_FACTOR` monthly 20090301 → 20260930 for all 412 **plus** `CPN`
+for the 201, in one sitting: **412 × 211 + 201 × 211 = 129,343 values** against September's
+complete 79,336.
+⚠️ **An assertion earned its keep immediately:** `rate_behaviour == "rate-sensitive"` returns
+**195, not 201** — it correctly excludes STEP, which moves on known dates rather than with
+rates. The data-request predicate is *not fixed and not zero*. Found by the generator's own
+check, not by reading it.
+
+**THE REPORT.** `docs/weekly_report_2026-10-14.md` + PDF, **2,896 words** against the 09-30
+benchmark's **2,498** counted the same way. ⭐ **Its subject is the 09-30 report's own closing
+promise** — *"we will know within days whether these 756 securities can be valued without
+buying deal models"* — so the title is the answer: *the mortgage book without the deal models,
+858 of 882 priced*. It states the amortising-vs-bullet divergence from the call in §1 rather
+than burying it, carries the I/O refusal, the DV01 ≠ CS01 split (27 of 27 forwards against 0 of
+757 everywhere else) and §5.3's Tier-2 conclusion. **Two numbers corrected while drafting,
+both by reading the CSV instead of the memory of it:** the TBA durations are *not* strictly
+one-sided (quote median 2.85y against the custodian's 1.82y and 5 of 27 past the threshold),
+and the realised WAL is quoted with its population. **Jargon sweep: one hit in 300 lines, and
+it is in the appendix**, which is where the rule puts it.
+
+**THE PACKAGE — refreshed 2026-10-15, 278 files / 43.9 MB.** Docs renumbered (`01` the new
+report, `03` the 09-30 one demoted, `07` the release facts; Azure, the walkthrough, the
+interface contract and the round-2 audit unchanged), `src/ tests/ scripts/ integrations/ data/`
+re-copied with robocopy `/E`. ⭐ **Verified by running it, not by building it:** a cold
+`pytest -q` in the folder gives **736 passed / 17 skipped / exit 0**, the two mortgage programs
+take it to **753**, and the two artifacts they write are **byte-identical by sha256 to the
+repo's** — self-contained in the sense the word is supposed to have. Against the 09-30 package:
+**14 of 17 artifacts unchanged, 2 new, 3 changed**, and the third of those only by filling
+previously blank cells (`pool_risk_2009-03-31.csv`, text digest `d4d022e3b04735bb` both times).
+Zero caches, zero orphans, no zip.
+
+**⚠️⚠️ TWO BUGS, and only running the package could have found either.**
+① `test_observed_paydown.test_the_engine_reproduces_the_2026_10_01_validation` **failed rather
+than skipped** without `outputs/`. It reads two *generated* files and guarded on the *data*
+file only ⇒ anyone who opened the folder and ran `pytest -q` saw **1 failed** while the README
+promised green. ⭐ **A check that cannot run must say so; it must not look like a broken
+engine.** ② ⭐ **`scripts/tier1_structured.py` was not runnable from a fresh package at all**:
+it needs `outputs/mbs_data_check_2026-07-30.csv`, which needs
+`outputs/govt_mtge_bdp_template.csv`, and **nothing regenerates the template**. Both are static
+records of the July pull — **inputs living in `outputs/`** — so the package ships exactly those
+two, 318 KB, and the README says what they are instead of quietly contradicting its own
+"results are not shipped".
+
+**⚠️⚠️ AND THE PACKAGE CONTRADICTED ITS OWN AUTHORITY.** Its README says *"if a number in a
+document ever disagrees with `07_release_facts`, believe the release facts"* — and it shipped a
+README saying **753** beside an `07_release_facts` saying **752**, because of the automatic test
+above. ⭐ Regenerating was the entire fix and it also re-proved the round:
+`docs/release_facts_2026-10-15.md` differs from the 10-14 file in **exactly two lines** — the
+provenance header (a **clean** tree at `0dff2c7`, where 10-14's said DIRTY) and the pytest line
+— with **all 13 artifact hashes identical**, i.e. independent evidence that a week of documents
+moved no number. The report's appendix now names the 10-15 file. ⇒ **a package is not refreshed
+until its own cross-references agree**: the numbering, the test count, and the file the README
+tells the reader to trust.
+
+**⚠️ Own slip, recorded.** Reflowing one paragraph of the report with `perl -0pi -e` and a
+`\x{2014}` in the replacement **double-encoded 76 sequences** in the file — perl upgrades the
+whole slurped string and re-encodes every pre-existing non-ASCII byte on output. Restored from
+git and redone with a Python patch script written to the scratchpad, which reports the em-dash
+and double-encode byte counts after writing. ⭐ **The 2026-09-26 "no Python through a heredoc"
+rule has a sibling: no in-place rewrite of a UTF-8 file through a tool whose encoding you have
+not named.** Caught in the same breath only because the console rendering looked wrong.
+
+**Open / next**
+- ⚠️ **Nothing is sent.** Ready: the report (md + PDF), message one, message two, and the 412
+  list as its attachment. The Drive folder is staged for the user to drag.
+- ⚠️ **Mario's exception rule vs ours still unsettled** — floating/variable with no formula ⇒
+  treat as fixed. The mortgage book complies; the 4 remaining corporate hybrids are BT-marked,
+  and fixing a perpetual's coupon forever at BT 40–52 would give a wild spread. His call.
+- **Move `govt_mtge_bdp_template.csv` and `mbs_data_check_2026-07-30.csv` into `data/`**, where
+  inputs belong (touches `tier1_structured.py`, `mbs_data_check.py`, `make_mario_request.py`;
+  moves no number).
+- `BOOK_CPR_PCT` still **25.0**, the gross-vs-net decision still open; `COVERAGE.md` and
+  `PROJECT_STATUS.md` still not updated for the mortgage book; the 10-02 pack still needs
+  rebuilding before any send (drop sheet 04, take sheet 03's population from `Type of Coupon`).
+
+---
+
 ## 2026-10-14 — the coupon FORMULAS arrive: a retraction, G3 closed, and a parser
 
 **Commits:** `f94fef7` (the retraction) · `da556e7` (four hybrids price) · `7e38205` /
