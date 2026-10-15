@@ -65,9 +65,10 @@ building. We do not mention the misreading at all — it would introduce a probl
 > • For the ARMs, the reset anniversary and the periodic and lifetime caps, if the terminal
 > gives them.
 >
-> • Or instead of both — the *realised monthly coupon* for the 393 that aren't fixed-rate, 2009
-> onward. Same shape as the factor history, and it makes the other two unnecessary, because it
-> records what the formula, the index and the caps all actually did.
+> • Or instead of both — the *realised monthly coupon* for the 192 pools in the government
+> mortgage book that aren't fixed-rate, 2009 onward. Same shape as the factor history, and it
+> makes the other two unnecessary, because it records what the formula, the index and the caps
+> all actually did.
 >
 > One note so you don't spend time on it: four margins are still missing — BTMU, a Resona euro
 > issue, the two Shinsei tranches — and all four *are* in the file; the formula field just comes
@@ -101,6 +102,15 @@ way would read as "your method doesn't work", and his method *did* work — it c
 ⭐ **`2370 × LIBOR − 15405%` is quoted verbatim** because one real example does the work of a
 paragraph, and he will recognise a leveraged inverse floater instantly.
 
+⚠️⚠️ **A DEFECT IN THE ASK, caught on review and corrected.** The third bullet first read
+**"the realised monthly coupon for the 393 that aren't fixed-rate"**. Measured: of those 393,
+**192 are in the government mortgage book — which we price — and 201 are in the 412
+CMO/CMBS/ABS, which we price none of**, because they have no factor history and none has ever
+been requested. ⭐ A coupon without a balance builds no cash flow, so half of that request would
+have arrived unusable, and it invites the obvious question of why we want coupons for bonds we
+cannot price. **Scoped to 192.** The 412 need *both* series and they go in their own message —
+see below.
+
 **The ask is ordered smallest-first and ends with the option that replaces the other two.** The
 six index series are small, definite and block 42 of 60 pools. The reset dates and caps may not
 be terminal fields at all. The realised coupon history is the one that closes everything —
@@ -131,9 +141,21 @@ keyed and we misread its row pitch. ⭐ Telling him would create a problem he ne
 
 **④ The 412 factor-history pull itself.** Named in one line, sent separately. ⚠️ This is the
 largest outstanding gap in the project and it has NEVER been put to him — the 2026-10-02 pack
-that carried it was never sent either. Two asks in one message makes a shopping list, and this
-one deserves its own framing (it needs the pack, and it has the "37 of 412 carry no ISIN or
-CUSIP" caveat to disclose).
+that carried it was never sent either.
+
+⭐ **Separate, and the reason is that it is a different DECISION for him, not just a different
+population.** This message asks him to finish a book that is already running; that one asks him
+to open a class we have not started. He can reasonably say yes to one and defer the other, and
+bundling forces a single answer on unequal things. It also needs room of its own: **412
+securities** (not 375 — see below), **two** series rather than one, about **129,000** values,
+and the 18.2%-by-count against 4.8%-by-par framing.
+
+⭐⭐ **And the caveat that pack had to carry is GONE, because of his own files.** The 2026-10-02
+pack could write only **375** request lines; **37 of the 412 carried no ISIN or CUSIP in the
+custodian file**, which the README and message had to disclose because "375 ≠ 412 is the first
+thing a careful reader notices". Measured 2026-10-14: **all 37 now have a well-formed CUSIP**,
+supplied by `data/mtge.xlsx`, none malformed. ⇒ **the ask is 412 of 412 with nothing to
+apologise for** — a second, unplanned payoff from the pull he already ran.
 
 **⑤ Anything about who is at a terminal.** He signed both messages "Mario & Lipping"; we address
 both and say nothing about availability.
