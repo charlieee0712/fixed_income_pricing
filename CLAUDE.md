@@ -959,6 +959,15 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   landed as a data layer: with no margins it has no consumer, and the blocks-vs-confirms rule
   says that is premature. `TSFR1M` starts 2019 and cannot bear on a 2009 valuation.
 
+## ⭐ READ FIRST for the mortgage book — `docs/mortgage_book_walkthrough_2026-10-14.md`
+
+The **narrative** of the whole securitised arc, July → October: how it went from an engine with
+no data to 882 published rows, what was decided at each fork, and what we got wrong. ⭐ Written
+for a reader coming back cold. It deliberately does NOT re-explain the concepts — the split is
+**narrative + decisions here, mechanism in `three_tier_method_explained_2026-10-06.md`** — and
+its §13 is a provenance table giving the source of every headline number in it. Start there
+before this file's per-round sections, which are records rather than explanations.
+
 ## The coupon FORMULAS (Mario 2026-10-14) — DONE, 752 tests
 
 - **Three files** in `data/`: `mtge.xlsx` (1,305 securitised rows), `corp.xlsx` (811 corporate),
