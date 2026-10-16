@@ -1402,6 +1402,34 @@ before this file's per-round sections, which are records rather than explanation
   run scripts via **`PYTHONPATH=src python3 scripts/…`**, run tests via **`.venv/bin/python -m pytest`** (pytest
   is in the repo `.venv`, NOT conda's `python3` — bare `python3 -m pytest` fails "No module named pytest"). Quick
   iter: `scp` the file to 47 then run (working-tree edit), or push + `git pull`. Use `ssh -o BatchMode=yes 47`.
+- **⭐⭐ 47 IS REACHED THROUGH A JUMP HOST SINCE 2026-10-15 — and `ssh 47` works plainly again.**
+  This machine has **no route to 192.168.2.0/24**: the default route belongs to the
+  `LightXtreme` tunnel (172.18.0.1 → 172.18.0.2), so a direct connect to `192.168.2.47:9047`
+  gets **`kex_exchange_identification: Connection reset by peer`** — ⚠️ which looks like sshd
+  refusing us and is really *no route*. General SSH egress is fine (github:22 and :443 both
+  answer), and both older gateways (`120.233.173.78:4240`, `14.152.90.124:10014`) time out
+  **during banner exchange**, i.e. TCP connects and nothing answers.
+  **The fix is one line of config, not a new tunnel.** `~/.ssh/config` now starts with
+  `Include ~/.secrets_csi1000/shuxun47_via_yingjia.cfg` (which already defined `gpubox` and
+  `shuxun47` with a `ProxyJump`, from the csi1000 side on 2026-10-09) and `Host 47` gained
+  **`ProxyJump gpubox`** + keepalives. ⚠️ **Do NOT copy the jump host's address or account into
+  `~/.ssh/config`** — that is the user's standing rule for that secrets file ("只用路径引用,
+  不贴内容"); the include keeps `~/.ssh/config` knowing only the word `gpubox`. Backup of the
+  previous file: `~/.ssh/config.config.bak-20261015`. The default key authenticates to 47
+  end-to-end, so no `IdentityFile` is needed on the `47` block.
+  ⚠️ **The relay is SLOW: measured 25 KB/s uplink** (1 MB scp = 39.6 s), matching the csi1000
+  note of "<37 KB/s". Git compresses, so it is not as bad as it sounds: the **8.3 MB / 52-commit
+  push took 2m12s**. A big file still wants the 47-pulls-it-directly trick, not this hop.
+  **The test suite on 47 takes 5m02s** (against 67 s locally).
+  ⭐ **The standing carry-over "`git push 47 main` when VPN restored" is DONE (2026-10-15):**
+  47 was at `5922bf9` (the 09-30 round), fast-forwarded to **`ddadfae`**, 52 commits, tree
+  clean, **736 passed / 17 skipped** there. ⚠️ The 17 skips are correct and are the *outputs
+  absent* state — 47's `outputs/` is git-ignored and still holds the 09-30 artifacts, so the
+  mortgage checks skip. ⭐ **On this morning's code that would have been 1 FAILED** (the guard
+  fixed in `0dff2c7`), so the fix proved itself on a second machine within the day.
+  **Not done, and offered rather than assumed:** re-running the drivers on 47
+  (`PYTHONPATH=src python3 scripts/platform_parity.py --run`) to refresh its `outputs/` and
+  compare text digests against `release_facts_2026-10-15` — it overwrites artifacts there.
 - **47 data mirrored locally (2026-07-18):** `data/` + `extracted/` + `outputs/` copied 47→local (68 files;
   sizes verified). `extracted/`/`outputs/` git-ignored both sides; `data/` **tracked in full (59 files)** —
   the 6 root duplicates removed (see canonical-location note above). ⚠️ Windows scp quick-iter leaves **CRLF** working-tree copies
