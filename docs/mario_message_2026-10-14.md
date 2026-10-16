@@ -71,9 +71,10 @@ building. We do not mention the misreading at all — it would introduce a probl
 > we can't work out ourselves. Same shape as the factor history, and it makes the other two
 > unnecessary.
 >
-> One note so you don't spend time on it: four margins are still missing — BTMU, a Resona euro
-> issue, the two Shinsei tranches — and all four *are* in the file; the formula field just comes
-> back empty. Re-pulling it won't help.
+> One note so you don't spend time on it: four margins are still missing — BTMU, one more
+> Resona euro bond (the 2015 maturity, not either perpetual above), and the two Shinsei
+> tranches. All four *are* in the file; the formula field just comes back empty. Re-pulling
+> it won't help.
 >
 > *And on those four I haven't followed your rule, so I'd rather show you the numbers than
 > argue it.* You said: coupon moves, no formula, treat it as fixed. In the mortgage book that

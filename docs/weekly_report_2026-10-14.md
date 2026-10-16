@@ -254,14 +254,15 @@ from prospectuses agree with your file **to the basis point**, with the same swi
 **Four others are still at your mark, and there your rule and our treatment differ.** You
 said that where a coupon moves but no formula exists, it should be treated as fixed, since
 there is no data. In the mortgage book that is exactly what we do, on all 192 holdings whose
-coupon moves. These four we have held back instead — BTMU, a Resona euro issue and the two
-Shinsei tranches, all four present in your file with the formula field simply empty. Each
-switches to a floating coupon on a date we already know, between one and two years after the
-valuation date, with about five years to run after that, so a fixed treatment would assert a
-coupon the bond does not pay for roughly three quarters of its remaining life.
+coupon moves. These four we have held back instead — BTMU, the Resona euro issue maturing in
+**2015** (a different bond from either perpetual above) and the two Shinsei tranches. All four
+are present in your file with the formula field simply empty. Each switches to a floating
+coupon on a date we already know, between one and two years after the valuation date, with
+about five years to run after that, so a fixed treatment would assert a coupon the bond does
+not pay for roughly three quarters of its remaining life.
 
 ⭐ **We priced them your way in any case, because a refusal is only worth as much as the
-number it refuses:** **137 bp** for BTMU at 93.77, **713** for the Resona euro issue at
+number it refuses:** **137 bp** for BTMU at 93.77, **713** for that Resona 2015 issue at
 70.53, **1,133** and **1,315** for the two Shinsei tranches at 52.00 and 46.76. Those are
 sensible numbers — they sit beside the four above, which priced on real margins at 920 to
 1,132. ⚠️ But each is an **upper bound**, and knowably so: after the switch these pay a
