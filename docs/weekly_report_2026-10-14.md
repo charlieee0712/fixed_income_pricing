@@ -6,14 +6,19 @@
 
 ## 1. The short version
 
-Two weeks ago this report ended on a question: *if the repayment history comes back, we will
-know within days whether these securities can be valued without buying deal models.*
+Two weeks ago this report ended on a question: *if the factor history comes back, we will know
+within days whether these 756 securities can be valued without buying deal models.*
 
-**The history came back, and the answer is yes.**
+**It came back for the 344 of those that sit in the government mortgage book, and the answer
+is yes.** The other 412 are the category still waiting for the same data (§6).
 
-* Of the 882 government mortgage securities, **505 priced a fortnight ago and 858 price now.**
+* Of the 882 government mortgage securities, **505 priced a fortnight ago and 858 price now**
+  — 784 of them with a spread and a risk number, and 74 interest-only strips with a price but
+  no risk number, for the reason in §4.1.
 * Of the **377** we listed then as unpriceable — each one named — **353 now price.** The
   remaining **24** are still named, and their reasons are in §4.4.
+* **341 of the 344 slices of structured deals are among them** — the holdings the last report
+  said would need the deal models themselves.
 * It works across **five different kinds of security** — whole pools, slices of a deal,
   principal-only strips, interest-only strips and forward contracts — with **one** method and
   no deal rules of any kind.
@@ -21,12 +26,19 @@ know within days whether these securities can be valued without buying deal mode
 ⚠️ **One thing we did differently from the call, and it should not be buried.** You said to
 treat these as bullet bonds first — all the principal returning on the legal maturity date. We
 amortised them instead. On the securities whose repayment history we hold, the legal maturity
-is a median of **24.3 years** away while the money actually came back in a median of **3.0** —
-about **seven times** too long, which would have added roughly twenty years of duration to more
-than half the book by count. ⭐ And your own Tier 1 slide permits the choice: it asks for cash
-flows that do not respond to prepayment or to rates, and a *recorded* repayment history is
-exactly that — it is history, so it responds to nothing. The amortising treatment costs nothing
-and is the more realistic effective-life representation your Tier 2 slide already lists.
+is a median of **24 years** away while the principal actually came back in a median of **3.2**
+— security by security, a median of **6.4 times** sooner. Taken as a bullet, the typical
+mortgage holding would have carried roughly **twenty extra years** of duration.
+
+⭐ **Your own custodian says the same thing without being asked:** its effective duration
+across the whole securitised book — present on 1,290 of the 1,294 holdings — has a median of
+**2.0 years**, against a median legal life of **24.8**. Two independent sources, sharing no
+inputs, agree the money comes back early.
+
+⭐ And your own Tier 1 slide permits the choice: it asks for cash flows that do not respond to
+prepayment or to rates, and a *recorded* repayment history is exactly that — it is history, so
+it responds to nothing. The amortising treatment costs nothing and is the more realistic
+effective-life representation your Tier 2 slide already lists.
 
 ⭐ **And outside the mortgage book**, the coupon formulas you sent on Tuesday let **four
 corporate bonds price that have been held at the custodian's mark since July**, and confirmed
@@ -95,7 +107,7 @@ of these, with no special case for any of them:**
 | the holding | why nothing special is needed |
 |---|---|
 | a whole pool | the factor is the pool's own balance |
-| **a slice of a deal** — 184 of them | the factor is *that slice's* balance, so the pouring has already happened before we see the number |
+| **a slice of a deal** — 191 of them | the factor is *that slice's* balance, so the pouring has already happened before we see the number |
 | **principal only** — 76 | there is no interest line. Its rate is literally 0.000% |
 | **interest only** — 74 | there is no principal line; interest is earned on a shrinking amount |
 | a slice that takes its interest as more debt rather than in cash | the principal line comes out negative and cancels the interest exactly — which is what such a slice pays that month: nothing |
@@ -107,17 +119,19 @@ finished.** That is the whole of it, and it is why no deal model is needed.
 
 ## 3. What came out, and how we checked it before trusting it
 
-**858 of the 882 now carry a price, a spread and a risk number.** There are two ways to know
+**858 of the 882 now carry a price, and 784 of those a spread and a risk number** — the 74
+interest-only strips are the difference, and §4.1 says why. There are two ways to know
 how much money comes back each month, and the report says on every row which one was used:
 
 * **predict it** — assume a rate at which borrowers repay early, then work out the schedule.
   **458 securities.** ⚠️ This only works for *a percentage of the bucket*, and indeed all 458
   are exactly that. These are the pools already priced in September; their history was never
   requested, because they did not need it.
-* **read the record** — the factor method above. **373 securities.** ⭐ **353 of these are
-  glasses**, where prediction cannot work however good the assumptions, because the pouring
-  rules decide the answer and we do not have them. Reading the glass sidesteps the rules
-  completely.
+* **read the record** — the factor method above. **373 securities.** ⭐ **341 of these are
+  glasses** — 341 of the 344 in the whole book — where prediction cannot work however good the
+  assumptions, because the pouring rules decide the answer and we do not have them. Reading the
+  glass sidesteps the rules completely. The other 32 are ordinary pools that happen to have a
+  history, 20 of them deliberately (below).
 * and **27 forward contracts**, priced as forwards (§4.2).
 
 ⭐ **Twenty securities were put deliberately in both groups** — ordinary pools we already priced
@@ -167,8 +181,8 @@ flows cannot express, so Phase 1 publishes its price and withholds its duration.
 
 Twenty-seven holdings are agreements to buy an unspecified pool on a date weeks after the
 valuation date. Everywhere else in this book a move in the base rate and a move in the spread
-are the same arithmetic — across the other **757** securities the two sensitivities differ on
-**none**. On a forward they differ on **all 27**, by exactly the settlement period, and the
+are the same arithmetic — across the **757** other securities that carry both numbers they
+differ on **none**. On a forward they differ on **all 27**, by exactly the settlement period, and the
 reason is plain: **a rate move changes both what the pool is worth and what it costs to finance
 it until settlement; a spread move changes only what it is worth.**
 
@@ -186,8 +200,10 @@ duration**.
 ⭐ **The valuations are unaffected** — the coupon level we use is the custodian's own at the
 valuation date. What a fixed-coupon duration assumes is not the level but that the level
 *stays*. Those 132 now say so on the row. Where we can see the principal repaying month by
-month, only the interest moves with the coupon — about a sixth of the value — so the error is
-bounded at roughly **1.8 years**, against the twenty that a bullet treatment would have cost.
+month, only the interest moves with the coupon — a median of a sixth of the value — and even
+taking the worst tenth of the book on both the size of that interest and the length of its
+life, the error is bounded at **1.8 years**, against the twenty that a bullet treatment would
+have cost. The typical case is under half a year.
 ⚠️ For 61 of the 132 we have no recorded principal either, so that bound does not apply to them
 and each of those rows says so.
 
@@ -235,6 +251,27 @@ recorded as "all terms unknown"; it came back identical to its sister tranche, w
 confirms the two are one issue in two wrappers. Eight further margins we had found ourselves
 from prospectuses agree with your file **to the basis point**, with the same switch dates.
 
+**Four others are still at your mark, and there your rule and our treatment differ.** You
+said that where a coupon moves but no formula exists, it should be treated as fixed, since
+there is no data. In the mortgage book that is exactly what we do, on all 192 holdings whose
+coupon moves. These four we have held back instead — BTMU, a Resona euro issue and the two
+Shinsei tranches, all four present in your file with the formula field simply empty. Each
+switches to a floating coupon on a date we already know, between one and two years after the
+valuation date, with about five years to run after that, so a fixed treatment would assert a
+coupon the bond does not pay for roughly three quarters of its remaining life.
+
+⭐ **We priced them your way in any case, because a refusal is only worth as much as the
+number it refuses:** **137 bp** for BTMU at 93.77, **713** for the Resona euro issue at
+70.53, **1,133** and **1,315** for the two Shinsei tranches at 52.00 and 46.76. Those are
+sensible numbers — they sit beside the four above, which priced on real margins at 920 to
+1,132. ⚠️ But each is an **upper bound**, and knowably so: after the switch these pay a
+floating rate, and the euro market at the valuation date implied 2.7% to 5.1% across exactly
+that window before any margin at all, against the 3.5–3.75% a fixed treatment holds. Add a
+margin of the size your own file shows on comparable issues and the real coupon is nearer 5
+to 7%, so fixing it understates the cash flows and widens the spread. **Say the word and
+they go in with that caveat on the row; otherwise they wait for a margin, which is one cell
+each.**
+
 ### 5.3 ⭐⭐ What the formulas cannot do — and what that says about Tier 2
 
 We put the formulas into the valuation code as dated rules, exactly as you described: one bond,
@@ -244,9 +281,10 @@ several periods, each with its own start date, index and margin.
 31 March 2009 the formula gives a rate **one to three points below** what the custodian reports
 — all seventeen we can currently test, every one in the same direction. The reason is the
 reset: these pools reset **once a year on their own anniversary**, so in March 2009 one is
-carrying a rate set the previous June and another one set in December, and the one-year
-Treasury moved about **two and a half points** across that window. The formula is right. It
-cannot tell us which date to apply it on.
+carrying a rate set the previous June, when the one-year Treasury stood at **2.36%**, and
+another one set in December, when it was **0.37%**. Across those twelve months the one-year
+ranged over **2.3 points** — almost exactly the range of the gaps we see. The formula is
+right. It cannot tell us which date to apply it on.
 
 ⭐ **The conclusion is about Tier 2, not about the formulas.** For the principal leg, the
 empirical route turned out to be a *recorded history* rather than a model — that is §2. This
@@ -262,7 +300,7 @@ a deliberate choice rather than a gap.
 
 **The 412.** The non-government CMOs, the commercial mortgage-backeds and the asset-backeds
 have **no repayment history of any kind**. They are **18.2% of the portfolio by number of
-holdings and 4.8% by par value** — the count makes them sound larger than they are, but they
+holdings and 4.9% by par value** — the count makes them sound larger than they are, but they
 are the last category with nothing behind them. **201 of the 412 (49%) also have a moving
 coupon**, so they need both series.
 

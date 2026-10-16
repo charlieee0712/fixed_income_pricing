@@ -138,6 +138,89 @@ and double-encode byte counts after writing. ⭐ **The 2026-09-26 "no Python thr
 rule has a sibling: no in-place rewrite of a UTF-8 file through a tool whose encoding you have
 not named.** Caught in the same breath only because the console rendering looked wrong.
 
+**⭐⭐ THE PRE-SEND AUDIT (2026-10-15) — every number in the report re-derived from the
+artifacts, and nine did not survive.** The user asked for one last self-review before the
+package goes to Drive. Each correction below is a measurement made today, not a document read.
+
+* **⭐ "353 of these are glasses" → 341.** 353 is the count NEWLY priced by the observed route
+  (373 less the 20 deliberate overlaps); the non-pass-through count is 341. ⭐ And the better
+  fact was sitting beside it: the book holds **344 slices** — exactly the 09-30 report's own
+  number, remic 185 + cmo 7 + po 76 + io 76 — **341 of which now price**, and **none of the 344
+  was among the 505**. That is now section 1's third bullet.
+* **⚠️ "858 carry a price, a spread and a risk number" → 858 a price, 784 both.** The report's
+  own §4.1 contradicted it four paragraphs later: the 74 I/O strips are priced with their risk
+  numbers withheld, which is the point of §4.1.
+* **⚠️ The legal-life / WAL triple was the PLAN's, not the artifact's.** 24.32 / 2.99 / 6.87×
+  came from `cc_plan_govt_mbs_amortising_tier1_2026-10-06.md`, written before the engine
+  existed. Re-measured on what we publish: **24.24 / 3.17 / 6.43×** over the **299**
+  observed-path securities that receive principal at all (the 373 less the 74 I/O strips, which
+  receive none and therefore have no average life). The legal side reproduces to two decimals;
+  the WAL lengthened because the engine's residual treatments extend the tail.
+  ⭐ **And never divide the two medians:** 24.24/3.17 is 7.6× while the honest per-security
+  median is 6.43×, so the old sentence invited the reader to contradict its own "seven times".
+* **⚠️ "more than half the book by count" was a different denominator.** The 57% is the
+  **securitised 1,294 of the 2,260-security portfolio**, not a share of the 882 — and it sat in
+  a paragraph that had been talking about the 882. Replaced with the measured consequence.
+* **⚠️ §4.3 chained a median to a p90×p90 bound.** "only the interest moves — about a sixth of
+  the value — so the error is bounded at 1.8 years" takes `w_int` median **15.3%** and the bound
+  from **36.7% × 4.83y**. A reader multiplying a sixth by a 2.7-year life gets 0.45, not 1.8.
+  Now says both, and that the typical case is under half a year.
+* **⚠️ §5.3's one-year Treasury.** June 2008 **2.36%** was right; December was **0.37%**, not
+  "nearer 0.5%"; and the window is a **2.3-point RANGE** (2.68 high, 0.34 low) — the 12-month
+  *change* is only **0.98 points**, so "moved about two and a half points" was the range wearing
+  the word "moved". The walkthrough's provenance line has the same loose label.
+* **⚠️ The 412 by par value: 4.9%, not 4.8%** — measured 4.94% on signed par and 4.86% on
+  absolute par, of a 17.95bn book. Corrected in the report and in message two's rationale.
+* **⚠️ The quoted promise had lost its number.** The 09-30 report said *"these **756**
+  securities"*; the quote had become "these securities", which silently narrowed the promise to
+  the part we answered. Now quoted whole, with the split stated: **344 of the 756 are in the
+  government mortgage book and are answered; the other 412 are not.**
+* **⚠️ §4.2's "the other 757"** — there are 831 other priced securities; 757 is those carrying
+  **both** sensitivity columns (831 less the 74 I/O). Said that way now.
+
+**Verified and unchanged, which is most of it:** the worked example reproduces to the last digit
+through `factor_path` — element 0 is **0.44041654**, which is also the custodian's own
+`paydown_factor` for that pool, all six printed rows exact, principal summing to **44.041654**;
+374 securities and **1.42e-14**; 261.3 vs 250.9 bp on 223 / 458; 2.62 vs 2.45 y; 74 / 0 / 49;
+27 of 27 against 0 of 757; 192 / 132 / 61 / 71; the 24 by reason; 1,333; 412 / 201 / 49%; 18.2%;
+and all four corporate coupons, prices and spreads.
+
+⚠️ **Two of the audit's own "failures" were the audit's fault** and are worth recording,
+because both are traps this repo already documents: it read the **raw Bloomberg month labels**
+instead of going through `factor_path`, which owns the T+1 shift (so the worked example looked
+one month out), and it measured a **12-month decay** where the 10-01 validation used
+**whole-life CPR** (so the six fast pools looked like none). Both were checked against the
+loader and `bloomberg_return_2026-10-01.md` §7 before a word of the report was touched — the
+six are 57.7–73.9% on the recorded measure, median 23.94%, exactly as filed. ⭐ **An audit
+finding is a hypothesis until the tool that produced it has itself been checked.**
+
+**⭐⭐ AND THE SECOND DIVERGENCE FROM MARIO IS NOW IN FRONT OF HIM** (user, 2026-10-15: he will
+accept a departure if the reason is good enough).
+
+* **Bullet-vs-amortising** was already section 1. It gained the one leg that is **his**: the
+  custodian's own effective duration across the securitised book, present on **1,290 of 1,294**
+  holdings, median **2.05 years** against a median legal life of **24.8**. Four legs now — the
+  cost, his Tier-1 slide, his Tier-2 slide, and his own custodian.
+* **His exception rule** (*floating/variable with no formula ⇒ treat as fixed*) was in **no
+  message at all**, and ⚠⚠ **the reason on file was wrong in both halves.** It said fixing "a
+  perpetual's coupon at 3.5–3.75% forever on a bond priced 40–52" would give "a wild spread".
+  **They are not perpetuals** — stated maturities 2015-12-16 / 2015-04-15 / 2016-02-23 ×2 — and
+  the prices are **93.77 / 70.53 / 52.00 / 46.76**. **And the spreads are not wild:** priced his
+  way they are **136.6 / 712.9 / 1,132.5 / 1,314.7 bp**, sitting beside the four that priced
+  this week on real margins (919.6 – 1,132.4). ⭐ **A refusal resting on a number nobody
+  computed is an opinion.**
+* ⭐ **The defensible claim is UPPER BOUND**, and it is quantified: each switches **1.0–1.9 years**
+  out with about five years to run after it (**72–83% of remaining life**), the EUR curve at the
+  valuation date implies **2.70% → 5.06%** across exactly that window *before any margin*, and
+  junior-sub margins in this book run **129–277 bp** ⇒ a real coupon near **5–7%** against the
+  3.5–3.75% a fixed hold keeps, so his rule **understates the flows and widens the spread**.
+* **Handed over as a decision, not applied.** Report §5.2 carries the full version with the four
+  numbers; message one carries it short, where he can answer. No artifact changed — the report
+  says nothing else moved, and a yes is one cell each plus a re-run.
+
+**Report 2,896 → 3,439 words; message one 557 → 723.** PDF re-rendered, both copies refreshed in
+the package (278 files / 43.9 MB, unchanged otherwise).
+
 **Open / next**
 - ⚠️ **Nothing is sent.** Ready: the report (md + PDF), message one, message two, and the 412
   list as its attachment. The Drive folder is staged for the user to drag.

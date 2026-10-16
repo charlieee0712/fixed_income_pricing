@@ -164,6 +164,14 @@ realised WAL, median     2.99 years      ⇒  6.87× overstatement, about +21 ye
                                             on 57% of the book by count
 ```
 
+⚠️ **Re-measured on the shipped artifact, 2026-10-15** (the block above is the 2026-10-06
+plan's, taken before the engine existed): legal **24.24 y**, realised WAL **3.17 y**, median
+per-security ratio **6.43×**, over the **299** observed-path securities that receive principal
+at all — the 373 less the 74 I/O strips, which receive none and so have no average life. The
+legal side reproduces exactly; the WAL lengthened because the engine's residual treatments
+extend the tail. ⭐ And the "57% of the book" is **the securitised 1,294 of 2,260**, not a
+share of the 882 — easy to misread two lines under a table about the 882.
+
 ⭐⭐ **And his own deck settled it our way.** Slide 12, which *defines* Tier 1, says
 "Bond-Equivalent Cash Flows" and states its limits as flows that *"do not yet respond explicitly
 to CPR, defaults, extension/contraction or waterfall rules"*. **A measured factor path is a

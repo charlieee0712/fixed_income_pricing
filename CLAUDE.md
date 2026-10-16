@@ -818,7 +818,13 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   repayments, observed realised behaviour, validation against pools priced another way — is our
   factor extraction, already validated. **A bullet at the legal final overstates the timing
   6.87×**: legal life median 24.32y against a realised WAL of 2.99y, i.e. ~+21 years of
-  duration on 57% of the book by count. ⭐ And the diagnosis is **"bullet", not "maturity"** —
+  duration on 57% of the book by count (= the securitised 1,294 of 2,260, NOT a share of the
+  882). ⚠️ **Re-measured on the SHIPPED artifact 2026-10-15 and the WAL side moved:** legal
+  **24.24** / WAL **3.17** / **median per-security ratio 6.43×**, over the **299** observed-path
+  securities that receive principal at all (the 373 less the 74 I/O strips, which receive
+  none). The legal side reproduces the plan exactly; the WAL lengthened because the engine's
+  residual treatments extend the tail. ⭐ **And never divide the two medians** — 24.24/3.17 is
+  7.6×, while the honest per-security median is 6.43×. The report quotes the artifact. ⭐ And the diagnosis is **"bullet", not "maturity"** —
   the 505 pools already use the master's legal maturity and are fine, because they AMORTISE.
 - **THE DELIVERABLE: `outputs/tier1_structured_2009-03-31.csv`, 882 rows = 858 priced + 24
   named**, plus a dated disposition sidecar; `scripts/tier1_structured.py`. Three generators,
@@ -1067,10 +1073,21 @@ before this file's per-round sections, which are records rather than explanation
   BASELINE and the **UNDATED `implied_oas.csv` as the 2009-06-10 CONTROL**. The control's date
   lives only in the driver invocation, never in the filename. I assumed the undated file was the
   baseline and wrote the wrong artifact once.
-- ⚠️ **Mario's exception rule vs ours, UNSETTLED:** he said floating/variable with no formula ⇒
-  treat as fixed. The mortgage book complies already; the **4 remaining corporate hybrids do
-  not** (BT-marked), and fixing a perpetual's coupon forever at BT 40–52 would give a wild
-  spread. Raise it, do not decide it.
+- ⚠️ **Mario's exception rule vs ours — PUT TO HIM 2026-10-15, and our stated reason was
+  WRONG.** He said floating/variable with no formula ⇒ treat as fixed. The mortgage book
+  complies on all 192 moving-coupon holdings; **4 corporate hybrids are the only place we do
+  not**. ~~fixing a perpetual's coupon forever at BT 40–52 would give a wild spread~~
+  ⚠⚠ **REFUTED BY MEASUREMENT, both halves:** they are **not perpetuals** (stated maturities
+  2015-12-16 / 2015-04-15 / 2016-02-23 ×2) and the prices are **93.77 / 70.53 / 52.00 /
+  46.76**, not 40–52; and priced HIS way they give **136.6 / 712.9 / 1,132.5 / 1,314.7 bp** —
+  beside the four that priced on real margins at 919.6–1,132.4. ⭐ **A refusal resting on a
+  number nobody computed is an opinion.** The defensible claim is **UPPER BOUND**: each
+  switches 1.0–1.9y out with ~5y to run (**72–83% of remaining life**), the EUR curve implies
+  **2.70% → 5.06%** across that window *before* margin, and junior-sub margins in this book
+  run 129–277bp ⇒ the real coupon is 5–7% against a 3.5–3.75% fixed hold, so fixing it
+  understates the flows and **widens** the spread. Now in the report §5.2 and in message one,
+  with the four numbers. **Still his call** — a yes is one cell each plus a re-run; nothing
+  was changed in the artifacts for this delivery.
 
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
 

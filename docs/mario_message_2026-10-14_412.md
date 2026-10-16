@@ -75,7 +75,7 @@ coupon later would be a second request in a cheap costume.
 which is why the README states it plainly rather than burying it.
 
 ⭐ **Both percentages are quoted, and that is deliberate.** The 412 are **18.2% of the book by
-count and 4.8% by par value**. Mario reads a portfolio percentage as value, so the count alone
+count and 4.9% by par value**. Mario reads a portfolio percentage as value, so the count alone
 overstates by about four times — in the direction that flatters the ask. The standing rule is
 quote both, or say which.
 

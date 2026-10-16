@@ -47,9 +47,9 @@ building. We do not mention the misreading at all — it would introduce a probl
 > formula out at 31 March 2009 gives a coupon one to three points *below* what the custodian
 > reports — all seventeen we can currently test, every one the same direction. It's the reset:
 > these pools reset annually on their own anniversary, so in March 2009 one carries a rate set
-> the previous June near 2.4% and another set in December nearer 0.5%. The one-year Treasury
-> moved about two and a half points across that window, which is almost exactly the range of
-> the gaps we see. The formula is right; it just can't tell us which date to use. A few are
+> the previous June, when the one-year Treasury was 2.36%, and another set in December, when
+> it was 0.37%. Across those twelve months the one-year ranged over 2.3 points, almost exactly
+> the range of the gaps we see. The formula is right; it just can't tell us which date to use. A few are
 > also leveraged — one reads 2370 × LIBOR − 15405%, which plainly needs its cap and floor to
 > mean anything.
 >
@@ -74,6 +74,17 @@ building. We do not mention the misreading at all — it would introduce a probl
 > One note so you don't spend time on it: four margins are still missing — BTMU, a Resona euro
 > issue, the two Shinsei tranches — and all four *are* in the file; the formula field just comes
 > back empty. Re-pulling it won't help.
+>
+> *And on those four I haven't followed your rule, so I'd rather show you the numbers than
+> argue it.* You said: coupon moves, no formula, treat it as fixed. In the mortgage book that
+> is exactly what we do, on 192 holdings, and each row says so. These four switch to a
+> floating coupon on a date we already know, one to two years out, with five years to run
+> after it — so "fixed" would assert a coupon they don't pay for three quarters of their
+> remaining life. I priced them your way anyway: *137bp* for BTMU, *713* for the Resona euro
+> issue, *1,133* and *1,315* for the two Shinsei. Sensible numbers, not nonsense — and each an
+> upper bound, because after the switch the euro market was implying 2.7–5.1% for that window
+> before any margin, against the 3.75% a fixed treatment keeps. Say the word and they go in
+> with that caveat; otherwise they wait for a margin, which is one cell each.
 >
 > Behind this there's a larger one: the 412 CMOs, CMBS and asset-backeds still have no repayment
 > history at all, and about half have moving coupons — worth knowing before that gets scoped.
@@ -163,12 +174,33 @@ both and say nothing about availability.
 
 ---
 
-## One thing for us, not for him
+## His exception rule — now IN the message, and the reason we had on file was wrong
 
-⚠️ **Mario's own exception rule and our treatment diverge on exactly four securities.** He said:
-*"if floating/variable bonds, but with no formula, treated them as fixed, because no data."*
-The mortgage book already complies — the custodian's coupon is held constant and the row says
-so. But the four remaining corporate hybrids are BT-marked instead, and applying his rule would
-fix a perpetual's coupon at 3.5–3.75% forever on a bond priced at 40–52, which would produce a
-wild spread. ⭐ That is his call, not ours; it is not in this message because it needs a
-conversation rather than a line, and because nothing is blocked while it waits.
+⚠️ **The rule:** *"if floating/variable bonds, but with no formula, treated them as fixed,
+because no data."* The mortgage book complies on all 192 moving-coupon holdings — the
+custodian's own coupon is held constant and the row says so. **Four corporate hybrids are the
+only place in the book where we do not follow it.**
+
+⚠⚠ **The justification carried in `CLAUDE.md` until 2026-10-15 was wrong in both halves, and
+measuring it is what showed that.** It said applying his rule would "fix a perpetual's coupon
+at 3.5–3.75% forever on a bond priced at 40–52, which would produce a wild spread".
+
+* **They are not perpetuals.** All four carry stated maturities — BTMU 2015-12-16, Resona
+  2015-04-15, the two Shinsei tranches 2016-02-23 — and their prices are **93.77 / 70.53 /
+  52.00 / 46.76**, not 40–52.
+* **The spreads are not wild.** Priced his way: **136.6 / 712.9 / 1,132.5 / 1,314.7 bp**,
+  sitting right beside the four that priced this week on real margins (919.6 / 1,100.7 /
+  1,102.5 / 1,132.4). A refusal that rests on a number nobody computed is an opinion.
+
+⭐ **So the honest position is not "your rule gives nonsense" but "your rule gives an upper
+bound"**, and that is what the message now says. Each switches to a floating coupon 1.0–1.9
+years out with about five years to run after it (**72–83% of remaining life**), and the euro
+curve at the valuation date implies **2.70% → 5.06%** across exactly that window *before any
+margin*. Junior-sub margins in this very book run 129–277 bp, so the real coupon is nearer
+5–7% against the 3.5–3.75% a fixed treatment holds ⇒ fixing it understates the cash flows and
+**widens** the published spread.
+
+⭐ **Handed to him as a decision, not applied here.** `CLAUDE.md`'s standing instruction on
+this is "raise it, do not decide it", and the artifacts are frozen for this delivery — the
+report states that nothing else moved. A yes is one cell each and a re-run. The same
+paragraph, shorter, is in the message; the full version is report §5.2.
