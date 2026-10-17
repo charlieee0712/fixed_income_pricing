@@ -206,3 +206,33 @@ def test_the_fixed_records_dominate_and_are_all_evaluable():
     assert len(fixed) == 959
     for p in fixed:
         coupon_from_rule(p)        # must not raise: no index needed
+
+
+def test_no_sofr_era_rule_is_ever_in_force_at_the_2009_valuation_date():
+    """The LIBOR-to-SOFR restatement must never reach a 2009 price.
+
+    67 securities in the table carry a later period that is the same deal rewritten onto Term
+    SOFR with the ISDA fallback spread folded in (``1.000 * (TSFR1M + 0.114%) + 0.420%``, and
+    for the 3M ones collapsed into a single margin, which is why Liberty Mutual reads as
+    ``TSFR3M +3.837610%`` against our documented ``3M LIBOR + 357.6``). Both describe the same
+    cash flows; only one of them belongs at a 2009 valuation date, because the LIBOR fixing
+    already contains that basis and adding the adjustment on top counts it twice.
+
+    This passes today only because :func:`rule_in_force` selects by date. It is here so that
+    a future "just take the latest period" cannot quietly widen 67 securities by 11-26 bp.
+    """
+    got = load_coupon_formulas()
+    if not got:
+        pytest.skip("data/coupon_formula.csv not present")
+    sofr = {"TSFR1M", "TSFR3M", "TSFR6M", "TSFR12M", "SOFR30A", "SOFR90A"}
+    in_force = 0
+    for key, periods in got.items():
+        rule = rule_in_force(periods, dt.date(2009, 3, 31))
+        if rule is None:
+            continue
+        in_force += 1
+        index = (rule.get("index") or "").replace(" ", "").upper()
+        assert index not in sofr, (
+            "%s has a %s rule in force at the 2009 valuation date: %r"
+            % (key, index, rule["formula_raw"]))
+    assert in_force == 1226, in_force

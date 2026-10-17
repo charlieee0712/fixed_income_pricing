@@ -1039,8 +1039,30 @@ before this file's per-round sections, which are records rather than explanation
   one series in two wrappers). route `hybrid` **10→14**, `hybrid-margin-unavailable` **8→4**,
   priced **555→559** @3-31. Spreads 1102.5 / 919.6 / 1100.7 / 1132.4 bp. **Exactly 4 rows of 566
   changed.** ⭐ **8 more margins CONFIRMED to the basis point**, validating the 07-20 ISIN lookup.
-  ⚠️ **Liberty is NOT a delta and NOT overwritten**: `TSFR3M +383.761` − `3M LIBOR +357.6` =
-  **26.161 bp = the ISDA spread adjustment**; a 2009 valuation wants LIBOR.
+  ⚠⚠ **Liberty is NOT a delta — and it is not a one-off either. MEASURED BOOK-WIDE
+  2026-10-16: 67 securities in the formula table are LIBOR deals RESTATED onto Term SOFR**
+  (39 Non-Gov CMO · 17 Govt MBS · 8 ABS · 3 corporate; **47 of them are inside the 412**).
+  The later period is the earlier one with `LIBOR` replaced by `(TSFR + a)`, where `a` is
+  the ISDA fallback spread fixed 2021-03-05, stored **rounded**: **0.114%** (1M, ISDA
+  0.11448) · **0.26161%** (3M, unrounded) · **0.428%** (6M, ISDA 0.42826).
+  ⭐ **The step is always `multiplier × a`, and the SIGN proves it is mechanical:** 66 of 67
+  match exactly, **all 23 inverse floaters step DOWN** by the same amount (for `K − LIBOR`,
+  substituting `TSFR + a` must cut `K` by `a`), and the leveraged `749228AG7` steps by
+  **270.18% = 2370 × 0.114% exactly**. The 1 non-match, `81378PAB4`, is the conversion
+  **plus a real contractual step-up** (23bp → 46bp on the same date), not an exception.
+  ⭐⭐ **TWO NOTATIONS, and that is the whole reason Liberty looked like a disagreement:**
+  **64 records write it in the OPEN** — `1.000 * (TSFR1M + 0.114%) + 0.420%`, original
+  margin visibly untouched beside the adjustment — while the **3M ones COLLAPSE it into one
+  number**, `TSFR3M  +3.837610%`, so our documented `357.6` disappears into a new-looking
+  `383.761`. Same bond, same cash flows, two vocabularies: 2007's and today's.
+  ⚠️ **THE TRAP: never compare our margin against theirs without checking WHICH PERIOD
+  theirs belongs to**, and never carry a SOFR-era margin into a 2009 valuation — the LIBOR
+  fixing already contains that basis, so the adjustment would be counted twice (11–26bp on
+  67 securities). Production is safe **because `rule_in_force(periods, VAL)` selects by
+  date** and returns the LIBOR period at 2009-03-31; the exposure is a human reading the
+  two tables side by side, which is exactly what happened on 10-14 before the arithmetic
+  was done. ⭐ This is also a third reason the formula table alone cannot produce a 2009
+  coupon: **it describes the bond as it stands TODAY.**
   ⚠️ **The 4 remaining are IN the file with the field EMPTY, not absent** ⇒ re-asking the same
   mnemonic will not help. ⚠️ **`corp.xlsx` is NOT US-CUSIP-only** — it carries XS and DE ISINs.
 - **⭐ G4 advanced** (AssuredGty is a fixed-to-float, switch 2016-12-15 ⇒ belongs on `hybrid.py`;
