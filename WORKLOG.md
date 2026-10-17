@@ -5,6 +5,49 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-10-16 — Mario's call: three questions answered from his own files, one claim retracted
+
+**No code.** Reply drafted, NOT sent: `docs/mario_message_2026-10-16.md` (738 words). ⚠️ The
+call is the user's recollection, flagged approximate. **He committed to sending the six index
+histories and `MTG_FACTOR` for the 412** — so both outstanding asks are moving.
+
+**① "Didn't the index file already have those six?"** Checked column by column: **11 series,
+only 5 reach 2009** (`US0001M`, `US0003M`, `COF 11`, `12MTA`, `H15T1Y`); `TSFR1M/3M/6M` start
+2019-01-03, `SOFR30A/90A` 2018, `ECOFC` 2022; a 12th column is a bare label. **All six asked-for
+series absent.** ⭐ **And his question had a cause worth naming back to him:** `TSFR6M` is in
+the file while `US0006M` is not, `H15T1Y` while `H15T5Y` is not, `US0001M`/`US0003M` while
+`US0012M` is not — three near-miss pairs that make the sheet look like it already answers the
+request. The six are quoted back from his own formula table with their reference counts
+(30/13/5/5/1/1).
+
+**② "How does your method simplify traditional Tier 2?"** ⭐ The measured answer is better than
+the rhetorical one: **349 of 373 (94%) need ZERO projected months**, median **127** recorded
+monthly observations, only 24 projected at all. ⇒ *"Tier 2 predicts how much principal comes
+back each month; for a 2009 valuation we don't predict it — the trustee published it."*
+⚠️ Stated with its limit in the same breath: **backwards only**, so it is Tier 2's input, not
+its substitute — which is also what his own Tier-2 slide says the existing engineering work is.
+
+**③ "Bloomberg has formulas for the 201 — why do you need CPN?"** Ran the formula on the 201
+at the valuation date with index levels from his own file: **94 have none**, **92 produce a
+coupon**, 14 say FIXED against a moving `Type of Coupon`, 1 names a missing index.
+⚠⚠ **Nothing tripped the sanity band**, so the claim had to be weakened from "it gives
+nonsense" to **"it gives numbers we cannot verify"** — median 0.831%, range 0.531–19.198%,
+27 at or under 0.75% where a floor would bite, 12 inverse floaters sitting against caps we do
+not hold. ⭐ The falsifying evidence is **borrowed** from the only population carrying both a
+formula and an observed coupon — the agency ARMs, 17/17, 0.96–3.15 points low, same sign — and
+the message says that it is borrowed rather than passing it off as a result on the 201.
+
+**⚠⚠ AND WE RETRACTED OUR OWN SENTENCE.** Message two (10-14) said a balance with no coupon
+leaves us unable to build a cash flow. **All 412 carry a custodian coupon and a maturity**
+(385 non-zero, 27 zero = the P/O strips), so `MTG_FACTOR` alone prices all 412 on the coupon
+held flat — **his rule**, already our practice on 192 Government-MBS holdings.
+⭐ **⇒ the ask re-sorts: `MTG_FACTOR` blocks, `CPN` qualifies.** Our own request rule says only
+what BLOCKS belongs in a request; we had broken it in our own favour, and he caught the smell
+of it before we caught the fact. Conceding costs nothing real and is what makes the remaining
+ask auditable.
+
+---
+
 ## 2026-10-14/15 — The deliverables: a walkthrough, two messages, the report, and the package
 
 **Commits:** `1b6e318` (message one, drafted) · `e70bff6` (the walkthrough) · `13c8b50`

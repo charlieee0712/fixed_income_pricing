@@ -1089,6 +1089,67 @@ before this file's per-round sections, which are records rather than explanation
   with the four numbers. **Still his call** — a yes is one cell each plus a re-run; nothing
   was changed in the artifacts for this delivery.
 
+## Mario's call (2026-10-16) — three questions, and one correction we owe him
+
+⚠️ **The call is the user's RECOLLECTION, flagged approximate** (same standing as the 10-14
+instruction). **He committed to sending: the six index histories, and `MTG_FACTOR` for the
+412.** Reply DRAFTED, NOT SENT: `docs/mario_message_2026-10-16.md` (738 words, WhatsApp
+markup). Every answer measured 2026-10-16 against **his own files**.
+
+- **① "Didn't the index dataset I sent already have those six?" — NO, and the question is a
+  fair one.** `data/index.xlsx` carries **11 series and only 5 reach back to 2009**:
+  `US0001M` + `US0003M` (2000-01-04 → 2024-09-30), `COF 11` (264 monthly), `12MTA` (321
+  monthly), `H15T1Y` (6,697 daily). The other six are **`TSFR1M/3M/6M` (2019-01-03 →)**,
+  `SOFR30A` (2018-05), `SOFR90A` (2018-07) and **`ECOFC` (2022-01)** — all empty at the
+  valuation date. A 12th column, `us0003 tsfr3M`, is a **label with no value column**.
+  ⚠️ **THE LOOKALIKE TRAP, and it is why he asked:** `TSFR6M` is present and `US0006M` is
+  not; `H15T1Y` present, `H15T5Y` not; `US0001M`/`US0003M` present, `US0012M` not. Each pair
+  differs by rate family or tenor, so the sheet *looks* like it already answers the request.
+  ⭐ **The six are quoted back from HIS OWN formula table:** `RFUCCT1Y` 30 periods / 30
+  securities · `RFUCCT6M` 13/13 · `US0012M` 5/5 · `EUR003M` 5/5 · `US0006M` 1/1 ·
+  `H15T5Y` 1/1.
+- **② "How does your method simplify the traditional Tier 2 approach?" — it does not; at
+  this date it removes the need for one.** ⭐ **The liftable sentence, written for his deck:**
+  *"Tier 2 exists to predict how much principal comes back each month; for a 2009 valuation we
+  don't predict it — the trustee already published it, and we read it."*
+  **MEASURED: 349 of the 373 observed-path securities (94%) need ZERO projected months** — the
+  whole cash flow from the valuation date to the last dollar is recorded fact, **median 127
+  monthly observations**; only **24** need any projection (`residual_treatment`: `none` 227 ·
+  `repaid_tail_would_overrun` 118 · `amortised` 24 · `repaid_below_floor` 3 ·
+  `repaid_tail_not_decaying` 1). Against the STRUCTURAL route the saving is the waterfall:
+  ~170 complete deal models for the government book alone, replaced by two subtractions a
+  month, because a slice's factor **is** the waterfall's output.
+  ⚠️ **State the limit in the same breath or it oversells:** it works BACKWARDS only. At
+  today's date the same securities would have history to now and an unknown future — which is
+  what Tier 2 is for. ⭐ So it is Tier 2's INPUT, not its substitute, and his own Tier-2 slide
+  already lists "historical monthly principal repayments, observed realised behaviour" as the
+  existing engineering work.
+- **③ "Bloomberg HAS formulas for the 201 — why do you also need CPN?" (user answered "more
+  accurate"; this makes it concrete).** ⭐ **We did not skip the formula — we built it and ran
+  it.** Rule in force at 2009-03-31, index levels from his own file (`US0001M` 0.50063% ·
+  `US0003M` 1.19188% · `H15T1Y` 0.570% · `12MTA` 1.43984% · `COF 11` 1.627%):
+  **94 of the 201 have NO formula at all** · **92 produce a coupon** · 14 carry a formula
+  saying FIXED while `Type of Coupon` says it moves · 1 names an index the file lacks.
+  ⚠⚠ **NOTHING was refused by `COUPON_BAND_PCT` — so the honest claim is NOT "the formula
+  gives nonsense here".** It gives plausible numbers we cannot verify: median **0.831%**, range
+  **0.531–19.198%**, **27 at or below 0.75%** (floor territory at a 0.50% LIBOR), **12 inverse
+  floaters** whose coupon then sits against a lifetime cap we do not hold, 4 leveraged.
+  ⭐ **The verification evidence is BORROWED from the one population where both a formula and
+  an observed coupon exist** — the agency ARM pools, **17 of 17 testable, 0.96–3.15 points
+  below the custodian's own coupon, every one the same sign** — and the message says it is
+  borrowed. The reset date and the caps are not in the formula.
+- **⚠⚠ THE CORRECTION WE OWE HIM, and it is ours not his.**
+  `docs/mario_message_2026-10-14_412.md` said *"a balance with no coupon and a coupon with no
+  balance each leave us unable to build a cash flow"*. **The first half is FALSE.** Measured:
+  **all 412 carry a custodian coupon and a maturity** (385 non-zero, 27 exactly zero = the P/O
+  strips, which need none). So `MTG_FACTOR` **alone prices every one of the 412** on the
+  custodian's coupon held flat — **his own exception rule**, and exactly the treatment the 192
+  moving-coupon Government-MBS holdings already get.
+  ⭐ **⇒ `MTG_FACTOR` BLOCKS; `CPN` QUALIFIES** — the coupon history does not decide whether
+  the 412 can be priced, it decides whether the 201 get a duration without a caveat. That is
+  our own standing rule ("what enters a request is a gap that BLOCKS a security") applied to
+  ourselves, and conceding it is what makes the rest of the ask trustworthy.
+
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
 
 - **⭐⭐ DIFF THE REQUEST AGAINST THE CLAIM, as an ASSERTION not a memory.** The 09-29 pack
