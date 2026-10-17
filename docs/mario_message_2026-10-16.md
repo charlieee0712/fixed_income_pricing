@@ -56,19 +56,29 @@ asked on the phone.
 > *On the formulas versus the coupon history* — and here I owe you a correction, because what I
 > sent last week was put more strongly than the facts support.
 >
-> We did use the formulas. They're parsed and in the code from the files you sent on the 14th.
-> Running them against the 201 at 31 March gives: *94 have no formula at all*; 14 have one that
-> says fixed while the coupon type says it moves; one names an index the file doesn't carry;
-> and *92 produce a coupon*.
+> We did use them — they're parsed and in the code from the files you sent on the 14th — and
+> running them against the 201 at 31 March gave a more interesting answer than I expected.
 >
-> The 92 are the problem, not the reassurance. They produce a number whether or not it is the
-> right one, and nothing in the formula tells us which. 27 come out at or below 0.75%, which is
-> exactly where a floor would bite if there is one; 12 are inverse floaters, whose coupon with
-> LIBOR at 0.50% sits against a lifetime cap we don't hold; the highest computes 19.2%. And on
-> the one population where we *can* check — the agency ARM pools, where you also report the
-> coupon — the formula came out one to three points below your own number on all seventeen we
-> could test, every one in the same direction. The formula was right. The reset date and the
-> caps simply aren't in it.
+> The arithmetic first: *94 of the 201 have no formula at all*; 14 have one that says fixed
+> while the coupon type says it moves; one names an index the file doesn't carry; and *92
+> produce a coupon*.
+>
+> *And those 92 are mostly right* — 86% land within five basis points of the coupon you already
+> report in the holdings file. The formulas are sound. But 75 of the 92 come out *low*, and the
+> misses aren't random: the two COF-11 bonds are both out by exactly 1.130 points, and the three
+> 12MTA bonds by exactly 0.193. An identical error on securities sharing nothing but an index is
+> a date, not a formula — and working backwards says so plainly. Those COF-11 coupons were
+> struck on the *December* print, 2.757%, exact to five decimals, while the formula at 31 March
+> reads 1.627%. One H15T1Y bond implies a one-year Treasury of 2.375%, which is where it stood
+> the previous June. Every index carries its own reset lag, and the lag isn't in the formula
+> field. At the other end one inverse floater computes 4.499% against your 1.980% — two and a
+> half points the other way, which is what a cap looks like.
+>
+> *And that is what reframes it.* We don't need the formula to know the coupon at the valuation
+> date — you already give us that, for all 412, in the holdings file. The check above is only
+> possible because you do. So the formula can at best reproduce a number we already hold, and
+> 14% of the time it doesn't. What neither it nor that single number can tell us is how the
+> coupon *moved* over the months after it, and that is the only thing the coupon history adds.
 >
 > *The correction:* I said the two series were needed together. That isn't right. *The factor
 > history on its own unblocks all 412* — we would hold the custodian's coupon flat, which is
@@ -135,13 +145,39 @@ Rule in force at 2009-03-31, index levels read from his own `index.xlsx`
 Of the 92: median **0.831%**, range **0.531% – 19.198%**; **27 at or below 0.75%** (floor
 territory), **12 inverse floaters**, 4 leveraged (|multiplier| ≠ 1).
 
-⚠️⚠️ **Nothing was refused by the sanity band** — so the honest statement is *not* "the formula
-gives nonsense here". It gives plausible numbers that we cannot verify. ⭐ The verification
-evidence has to come from the one population where both the formula and an observed coupon
-exist: the agency ARM pools, **17 of 17 testable, 0.96–3.15 points below the custodian's own
-coupon, every one the same sign**, because the reset date is not in the formula. That is the
-measurement that answers him, and it is borrowed from a different population — which the
-message says.
+⚠️⚠️ **Nothing was refused by the sanity band**, so "the formula gives nonsense here" was never
+available. ⚠️⚠️ **AND THE FIRST DRAFT'S FALLBACK WAS WRONG TOO:** it said the agency ARM pools
+were *"the one population where we can check"*, because both a formula and an observed coupon
+exist there. **They are not** — the custodian reports `income_rate` for **all 412**, so the 92
+can be checked directly, on the population he actually asked about. Measured 2026-10-16:
+
+| formula minus custodian, 2009-03-31, n=92 | |
+|---|---:|
+| within 0.05 pt | **79 (86%)** |
+| within 0.25 pt | 86 (93%) |
+| median difference | **−0.021 pt** |
+| formula LOWER / HIGHER | **75 / 15** |
+| worst | **+2.519** and **−1.805** |
+
+⭐⭐ **This runs partly AGAINST us, and the message now says so: the formulas are sound.** What
+survives is sharper than the overstatement it replaces, because **the misses cluster by INDEX,
+identically**, which names the cause:
+
+| index | n | error | implied level | what that level is |
+|---|---:|---:|---|---|
+| `COF 11` | 2 | **−1.130 each** | **2.757%** | the **2008-12-31** print, exact to 5 dp (31 March reads 1.627%) |
+| `12MTA` | 3 | **−0.193 each** | 1.63284% | the **2009-01-31** print (1.63408%) |
+| `H15T1Y` | 1 | −1.805 | 2.375% | where the 1-year Treasury stood in **June 2008** |
+| inverse | 1 | **+2.519** | — | `9393363R2` computes 4.499% against a reported 1.980% — a cap |
+
+⇒ **the formula is right; the reset LAG is what is missing, and every index has its own.** Two
+securities out by the *same* amount to three decimals are not two coincidences.
+
+⭐⭐⭐ **AND THE REFRAMING THAT ACTUALLY ANSWERS HIM:** the formula's competitor was never the
+coupon history — it is **the custodian's own valuation-date coupon, which we already hold for
+all 412 and already use**. The formula can at best reproduce that number, and 14% of the time
+it does not. The coupon history answers a different question: **how the coupon moved over the
+following months.** Nothing else on the table answers that one.
 
 ### ④ ⚠️ The correction we owe him
 

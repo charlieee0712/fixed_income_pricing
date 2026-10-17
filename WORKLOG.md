@@ -37,6 +37,34 @@ not hold. ⭐ The falsifying evidence is **borrowed** from the only population c
 formula and an observed coupon — the agency ARMs, 17/17, 0.96–3.15 points low, same sign — and
 the message says that it is borrowed rather than passing it off as a result on the 201.
 
+**⭐⭐ LATER THE SAME DAY — the evidence for ③ was BORROWED, and it did not need to be.** The
+first draft said the agency ARM pools were "the one population where both a formula and an
+observed coupon exist". ⚠️ **False:** the custodian reports `income_rate` for **all 412**, so
+the 92 are testable directly, on the population he asked about. Measured — and it runs partly
+against us: **79 of 92 (86%) land within 0.05 pt** of his own coupon, 86 within 0.25, median
+difference **−0.021 pt**. ⭐ **The formulas are sound and the message now says so.**
+
+⭐⭐ **What survives is better than the overstatement it replaces: 75 of 92 come out LOW, and
+the misses CLUSTER BY INDEX, identically** — which identifies the cause as the reset lag rather
+than the formula, and does it on his data rather than by analogy:
+
+```
+COF 11    2 bonds, both exactly -1.130 pt  -> implied 2.757% = the 2008-12-31 print, 5 dp exact
+                                              (the formula at 31 March reads 1.627%)
+12MTA     3 bonds, all exactly  -0.193 pt  -> implied 1.63284% ~ the 2009-01-31 print (1.63408)
+H15T1Y    1 bond            -1.805 pt      -> implied 2.375% = the 1y Treasury in JUNE 2008
+9393363R2 inverse floater   +2.519 pt      -> 4.499% computed against 1.980% reported = a cap
+```
+
+Two securities out by the *same* amount to three decimals are not two coincidences. ⭐ And the
+annual-reset story, which on 10-14 was an ARM-pool finding, is now confirmed on a CMO.
+
+⭐⭐⭐ **AND THE REFRAMING, which is the actual answer to him:** the formula's competitor was
+never the coupon history — **it is the custodian's own valuation-date coupon, which we already
+hold for all 412 and already use.** The formula can at best reproduce that number, and 14% of
+the time it does not. The coupon history answers a different question: *how the coupon moved
+over the following months.* ⇒ ③ rewritten in the unsent message; body 738 → 879 words.
+
 **⚠⚠ AND WE RETRACTED OUR OWN SENTENCE.** Message two (10-14) said a balance with no coupon
 leaves us unable to build a cash flow. **All 412 carry a custodian coupon and a maturity**
 (385 non-zero, 27 zero = the P/O strips), so `MTG_FACTOR` alone prices all 412 on the coupon

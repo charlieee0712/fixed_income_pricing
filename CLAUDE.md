@@ -1152,14 +1152,29 @@ markup). Every answer measured 2026-10-16 against **his own files**.
   `US0003M` 1.19188% · `H15T1Y` 0.570% · `12MTA` 1.43984% · `COF 11` 1.627%):
   **94 of the 201 have NO formula at all** · **92 produce a coupon** · 14 carry a formula
   saying FIXED while `Type of Coupon` says it moves · 1 names an index the file lacks.
-  ⚠⚠ **NOTHING was refused by `COUPON_BAND_PCT` — so the honest claim is NOT "the formula
-  gives nonsense here".** It gives plausible numbers we cannot verify: median **0.831%**, range
-  **0.531–19.198%**, **27 at or below 0.75%** (floor territory at a 0.50% LIBOR), **12 inverse
-  floaters** whose coupon then sits against a lifetime cap we do not hold, 4 leveraged.
-  ⭐ **The verification evidence is BORROWED from the one population where both a formula and
-  an observed coupon exist** — the agency ARM pools, **17 of 17 testable, 0.96–3.15 points
-  below the custodian's own coupon, every one the same sign** — and the message says it is
-  borrowed. The reset date and the caps are not in the formula.
+  ⚠⚠ **NOTHING was refused by `COUPON_BAND_PCT` — so "the formula gives nonsense here" was
+  never available** (median **0.831%**, range **0.531–19.198%**).
+  ⚠️⚠️ **AND THE FIRST DRAFT'S FALLBACK WAS ALSO WRONG — corrected 2026-10-16 BEFORE sending.**
+  It claimed the agency ARM pools were *"the one population where both a formula and an
+  observed coupon exist"*, so the evidence had to be borrowed. **They are not:** the custodian
+  reports `income_rate` for **all 412**, so the 92 are testable **directly, on the population
+  he asked about**. ⭐ **And the direct test runs partly AGAINST us — the formulas are sound:**
+  **79 of 92 (86%) land within 0.05 pt** of the custodian's own coupon, 86 within 0.25, median
+  difference **−0.021 pt**. What survives is sharper than the overstatement it replaces:
+  **75 of 92 come out LOW** (15 high), and ⭐⭐ **THE MISSES CLUSTER BY INDEX, IDENTICALLY**,
+  which names the cause as the **reset LAG**, not the formula:
+  **`COF 11` 2 bonds both out by exactly −1.130** ⇒ implied level **2.757% = the 2008-12-31
+  print to five decimals** (31 March reads 1.627%) · **`12MTA` 3 bonds all −0.193** ⇒ implied
+  1.63284% ≈ the **2009-01-31** print · **`H15T1Y` 1 bond −1.805** ⇒ implied 2.375% = where the
+  1y Treasury stood in **June 2008** (the annual-reset story, now confirmed on a CMO rather
+  than borrowed from the ARMs) · and **`9393363R2` +2.519 the other way** (4.499% computed
+  against 1.980% reported) **= a cap**. Two securities out by the *same* amount to three
+  decimals are not two coincidences.
+  ⭐⭐⭐ **THE REFRAMING THAT ACTUALLY ANSWERS HIM: the formula's competitor was never the coupon
+  history — it is the CUSTODIAN'S OWN VALUATION-DATE COUPON, which we already hold for all 412
+  and already use.** The formula can at best reproduce that number and 14% of the time does
+  not. The coupon history answers a different question — **how the coupon MOVED over the
+  following months** — and nothing else available answers it.
 - **⚠⚠ THE CORRECTION WE OWE HIM, and it is ours not his.**
   `docs/mario_message_2026-10-14_412.md` said *"a balance with no coupon and a coupon with no
   balance each leave us unable to build a cash flow"*. **The first half is FALSE.** Measured:
