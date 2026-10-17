@@ -16,6 +16,9 @@ one for *why we did it*:
 | why DV01 and CS01 split on a forward; why an I/O's duration is negative | same, §3.4, §3.5, §3.8 |
 | why the duration is the deliverable and the spread is a plug | same, §3.9 |
 | the `BOOK_CPR_PCT` gross-vs-net finding in full | same, §3.10–§3.11 |
+| why a **formula is not a coupon** — reset lag, caps, and the test on the 201 | same, §3.13 |
+| why Bloomberg's margin differs from ours on 67 securities (LIBOR → Term SOFR) | same, §3.14 |
+| what a measured history buys, and why `CPN` is not `MTG_FACTOR` | same, §3.15 |
 | the decision record behind Mario's three tiers | `client_directive_three_tier_structured_method_2026-10-06.md` |
 | the factor validation in full | `bloomberg_return_2026-10-01.md` §7 |
 | every open data gap | `missing_data.md`, G1–G7 |
@@ -59,6 +62,7 @@ Mario's position (2026-10-06): *"very expensive and difficult to get"* — so Ti
 | 2026-10-07 | ⚠️ `BOOK_CPR_PCT` found to be the wrong *kind* of 25% | an open parameter decision |
 | 2026-10-07/08 | the coupon **structure** arrives; 132 published durations disclosed | the floater blind spot named |
 | **2026-10-14** | the coupon **formulas**; a finding retracted; four corporate hybrids unstuck | G3 mostly closed |
+| **2026-10-16** | Mario's call: three questions, and our own evidence found to be borrowed | the two asks re-sorted — factor **blocks**, coupon **qualifies** |
 
 ---
 
@@ -324,7 +328,56 @@ caps and resets — the better input, not a workaround.
 
 ---
 
-## 10. ⭐⭐⭐ The one idea that keeps paying
+## 10. Act 8 — the call, and evidence we had been borrowing (16 Oct)
+
+Mario rang. He committed to sending **the six index histories** and **`MTG_FACTOR` for the
+412** — both outstanding asks — and put three questions, each of which turned out to need a
+measurement rather than an answer from memory.
+
+**① "Didn't the index file I already sent have those six?"** No. It carries **11 series and
+only 5 reach back to 2009**; Term SOFR starts 2019, the SOFR averages 2018, ECOFC 2022. ⭐ But
+the question had a cause worth naming back to him: `TSFR6M` is in the file and `US0006M` is
+not, `H15T1Y` and not `H15T5Y`, `US0001M`/`US0003M` and not `US0012M` — three near-miss pairs
+that make the sheet look as though it already answers the request.
+
+**② "How does your method simplify the traditional Tier 2 approach?"** It does not; at this
+date it removes the need for one. **349 of 373 (94%) need no projected month at all**, median
+127 recorded observations. ⚠️ With its limit said in the same breath: backwards only, so this
+is Tier 2's input rather than its substitute. Mechanism in `three_tier_method_explained` §3.15.
+
+**③ "Bloomberg has formulas for the 201 — why do you also need `CPN`?"** This is the one that
+cost a round of self-correction, twice.
+
+* The first draft said the formulas give "plausible numbers we cannot verify", and leaned on
+  the agency ARM pools as *"the one population where both a formula and an observed coupon
+  exist"*. ⚠️ **That was false** — the custodian reports `income_rate` for **all 412**, so the
+  92 that compute are testable **directly**, on the population he asked about.
+* ⭐ **And the direct test runs partly against us: 86% land within 5 bp.** The formulas are
+  sound, and the reply now says so.
+* ⭐⭐ What survives is sharper than the overstatement it replaced, because **the misses cluster
+  by index, identically** — two COF-11 bonds both out by exactly −1.130, three 12MTA bonds all
+  by −0.193 — which identifies the **reset lag**, not the formula, and recovers the very print
+  each coupon was struck on. Worked through in `three_tier_method_explained` §3.13.
+* ⭐⭐⭐ **The reframing that actually answers him:** the formula's competitor was never the
+  coupon history; it is the custodian's valuation-date coupon, which we already hold and use.
+  `CPN` answers a different question — how the coupon *moved* afterwards.
+
+**⚠⚠ And we retracted a sentence of our own.** The 10-14 message said a balance with no coupon
+leaves us unable to build a cash flow. All 412 carry a custodian coupon and a maturity, so
+`MTG_FACTOR` **alone** prices every one of them on the coupon held flat — his own rule, already
+our treatment of 192 holdings. ⇒ **`MTG_FACTOR` blocks; `CPN` qualifies.** Our own request rule
+says only what blocks belongs in a request, and we had broken it in our favour; he smelled it
+before we checked it.
+
+⭐ A third thing fell out of the same session: **67 securities in his formula table are LIBOR
+deals restated onto Term SOFR**, which is why Liberty Mutual's `TSFR3M +383.761` looked like a
+disagreement with our `3M LIBOR + 357.6` and is not — the gap is the ISDA fallback spread, to
+the basis point. `three_tier_method_explained` §3.14, and a test now stops a SOFR-era margin
+ever reaching a 2009 price.
+
+---
+
+## 11. ⭐⭐⭐ The one idea that keeps paying
 
 **Measure what happened; do not model what should have happened.**
 
@@ -339,7 +392,7 @@ recorded number already contains the answer. ⭐ The second row is the first row
 applied to the other leg of the cash flow, and it is why the ask is a coupon *history* rather
 than the formula inputs.
 
-## 11. ⭐ The discipline that keeps showing up
+## 12. ⭐ The discipline that keeps showing up
 
 **Do not publish a number whose sign or whose units you cannot vouch for.** It has now fired
 five times, each time on different material:
@@ -356,7 +409,7 @@ say it measured *nothing* is not evidence. It caught a spurious "13 of 34 within
 rate was below chance) — and the very same technique, applied honestly a week later, is what
 retracted our own conclusion.
 
-## 12. Where it stands, and what is missing
+## 13. Where it stands, and what is missing
 
 ```
 2,260 securities in the portfolio
@@ -376,7 +429,7 @@ ARM reset/cap fields (`missing_data.md` G7a/G7d) · four Eurobond margins whose 
 comes back empty, so re-pulling it will not help · and `COVERAGE.md` / `PROJECT_STATUS.md`,
 which still do not describe the mortgage book.
 
-## 13. Every headline number, and where it comes from
+## 14. Every headline number, and where it comes from
 
 | number | meaning | source |
 |---|---|---|
@@ -397,7 +450,12 @@ which still do not describe the mortgage book.
 | 40.3%, 129 of 320 | our description-pattern recall vs Bloomberg | `missing_data.md` G7 |
 | 437 of 437 | fixed records matching the custodian exactly | same, G7b retraction |
 | 920–1,130 bp | the four newly priced corporate hybrids | `outputs/implied_oas_2009-03-31.csv` |
-| 2.34 points | 1-year Treasury move over the 12 months to 2009-03-31 | `data/index.xlsx`, `H15T1Y` |
+| 2.34 points | 1-year Treasury **peak-to-trough range** over the 12 months to 2009-03-31 — ⚠️ the *change* across those months is only 0.98 | `data/index.xlsx`, `H15T1Y` |
+| 349 of 373, median 127 | securities needing no projected month · months of recorded history | `tier1_structured_*.csv`, `months_observed/projected` |
+| 94 / 92 / 14 / 1 | the 201 by formula outcome at 2009-03-31 | `coupon_formula.csv` + `index.xlsx`, run 2026-10-16 |
+| 86%, median −0.021 pt | formula vs the custodian's own coupon, n=92 | same, against master `income_rate` |
+| −1.130 × 2, −0.193 × 3 | identical per-index errors that identify the reset lag | same; `three_tier_method_explained` §3.13 |
+| 67, 26.161 bp | LIBOR-to-SOFR restatements · the 3M ISDA adjustment | `coupon_formula.csv`; §3.14 |
 
 ⚠️ Re-read these from the artifacts at writing time, never from here — and for any count, hash
 or test number the newest `release_facts_<date>.md` outranks this file.

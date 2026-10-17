@@ -446,6 +446,202 @@ than unblocking it.
 
 ---
 
+### 3.13 How a floating coupon is actually set — and why a formula is not a coupon
+
+A fixed-rate bond's coupon is a number written in the contract. A floating one is a **rule**,
+and between the rule and the money that actually arrives there are four more things:
+
+1. **the index** — `US0001M`, `COF 11`, `12MTA`, the 1-year Treasury, and so on;
+2. **the date you read the index on** — which is *not* the payment date, and differs by index;
+3. **the caps and the floors** — a periodic cap, a lifetime cap, a floor at zero or at the margin;
+4. **gross or net** — a pool's rule may describe what the borrowers pay, while the investor
+   receives it after servicing and guarantee fees.
+
+**Bloomberg's formula field carries only the first.**
+
+⭐ **The analogy worth keeping:** a formula is someone's pay rule — *"base plus 3% of sales"*.
+It does not say *which month's sales*, and it does not mention the bonus cap. You can compute a
+number from it. You cannot know it is the number on the payslip.
+
+#### It is measurable, which is the only reason we can say it matters
+
+Mario asked (2026-10-16) why, with the formulas in hand, we still want the realised coupon.
+The answer is a measurement on the exact population he asked about — the **201** securities
+among the 412 whose coupon moves — evaluated at 2009-03-31 with index levels from his own
+`index.xlsx`:
+
+| | n |
+|---|---:|
+| **no formula at all** | **94** |
+| produces a coupon | **92** |
+| formula says FIXED while `Type of Coupon` says it moves | 14 |
+| names an index the file does not carry | 1 |
+
+⭐ **And the 92 that compute are mostly right**, which matters more than if they were wrong:
+
+| formula minus the custodian's own coupon, n=92 | |
+|---|---:|
+| within 0.05 pt | **79 (86%)** |
+| within 0.25 pt | 86 (93%) |
+| median difference | **−0.021 pt** |
+| lower / higher than the custodian | **75 / 15** |
+| worst | **+2.519** and **−1.805** |
+
+#### ⭐⭐ The misses cluster by INDEX — which is what identifies the cause
+
+If the formulas were simply unreliable the errors would scatter. They do not. Securities that
+share an index are wrong by **the same amount**:
+
+```
+COF 11    2 bonds    both out by exactly  -1.130 pt
+12MTA     3 bonds    all  out by exactly  -0.193 pt
+```
+
+Two bonds from different deals, wrong by the same amount to three decimals, is not two
+coincidences — it is one wrong date, used twice. Invert each one and the date appears:
+
+```
+COF 11   1.627 + 1.130 = 2.757%   = the 2008-12-31 print, exact to five decimals
+12MTA    1.440 + 0.193 = 1.633%   ~ the 2009-01-31 print (1.63408%)
+H15T1Y   0.570 + 1.805 = 2.375%   = where the 1-year Treasury stood in JUNE 2008
+```
+
+So the COF-11 coupons were struck three months back, the 12MTA ones two months back, and that
+H15T1Y bond on its annual anniversary the previous June. ⭐ **The last one is §3.12's ARM
+finding turning up on a CMO** — the same reset-lag mechanism, confirmed on a different
+population instead of assumed to carry across.
+
+**Why the errors lean one way.** 75 low against 15 high is not noise. Short rates collapsed
+through late 2008 and early 2009, so reading an index *later* than its reset date gives a lower
+level — a formula evaluated at the valuation date understates a coupon that was actually set
+weeks or months earlier. The direction is a property of the rate path, not of the bonds.
+
+**And the other failure mode is the cap.** `9393363R2` is an inverse floater,
+`-1.000 * US0001M + 5.000%`. With 1-month LIBOR at 0.50063% that computes **4.499%**; the
+custodian reports **1.980%**. Two and a half points, in the other direction. An inverse
+floater's coupon *rises* as rates fall, so in March 2009 it is pinned against whatever cap the
+deal wrote — and the cap is not in the formula either.
+
+⚠️ **What this does NOT say.** It does not say the formulas are wrong. 86% land within five
+basis points, and the *fixed* records matched the custodian 437 of 437 exactly (§G7b, the
+2026-10-14 retraction). It says a formula is a rule and a coupon is what the rule produced,
+and that everything separating them — a date and a cap — lives outside the formula field.
+
+---
+
+### 3.14 The same bond in two vocabularies — the LIBOR-to-SOFR restatement
+
+This one caused a false alarm before it was understood, so it is worth setting out plainly.
+
+Take Liberty Mutual (`US53079EAN40`), a fixed-to-float that switches in 2037:
+
+| source | what it says the floating coupon is |
+|---|---|
+| **ours**, from the issuer's own offering memorandum | `3M LIBOR + 357.6 bp` |
+| **Bloomberg's**, from the 2026-10-14 file | `TSFR3M + 3.837610%` |
+
+Different index, different margin — it reads like two different deals. It is one:
+
+```
+383.761 - 357.600 = 26.161 bp
+```
+
+which is exactly the **ISDA fallback spread adjustment** for 3-month USD LIBOR, fixed on
+2021-03-05. LIBOR ceased in 2023; the contract's fallback language says to use Term SOFR plus
+that published adjustment. **Bloomberg has applied it, so its formula describes the same cash
+flows on the index that will actually exist in 2037.** Same bond, same money, two vocabularies:
+the contract's and today's.
+
+#### ⭐ Why we know it is mechanical and not a data difference
+
+Measured across the whole formula table: **67 securities** step from a LIBOR period to a Term
+SOFR period (39 Non-Gov CMO · 17 Govt MBS · 8 ABS · 3 corporate; **47 inside the 412**).
+
+* The margin step is always **`multiplier × a`**, where `a` is the adjustment they store:
+  **0.114%** for 1M (ISDA 0.11448, rounded), **0.26161%** for 3M (unrounded), **0.428%** for 6M.
+  **66 of 67 match to 1e-6.**
+* ⭐ **All 23 inverse floaters step DOWN** by the same amount — which is exactly what the
+  algebra requires: in `K − LIBOR`, substituting `TSFR + a` means `K` must fall by `a`. The
+  sign follows the multiplier, security by security.
+* ⭐ The leveraged `749228AG7` steps by **270.18% = 2370 × 0.114%, exactly**.
+* The single non-match, `81378PAB4`, is the conversion **plus a genuine contractual step-up**
+  (23bp → 46bp on the same date), so it is not an exception to the rule.
+
+#### ⭐⭐ And two notations, which is the whole reason Liberty looked like a disagreement
+
+```
+most records write it in the open:   1.000 * (TSFR1M + 0.114%) + 0.420%
+                                                    ^adjustment    ^original margin, untouched
+
+the 3M ones collapse it:             TSFR3M  +3.837610%
+                                              ^357.6 + 26.161 folded into one new-looking number
+```
+
+**64 records show their working**, so nothing looks changed. The 3M ones fold the arithmetic
+into a single figure, and our documented `357.6` disappears into an unfamiliar `383.761`. That
+notation difference — not any disagreement about the bond — is the entire false alarm.
+
+⚠️ **The trap, and it is a real one.** Never carry a SOFR-era margin into a 2009 valuation:
+the LIBOR fixing already contains that basis, so adding the adjustment on top counts it twice,
+by 11 to 26 bp on 67 securities. Production is correct only because `rule_in_force(periods,
+VAL)` **selects by date** — verified, 0 of 1,226 securities have a SOFR-family index in force
+at 2009-03-31 — and `test_no_sofr_era_rule_is_ever_in_force_at_the_2009_valuation_date` now
+pins it so a future "just take the latest period" cannot do it quietly. The exposure was never
+the code; it was a human reading the two tables side by side, which is what happened on 10-14
+before anyone did the subtraction.
+
+---
+
+### 3.15 What a measured history buys — for principal, and for coupons
+
+Mario also asked how this method "simplifies the traditional Tier 2 approach". It does not
+simplify it. At this valuation date it removes the need for it, and the distinction matters.
+
+#### The principal leg
+
+**Tier 2 exists to predict how much principal comes back each month.** For a March-2009
+valuation we do not have to predict it — it already happened, and the trustee published it.
+
+| of the 373 securities with a measured factor path | |
+|---|---:|
+| needing **zero** projected months | **349 (94%)** |
+| median months of recorded history used | **127** |
+| needing any projection at all | **24** |
+
+So on 94% of them the whole cash flow, from the valuation date to the final dollar, is recorded
+fact with no prepayment assumption anywhere in it. Against the **structural** route the saving
+is the waterfall: roughly 170 complete deal models for the government book alone, replaced by
+two subtractions a month, because a tranche's factor **is** the waterfall's output.
+
+⚠️ **State the limit in the same breath or it oversells.** It works backwards only. Value the
+same securities at today's date and you would have history up to now and an unknown future —
+which is precisely what Tier 2 is for. ⭐ So the factor work is Tier 2's **input**, not its
+substitute, and his own Tier-2 slide already lists "historical monthly principal repayments,
+observed realised behaviour, validation against pools priced another way" as the existing
+engineering work. That is this.
+
+#### The coupon leg — and the reframing that answers the question
+
+⭐⭐⭐ **The formula's competitor was never the coupon history.** It is **the custodian's own
+valuation-date coupon**, which we already hold for all 412 and already use. That is what makes
+§3.13's test possible at all. So the formula can at best reproduce a number we already have,
+and 14% of the time it does not. **The coupon history answers a different question: how the
+coupon MOVED over the following months** — and nothing else available answers it.
+
+Which sorts the two data asks cleanly, under the project's own rule that what enters a request
+is what *blocks* a security rather than what confirms a convention:
+
+| | what it decides |
+|---|---|
+| **`MTG_FACTOR` — BLOCKS** | without it the 412 cannot be priced at all |
+| **`CPN` — QUALIFIES** | with the factor alone the 412 price on the custodian's coupon held flat (his own rule, and already our treatment of 192 Government-MBS holdings). The coupon history is what lets the 201 carry a duration with no caveat attached |
+
+⚠️ **We got this sorting wrong first**, and in our own favour: the 2026-10-14 message said a
+balance with no coupon leaves us unable to build a cash flow. All 412 carry a custodian coupon
+and a maturity, so that was false. The correction is in the 10-16 reply.
+
+---
+
 ## 4. ⭐ Numbers that are easy to confuse
 
 This is the section to come back to. **Five counts** first, four of which nearly match and mean
@@ -487,6 +683,12 @@ and why one of them is in the wrong place. The third is the first one *translate
 population it is applied to; the fourth is what is published.
 
 ---
+
+⭐ **And the 201, which is easy to read as a fifth population.** Of the **412** with no
+repayment history, **201** have a coupon that moves — that is the subset `CPN` was asked for.
+⚠️ It is *not* the **192** moving-coupon holdings inside the published 882 (a different book),
+nor the **107** of the 201 that carry a Bloomberg formula, nor the **92** of those that produce
+a coupon when the formula is run. Four counts, four meanings, all in §3.13.
 
 ## 5. What we measured before agreeing to any of it
 
@@ -567,3 +769,9 @@ separately identify defaults and recoveries, which may not exist for 2009 privat
 | **VaR · Expected Shortfall** | the loss exceeded x% of the time · the average loss beyond it |
 | **Intex** | the commercial deal-model engine Phase 3 would buy |
 | **T+1** | the custodian strikes its figures one day after the valuation date, so Bloomberg's `2009-04` column is the 2009-03-31 position |
+| **reset lag / lookback** | how far *before* a coupon period the index is read. Set per deal and per index, and **absent from the formula field** — the whole of §3.13 |
+| **cap · floor** | the most / least a floating coupon may pay, periodic or lifetime. Also absent from the formula; it is what pins an inverse floater when rates collapse |
+| **inverse floater** | coupon falls as the index rises (`K − m×INDEX`). Ordinary, not exotic — 285 of the 451 floating periods in this book have a multiplier of exactly 1 |
+| **`COF 11` · `12MTA`** | two ARM indices: the 11th-District cost of funds, and the 12-month moving average of the 1-year Treasury. Both published monthly, both used with a lag (§3.13 recovers which) |
+| **Term SOFR (`TSFR1M/3M/6M`)** | LIBOR's successor. Begins 2019 in our data, so it is **empty at a 2009 valuation date** and never a substitute for the LIBOR tenor it replaced |
+| **ISDA fallback spread adjustment** | the fixed add-on converting a LIBOR rate to Term SOFR, set 2021-03-05: **0.11448%** 1M · **0.26161%** 3M · **0.42826%** 6M. §3.14 |
