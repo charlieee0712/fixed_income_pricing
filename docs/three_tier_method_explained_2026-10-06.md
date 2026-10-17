@@ -642,6 +642,95 @@ and a maturity, so that was false. The correction is in the 10-16 reply.
 
 ---
 
+### 3.16 What changes when the valuation date is TODAY — and why that is a Tier-2 question
+
+§3.15 says the method works backwards only. That is true and it understates the consequence,
+so here it is measured. **If this tool goes live against a current portfolio, the recorded
+history stops being the answer and becomes the input.**
+
+#### The decay curve
+
+Taking the same 376 securities and moving the valuation date forward, with the data ending
+2026-09:
+
+| valuation date | still alive | whole life RECORDED | needs a projected tail |
+|---|---:|---:|---:|
+| 2009-03-31 | 374 | **227** | 147 |
+| 2012-03-31 | 312 | 165 | 147 |
+| 2015-03-31 | 257 | 110 | 147 |
+| 2018-03-31 | 221 | 74 | 147 |
+| 2021-03-31 | 173 | 26 | 147 |
+| 2024-03-31 | 150 | 3 | 147 |
+| 2026-03-31 | 148 | **1** | 147 |
+
+⭐ **Read the third column, not the second.** "Needs a projection" is **147 at every date** —
+those are the securities still alive when the data ends, and no valuation date changes that.
+What collapses is the *denominator*: the fully-recorded ones leave the portfolio as they repay.
+At a live date essentially **everything** needs a forecast.
+
+#### ⚠️ And a correction to our own headline
+
+"349 of 373 need zero projected months" is true of projected **months**. Only **227 of 373
+(61%)** are recorded to the last dollar. The other **146** carry a residual stub closed by a
+named convention — `repaid_tail_would_overrun` 118 · `amortised` 24 · `repaid_below_floor` 3 ·
+`repaid_tail_not_decaying` 1 — of **median 1.62% of original face, p90 4.3%**. At a 2009
+valuation that stub is small and seventeen years away, so the convention is a rounding
+decision. **At a live valuation the stub IS the remaining life**, and the convention becomes
+the valuation.
+
+#### Three reasons it is less of a cliff than it sounds
+
+1. **More than half the book is already a forecast.** 458 of the 858 run on
+   `BOOK_CPR_PCT = 25.0`, an assumed speed. Going live does not introduce forecasting; it
+   takes it from **53% of rows to ~100%**.
+2. ⭐ **The engine does not care where the path comes from.** `observed_paydown` consumes a
+   factor path; measured or modelled, the same two subtractions. That is Mario's own slide
+   verbatim — *"the tiers differ only in the generator"* — so Tier 2 is **this engine with a
+   different generator**, not a rewrite.
+3. ⭐⭐ **The factor history gets MORE valuable, not less.** Today it is the answer; live it is
+   the data a prepayment model is fitted on. His Tier-2 slide already lists "historical monthly
+   principal repayments, observed realised behaviour" as the existing engineering work.
+
+#### ⭐⭐⭐ But the real trigger is the QUESTION, not the date
+
+There are two live modes and they need very different amounts of work:
+
+| | what it asks | does Tier 1 survive? |
+|---|---|---|
+| **A. revaluation** | what is this worth today, and what is its duration? | largely — the price is **anchored** to the custodian mark, so the model supplies timing, not level |
+| **B. scenario risk** | what happens if rates rise 100bp? | **no** |
+
+⚠️ **And B already fails today, not just live.** Our effective duration bumps the curve with
+the cash flows **held fixed**. The proof is already in the output: **DV01 equals CS01 exactly,
+on 757 of 757 rows** (§3.8). A spread bump cannot change prepayment — so if a rate bump gives
+the identical answer, the rate bump did not change it either. A real rates-up move slows
+refinancing and extends the book; a fixed schedule cannot express that. ⭐ The I/O refusal
+(§3.5) is this same failure at its most extreme, which is why those rows publish no duration
+at all.
+
+⇒ **It is not "historical versus live" that forces Tier 2 — it is "price versus scenario".**
+Going live only makes it urgent, because a live user asks scenario questions on day one.
+
+#### ⚠⚠ One concrete landmine, found while checking this
+
+`factor_path(history, cusip, as_of)` returns an **empty path** once `as_of` passes the end of
+the data — verified: 2026-08-31 gives length 1, 2026-09-30 and later give 0. Downstream, a live
+run against today's date with no new factor file would:
+
+* **tranches, I/O and P/O** — no path and no pool WAC ⇒ **named, not priced**. Correct: they
+  refuse rather than guess.
+* **pass-through pools** — fall through to `assumed-cpr` and price **silently at
+  `BOOK_CPR_PCT = 25.0`**, a speed measured on 2009 paths. In a 2026 rate environment the real
+  agency speed is a small fraction of that, and **nothing would fail** — the row would read
+  `assumed-cpr` exactly as it does today.
+
+⭐ That is this project's classic shape: a silent fallback to a constant that was right once.
+**The cheap guard is to refuse, or loudly flag, when the valuation date is outside the factor
+history's coverage** rather than let the fallback happen quietly. Not built — it guards a mode
+nobody runs yet — but named here so it is not discovered by a client.
+
+---
+
 ## 4. ⭐ Numbers that are easy to confuse
 
 This is the section to come back to. **Five counts** first, four of which nearly match and mean

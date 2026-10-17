@@ -1187,6 +1187,49 @@ markup). Every answer measured 2026-10-16 against **his own files**.
   our own standing rule ("what enters a request is a gap that BLOCKS a security") applied to
   ourselves, and conceding it is what makes the rest of the ask trustworthy.
 
+## ⭐ Going LIVE needs Tier 2 — the user's question, measured (2026-10-17)
+
+**The question:** we price a 2009 book from recorded history; if the tool goes live for the
+client, does that force Tier 2? **Yes** — and the measurement is sharper than
+`three_tier_method_explained` §3.15 had it. Full write-up: that doc's **new §3.16**.
+
+- **THE DECAY CURVE, over the same 376 securities (data ends 2026-09):** fully recorded
+  **227 of 374** @2009-03 → 110/257 @2015 → 26/173 @2021 → **1 of 148** @2026-03.
+  ⭐ **Read the other column: "needs a projected tail" is 147 at EVERY date** — the securities
+  still alive when the data ends. What collapses is the denominator, as repaid ones leave the
+  portfolio. At a live date essentially everything needs a forecast.
+- **⚠️ A CORRECTION TO OUR OWN HEADLINE:** "349 of 373 need zero projected months" is true of
+  projected MONTHS. Only **227 of 373 (61%)** are recorded to the last dollar; **146** carry a
+  residual stub closed by a named convention (median **1.62%** of original face, p90 4.3%).
+  Immaterial at 2009 (small, seventeen years out); **at a live date that stub IS the remaining
+  life** and the convention becomes the valuation.
+- **Three reasons it is not a cliff:** ① **458 of 858 are already a forecast**
+  (`BOOK_CPR_PCT = 25.0`) ⇒ going live moves forecasting from **53% of rows to ~100%**, it does
+  not introduce it; ② ⭐ `observed_paydown` consumes a factor PATH — measured or modelled is the
+  same code, which is his own slide's *"the tiers differ only in the generator"*; ③ ⭐⭐ the
+  factor history becomes Tier 2's **fitting data**, so its value rises.
+- **⭐⭐⭐ THE REAL TRIGGER IS THE QUESTION, NOT THE DATE.** **Revaluation** mostly survives — the
+  price is anchored to the custodian mark, so the model supplies timing not level. **Scenario
+  risk does not**, and ⚠️ **it already fails today**: our duration bumps the curve with the cash
+  flows HELD FIXED, and the proof is in the output — **DV01 == CS01 exactly on 757 of 757 rows**.
+  A spread bump cannot move prepayment, so an identical rate bump did not either. ⇒ the line is
+  **price vs scenario**, not historical vs live; going live only makes it urgent.
+- **⚠⚠ LANDMINE, verified not reasoned:** `factor_path` returns an **EMPTY path** once `as_of`
+  passes the data (2026-08-31 → length 1; 2026-09-30 → 0). A live run with no new factor file
+  would leave tranches/I/O/P/O **named and unpriced** (correct — they refuse) while the
+  **pass-through pools price SILENTLY at `BOOK_CPR_PCT = 25.0`**, a 2009-measured speed, in a
+  2026 lock-in environment where the real speed is a fraction of it. Nothing fails; the row
+  reads `assumed-cpr` exactly as it does now. ⭐ **Guard offered, NOT built** (it guards a mode
+  nobody runs yet): refuse or loudly flag when the valuation date is outside the factor
+  history's coverage.
+- **⭐ It does NOT change the plan, and one thing makes it stronger:** coverage before
+  sophistication still holds, and the 412's factor histories would **roughly double the fitting
+  data for Tier 2** (376 → 788 securities) ⇒ doing coverage first makes Tier 2 better.
+- **⚠️ A QUESTION FOR MARIO, not ours to decide:** when the tool goes live, **at what date and
+  for what purpose — revaluation, or scenario risk?** A and B need very different amounts of
+  work, and he is the one who knows what his group will ask of it. ⚠️ Not yet raised; it is not
+  in the 10-16 reply, which was already answering three questions.
+
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
 
 - **⭐⭐ DIFF THE REQUEST AGAINST THE CLAIM, as an ASSERTION not a memory.** The 09-29 pack
