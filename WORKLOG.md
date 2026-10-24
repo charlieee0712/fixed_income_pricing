@@ -96,8 +96,38 @@ median moved, the driver's printed summary is unchanged, 771 tests pass, and 18 
 artifact hashes in `release_facts` are identical. Record regenerated as
 `docs/release_facts_2026-10-24.md`. ⚠ The 2026-10-15 Drive package predates this.
 
-**Open:** re-ask the 37 inside the reply to this delivery; the reset-frequency route to
-floater duration; a driver for the 412.
+**The 412 are priced (commits `1602e41`, `6c83822`, `05901bc`).** `build_pool_universe`
+gained a `classes` argument defaulting to Government MBS -- verified inert, both existing
+artifacts re-run byte-identical -- and `scripts/tier1_securitized.py` produces
+`outputs/tier1_securitized_2009-03-31.csv`: **412 rows = 371 priced + 41 named**. A sibling
+rather than an extension, because the 882-row table is delivered and growing it would restate
+a number in a client's hands; but `price_observed_row`, `_blank_risk` and `_REASON` are
+imported from it, and a test fails if the pricing core is ever copied instead.
+
+Validated as the 882 were: **principal conserves to 1.42e-14 over 364 paths**, the same floor.
+The I/O refusal fires on 7 strips. `reconcile` covers all 412. Spreads land where non-agency
+paper belonged in March 2009 -- CMBS 771, ABS 1,052, CMO 1,334 bp against 226 for the agency
+book, off marks with a median of 78.
+
+**⭐⭐ The finding: the custodian's duration points the opposite way in the two books.** On
+floaters it is 0.13 against our 3.14 here, and 3.67 against our 2.33 in the government book.
+The divergence is the held-flat-coupon assumption either way, but its SIGN relative to us
+flips, so the two books' `aq_divergence` columns cannot be read side by side. The government
+book's 1.77y interest-leg bound is therefore not carried over -- the median divergence here is
+2.49y -- and a mutation-verified lock forbids that sentence appearing in this artifact.
+
+`release_facts.py` listed its artifacts in a hardcoded tuple and would have gone on describing
+a book that had grown; both new files added, 19 hashes to 21. 772 -> 783 tests.
+
+⚠⚠ **Four of my own audit tools were wrong today, each accusing correct work** -- a relative
+comparison dividing by zero factors, a completeness check using column names the master does
+not have, a conservation check telescoping the raw path rather than the engine's flows, and a
+pre-send recompute hard-coding semi-annual where the file says annual. An audit finding is a
+hypothesis until the tool that produced it has itself been checked.
+
+**Open:** re-ask the 37 inside the reply to this delivery; the floater-duration job, now worth
+doing once across both books (121 government + 180 securitised rows, all with a reset
+frequency); the 77 that do not classify.
 
 **Hours:** [TO FILL]
 

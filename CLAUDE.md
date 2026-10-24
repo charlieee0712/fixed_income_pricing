@@ -1376,9 +1376,65 @@ Plain-language write-up:
   Record regenerated: `docs/release_facts_2026-10-24.md`.
   ⚠️ **The 2026-10-15 Drive package predates this** and still carries the old
   `tier1_structured_2009-03-31.csv`; refresh it at the next delivery, not before.
-- **OPEN:** ① re-ask the 37 — one sentence, use the `security` column, inside the reply to this
-  delivery; ② the reset-frequency route to floater duration; ③ a driver for the 412 (the data
-  is there, nothing prices them yet).
+- **⭐⭐ THE 412 ARE PRICED (2026-10-24) — `scripts/tier1_securitized.py`,
+  `outputs/tier1_securitized_2009-03-31.csv` = 412 rows = **371 priced + 41 named**
+  (`no-factor-path`), plus a dated disposition.** The last category with nothing behind it.
+  Routes: `observed-amortising` 353 · `observed-principal-only` 11 ·
+  `io-strip-prepayment-dominated` 7 (risk withheld, the refusal inherited from the assets
+  layer). `build_pool_universe` gained `classes=` defaulting to `("govt_mbs",)`
+  (`SECURITIZED_CLASSES`), so the existing driver is untouched and both its artifacts re-run
+  byte-identical.
+  ⭐ **A SIBLING, NOT AN EXTENSION:** `tier1_structured_*.csv` is a delivered 882-row artifact
+  and growing it to 1,294 would silently restate a number already in a client's hands.
+  **But the pricing is NOT duplicated** — `price_observed_row`, `_blank_risk` and `_REASON`
+  are imported from it, so the two tables cannot disagree about how a measured path is priced
+  or about what to call a security they both name; a test fails if the core is ever copied.
+  ⚠️ CUSIP is derived as `ISIN[2:11]`, guarded to US ISINs only, and the driver REFUSES if
+  any delivered path reaches no security.
+- **VALIDATED THE WAY THE 882 WERE, not by eye: principal conserves to `1.42e-14` over 364
+  paths** — the identical floor the government book reaches.
+  ⭐ **And the spread hierarchy is itself evidence:** CMBS **771** · ABS **1,052** · CMO
+  **1,334** bp against the agency book's **226** — the right 2009 non-agency ordering, off
+  marks with a median of **78** and a p10 of **40**. A 1,098 bp median looked alarming and is
+  simply what non-agency paper cost in March 2009.
+- **⭐⭐⭐ THE FINDING OF THE ROUND: CUSTODIAN DURATION POINTS THE OPPOSITE WAY IN THE TWO
+  BOOKS.** Split by whether the coupon moves, ours against the custodian's:
+
+  | | n | ours | custodian |
+  |---|---:|---:|---:|
+  | securitised, MOVES | 180 | 3.14 | **0.13** |
+  | securitised, FIXED | 191 | 2.02 | 1.06 |
+  | government, MOVES | 71 | 2.33 | **3.67** |
+  | government, FIXED | 302 | 2.93 | 3.75 |
+
+  ⚠️ In the securitised book the custodian is far SHORTER than us on floaters; in the
+  government book it is LONGER, on both. So "custodian 0.13 against our 3.14" is **not**
+  proof we are 9x wrong — it is the standing rule (*AQ means different things per class*)
+  made visible in one table. ⭐ Read the two books' `aq_divergence` side by side and you would
+  reach a false conclusion; this is the second time that column has needed its own warning.
+- **⭐ THE 1.77y BOUND IS DELIBERATELY NOT BORROWED.** The government driver's disclosure
+  quotes it (p90 interest share × p90 interest life, measured on ITS paths). Here the median
+  divergence is **2.49y**, bigger than the bound itself, so inheriting the sentence would be
+  the weaker claim taking the stronger one's number. The flag says the bound does not apply
+  and that no equivalent has been measured; **a lock forbids the text appearing in this
+  artifact**, mutation-verified along with the no-copying lock.
+- **⚠️ `release_facts.py` ENUMERATED ITS ARTIFACTS IN A HARDCODED TUPLE** — the "list the
+  engine outgrew" trap, live. Both new files added; **19 artifact hashes → 21** (11 production
+  + 10 sidecars), counted from the file. **772 → 783 tests** (+10 written, +1 automatic).
+- **⚠⚠ THREE OF MY OWN AUDIT TOOLS WERE WRONG TODAY, each accusing correct work:** a
+  relative comparison that blew up on zero factors (1e+11 "disagreement"); a completeness
+  check reading `net_coupon_pct`/`maturity` when the master has `income_rate`/
+  `maturity_master` (371 of 371 "missing"); a conservation check telescoping the raw factor
+  path instead of the engine's flows (worst "57.15" against the true 1.4e-14); and the
+  pre-send audit's hard-coded semi-annual frequency where the file says annual. ⭐ **An audit
+  finding is a hypothesis until the tool that produced it has itself been checked** — four
+  instances in one session is enough to stop treating that as a slogan.
+- **OPEN:** ① re-ask the 37 — one sentence, use the `security` column, inside the reply to
+  this delivery; ② **the floater-duration job, now worth doing ONCE over both books** — 121
+  government rows and 180 securitised rows publish a duration that holds the coupon flat, and
+  all of them carry a reset frequency; ③ 77 of the 371 do not classify under `pool_structure`
+  and default to amortising (benign — the 4 with a negative custodian duration are
+  floating-rate ABS near zero, **not** I/O strips, which was my first guess and was wrong).
   ⚠️ **Still NOT raised with Mario:** the live-date question (revaluation vs scenario risk).
 
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
