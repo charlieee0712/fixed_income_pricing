@@ -1235,8 +1235,25 @@ client, does that force Tier 2? **Yes** — and the measurement is sharper than
 
 ## Mario returns the data (2026-10-23/24) — READ, not yet landed
 
-Three files, untracked in `docs/`: `index_updated.xlsx` · `mtge_factors.xlsx` (the 412) ·
-`03_factor_history_updated.xlsx` (the 376 re-pulled). Plain-language write-up:
+Three files, delivered 2026-10-23 21:26 and **tracked in `data/` since the same day**
+(`data/** -text`, byte-frozen). ⚠️ **They were renamed on the way in** — "updated" is not a
+name that survives a second update — so the mapping and the fingerprint of each is the
+provenance:
+
+| as delivered | in the repo | bytes | sha256 (first 16) |
+|---|---|---:|---|
+| `mtge_factors.xlsx` | `data/factor_history_412_2026-10-23.xlsx` | 2,904,549 | `c8b044df912970bd` |
+| `03_factor_history_updated.xlsx` | `data/factor_history_376_2026-10-23.xlsx` | 2,751,106 | `b0f16ca1392edc9f` |
+| `index_updated.xlsx` | `data/index_2026-10-23.xlsx` | 1,457,420 | `25ef500eecd9ccf7` |
+
+⭐ **The convention this settles:** `data/` holds anything the numbers come from — raw vendor
+deliveries AND the tables derived from them; `docs/` holds what we sent and what we wrote.
+No code reads a raw `.xlsx`: a one-off script derives a CSV and the loader reads that.
+⚠️ `docs/03_factor_history.xlsx` (September) is the one file on the wrong side of that line,
+because a returned file landed under the name of the request we had generated. Left where it
+is — `scripts/make_mario_request.py` and CLAUDE.md both name that path.
+
+Plain-language write-up:
 `three_tier_method_explained` **§3.17–§3.18**; narrative: walkthrough **Act 9**.
 ⚠️ **Nothing is loaded and no artifact moved** — this round is measurement only.
 
