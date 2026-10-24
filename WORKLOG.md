@@ -69,8 +69,23 @@ references sit in post-2009 periods — our ask counted references, not referenc
 **Free with the delivery:** both factor files start at issuance — the 376 gain a median 54
 months each (211 → 266 observations), roughly doubling the fitting data available to Tier 2.
 
-**Open, none started:** land the 412 factors with per-security alignment; re-ask the 37; decide
-where the three files live; the reset-frequency route to floater duration.
+**Landed the same day (commits `bbb5232`, `c8c626a`, `7f5fc9e`).** The three deliveries are
+tracked in `data/`, renamed and fingerprinted. `data/factor_history_412.csv` carries 371
+securities and 96,120 observations, every value re-read from the workbook with 0 mismatches.
+`data/factor_alignment.csv` carries 747 rows over both deliveries, 493 of them decided by the
+security's own factor and the rest labelled `class-majority-default`. `factor_history.py` takes
+an optional alignment and an optional filename; every existing call falls back to the constant
+and both artifacts re-run byte-identical. 754 -> 771 tests, the three load-bearing locks
+mutation-verified.
+
+**⚠⚠ And landing it found three published rows aligned wrong.** `31393LFM0` and `31393U4Q3`
+match `2009-03`, `31397RTS5` matches `2009-05`, all at residuals between 1.2e-08 and 1.6e-07.
+The largest is an I/O strip whose risk numbers are already withheld, so two rows carry a spread
+and a duration computed off a path starting a month late. Not fixed in the landing commit --
+it moves a published artifact and gets its own step.
+
+**Open:** realign those three and measure it; re-ask the 37 inside the reply to this delivery;
+the reset-frequency route to floater duration; a driver for the 412.
 
 **Hours:** [TO FILL]
 

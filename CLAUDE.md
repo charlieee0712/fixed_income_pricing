@@ -1332,9 +1332,37 @@ Plain-language write-up:
   with median **256** observations from a median first date of **2005-06-30**. No 2009 number
   moves; it roughly **doubles the fitting data for Tier 2** (376 → ~748 securities).
   ⚠️ One degenerate series: `US126694LU05`, a single observation dated 1970-01-01.
-- **OPEN, none started:** ① land the 412 factors (per-security alignment, NOT the existing
-  loader); ② re-ask the 37 — one sentence, use the `security` column; ③ decide where the three
-  files live (`docs/` now; `data/` if landed); ④ the reset-frequency route to floater duration.
+- **⭐ LANDED 2026-10-24 — the 412's factors are in the repo and the lag is now DATA.**
+  `scripts/build_factor_history_412.py` → **`data/factor_history_412.csv`**, 371 securities /
+  **96,120** monthly observations, 2000-01 … 2026-09. Coverage reconciles: 412 − 37 keyed out
+  − 2 ISINs with no block − 1 `#N/A` − 1 whose only observation is dated 1970-01-01 = **371**.
+  Verified not trusted: **all 96,120 values re-read from the workbook, 0 mismatches**; range
+  0.0–2.298 (>1 legitimate on Z-accrual tranches, 42 of 371 ever rise); **362 of 371 match the
+  custodian at some month**, the one that matches nowhere (`008684AA0`) being out by 2.3e-4 at
+  its closest ⇒ right security, small discrepancy, not a keying error.
+  `scripts/build_factor_alignment.py` → **`data/factor_alignment.csv`**, **747 rows over both
+  deliveries**; **493 (66%) decided by the security itself**, the rest carrying the class
+  majority with `lag_source = class-majority-default` so a driver can say so.
+  `factor_history.py` gains `load_factor_alignment` / `lag_for` / `factor_path(..., alignment=)`
+  / `load_factor_history(..., filename=)`. ⭐ **Every existing call falls back to the constant
+  and both artifacts re-run BYTE-IDENTICAL** — the change is provably inert.
+  **754 → 771 tests** (+15 locks, +2 automatic). All three load-bearing locks
+  **mutation-verified**: silence a known exception, invent a fourth, make a class rule work —
+  each turns them red, and the table restores byte-identical.
+- **⚠⚠ FOUND WHILE LANDING IT — THREE OF THE PUBLISHED 376 ARE ALIGNED WRONG.** Their own
+  factor picks a different month from the constant, at residuals that are clean unique
+  matches: **`31393LFM0`** (FHLMC T054 3A, par 504k) and **`31393U4Q3`** (FNMA 2004-W1 2A2, par
+  508k) match **`2009-03`** at 1.19e-07 / 1.57e-07 while the loader reads `2009-04` (8.5e-3 /
+  1.25e-2 away); **`31397RTS5`** (FHLMC 3430 AI, par 17.0M) matches **`2009-05`** at 1.24e-08
+  against `2009-04` 2.62e-2 away. ⭐ **The largest of the three is an I/O strip whose spread and
+  duration are already withheld**, so only two rows carry risk numbers computed off a path that
+  starts a month late (391.09bp / 5.59y and 417.06bp / 4.70y). **Deliberately NOT fixed in the
+  landing commit** — it moves a published artifact, so it gets its own step and its own
+  measurement; `test_factor_alignment` pins these three as the ONLY disagreement so a fourth
+  cannot appear unnoticed.
+- **OPEN:** ① realign those three and measure what moves; ② re-ask the 37 — one sentence, use
+  the `security` column, inside the reply to this delivery; ③ the reset-frequency route to
+  floater duration; ④ a driver for the 412 (the data is there, nothing prices them yet).
   ⚠️ **Still NOT raised with Mario:** the live-date question (revaluation vs scenario risk).
 
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
