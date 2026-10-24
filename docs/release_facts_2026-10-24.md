@@ -1,6 +1,6 @@
 # Release facts — 2026-10-24
 
-**Generated from the live repository at `abcb9a4` on 2026-10-24.** Every number below is
+**Generated from the live repository at `6c83822` on 2026-10-24.** Every number below is
 read out of a file a driver just wrote. Regenerate with `PYTHONPATH=src python
 scripts/release_facts.py` after any code-bearing change, and re-run the drivers first.
 
@@ -18,6 +18,7 @@ scripts/release_facts.py` after any code-bearing change, and re-run the drivers 
 | `pool_risk_2009-03-31.csv` | 505 | `3aa9f3baa89627f60acc18181a070b4c` |
 | `pool_risk_2009-06-10.csv` | 478 | `86891918319bb0d6af70a1cc76b49661` |
 | `tier1_structured_2009-03-31.csv` | 882 | `f672b8ca5ff202f0e0b90f55ba4524cd` |
+| `tier1_securitized_2009-03-31.csv` | 412 | `d0797f00759cbfb07d15b1df339754b8` |
 
 ## Disposition sidecars — every security accounted for, at both dates
 
@@ -36,6 +37,7 @@ dated because an undated default let the 6-10 run overwrite the 3-31 one.
 | `pool_disposition_2009-03-31.csv` | 882 | `19b95961594cc7a0de5cd342a3ec6176` |
 | `pool_disposition_2009-06-10.csv` | 882 | `566751ca6c6f4e42c26e77b2f4d89200` |
 | `tier1_structured_disposition_2009-03-31.csv` | 882 | `e3f62dde9ffa3c89a6d27fd4bd02e06d` |
+| `tier1_securitized_disposition_2009-03-31.csv` | 412 | `aa9d36fc6defea42c5d48d4e5c7a2d28` |
 
 ## Text fingerprints -- what floating point cannot move
 
@@ -63,6 +65,7 @@ Checked on any machine by `PYTHONPATH=src python scripts/platform_parity.py`.
 | `pool_risk_2009-03-31.csv` | 12 | `d4d022e3b04735bb` |
 | `pool_risk_2009-06-10.csv` | 10 | `f56d434a13554d91` |
 | `tier1_structured_2009-03-31.csv` | 11 | `145a5bf21bd5b3fe` |
+| `tier1_securitized_2009-03-31.csv` | 12 | `6950bb0aaf7f2386` |
 | `corporate_disposition_2009-03-31.csv` | 5 | `d7a83a7b1f377094` |
 | `corporate_disposition_2009-06-10.csv` | 5 | `df819ce056b736f9` |
 | `callable_disposition_2009-03-31.csv` | 5 | `605e56988db3808b` |
@@ -72,6 +75,7 @@ Checked on any machine by `PYTHONPATH=src python scripts/platform_parity.py`.
 | `pool_disposition_2009-03-31.csv` | 4 | `e64e4e90c7fd0844` |
 | `pool_disposition_2009-06-10.csv` | 4 | `ca7d4e5eb730b174` |
 | `tier1_structured_disposition_2009-03-31.csv` | 4 | `d619465c94b680ae` |
+| `tier1_securitized_disposition_2009-03-31.csv` | 4 | `6bba1654a4f3aed8` |
 
 ## Corporate coverage
 
@@ -106,5 +110,5 @@ says so in the row it appears in — not only in prose somewhere else.
 
 ## Test suite
 
-`pytest -q` → **771 passed in 67.77s (0:01:07)** (local, Python 3.13.5).
+`pytest -q` → **783 passed in 64.18s (0:01:04)** (local, Python 3.13.5).
 
