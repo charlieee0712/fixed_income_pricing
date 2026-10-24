@@ -46,12 +46,20 @@ PRODUCTION = ("implied_oas_2009-03-31.csv", "implied_oas.csv", "callable_risk.cs
               # IMPLIED, BOND-EQUIVALENT spread and never an OAS -- the client's own
               # Defensible-deck slide 13 reserves that name for a model whose cash flows
               # respond to rates. 882 rows: 858 priced, 24 named.
-              "tier1_structured_2009-03-31.csv")
+              "tier1_structured_2009-03-31.csv",
+              # The rest of the securitised book, added 2026-10-24 once Mario's factor
+              # delivery arrived: the 412 CMO, CMBS and asset-backed securities, 371 priced
+              # on measured paths and 41 named. Same bond-equivalent spread, same naming
+              # rule. ⚠️ Its duration holds the coupon flat, and nearly half of these float,
+              # so the per-row flag says so and the 1.77y bound from the government book is
+              # deliberately NOT carried over.
+              "tier1_securitized_2009-03-31.csv")
 DISPOSITIONS = ("corporate_disposition_2009-03-31.csv", "corporate_disposition_2009-06-10.csv",
                 "callable_disposition_2009-03-31.csv", "callable_disposition_2009-06-10.csv",
                 "sovereign_disposition_2009-03-31.csv", "sovereign_disposition_2009-06-10.csv",
                 "pool_disposition_2009-03-31.csv", "pool_disposition_2009-06-10.csv",
-                "tier1_structured_disposition_2009-03-31.csv")
+                "tier1_structured_disposition_2009-03-31.csv",
+                "tier1_securitized_disposition_2009-03-31.csv")
 
 
 def sha256(path) -> str:
