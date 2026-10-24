@@ -759,7 +759,10 @@ Gate-0 revision recorded in its §14 BEFORE implementation (6 adjustments).
   WAC 6.50% deep-in prepaid 40.3%.
 - **⚠️ T+1 AGAIN — Bloomberg's month label sits ONE MONTH AHEAD of the custodian's.** Its
   `2009-04` column IS the 2009-03-31 position (median rel 2.9e-08 on 370/373; the labelled
-  `2009-03` is 1.6e-02 off). **Same house convention as the TIPS index ratios (2026-09-19).**
+  `2009-03` is 1.6e-02 off). ⚠⚠ **CORRECTED 2026-10-23 — this was recorded as "the same
+  house convention as the TIPS index ratios (2026-09-19)" and that link is REFUTED.** The
+  lag belongs to the SECURITY, not the vendor or the custodian: private-label CMOs mostly do
+  not shift. A custodian strike date would be uniform. See the 2026-10-23/24 section.
   Every reader of `docs/03_factor_history.xlsx` must apply the shift. On `3133T5MR1` reading
   the labelled row puts the balance out by a factor of six.
 - **⚠️ CORRECTED 10-02 — 79 P/O, 76 I/O, 222 neither** (of the 376). The arrival doc first
@@ -1017,7 +1020,7 @@ The **narrative** of the whole securitised arc, July → October: how it went fr
 no data to 882 published rows, what was decided at each fork, and what we got wrong. ⭐ Written
 for a reader coming back cold. It deliberately does NOT re-explain the concepts — the split is
 **narrative + decisions here, mechanism in `three_tier_method_explained_2026-10-06.md`** — and
-its §14 is a provenance table giving the source of every headline number in it. Start there
+its §15 is a provenance table giving the source of every headline number in it. Start there
 before this file's per-round sections, which are records rather than explanations.
 
 ## The coupon FORMULAS (Mario 2026-10-14) — DONE, 753 tests
@@ -1229,6 +1232,93 @@ client, does that force Tier 2? **Yes** — and the measurement is sharper than
   for what purpose — revaluation, or scenario risk?** A and B need very different amounts of
   work, and he is the one who knows what his group will ask of it. ⚠️ Not yet raised; it is not
   in the 10-16 reply, which was already answering three questions.
+
+## Mario returns the data (2026-10-23/24) — READ, not yet landed
+
+Three files, untracked in `docs/`: `index_updated.xlsx` · `mtge_factors.xlsx` (the 412) ·
+`03_factor_history_updated.xlsx` (the 376 re-pulled). Plain-language write-up:
+`three_tier_method_explained` **§3.17–§3.18**; narrative: walkthrough **Act 9**.
+⚠️ **Nothing is loaded and no artifact moved** — this round is measurement only.
+
+- **⭐⭐⭐ THE T+1 MONTH SHIFT BELONGS TO THE SECURITY, NOT TO BLOOMBERG.** Proved the labels
+  mean the same thing in both pulls FIRST — **376 of 376 reproduce `data/factor_history.csv` on
+  every shared month to `0.00e+00`** — so the 412's opposite answer was a real contradiction,
+  not a vendor quirk. Resolved by asking each series which of ITS OWN months equals the
+  custodian's `paydown_factor` (the TIPS-index-ratio move: invert against a number already
+  trusted). Govt MBS **238 of 241 → +1** (so the shipped 376 are RIGHT, loader unchanged) ·
+  Non-Gov CMO **168 → +0 / 23 → +1** · ABS **30 / 13** · CMBS **0 / 17**.
+  ⚠⚠ **A per-class rule gets 36 wrong** — two private-label CMOs, same sub-category, opposite
+  answers (`US007036TB25` → `2009-03`, `US000780LD65` → `2009-04`). ⇒ **align PER SECURITY;
+  assert no convention.** ⚠️ Running the 412 through `dataio/factor_history.py` as it stands
+  would put **224 CMO tranches a month out, silently** — a factor one month off is still a
+  plausible factor.
+  ⚠⚠ **AND IT RETIRES AN EXPLANATION WE HAD WRITTEN DOWN IN THREE PLACES.** The shift was
+  recorded as *"the same house convention as the TIPS index ratios — the custodian strikes at
+  T+1"*. **Refuted by its own logic:** a custodian striking a day late would do it to EVERY
+  security it holds, and the alignment is not uniform. The two were linked by analogy ("both
+  are one period out") and the analogy was doing unearned work. Corrected in the explainer
+  glossary, in the 2026-10-01/02 section above, and in `factor_history.py`'s docstring — the
+  CONSTANT (`BLOOMBERG_MONTH_LAG = 1`) stays right for the 376 it serves; only the reason was
+  wrong.
+  ⚠️ **166 securities the test CANNOT decide** (same factor both months). My first pass gave
+  CMBS a verdict off a tiebreak between two scores both exactly `0.000000e+00` — h2 trap
+  §1.29 live. Silence is not agreement; they need a named default + flag, because the choice
+  is inert at the valuation date but shifts the whole forward path.
+- **COVERAGE: 372 of 412.** 1 `#N/A Invalid Security` (`US70337U1007` = the `70337U100` PATRONS
+  LEGACY, consistent with "that is an equity shape") · 2 ISINs with no block · **37 keyed out**.
+  ⭐ **The 37 are a keying accident, not a refusal:** our request shipped `<CUSIP> Mtge` in its
+  `security` column, **verified 412 of 412**; the pull was rebuilt from the `isin` column, blank
+  for exactly those 37 → `NULL Mtge`. Re-ask = one sentence. ⚠️ I first blamed OUR file — an
+  off-by-one in my own script printed the `cusip` column. Check the checker.
+- **⭐ NO `CPN` ARRIVED, AND THAT IS HIS ANSWER, NOT A GAP** — every block is one (date, value)
+  pair, offsets 2 and 3 empty on all 410. Corroborates the user's recollection (flagged
+  approximate) that the rule is **formula where there is one, fixed where there is not**; same
+  exception he gave 2026-10-07, same point as call question ③. **Do NOT re-ask for CPN.**
+  **His rule measured on the 412:** rule-says-FIXED **224** + no-record **96** = **320 (78%)
+  already identical to what we do**; **93** evaluate. ⭐ The **201** decompose exactly as
+  floating 93 + variable 102 + step 6, and **108 of them land on his own fallback** (94
+  `variable` are absent from the formula table outright).
+- **⭐ THE 93 ARE THE ONLY DIVERGENCE, AND THE FORMULA LOSES THERE.** Formula minus custodian:
+  median **−0.021 pt**, within 0.05 pt **79/93**, within 0.25 pt **86/93**, **LOW 77/93**.
+  ⇒ *no difference on 85%, identifiably worse on 15%.* At the valuation date `income_rate`
+  **is** the coupon; the formula reproduces it and cannot beat it. Comparator validated
+  independently (437/437 fixed records match exactly ⇒ the keying and units are right on both
+  sides). **Cause named by the clustering, not guessed:** misses are identical WITHIN an index
+  — 2 × `COF 11` both **−1.130** = the Mar-vs-Dec print gap, 3 × `12MTA` all **−0.193** =
+  Mar-vs-Jan ⇒ **reset lag**, and the short end was collapsing, which is why 77 of 93 are LOW.
+  `9393363R2` **+2.519** = a cap. Worth ~**2 bp** of spread at the median (⚠️ first-order
+  estimate, NOT measured), **110–180 bp** on the tail, one-directional so it does not wash out.
+  ⭐ **Synthesis:** use the formula for the **change**, not the level —
+  `coupon(t) = custodian + [formula(index_t) - formula(index_0)]`; exact at t=0 by construction,
+  lag and bias cancel to first order.
+  ⭐ **And the unconditionally useful field is the FREQUENCY, not the margin:** 93 of 93 floating
+  rules carry it (88 monthly, 5 quarterly) — no index level, no cap, no lookback needed, and it
+  is what a floater's DURATION wants.
+  ⭐ Independent agreement: custodian `Type of Coupon` vs Bloomberg rule-in-force = **93/93
+  floating, 183/183 fixed, 27/27 zero**; the only gap is `variable`.
+- **INDEX FILE: 4 of 6 arrived** (`US0006M` `US0012M` `H15T5Y` `EUR003M`); old vs new **zero
+  differing values** on every shared date. Book-wide evaluable **224 → 230** — ⚠️ **`EUR003M`
+  and `H15T5Y` unblock ZERO at this valuation date**, their references sit in post-2009 periods;
+  our ask counted *references*, not *references in force*. **43 still blocked, all RFUCCT**
+  (`RFUCCT1Y` 30 + `RFUCCT6M` 13).
+- **⚠️ RFUCCT — A NEGATIVE RESULT, THROWN AWAY ON PURPOSE.** Mario says they are not on
+  Bloomberg, "find the most similar (ask chatgpt)". Inverting the formulas against the custodian
+  coupons **does not identify them**: 15 candidates × 16 lags = **240 combinations**, so something
+  always fits — the top hit was 3M EURIBOR at lag 3 for a US ARM pool. Same trap as the 10-14
+  ARM sweep (*solving one date always fits*). What IS true: implied levels scatter
+  **2.35–4.12%** (the scattered-anniversary signature) and sit far ABOVE every candidate we hold
+  at 2009-03 (1y UST 0.57 · COF 11 1.63 · 12MTA 1.44 · 1M LIBOR 0.50) ⇒ a money-market
+  substitute would be visibly wrong. **And it blocks nothing:** the 43 are **1.9% of the book**,
+  all Govt MBS ARM pools, all already priced on the custodian's observed coupon.
+- **FREE WITH THE DELIVERY:** both factor files now start at issuance — the 376 gain a median
+  **54 months** each (375 of 376 begin before our record; median obs 211 → 266), the 412 arrive
+  with median **256** observations from a median first date of **2005-06-30**. No 2009 number
+  moves; it roughly **doubles the fitting data for Tier 2** (376 → ~748 securities).
+  ⚠️ One degenerate series: `US126694LU05`, a single observation dated 1970-01-01.
+- **OPEN, none started:** ① land the 412 factors (per-security alignment, NOT the existing
+  loader); ② re-ask the 37 — one sentence, use the `security` column; ③ decide where the three
+  files live (`docs/` now; `data/` if landed); ④ the reset-frequency route to floater duration.
+  ⚠️ **Still NOT raised with Mario:** the live-date question (revaluation vs scenario risk).
 
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
 

@@ -31,9 +31,18 @@ the row labelled      median relative difference  within 1e-6
 ====================  ==========================  ===============
 
 On ``3133T5MR1`` the labelled row is wrong by a factor of **six** (custodian 0.00196067;
-Bloomberg's ``2009-03`` 0.01212421, its ``2009-04`` 0.00196067). ⭐ The same house
-convention was found independently on the TIPS index ratios (2026-09-19) — the custodian
-strikes at T+1.
+Bloomberg's ``2009-03`` 0.01212421, its ``2009-04`` 0.00196067).
+
+⚠⚠ **CORRECTED 2026-10-23 — this lag is a property of THESE SECURITIES, not a house
+convention, and the module is scoped accordingly.** It was recorded here as "the same house
+convention as the TIPS index ratios (2026-09-19) — the custodian strikes at T+1". That
+explanation is refuted by its own logic: a custodian striking a day late would do it to every
+security it holds. Measured per security against the custodian's own ``paydown_factor``, the
+Government MBS pools this module serves shift (**238 of the 241 that can be decided**), while
+private-label CMOs mostly do **not** (168 of 191) and 23 of them shift anyway — so no rule
+keyed on asset class is safe either. The constant below stays correct for the 376; **a caller
+loading any other population must align per security and must not reuse this module's lag.**
+See ``docs/three_tier_method_explained_2026-10-06.md`` §3.17.
 
 **So the CSV keeps Bloomberg's own labels, unshifted**, because a stored record should be
 checkable against what the terminal returned; and every caller receives *as-of dates*

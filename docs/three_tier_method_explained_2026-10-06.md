@@ -731,6 +731,251 @@ nobody runs yet — but named here so it is not discovered by a client.
 
 ---
 
+### 3.17 ⚠️ The month label on a factor — a rule we had been applying turns out to belong to the security, not to Bloomberg
+
+Three files came back on 2026-10-23: the index histories, `MTG_FACTOR` for the 412, and the
+376-security factor history re-pulled from issuance. The re-pull was expected to be a
+formality. It was not, and this section is why.
+
+#### Step 0 — reconcile a delivery against the record before reading anything new out of it
+
+The re-pull covers securities we already publish numbers for. So the first question is not
+*what is new* but *does it still say what the old one said*.
+
+**It does, exactly: 376 of 376 securities agree with `data/factor_history.csv` on every month
+they share, to `0.00e+00`.** Not close — identical.
+
+⭐ That one check licenses everything after it. Two deliveries months apart, possibly pulled by
+different people, label their months the same way. So any disagreement found later is a fact
+about the **securities**, not about the pull.
+
+#### What a "month label" problem even is
+
+A mortgage factor is a monthly number: *how much of the original balance is still outstanding*.
+Bloomberg stamps each one with a month. The custodian separately reports the balance it actually
+holds on the valuation date. The question is which Bloomberg row is the custodian's 2009-03-31
+photograph.
+
+Here is a real agency pool, Freddie Mac `31282YWS4`:
+
+| | factor |
+|---|---|
+| **custodian, 2009-03-31** | **0.67761190** |
+| Bloomberg `2009-02` | 0.69991026 |
+| Bloomberg `2009-03` | 0.68799045 |
+| Bloomberg `2009-04` | **0.67761189**  ← this one |
+| Bloomberg `2009-05` | 0.66424581 |
+
+The row that matches is labelled **April**, not March. That is the **T+1 shift** found in
+September and built into `src/dataio/factor_history.py`.
+
+⚠️ **Reading the label literally is not a rounding error.** Each month moves this balance by
+about a percent, and on `3133T5MR1` taking the wrong row puts it out by a **factor of six**.
+The loader owns the shift precisely so that no caller has to remember it.
+
+#### The contradiction the new delivery produced
+
+Run the same test on the 412 and the answer flips: the custodian's 2009-03-31 position matches
+Bloomberg's **`2009-03`**, median **4.7e-08**, while `2009-04` sits **4.8e-03** away.
+
+Both results cannot stand *if the labels mean the same thing* — and Step 0 proved they do. So
+the contradiction was real and had to be explained rather than averaged away.
+
+#### ⚠️ What we had written down, and why it was wrong
+
+The September finding was recorded as *"the same house convention as the TIPS index ratios —
+the custodian strikes at T+1"*. That explanation is now **refuted**, and by its own logic: a
+custodian that strikes its figures a day late would do it to **every** security it holds. The
+alignment is not uniform, so whatever is going on, that is not it.
+
+⭐ The two things had only ever been linked by analogy — both were "one period out" — and the
+analogy was doing work it had not earned. Two different phenomena were wearing one name.
+
+#### Resolving it without guessing the convention
+
+The move that works is the one that recovered the TIPS index ratios: **do not reason about the
+vendor's habits — invert against a number you already trust.** We hold the custodian's own
+`paydown_factor` for every one of these securities, so ask each series a question about itself:
+
+> *which of your own months equals this number?*
+
+| | finds it at `2009-03` | at `2009-04` (T+1) | both months identical |
+|---|---:|---:|---:|
+| Government MBS (the 376) | 2 | **238** | 58 |
+| Non-Government CMOs | **168** | 23 | 34 |
+| Asset Backed Securities | **30** | 13 | 29 |
+| Commercial MBS | 0 | **17** | 50 |
+
+Three readings, in order of importance:
+
+1. ⭐ **The published 376 are right.** 238 of the 241 that can be decided say T+1, which is what
+   the loader does. Nothing already shipped moves.
+2. ⚠️ **The 412 mostly do not shift.** Loading them through the existing loader would put 224
+   CMO tranches a month out — silently, because a factor one month off is still a perfectly
+   plausible factor.
+3. ⚠⚠ **A per-class rule would be wrong too.** Two private-label CMOs, same sub-category,
+   opposite answers:
+
+   | | custodian 2009-03-31 | matches |
+   |---|---|---|
+   | `US007036TB25` ADJUSTABLE RATE MTG TR 2005-10 | 0.45112110 | `2009-03` |
+   | `US000780LD65` ABN AMRO MTG CORP 2003-9 | 0.30260680 | `2009-04` |
+
+   23 CMOs and 13 ABS go the other way from their own class. A class rule gets 36 securities
+   wrong, and gets them wrong invisibly.
+
+⇒ **The design is per-security alignment against the custodian's own factor, with no convention
+asserted anywhere.**
+
+#### The likeliest mechanism — offered as explanation, not as evidence
+
+An agency pool's factor is published at the beginning of a month and describes the balance
+*going into* it, while the payment itself lands on the 25th. So on 31 March the holder's balance
+already reflects the March payment — the number published at the start of **April**. A
+private-label deal distributes on the 25th and the factor stamped with that month is the
+*post-distribution* balance, so 31 March is simply March.
+
+⚠️ The story fits the measurement, and the measurement is what we rely on. If the two ever
+disagree, believe the measurement. **This paragraph is not why we shift; the table above is.**
+
+#### ⚠️ The part the table cannot tell you
+
+**166 securities are missing from the counts above**, because their factor was the *same number*
+in both months — a tranche that received no principal in March. For those the test is **silent**,
+and silence is not agreement.
+
+⭐ This is the project's own trap §1.29, *a measurement that cannot say it measured nothing*. My
+first pass declared a winner for CMBS off a tiebreak between two scores that were both exactly
+`0.000000e+00`. Counting the securities the test can actually discriminate turned a confident
+wrong answer into an honest one: of CMBS, only **17 of 67** can be decided at all.
+
+For the silent ones the choice does not change the valuation-date balance — that is what made
+them silent — but it does shift the whole forward path by a month, so they need a named default
+and a flag, never a quiet pick.
+
+---
+
+### 3.18 ⭐ "Use the formula" versus "use what was observed" — why they differ, and which wins where
+
+Mario's standing rule for a moving coupon is: **use the Bloomberg formula where there is one,
+treat it as fixed where there is not.** He said it on 2026-10-07, asked about it again on the
+2026-10-16 call — *"Bloomberg has the formulas, why do you also need CPN?"* — and then answered
+it himself with what he sent: the 412 delivery carries `MTG_FACTOR` and **no coupon column at
+all**.
+
+He is right about the rule, and right not to buy the coupon history. This section is about the
+one place the rule and our numbers part company, which is smaller and sharper than it sounds.
+
+#### First, how much is even in dispute
+
+| of the 412 | n | his rule | what we already do |
+|---|---:|---|---|
+| rule in force at 2009-03-31 says FIXED | 224 | fixed | fixed — same |
+| no formula record at all | 96 | fixed | fixed — same |
+| the rule floats and evaluates | **93** | use the formula | custodian's observed coupon, held flat |
+
+**320 of 412 — 78% — are already identical.** And worth telling him: of the **201** he was asked
+about (which decompose exactly as floating 93 + variable 102 + step 6), **108 land on his own
+fallback**, because 94 of the `variable` ones are absent from the formula table entirely. His
+exception is not an edge case — it covers more than half the population it applies to.
+
+#### The asymmetry, in one sentence
+
+At the valuation date the custodian's `income_rate` **is** the coupon the bond was paying. The
+formula is an attempt to **reproduce** that number. A reproduction cannot beat the thing it
+reproduces; it can only match it or miss.
+
+⭐ **The analogy worth keeping.** You are standing in a room with a thermometer reading 21.3°C,
+beside a model that says *"given today's sun and wind, this room should be 21.1°C."* The model
+may be excellent. It is still not evidence about the temperature **right now** — the thermometer
+is. Where the model earns its keep is the question the thermometer cannot answer: *what will
+this room be at four o'clock tomorrow?*
+
+#### What the miss actually looks like
+
+| | |
+|---|---|
+| median difference, formula minus custodian | **−0.021 pt** |
+| within 0.05 pt | 79 / 93 |
+| within 0.25 pt | 86 / 93 |
+| **computed LOW** | **77 / 93** |
+
+So: **no difference on 85%, identifiably worse on 15%.** That is the honest form of "worse".
+
+#### Why it misses — and why the direction is not luck
+
+§3.13 lists the four things standing between a rule and the money; the formula string carries
+only the first. Two of the other three turn up here with names on them.
+
+**① The reset lag.** `1.000 * US0001M + 0.390%` does not say *which day's* `US0001M`. The bond
+locked its coupon at its last reset, off an index level read before that. We substitute
+31 March. And in this quarter the short end was collapsing:
+
+| | at 2009-03-31 | earlier |
+|---|---|---|
+| `COF 11` | 1.627% | 2.757% at 2008-12-31 |
+| `12MTA` | 1.43984% | 1.63284% at 2009-01-31 |
+| 1-year Treasury | 0.570% | 2.375% in June 2008 |
+
+Substituting today's level for the locked-in one must therefore compute **too low** — which is
+exactly the 77 of 93.
+
+⭐⭐ **And the evidence is harder than a direction.** The misses cluster by index, and *within a
+cluster they are identical*: two `COF 11` bonds are both out by **−1.130**, precisely the gap
+between the March and December prints; three `12MTA` bonds are all out by **−0.193**, the
+March-to-January gap. **Two securities out by the same amount to three decimals are not two
+coincidences.** That pins the cause on *the date the index was read*, not on the formula being
+wrong.
+
+**② A cap.** `9393363R2` computes to 4.499% against 1.980% reported — **+2.519**, the one
+material miss in the other direction. An inverse floater's coupon rises as rates fall, and a
+contractual ceiling stopped it. The ceiling is not in the formula string.
+
+#### Why we trust the comparator
+
+Not because it is the custodian's. Because it was checked independently: among the 505 priced
+pools, the **437** formula records that say *fixed* match the custodian's coupon **exactly** —
+median, p90 and max all `0.000000`, 437 of 437. ⭐ **That proves the keying and the units on both
+sides.** So where a floater disagrees, the side that moved is the formula.
+
+#### How much it is worth
+
+The price is anchored to the custodian's mark, so a coupon error does not move the price — it
+moves the **implied spread**. For a near-par floater the trade-off is roughly one for one, so
+(⚠️ a first-order estimate, not a measurement) the median −0.021 pt is about **−2 bp of
+spread**, and the handful of large misses are **110–180 bp** each. The median is small, but it
+is **one-directional across 93 securities**, so it does not wash out.
+
+#### ⭐ The synthesis — his rule and the evidence both hold
+
+Use the formula for the **change**, not for the **level**:
+
+```
+coupon(t) = custodian's observed coupon
+            + [ formula(index at t) - formula(index at the valuation date) ]
+```
+
+At the valuation date this is exactly the observation, by construction. Afterwards the formula
+supplies the movement, which is the only thing it is in a position to know. The systematic
+−0.021 pt and a constant reset lag sit in both terms and cancel to first order.
+
+#### One field of the formula table is useful with no conditions at all
+
+**93 of the 93 floating rules carry a reset frequency** — 88 monthly, 5 quarterly. That needs no
+index level, no cap and no lookback, and it is what a floater's **duration** actually wants: a
+monthly-resetting tranche has roughly a month of rate duration, not the fixed-rate duration a
+held-flat coupon implies. ⭐ The most robust thing in Bloomberg's coupon export turns out to be
+the frequency, not the margin.
+
+#### Two sources, and they agree on who moves
+
+On the 412 the custodian's `Type of Coupon` and Bloomberg's rule-in-force agree **93 of 93 on
+floating**, 183 of 183 on fixed, 27 of 27 on zero. Two independent sources, no disagreement
+about which securities move. The only gap is `variable`, where 94 of 102 are simply not in the
+formula table.
+
+---
+
 ## 4. ⭐ Numbers that are easy to confuse
 
 This is the section to come back to. **Five counts** first, four of which nearly match and mean
@@ -857,10 +1102,12 @@ separately identify defaults and recoveries, which may not exist for 2009 privat
 | **implied / bond-equivalent spread** | the flat spread that reprices the model to the observed price. ⚠️ **Not an OAS** — his own slide 13 draws the line, because an OAS requires modelling option-dependent cash flows |
 | **VaR · Expected Shortfall** | the loss exceeded x% of the time · the average loss beyond it |
 | **Intex** | the commercial deal-model engine Phase 3 would buy |
-| **T+1** | the custodian strikes its figures one day after the valuation date, so Bloomberg's `2009-04` column is the 2009-03-31 position |
+| **T+1** | ⚠️ **two different things have worn this name.** (a) the custodian strikes its TIPS **index ratios** one day after the valuation date; (b) Bloomberg's factor **month label** can sit one month ahead, so `2009-04` is the 2009-03-31 position. They were filed as one house convention and are not — (b) varies by security and (a) does not, so (b) cannot be a custodian strike date. §3.17 |
 | **reset lag / lookback** | how far *before* a coupon period the index is read. Set per deal and per index, and **absent from the formula field** — the whole of §3.13 |
 | **cap · floor** | the most / least a floating coupon may pay, periodic or lifetime. Also absent from the formula; it is what pins an inverse floater when rates collapse |
 | **inverse floater** | coupon falls as the index rises (`K − m×INDEX`). Ordinary, not exotic — 285 of the 451 floating periods in this book have a multiplier of exactly 1 |
 | **`COF 11` · `12MTA`** | two ARM indices: the 11th-District cost of funds, and the 12-month moving average of the 1-year Treasury. Both published monthly, both used with a lag (§3.13 recovers which) |
 | **Term SOFR (`TSFR1M/3M/6M`)** | LIBOR's successor. Begins 2019 in our data, so it is **empty at a 2009 valuation date** and never a substitute for the LIBOR tenor it replaced |
 | **ISDA fallback spread adjustment** | the fixed add-on converting a LIBOR rate to Term SOFR, set 2021-03-05: **0.11448%** 1M · **0.26161%** 3M · **0.42826%** 6M. §3.14 |
+| **observation vs reconstruction** | the custodian's `income_rate` is the coupon that was actually paid; a formula evaluated at the valuation date is a model of it. The second can match the first, never beat it — §3.18 |
+| **`RFUCCT1Y` · `RFUCCT6M`** | two ARM indices Bloomberg does not carry. 43 securities reference them — all Government MBS ARM pools, all already priced on the custodian's observed coupon ⇒ ⭐ a gap that **confirms**, never **blocks** |

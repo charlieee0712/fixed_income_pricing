@@ -5,6 +5,77 @@ work. Hours are recorded per entry; `[TO FILL]` = not yet logged.
 
 ---
 
+## 2026-10-23/24 — Mario returns the data: 372 of 412, no CPN by decision, and T+1 changes owner
+
+**No code beyond one docstring correction, and no artifact moved.** Measurement only, on three
+untracked files in `docs/`: `index_updated.xlsx`, `mtge_factors.xlsx` (the 412),
+`03_factor_history_updated.xlsx` (the 376 re-pulled). Written up in
+`three_tier_method_explained_2026-10-06.md` **§3.17–§3.18** (mechanism, with two real worked
+securities) and `mortgage_book_walkthrough_2026-10-14.md` **Act 9** (narrative).
+
+**⭐⭐ The headline — the T+1 month shift is a property of the security, not of Bloomberg.**
+Step 0 was to reconcile the re-pull against the record rather than read anything new out of it:
+**376 of 376 agree with `data/factor_history.csv` on every shared month to `0.00e+00`**. That
+established both pulls label months identically, which turned the 412's opposite answer
+(custodian matches `2009-03` at 4.7e-08, `2009-04` 4.8e-03 away) from a vendor quirk into a real
+contradiction. Resolved by asking each series which of its own months equals the custodian's
+`paydown_factor`: **Govt MBS 238 of 241 → +1** (the shipped 376 are correct, loader unchanged),
+**Non-Gov CMO 168 → +0 against 23 → +1**, **ABS 30 / 13**, **CMBS 0 / 17**. ⚠⚠ A per-class rule
+would get **36 wrong** — `US007036TB25` and `US000780LD65` are both Non-Government CMOs with
+opposite alignment. ⇒ **align per security, assert no convention.** Running the 412 through
+`dataio/factor_history.py` as it stands would silently put 224 CMO tranches a month out.
+
+**⚠⚠ And it retires a written explanation.** The shift had been recorded in three places as
+*"the same house convention as the TIPS index ratios — the custodian strikes at T+1"*. A
+custodian striking a day late would do so for every security it holds; the alignment is not
+uniform, so that cannot be the cause. The two findings were linked by analogy and the analogy
+was unearned. Corrected in the explainer glossary, in CLAUDE.md, and in the docstring of
+`src/dataio/factor_history.py` — **the constant `BLOOMBERG_MONTH_LAG = 1` stays right for the
+376 it serves; only the stated reason was wrong.** Docstring-only change, suite unaffected.
+⚠️ **166 securities cannot be decided** (identical factor in both months); my first pass gave
+CMBS a verdict from a tiebreak between two scores of exactly `0.000000e+00` — h2 trap §1.29.
+
+**Coverage 372 of 412.** 1 invalid (`US70337U1007`), 2 ISINs with no block, **37 keyed out**:
+the pull rebuilt the ticker from the `isin` column, blank for exactly those 37, yielding
+`NULL Mtge`. Our own request was correct — `<CUSIP> Mtge` in the `security` column, verified
+412 of 412. ⚠️ I first reported this as our defect; an off-by-one in my checking script had
+printed the `cusip` column.
+
+**No `CPN` arrived, and it is a decision.** Every block is a single (date, value) pair, offsets
+2 and 3 empty on all 410. This corroborates the user's recollection — flagged approximate —
+that the rule is *formula where there is one, fixed where there is not*: the same exception he
+gave on 2026-10-07 and the same point as call question ③. **Do not re-ask.** Measured against
+the 412, his rule and our practice are **identical on 320 (78%)**; **93** evaluate. The **201**
+decompose exactly as floating 93 + variable 102 + step 6, and **108 of them land on his own
+fallback**.
+
+**The 93 are the only divergence, and the formula loses there.** Formula minus custodian:
+median **−0.021 pt**, 79/93 within 0.05 pt, 86/93 within 0.25 pt, **77/93 LOW** ⇒ no difference
+on 85%, identifiably worse on 15%. The comparator was validated independently (437/437 fixed
+records match the custodian exactly). The cause is named by the clustering rather than guessed:
+misses are identical *within* an index — two `COF 11` bonds both **−1.130** (the Mar-vs-Dec
+print gap), three `12MTA` bonds all **−0.193** (Mar-vs-Jan) ⇒ **reset lag**, with the short end
+collapsing, which is why the sign is systematic. `9393363R2` **+2.519** = a cap.
+⭐ Synthesis recorded: use the formula for the **change**, not the level. ⭐ And the
+unconditionally usable field is the **reset frequency** — 93 of 93 floating rules carry it.
+
+**Index file: 4 of 6**, zero differing values against the old one. Evaluable book-wide
+**224 → 230**; ⚠️ `EUR003M` and `H15T5Y` unblock **zero** at this valuation date because their
+references sit in post-2009 periods — our ask counted references, not references in force.
+**43 still blocked, all RFUCCT**, and the inversion to identify them was **run and discarded**
+(240 candidate/lag combinations always fit; the top hit was 3M EURIBOR for a US ARM pool). Those
+43 are 1.9% of the book and all already priced.
+
+**Free with the delivery:** both factor files start at issuance — the 376 gain a median 54
+months each (211 → 266 observations), roughly doubling the fitting data available to Tier 2.
+
+**Open, none started:** land the 412 factors with per-security alignment; re-ask the 37; decide
+where the three files live; the reset-frequency route to floater duration.
+
+**Hours:** [TO FILL]
+
+---
+
 ## 2026-10-16 — Mario's call: three questions answered from his own files, one claim retracted
 
 **No code.** Reply drafted, NOT sent: `docs/mario_message_2026-10-16.md` (738 words). ⚠️ The

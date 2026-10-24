@@ -19,6 +19,8 @@ one for *why we did it*:
 | why a **formula is not a coupon** — reset lag, caps, and the test on the 201 | same, §3.13 |
 | why Bloomberg's margin differs from ours on 67 securities (LIBOR → Term SOFR) | same, §3.14 |
 | what a measured history buys, and why `CPN` is not `MTG_FACTOR` | same, §3.15 |
+| why a factor's month label is not always its month — and why no class rule fixes it | same, §3.17 |
+| why an observed coupon beats a formula **at the valuation date**, and loses after it | same, §3.18 |
 | the decision record behind Mario's three tiers | `client_directive_three_tier_structured_method_2026-10-06.md` |
 | the factor validation in full | `bloomberg_return_2026-10-01.md` §7 |
 | every open data gap | `missing_data.md`, G1–G7 |
@@ -63,6 +65,7 @@ Mario's position (2026-10-06): *"very expensive and difficult to get"* — so Ti
 | 2026-10-07/08 | the coupon **structure** arrives; 132 published durations disclosed | the floater blind spot named |
 | **2026-10-14** | the coupon **formulas**; a finding retracted; four corporate hybrids unstuck | G3 mostly closed |
 | **2026-10-16** | Mario's call: three questions, and our own evidence found to be borrowed | the two asks re-sorted — factor **blocks**, coupon **qualifies** |
+| **2026-10-23/24** | the data comes back: 372 of 412, no `CPN` **by decision** | ⭐ the T+1 shift turns out to belong to the **security** |
 
 ---
 
@@ -377,7 +380,54 @@ ever reaching a 2009 price.
 
 ---
 
-## 11. ⭐⭐⭐ The one idea that keeps paying
+## 11. Act 9 — the data comes back, and a rule changes owner (23–24 Oct)
+
+Mario returned three files on 2026-10-23: the index histories, `MTG_FACTOR` for the 412, and the
+376-security factor history re-pulled from issuance.
+
+| | asked | came back |
+|---|---|---|
+| the 412's factor history | 412 | **372** |
+| the six index series | 6 | **4** — `US0006M`, `US0012M`, `H15T5Y`, `EUR003M` |
+| the 201's coupon history | 201 | **none — by decision, not omission** |
+
+**The 37 that did not come back are a keying accident, not a refusal.** Our request shipped a
+ready-made ticker in its `security` column — `<CUSIP> Mtge`, verified 412 of 412. The pull was
+built from the `isin` column instead, and 37 of the 412 have no ISIN; they became `NULL Mtge`
+and errored. ⚠️ I first read this as a defect in *our* file and was wrong — an off-by-one in my
+own checking script printed the `cusip` column, and I nearly reported it as our fault.
+Re-asking is one sentence.
+
+**No coupon history came, and that is his answer rather than a gap.** He asked at the 16 Oct
+call why we wanted `CPN` when the formulas exist; the delivery contains `MTG_FACTOR` and not a
+single coupon column. Measured against his rule, **320 of the 412 (78%) are already treated
+exactly as he specifies**; the remaining 93 are where we keep the custodian's observed coupon
+instead of the formula's computed one — explainer §3.18 has the numbers.
+
+**⭐ The finding worth the round: the T+1 month shift belongs to the security, not to Bloomberg.**
+The re-pull reproduces our record to `0.00e+00` on all 376, so both pulls label months
+identically — which made the 412's opposite answer a real contradiction rather than a vendor
+quirk. Resolved by asking each series which of its own months equals the custodian's factor:
+Government MBS 238 of 241 shift, private-label CMOs 168 of 191 do not, and **23 CMOs and 13 ABS
+go the other way from their own class**. So the loader aligns per security and asserts no
+convention anywhere. ⚠️ It also retires an explanation we had written down — *"the custodian
+strikes at T+1"* — which cannot be right, because a custodian strike date would apply to
+everything it holds. Explainer §3.17.
+
+**Free with the delivery:** both factor files now start at issuance — a median **54 extra
+months** per security, 375 of 376 beginning before our record did. It changes no 2009 number and
+roughly doubles the data a Tier-2 prepayment model would be fitted on.
+
+**⚠️ Still blocked, and it blocks nothing:** `RFUCCT1Y` and `RFUCCT6M` did not come — his note
+says they are not on Bloomberg and to substitute. I tried to identify them by inverting the
+formulas against the custodian's coupons and **threw the result away**: 15 candidate series
+× 16 lags is 240 combinations, so something always fits, and the top match was three-month
+EURIBOR for a US ARM pool. The 43 securities involved are **1.9% of the book**, all Government
+MBS ARM pools, and all already priced on the custodian's observed coupon.
+
+---
+
+## 12. ⭐⭐⭐ The one idea that keeps paying
 
 **Measure what happened; do not model what should have happened.**
 
@@ -392,7 +442,7 @@ recorded number already contains the answer. ⭐ The second row is the first row
 applied to the other leg of the cash flow, and it is why the ask is a coupon *history* rather
 than the formula inputs.
 
-## 12. ⭐ The discipline that keeps showing up
+## 13. ⭐ The discipline that keeps showing up
 
 **Do not publish a number whose sign or whose units you cannot vouch for.** It has now fired
 five times, each time on different material:
@@ -409,7 +459,7 @@ say it measured *nothing* is not evidence. It caught a spurious "13 of 34 within
 rate was below chance) — and the very same technique, applied honestly a week later, is what
 retracted our own conclusion.
 
-## 13. Where it stands, and what is missing
+## 14. Where it stands, and what is missing
 
 ```
 2,260 securities in the portfolio
@@ -429,7 +479,7 @@ ARM reset/cap fields (`missing_data.md` G7a/G7d) · four Eurobond margins whose 
 comes back empty, so re-pulling it will not help · and `COVERAGE.md` / `PROJECT_STATUS.md`,
 which still do not describe the mortgage book.
 
-## 14. Every headline number, and where it comes from
+## 15. Every headline number, and where it comes from
 
 | number | meaning | source |
 |---|---|---|
