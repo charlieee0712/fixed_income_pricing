@@ -69,6 +69,11 @@ SUBCATS = {
     "govt_mbs": "Government Mortgage Backed Securities",   # counted only; engine awaits Bloomberg
     "government": "Government Bonds",                      # Summary!K23, Mario 2026-09-03
     "municipal": "Municipal/Provincial Bonds",             # Summary!K55, Mario 2026-09-03
+    # The rest of the securitised book — 264 + 79 + 69 = 412 securities, which had no
+    # paydown profile of any kind until Mario's 2026-10-23 factor delivery.
+    "cmo": "Non-Government Backed C.M.O.s",
+    "abs": "Asset Backed Securities",
+    "cmbs": "Commercial Mortgage-Backed",
 }
 
 # Which driver owns which class. ``build_phase2_universe`` defaults to PHASE2_CLASSES so
@@ -76,6 +81,10 @@ SUBCATS = {
 # ``scripts/sovereign_risk.py`` passes SOVEREIGN_CLASSES.
 PHASE2_CLASSES = ("agency", "guaranteed", "linker", "govt_mbs")
 SOVEREIGN_CLASSES = ("government", "municipal")
+#: ``scripts/tier1_securitized.py`` passes these to :func:`build_pool_universe`, which
+#: defaults to ``govt_mbs`` so ``scripts/tier1_structured.py`` and its committed CSV are
+#: untouched — the same arrangement ``build_phase2_universe`` uses for the sovereign work.
+SECURITIZED_CLASSES = ("cmo", "abs", "cmbs")
 COUNT_ONLY = frozenset({"govt_mbs"})       # inventoried; the engine awaits the Bloomberg pull
 
 FREQ_FROM_TEXT = {"Semi-Annually": 2, "Annually": 1, "Quarterly": 4, "Monthly": 12}
@@ -353,7 +362,7 @@ def _route_pool(r):
     return POOL_ROUTE[pool_structure(r.get("desc_short"), r.get("desc_long"))]
 
 
-def build_pool_universe(master, pool_terms=None, valuation_date=None):
+def build_pool_universe(master, pool_terms=None, valuation_date=None, classes=None):
     """Mini-universe for **Government Mortgage Backed Securities** (888 rows -> 882 securities).
 
     Separate from :func:`build_phase2_universe` on purpose. ``govt_mbs`` is listed in
@@ -366,6 +375,13 @@ def build_pool_universe(master, pool_terms=None, valuation_date=None):
     2. pool_terms     : DataFrame | None — ``asset_id`` + ``wac_pct`` (+ optional
        ``wam_at_pull`` / ``wala_at_pull``), from the Bloomberg pull. Missing = no terms.
     3. valuation_date : date — anchors ``wam_months``.
+    4. classes        : tuple[str] | None — :data:`SUBCATS` keys to build. ⭐ Defaults to
+       ``("govt_mbs",)``, so every existing caller is unchanged and
+       ``outputs/tier1_structured_*.csv`` stays byte-identical;
+       ``scripts/tier1_securitized.py`` passes :data:`SECURITIZED_CLASSES` for the other 412.
+       Everything below this line is already structure-driven rather than
+       Government-MBS-specific — ``pool_structure`` reads the description and ``POOL_ROUTE``
+       has an entry for every structure it can return.
 
     Returns ``(pools, recon, counts)`` in the shape the other universes use.
 
@@ -378,14 +394,22 @@ def build_pool_universe(master, pool_terms=None, valuation_date=None):
     1.886. The factor is descriptive here and must NOT be multiplied in — doing so would
     understate every position by roughly half.
     """
+    keys = tuple(classes) if classes else ("govt_mbs",)
+    unknown = [k for k in keys if k not in SUBCATS]
+    if unknown:
+        raise ValueError(f"build_pool_universe: unknown class key(s) {unknown}; "
+                         f"expected from {sorted(SUBCATS)}")
+    wanted = [SUBCATS[k] for k in keys]
     m = master.copy()
     m["sub"] = m["sub_category"].astype("string").str.strip()
-    rows = m[m["sub"] == SUBCATS["govt_mbs"]]
+    rows = m[m["sub"].isin(wanted)]
     counts = {"rows": int(len(rows)), "unique": int(rows["asset_id"].nunique())}
 
     u = _uniques(rows)
-    u["asset_class"] = "govt_mbs"
-    u["group"] = "govt-mbs"
+    by_sub = {SUBCATS[k]: k for k in keys}
+    u["asset_class"] = [by_sub.get(str(s).strip(), keys[0]) for s in u["sub_category"]] \
+        if "sub_category" in u else keys[0]
+    u["group"] = "govt-mbs" if keys == ("govt_mbs",) else "securitized"
     u["structure"] = [pool_structure(a, b) for a, b in zip(u["desc_short"], u["desc_long"])]
     u["route"] = u.apply(_route_pool, axis=1)
     u["net_coupon_pct"] = pd.to_numeric(u["income_rate"], errors="coerce")
