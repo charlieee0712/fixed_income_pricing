@@ -1,0 +1,748 @@
+cusip,month_lag,status,lag_source,residual,matched_month,sub_category,population
+000780LD6,1,matched,custodian-paydown-factor,2.644e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+004421QD8,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Asset Backed Securities,412-2026-10-23
+004423AA7,0,matched,custodian-paydown-factor,2.583e-08,2009-03,Asset Backed Securities,412-2026-10-23
+007036TB2,0,matched,custodian-paydown-factor,8.867e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+008684AA0,0,nearest,custodian-paydown-factor,2.302e-04,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+02146QAA1,0,matched,custodian-paydown-factor,4.723e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+02150QAK2,0,matched,custodian-paydown-factor,5.192e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+02151FAE9,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+02582JCX6,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04",Asset Backed Securities,412-2026-10-23
+02660TGA5,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+02660YAK8,0,matched,custodian-paydown-factor,1.096e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+03061NJJ9,1,matched,custodian-paydown-factor,8.769e-08,2009-04,Asset Backed Securities,412-2026-10-23
+030628AD3,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+030628AF8,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+03062XAC0,1,matched,custodian-paydown-factor,1.142e-07,2009-04,Asset Backed Securities,412-2026-10-23
+03062XAD8,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+03063EAD9,1,matched,custodian-paydown-factor,1.784e-08,2009-04,Asset Backed Securities,412-2026-10-23
+055670AD5,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+058927AG9,1,matched,custodian-paydown-factor,1.656e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+05946X3C5,0,matched,custodian-paydown-factor,1.189e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05946XEN9,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+05946XP23,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+05946XV83,0,matched,custodian-paydown-factor,3.649e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05946XXQ1,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+05946XXW8,1,matched,custodian-paydown-factor,1.060e-07,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+05947U2R8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+05947U4C9,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+05947U4D7,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+05947UAB4,1,matched,custodian-paydown-factor,1.292e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+05947UPR3,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+05948XT27,0,matched,custodian-paydown-factor,8.578e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05948XXA4,0,matched,custodian-paydown-factor,4.979e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05949AGR5,0,matched,custodian-paydown-factor,1.882e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05949AGZ7,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+05949AH86,0,matched,custodian-paydown-factor,3.588e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05949AMJ6,0,matched,custodian-paydown-factor,9.108e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05949AUY4,0,matched,custodian-paydown-factor,6.041e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05949TBK4,0,matched,custodian-paydown-factor,6.002e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+05952CAC4,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+07324SCB6,0,matched,custodian-paydown-factor,1.060e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+07324SCS9,0,matched,custodian-paydown-factor,4.872e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+07325WAB8,0,no-custodian-factor,class-majority-default,,,Non-Government Backed C.M.O.s,412-2026-10-23
+07383FFP8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+07383UHL2,0,matched,custodian-paydown-factor,6.524e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+07384MG48,0,matched,custodian-paydown-factor,1.995e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+07384MYS5,0,matched,custodian-paydown-factor,9.091e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+07384YVF0,0,matched,custodian-paydown-factor,3.747e-08,2009-03,Asset Backed Securities,412-2026-10-23
+07387AGZ2,1,matched,custodian-paydown-factor,2.837e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+07387BAG8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+07387MAE9,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+07387YAA1,0,matched,custodian-paydown-factor,4.224e-08,2009-03,Asset Backed Securities,412-2026-10-23
+07388PAA9,1,matched,custodian-paydown-factor,4.907e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+1248MEAE9,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+12513YAC4,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+12544MAA7,0,matched,custodian-paydown-factor,4.743e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12619QAD2,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+12619QAF7,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+126670NY0,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+126671YX8,0,matched,custodian-paydown-factor,2.758e-08,2009-03,Asset Backed Securities,412-2026-10-23
+126673BC5,0,tied,class-majority-default,1.601e-08,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+12667FAQ8,0,matched,custodian-paydown-factor,1.279e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12667FGZ2,0,matched,custodian-paydown-factor,7.751e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12667FQL2,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+12667FT47,0,matched,custodian-paydown-factor,5.868e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12667FW27,0,matched,custodian-paydown-factor,8.569e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12667FZF5,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+12667GGP2,0,matched,custodian-paydown-factor,3.290e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12667GRV7,0,matched,custodian-paydown-factor,1.166e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12667GTW3,0,matched,custodian-paydown-factor,2.782e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12667GWT6,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+12667GWU3,0,matched,custodian-paydown-factor,7.562e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12668ANU5,0,matched,custodian-paydown-factor,5.964e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12668APD1,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+12668BD91,0,matched,custodian-paydown-factor,6.857e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12668BUA9,0,matched,custodian-paydown-factor,8.536e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+126694M96,0,matched,custodian-paydown-factor,2.293e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+126694QJ0,1,matched,custodian-paydown-factor,1.049e-07,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+12669ERJ7,0,matched,custodian-paydown-factor,1.055e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669EXY7,0,matched,custodian-paydown-factor,5.957e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669EZM1,0,tied,class-majority-default,2.686e-08,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+12669FNP4,1,matched,custodian-paydown-factor,1.753e-07,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+12669FXJ7,0,matched,custodian-paydown-factor,3.880e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669FYY3,0,matched,custodian-paydown-factor,2.887e-09,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669G3P4,0,matched,custodian-paydown-factor,2.969e-09,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669GBC4,1,matched,custodian-paydown-factor,1.412e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+12669GDJ7,0,matched,custodian-paydown-factor,3.587e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669GJY8,0,matched,custodian-paydown-factor,1.427e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669GKF7,0,matched,custodian-paydown-factor,5.951e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669GUP4,0,matched,custodian-paydown-factor,1.573e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669GUX7,0,matched,custodian-paydown-factor,2.760e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+12669GYY1,0,matched,custodian-paydown-factor,7.185e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+139732FZ9,1,matched,custodian-paydown-factor,9.587e-08,2009-04,Asset Backed Securities,412-2026-10-23
+14042FAC1,1,matched,custodian-paydown-factor,6.435e-08,2009-04,Asset Backed Securities,412-2026-10-23
+14042HAD5,1,matched,custodian-paydown-factor,3.414e-08,2009-04,Asset Backed Securities,412-2026-10-23
+144539AE3,0,matched,custodian-paydown-factor,6.907e-08,2009-03,Asset Backed Securities,412-2026-10-23
+161571CH5,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+16162T6C5,0,matched,custodian-paydown-factor,2.747e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+16162WGV5,0,matched,custodian-paydown-factor,6.344e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+172973A58,0,matched,custodian-paydown-factor,5.093e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+172973TL3,0,matched,custodian-paydown-factor,9.069e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+172973VQ9,0,matched,custodian-paydown-factor,1.377e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+172973WB1,0,matched,custodian-paydown-factor,1.566e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+17305EDT9,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+17307GAJ7,0,matched,custodian-paydown-factor,5.901e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+17307GAV0,0,matched,custodian-paydown-factor,2.690e-07,2009-03,Asset Backed Securities,412-2026-10-23
+17307GBH0,0,matched,custodian-paydown-factor,5.371e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+17307GCU0,0,matched,custodian-paydown-factor,2.243e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+17307GWE4,0,matched,custodian-paydown-factor,7.328e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+17307GXU7,0,matched,custodian-paydown-factor,7.487e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+17309DAA1,1,matched,custodian-paydown-factor,1.089e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+17309DAD5,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+17310MAH3,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+17311QBM1,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+17312FAF0,0,matched,custodian-paydown-factor,1.480e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+20173VAB6,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+22237PAC7,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+22541NAP4,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+22541NMR7,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+22541NUJ6,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+22541Q4B5,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+22541QR38,0,matched,custodian-paydown-factor,3.511e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+22541SBG2,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+22541SUR7,0,matched,custodian-paydown-factor,6.050e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+225458RT7,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+22545BAC5,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+2254W0GJ8,0,matched,custodian-paydown-factor,6.429e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+22822RAD2,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+22822RAK6,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+22882MAA6,0,tied,class-majority-default,2.484e-07,"2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+22942MAC0,0,matched,custodian-paydown-factor,5.939e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+23242JAQ1,0,no-custodian-factor,class-majority-default,,,Asset Backed Securities,412-2026-10-23
+23245QAA7,1,matched,custodian-paydown-factor,6.011e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+23322BFE3,1,no-custodian-factor,class-majority-default,,,Commercial Mortgage-Backed,412-2026-10-23
+23322BMZ8,1,matched,custodian-paydown-factor,3.386e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+23332UGK4,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+25150QAA5,0,matched,custodian-paydown-factor,3.693e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+254683AH8,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+288542AB9,0,matched,custodian-paydown-factor,7.572e-08,2009-03,Asset Backed Securities,412-2026-10-23
+288542AD5,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+30246QBA0,0,matched,custodian-paydown-factor,8.803e-08,2009-03,Asset Backed Securities,412-2026-10-23
+31282YDW6,1,matched,custodian-paydown-factor,1.436e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31282YWS4,1,matched,custodian-paydown-factor,1.476e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128JNXP5,1,matched,custodian-paydown-factor,6.584e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128JPK82,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128L7UY1,1,matched,custodian-paydown-factor,2.272e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128LUJ31,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3128M6Q92,1,matched,custodian-paydown-factor,1.065e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128M6UU0,1,matched,custodian-paydown-factor,4.459e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128NFGD3,1,matched,custodian-paydown-factor,5.541e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128NGF75,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3128QPK35,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3128QPSS2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+312962EA7,1,matched,custodian-paydown-factor,9.809e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+313399AJ6,1,matched,custodian-paydown-factor,6.746e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+313399C47,1,matched,custodian-paydown-factor,7.526e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+313399HV2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+313399SN8,1,matched,custodian-paydown-factor,2.753e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+313399XK8,1,matched,custodian-paydown-factor,7.853e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339DQX9,1,matched,custodian-paydown-factor,7.447e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339DW95,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31339LWR7,1,matched,custodian-paydown-factor,2.018e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339MTG3,1,matched,custodian-paydown-factor,4.266e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339NHX7,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339NLX2,1,matched,custodian-paydown-factor,1.985e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339NTA4,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339NVN3,1,matched,custodian-paydown-factor,5.857e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31339NW36,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3133T1W81,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3133T5MR1,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3133TGCG2,1,matched,custodian-paydown-factor,7.912e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3133TPUR8,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3133TQ5B9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3133TSNX7,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3133TVET9,1,matched,custodian-paydown-factor,8.850e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31349TV99,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31358TWE5,1,matched,custodian-paydown-factor,2.745e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31359E4Z1,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31359EC74,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31359G5C6,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31359T5E4,1,matched,custodian-paydown-factor,1.315e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31359XHE2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+313602S21,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31364HUJ4,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3136FA2L3,1,matched,custodian-paydown-factor,1.378e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3136FAWE6,1,matched,custodian-paydown-factor,1.511e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3136FCG91,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+3136FCZH2,1,matched,custodian-paydown-factor,7.219e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3136FGCE5,1,matched,custodian-paydown-factor,2.362e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+313920QL7,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392A4V7,1,matched,custodian-paydown-factor,1.123e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392B4F0,1,matched,custodian-paydown-factor,3.387e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392B4N3,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392D2A9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31392EPW4,1,matched,custodian-paydown-factor,4.108e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392FPZ4,1,matched,custodian-paydown-factor,6.008e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392HH22,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31392MLE0,1,matched,custodian-paydown-factor,3.247e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392MN99,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31392MQP0,1,matched,custodian-paydown-factor,1.692e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392P4S1,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31392PPG4,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31392R3H2,1,matched,custodian-paydown-factor,1.778e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392T4D6,1,matched,custodian-paydown-factor,3.091e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392XA81,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31392XAZ1,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31392XEV6,1,matched,custodian-paydown-factor,5.864e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393A5Z6,1,matched,custodian-paydown-factor,1.869e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393BFA8,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393BFR1,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393BFS9,1,matched,custodian-paydown-factor,1.342e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393CCD3,1,matched,custodian-paydown-factor,8.480e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393CV67,1,matched,custodian-paydown-factor,8.886e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393CVP5,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393DFM8,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393DJU6,0,tied,class-majority-default,1.202e-08,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+31393DN80,1,matched,custodian-paydown-factor,2.536e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393DXG1,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393EKS7,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393EQX0,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393ERS0,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393H6S6,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+31393HJA1,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393HP63,1,matched,custodian-paydown-factor,4.496e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393JPS1,1,matched,custodian-paydown-factor,2.846e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393KL52,1,matched,custodian-paydown-factor,1.044e-07,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+31393KSG1,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393LFM0,0,matched,custodian-paydown-factor,1.192e-07,2009-03,Government Mortgage Backed Securities,376-2026-09-25
+31393MFR7,1,matched,custodian-paydown-factor,1.031e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393NDD8,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393NU72,1,matched,custodian-paydown-factor,3.670e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393PWD2,1,matched,custodian-paydown-factor,2.011e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393PWH3,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393PZN7,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393QQP0,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393QX31,1,matched,custodian-paydown-factor,1.271e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393QYK2,1,matched,custodian-paydown-factor,1.941e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393RMZ0,1,matched,custodian-paydown-factor,2.232e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393RVZ0,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393T4W3,1,matched,custodian-paydown-factor,2.180e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393THN9,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393U4Q3,0,matched,custodian-paydown-factor,1.574e-07,2009-03,Government Mortgage Backed Securities,376-2026-09-25
+31393U7F4,1,tied,class-majority-default,3.032e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393UN25,1,matched,custodian-paydown-factor,1.949e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393UPM9,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393UQ89,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393UVB6,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393UWF6,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393UZ48,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393V2H3,1,matched,custodian-paydown-factor,6.537e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393VHU8,1,matched,custodian-paydown-factor,5.384e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393VYG0,1,matched,custodian-paydown-factor,6.051e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393VYH8,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393W3X5,1,matched,custodian-paydown-factor,4.352e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393W4L0,1,matched,custodian-paydown-factor,2.191e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393WCC1,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393WEY1,1,matched,custodian-paydown-factor,1.425e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393X4N4,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393X5J2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393X5V5,1,matched,custodian-paydown-factor,3.403e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393XDD6,1,matched,custodian-paydown-factor,1.102e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393XHW0,1,matched,custodian-paydown-factor,1.151e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393XN60,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393XRC3,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31393XRE9,1,matched,custodian-paydown-factor,1.954e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393YE92,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31393YR72,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31393YT96,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394ABD7,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394AP26,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394ATX4,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394AVD5,1,matched,custodian-paydown-factor,8.816e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394AWY8,1,matched,custodian-paydown-factor,5.513e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394B4Y7,1,matched,custodian-paydown-factor,8.000e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394BGL2,1,matched,custodian-paydown-factor,8.964e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394BGP3,1,matched,custodian-paydown-factor,1.963e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394CRR5,1,matched,custodian-paydown-factor,6.927e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394D6N5,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394DGY0,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394DXU9,1,matched,custodian-paydown-factor,1.167e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394E7B8,1,matched,custodian-paydown-factor,2.221e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394EKR8,1,matched,custodian-paydown-factor,4.897e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394FN50,1,matched,custodian-paydown-factor,7.253e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394G2X0,1,matched,custodian-paydown-factor,1.116e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394HA92,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394HL58,1,matched,custodian-paydown-factor,4.061e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394HPL9,1,matched,custodian-paydown-factor,2.086e-09,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394HUK5,1,tied,class-majority-default,5.534e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394HUL3,1,matched,custodian-paydown-factor,7.237e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394J2U0,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394KLQ5,1,tied,class-majority-default,4.210e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394KM50,1,matched,custodian-paydown-factor,1.669e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394KNJ9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394KRX4,1,matched,custodian-paydown-factor,9.208e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394KTA2,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394KZD9,1,tied,class-majority-default,8.950e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394L4L3,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394LHT2,1,tied,class-majority-default,2.711e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394LSU7,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394M3R9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394M3S7,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394MJL5,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394MNW6,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394MYB0,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394NGW2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394NLZ9,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394NN53,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394PKU6,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394PNM1,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394PNR0,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394PQF3,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394PR70,1,matched,custodian-paydown-factor,6.210e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394PRU9,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394RSS9,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04",Government Mortgage Backed Securities,376-2026-09-25
+31394T2P9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394TNS0,1,tied,class-majority-default,8.297e-08,"2009-03,2009-04",Government Mortgage Backed Securities,376-2026-09-25
+31394UGR7,1,matched,custodian-paydown-factor,1.161e-09,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394UQ21,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394US45,1,matched,custodian-paydown-factor,1.142e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394US52,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394US60,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394UYF3,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394UZE5,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394V4X5,1,matched,custodian-paydown-factor,7.310e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394VRP7,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394VTC4,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394WJS8,1,matched,custodian-paydown-factor,4.183e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394WRL4,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31394WU71,1,matched,custodian-paydown-factor,1.524e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394WYM4,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31394XPN0,1,matched,custodian-paydown-factor,1.306e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31394YQR8,1,tied,class-majority-default,6.616e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31395B4J9,1,matched,custodian-paydown-factor,9.617e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395BA52,1,matched,custodian-paydown-factor,1.374e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395BVH3,1,matched,custodian-paydown-factor,6.373e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395CRQ6,1,matched,custodian-paydown-factor,1.572e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395CXN6,1,matched,custodian-paydown-factor,2.646e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395CYD7,1,matched,custodian-paydown-factor,9.088e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395CZ79,1,matched,custodian-paydown-factor,4.017e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395DTS8,1,matched,custodian-paydown-factor,7.030e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395DUD9,1,matched,custodian-paydown-factor,2.812e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395DVV8,1,matched,custodian-paydown-factor,5.861e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395ELC9,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31395EPV3,1,matched,custodian-paydown-factor,8.890e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395F2V5,1,matched,custodian-paydown-factor,2.101e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395FCG7,1,matched,custodian-paydown-factor,2.908e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395FCK8,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04",Government Mortgage Backed Securities,376-2026-09-25
+31395FEZ3,1,matched,custodian-paydown-factor,2.101e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395G5R9,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395JRU2,1,matched,custodian-paydown-factor,2.264e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395KWL3,1,matched,custodian-paydown-factor,2.294e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395LCC3,1,matched,custodian-paydown-factor,1.131e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395MCQ0,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395MCX5,1,matched,custodian-paydown-factor,6.751e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395NBC0,1,matched,custodian-paydown-factor,4.211e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395ND20,1,matched,custodian-paydown-factor,1.403e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395NE29,1,matched,custodian-paydown-factor,2.515e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395NJD0,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395NW45,1,matched,custodian-paydown-factor,2.853e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395NWL7,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31395TD27,1,matched,custodian-paydown-factor,3.446e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395TDR2,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31395TNQ3,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31395UBN0,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31395VFP9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31395WPC5,1,matched,custodian-paydown-factor,9.253e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31395WPZ4,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396AAM6,1,tied,class-majority-default,5.995e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396CJR2,1,matched,custodian-paydown-factor,3.376e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396ERD0,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396EUC8,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31396FF32,1,matched,custodian-paydown-factor,1.285e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396FFT5,1,matched,custodian-paydown-factor,3.104e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396FKP7,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396FWV1,1,matched,custodian-paydown-factor,2.266e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396GKK6,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396HQZ5,1,matched,custodian-paydown-factor,4.109e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396HUN7,1,matched,custodian-paydown-factor,8.539e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396HVU0,1,matched,custodian-paydown-factor,2.812e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396J5T8,1,matched,custodian-paydown-factor,1.308e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396KAA0,1,matched,custodian-paydown-factor,5.729e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396KGX4,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396KHT2,1,matched,custodian-paydown-factor,7.591e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396KJK9,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396KU42,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31396L5D8,1,matched,custodian-paydown-factor,4.039e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396LM80,1,matched,custodian-paydown-factor,3.895e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396LQW3,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31396LSR2,1,matched,custodian-paydown-factor,1.373e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396LU57,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31396LVP2,1,matched,custodian-paydown-factor,2.518e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396N7B6,1,matched,custodian-paydown-factor,1.289e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396NSL1,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396NWU6,1,matched,custodian-paydown-factor,1.984e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396PC33,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396PE72,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31396PRZ6,1,matched,custodian-paydown-factor,8.145e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396PXT3,1,matched,custodian-paydown-factor,7.409e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396PXY2,1,matched,custodian-paydown-factor,5.231e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396RDA2,1,matched,custodian-paydown-factor,2.552e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396RJA6,1,matched,custodian-paydown-factor,4.500e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396UAZ3,1,matched,custodian-paydown-factor,2.442e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396UCL2,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396UFA3,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31396UJG6,1,matched,custodian-paydown-factor,7.253e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396VGT9,1,matched,custodian-paydown-factor,8.359e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396VK31,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396VYE2,1,matched,custodian-paydown-factor,2.329e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396WFF8,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396X6G4,1,matched,custodian-paydown-factor,2.380e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396XDP6,1,matched,custodian-paydown-factor,3.414e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396XF25,1,matched,custodian-paydown-factor,2.448e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396XJY1,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396XJZ8,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396XKA1,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31396XUU6,1,matched,custodian-paydown-factor,3.815e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396Y4G4,1,matched,custodian-paydown-factor,2.242e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396YBP6,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31396YTG7,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31396YWZ1,1,matched,custodian-paydown-factor,1.196e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397ANU3,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31397BAA9,1,matched,custodian-paydown-factor,1.220e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397BDK4,1,matched,custodian-paydown-factor,6.768e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+31397BHE4,1,matched,custodian-paydown-factor,3.004e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397BND9,1,matched,custodian-paydown-factor,8.543e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397BYN5,1,matched,custodian-paydown-factor,3.960e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397CYD5,1,matched,custodian-paydown-factor,5.828e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397ELL7,1,matched,custodian-paydown-factor,6.280e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397F6H0,1,matched,custodian-paydown-factor,7.814e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397FDQ2,1,matched,custodian-paydown-factor,2.858e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397FR79,1,matched,custodian-paydown-factor,7.003e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397FSC7,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397HCU0,1,matched,custodian-paydown-factor,1.270e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397HVS4,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31397J5M2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31397JYA6,1,matched,custodian-paydown-factor,1.308e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397KER8,1,tied,class-majority-default,3.001e-08,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+31397LC23,1,matched,custodian-paydown-factor,3.575e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397LQB8,1,matched,custodian-paydown-factor,1.169e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397LYN3,1,matched,custodian-paydown-factor,2.529e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397M5Z6,1,matched,custodian-paydown-factor,1.049e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397PP87,1,matched,custodian-paydown-factor,1.112e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397RTS5,2,matched,custodian-paydown-factor,1.237e-08,2009-05,Government Mortgage Backed Securities,376-2026-09-25
+31397T4Y5,1,matched,custodian-paydown-factor,1.143e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31397YPL9,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31401KR49,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31402BGQ1,1,matched,custodian-paydown-factor,5.600e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31402CZR6,1,matched,custodian-paydown-factor,9.082e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31402RH28,1,matched,custodian-paydown-factor,2.126e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31402RJL4,1,matched,custodian-paydown-factor,1.548e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31403DWU9,1,matched,custodian-paydown-factor,4.112e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31403JD45,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31404GNT4,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31405MB71,1,matched,custodian-paydown-factor,3.214e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31405MUZ8,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31409JPF1,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31410EPE2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+31410GJB0,1,matched,custodian-paydown-factor,2.570e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31410GQ55,1,matched,custodian-paydown-factor,1.259e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31410KQJ6,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31410KRX4,1,matched,custodian-paydown-factor,2.176e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31411SNF9,1,matched,custodian-paydown-factor,1.277e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31415RFH2,1,matched,custodian-paydown-factor,1.067e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+31416BZ68,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+32028KAD8,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+32051D2H4,0,matched,custodian-paydown-factor,1.415e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+32051D4D1,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03",Non-Government Backed C.M.O.s,412-2026-10-23
+32051DC34,0,matched,custodian-paydown-factor,8.869e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+32051GAA3,0,matched,custodian-paydown-factor,3.450e-09,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+32051GEM3,0,matched,custodian-paydown-factor,6.830e-09,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+32051GES0,0,matched,custodian-paydown-factor,8.883e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+32051GHX6,0,matched,custodian-paydown-factor,5.557e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+33736XFS3,1,matched,custodian-paydown-factor,3.176e-07,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+33736XFT1,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+34527RLR2,1,matched,custodian-paydown-factor,3.652e-09,2009-04,Asset Backed Securities,412-2026-10-23
+34528AAE9,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+34528WAE1,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+36158YAZ2,1,matched,custodian-paydown-factor,5.174e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+36158YHA0,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+361849GY2,1,matched,custodian-paydown-factor,1.900e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+361849MK5,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+361849YU0,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+361849ZS4,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+36185N7E4,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+36185NC81,0,matched,custodian-paydown-factor,1.531e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+36185ND80,0,matched,custodian-paydown-factor,5.945e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+36185NU81,0,matched,custodian-paydown-factor,2.843e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+36228CVU4,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+3622MPAN8,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+3623417C7,0,matched,custodian-paydown-factor,1.583e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+362341LL1,0,matched,custodian-paydown-factor,9.576e-09,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+362341NB1,0,matched,custodian-paydown-factor,7.330e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+36241KNL8,1,matched,custodian-paydown-factor,1.427e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+36242DBS1,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+36242DEH2,0,matched,custodian-paydown-factor,1.375e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+36242DT52,0,matched,custodian-paydown-factor,4.605e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+362631AB9,0,matched,custodian-paydown-factor,8.709e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+383739CN7,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373MJZ4,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38373QGB1,1,matched,custodian-paydown-factor,4.128e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373QXW6,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38373QXZ9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38373SQC4,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38373TQD0,1,matched,custodian-paydown-factor,5.764e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373VL99,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38373W7Q5,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373WQH4,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373WXT0,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38373X3K0,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373XDM5,1,matched,custodian-paydown-factor,5.019e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373YN67,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38373YNN0,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38373YVR2,1,matched,custodian-paydown-factor,1.172e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+383742YT4,1,matched,custodian-paydown-factor,2.264e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374BKX0,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374CNT4,1,matched,custodian-paydown-factor,7.952e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374D2P3,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+38374D3F4,1,matched,custodian-paydown-factor,8.421e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374D7B9,1,matched,custodian-paydown-factor,3.603e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374EBQ9,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38374EZ91,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38374FNV2,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38374GDC3,1,matched,custodian-paydown-factor,3.924e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374GUX8,1,matched,custodian-paydown-factor,4.048e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374H2D1,1,matched,custodian-paydown-factor,6.261e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374HVR8,1,matched,custodian-paydown-factor,6.540e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374HVS6,1,matched,custodian-paydown-factor,6.540e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374HYZ7,1,matched,custodian-paydown-factor,4.382e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374KTF0,1,matched,custodian-paydown-factor,1.229e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374LNG2,1,matched,custodian-paydown-factor,5.901e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374LZ46,1,matched,custodian-paydown-factor,2.038e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374MBR9,1,matched,custodian-paydown-factor,9.735e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374MM63,1,matched,custodian-paydown-factor,3.224e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374MME6,1,matched,custodian-paydown-factor,6.262e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374NGB7,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38374NXS1,1,matched,custodian-paydown-factor,4.526e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375DBZ0,1,matched,custodian-paydown-factor,7.287e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375J8N8,1,matched,custodian-paydown-factor,1.390e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375JJ55,1,matched,custodian-paydown-factor,8.426e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375JTD7,1,matched,custodian-paydown-factor,1.295e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375JTE5,1,matched,custodian-paydown-factor,1.295e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375KE99,1,tied,class-majority-default,0.000e+00,"2009-03,2009-04,2009-05",Government Mortgage Backed Securities,376-2026-09-25
+38375KQS4,1,matched,custodian-paydown-factor,6.505e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+38375LAQ3,1,matched,custodian-paydown-factor,1.133e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375LSY7,1,no-custodian-factor,class-majority-default,,,unknown,376-2026-09-25
+38375LUK4,1,matched,custodian-paydown-factor,5.941e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375LZR4,1,matched,custodian-paydown-factor,3.601e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375PR78,1,matched,custodian-paydown-factor,3.163e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375QKS7,1,matched,custodian-paydown-factor,2.382e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375XHK3,1,matched,custodian-paydown-factor,3.822e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375XML5,1,matched,custodian-paydown-factor,2.347e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+38375Y5V0,1,matched,custodian-paydown-factor,3.365e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3837H16W6,1,matched,custodian-paydown-factor,1.791e-07,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+3837H4AM7,1,matched,custodian-paydown-factor,5.822e-08,2009-04,Government Mortgage Backed Securities,376-2026-09-25
+393505XD9,1,matched,custodian-paydown-factor,1.610e-07,2009-04,Asset Backed Securities,412-2026-10-23
+39538WBQ0,0,matched,custodian-paydown-factor,3.273e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+39538WHF8,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+396789JS9,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+41161PPN7,1,matched,custodian-paydown-factor,5.856e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+41161PTN3,1,matched,custodian-paydown-factor,7.189e-09,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+41161XAC0,1,matched,custodian-paydown-factor,1.084e-07,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+43710RAB7,0,matched,custodian-paydown-factor,4.312e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+437690AT7,0,matched,custodian-paydown-factor,7.177e-08,2009-03,Asset Backed Securities,412-2026-10-23
+44328FAD1,0,matched,custodian-paydown-factor,5.218e-08,2009-03,Asset Backed Securities,412-2026-10-23
+44329CAA3,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+45254TSM7,0,matched,custodian-paydown-factor,7.271e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+45256VAQ0,0,matched,custodian-paydown-factor,2.771e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+456606KH4,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+45660L5S4,1,matched,custodian-paydown-factor,5.509e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+45660LQM4,0,matched,custodian-paydown-factor,2.239e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+45660NWB7,0,matched,custodian-paydown-factor,2.612e-07,2009-03,Asset Backed Securities,412-2026-10-23
+45660NXN0,0,matched,custodian-paydown-factor,1.437e-07,2009-03,Asset Backed Securities,412-2026-10-23
+45661EDV3,1,matched,custodian-paydown-factor,1.277e-07,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+45670NAA1,1,matched,custodian-paydown-factor,2.710e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+45671BAC2,0,matched,custodian-paydown-factor,6.877e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+466247DD2,0,matched,custodian-paydown-factor,3.573e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+46625MAC3,1,matched,custodian-paydown-factor,2.087e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+46625YDC4,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+46625YP64,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+46625YQR7,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+46625YTY9,1,matched,custodian-paydown-factor,3.547e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+46628YBB5,0,matched,custodian-paydown-factor,7.367e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+46630JAC3,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+46630RAB7,0,matched,custodian-paydown-factor,1.441e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+46631BAB1,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+46632HAB7,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+50179AAB3,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+50180LAC4,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+52108H6W9,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+52108HRB2,1,matched,custodian-paydown-factor,4.207e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+52520MCA9,0,matched,custodian-paydown-factor,4.527e-09,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+52520MGG2,0,matched,custodian-paydown-factor,6.428e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+525221HA8,0,matched,custodian-paydown-factor,5.851e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+52522CAB9,0,matched,custodian-paydown-factor,5.429e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+52522UAF0,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+52524MAB5,0,matched,custodian-paydown-factor,6.601e-09,2009-03,Asset Backed Securities,412-2026-10-23
+542514SC9,1,matched,custodian-paydown-factor,3.779e-08,2009-04,Asset Backed Securities,412-2026-10-23
+55265K3Z0,0,matched,custodian-paydown-factor,6.924e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+55265KUZ0,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+55265KY78,0,matched,custodian-paydown-factor,1.034e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+55274QBF1,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+55353WAC0,0,tied,class-majority-default,1.225e-07,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+55660AAA0,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Asset Backed Securities,412-2026-10-23
+576433LY0,1,matched,custodian-paydown-factor,2.546e-07,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+576433UE4,0,matched,custodian-paydown-factor,1.103e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+576433UL8,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+576434JU9,0,matched,custodian-paydown-factor,2.333e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+576434NV2,0,matched,custodian-paydown-factor,9.578e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+576434SK1,0,matched,custodian-paydown-factor,7.007e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+576434UW2,0,matched,custodian-paydown-factor,4.303e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+576434VU5,0,matched,custodian-paydown-factor,9.278e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+576435BB6,0,no-custodian-factor,class-majority-default,,,Non-Government Backed C.M.O.s,412-2026-10-23
+576436AR0,0,matched,custodian-paydown-factor,4.223e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+57643MEE0,0,matched,custodian-paydown-factor,1.550e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+57643MFR0,0,matched,custodian-paydown-factor,8.783e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+57645JAA7,0,matched,custodian-paydown-factor,7.869e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+57645NAC4,0,matched,custodian-paydown-factor,1.229e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+59020UQE8,0,matched,custodian-paydown-factor,2.140e-08,2009-03,Asset Backed Securities,412-2026-10-23
+59020USH9,0,matched,custodian-paydown-factor,1.688e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+59022HEX6,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+59022HHH8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+59022HHL9,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+59022HJJ2,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+59023BAC8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+59025TAD5,0,matched,custodian-paydown-factor,7.629e-08,2009-03,Asset Backed Securities,412-2026-10-23
+606935AH7,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+617059GE4,1,matched,custodian-paydown-factor,2.159e-07,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+617059JH4,1,matched,custodian-paydown-factor,5.136e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+61745M4P5,0,matched,custodian-paydown-factor,1.264e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+61745MNR0,1,matched,custodian-paydown-factor,1.269e-07,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+61745MQM8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+61745MZS5,0,matched,custodian-paydown-factor,1.229e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+61748HBM2,0,matched,custodian-paydown-factor,4.149e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+61749MAR0,1,matched,custodian-paydown-factor,1.460e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+61750WAR4,1,matched,custodian-paydown-factor,6.069e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+61750WAX1,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+61754KAF2,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+61756UAE1,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+61913PAP7,1,matched,custodian-paydown-factor,0.000e+00,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+64032JAD8,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+64352VED9,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+65535VAT5,0,matched,custodian-paydown-factor,4.744e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+65535VAU2,0,matched,custodian-paydown-factor,5.804e-08,2009-03,Asset Backed Securities,412-2026-10-23
+65535VAX6,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Asset Backed Securities,412-2026-10-23
+67087TAQ4,1,matched,custodian-paydown-factor,1.084e-07,2009-04,Asset Backed Securities,412-2026-10-23
+73316QAA6,0,matched,custodian-paydown-factor,1.677e-07,2009-03,Asset Backed Securities,412-2026-10-23
+749228AG7,0,tied,class-majority-default,4.230e-08,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+74922KAA3,0,matched,custodian-paydown-factor,3.743e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+74927XAD4,0,matched,custodian-paydown-factor,2.140e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+74978FAA7,0,matched,custodian-paydown-factor,5.256e-08,2009-03,Asset Backed Securities,412-2026-10-23
+760985SU6,0,matched,custodian-paydown-factor,8.725e-08,2009-03,Asset Backed Securities,412-2026-10-23
+76110GUN9,0,matched,custodian-paydown-factor,4.074e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76110H7B9,0,matched,custodian-paydown-factor,4.323e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76110HFL8,0,matched,custodian-paydown-factor,6.906e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76110HH44,0,matched,custodian-paydown-factor,1.186e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76110HJR1,0,matched,custodian-paydown-factor,4.910e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76110HLG2,0,matched,custodian-paydown-factor,4.860e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76110HUL1,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03",Asset Backed Securities,412-2026-10-23
+76110HZL6,0,matched,custodian-paydown-factor,3.622e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76110VGP7,0,matched,custodian-paydown-factor,8.689e-08,2009-03,Asset Backed Securities,412-2026-10-23
+76110WMC7,0,matched,custodian-paydown-factor,9.583e-08,2009-03,Asset Backed Securities,412-2026-10-23
+761118GD4,0,matched,custodian-paydown-factor,9.562e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+761118TD0,0,matched,custodian-paydown-factor,9.442e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+761118UQ9,0,matched,custodian-paydown-factor,1.075e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76111J3K8,0,matched,custodian-paydown-factor,2.310e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76111J6M1,0,matched,custodian-paydown-factor,1.130e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76111JA95,0,matched,custodian-paydown-factor,3.634e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76111XMA8,0,matched,custodian-paydown-factor,2.009e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76111XYC1,0,matched,custodian-paydown-factor,5.279e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+76112BAF7,0,matched,custodian-paydown-factor,6.010e-08,2009-03,Asset Backed Securities,412-2026-10-23
+78444YAB1,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+78444YAC9,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+78444YAD7,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+78577PAA1,0,matched,custodian-paydown-factor,3.799e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+79548CBH8,1,matched,custodian-paydown-factor,3.140e-08,2009-04,Commercial Mortgage-Backed,412-2026-10-23
+79549AJT7,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+79549AXS3,0,matched,custodian-paydown-factor,1.733e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+80585BAA8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+81375WHH2,0,matched,custodian-paydown-factor,8.847e-08,2009-03,Asset Backed Securities,412-2026-10-23
+81378PAB4,0,matched,custodian-paydown-factor,4.237e-09,2009-03,Asset Backed Securities,412-2026-10-23
+848601AA8,1,matched,custodian-paydown-factor,4.971e-08,2009-04,Asset Backed Securities,412-2026-10-23
+863572TZ6,0,unmatched,class-majority-default,8.604e-01,2009-01,Non-Government Backed C.M.O.s,412-2026-10-23
+863579EG9,0,matched,custodian-paydown-factor,1.301e-07,2009-03,Asset Backed Securities,412-2026-10-23
+86358RLA3,0,tied,class-majority-default,3.729e-07,"2009-03,2009-04",Non-Government Backed C.M.O.s,412-2026-10-23
+86358RYM3,0,no-custodian-factor,class-majority-default,,,Non-Government Backed C.M.O.s,412-2026-10-23
+86359A3K7,0,matched,custodian-paydown-factor,9.862e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86359ADL4,0,matched,custodian-paydown-factor,2.509e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86359AE66,0,matched,custodian-paydown-factor,8.345e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86359AM67,0,matched,custodian-paydown-factor,2.528e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86359BH46,0,matched,custodian-paydown-factor,1.111e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86359BTJ0,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+86359DUL9,0,matched,custodian-paydown-factor,1.884e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86360BAL2,0,matched,custodian-paydown-factor,8.084e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86360JAE1,0,tied,class-majority-default,3.748e-08,"2009-03,2009-04",Non-Government Backed C.M.O.s,412-2026-10-23
+86364CAF9,0,matched,custodian-paydown-factor,1.107e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+86365DAC3,0,matched,custodian-paydown-factor,8.213e-09,2009-03,Asset Backed Securities,412-2026-10-23
+87246AAC2,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+88522YAB5,0,matched,custodian-paydown-factor,9.120e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+88522YAC3,0,matched,custodian-paydown-factor,5.024e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+89579AAC5,1,matched,custodian-paydown-factor,8.675e-09,2009-04,Asset Backed Securities,412-2026-10-23
+901921AE6,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+903206AM2,1,matched,custodian-paydown-factor,2.465e-07,2009-04,Asset Backed Securities,412-2026-10-23
+903278CQ0,0,no-custodian-factor,class-majority-default,,,Asset Backed Securities,412-2026-10-23
+911760DS2,1,matched,custodian-paydown-factor,5.427e-08,2009-04,Non-Government Backed C.M.O.s,412-2026-10-23
+92867BAD6,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23
+92922F2G2,0,matched,custodian-paydown-factor,8.722e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922F7Q5,0,matched,custodian-paydown-factor,4.130e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FAS7,0,matched,custodian-paydown-factor,5.089e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FB49,0,matched,custodian-paydown-factor,1.950e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FDG0,0,tied,class-majority-default,6.763e-08,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+92922FDJ4,0,matched,custodian-paydown-factor,7.919e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FGD4,0,matched,custodian-paydown-factor,2.926e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FJ25,0,matched,custodian-paydown-factor,4.715e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FNJ3,0,matched,custodian-paydown-factor,1.292e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FR67,0,matched,custodian-paydown-factor,1.100e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92922FY44,0,matched,custodian-paydown-factor,5.532e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+92925CBB7,0,matched,custodian-paydown-factor,6.498e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+929766R54,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+929766WJ8,1,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Commercial Mortgage-Backed,412-2026-10-23
+92977FAC6,0,no-custodian-factor,class-majority-default,,,Asset Backed Securities,412-2026-10-23
+933634AA5,0,matched,custodian-paydown-factor,7.199e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+93364CAA6,0,matched,custodian-paydown-factor,1.471e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+93364EAF1,0,matched,custodian-paydown-factor,3.217e-08,2009-03,Asset Backed Securities,412-2026-10-23
+9393362D4,0,matched,custodian-paydown-factor,2.508e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+9393363L5,0,matched,custodian-paydown-factor,6.413e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+9393363R2,0,matched,custodian-paydown-factor,4.567e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+9393366B4,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+939336NE9,0,matched,custodian-paydown-factor,1.110e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+939336P80,0,matched,custodian-paydown-factor,1.780e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+93933YAL6,0,no-custodian-factor,class-majority-default,,,Asset Backed Securities,412-2026-10-23
+949761AD2,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+949761AP5,0,matched,custodian-paydown-factor,2.024e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+949768AB1,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+949779AC6,0,matched,custodian-paydown-factor,1.172e-07,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+949788AE3,0,matched,custodian-paydown-factor,3.702e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+949788AF0,0,matched,custodian-paydown-factor,3.702e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94980JAG0,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+94980LAG5,0,matched,custodian-paydown-factor,5.226e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94980MAB4,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94980YAE2,0,matched,custodian-paydown-factor,9.597e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94981CAY5,0,tied,class-majority-default,1.362e-07,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+94981QAD0,0,matched,custodian-paydown-factor,7.578e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94981YAD3,0,matched,custodian-paydown-factor,5.150e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94983CAG2,0,matched,custodian-paydown-factor,0.000e+00,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94983FAC4,0,matched,custodian-paydown-factor,1.530e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+94983PAF5,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Non-Government Backed C.M.O.s,412-2026-10-23
+94985WAP6,0,matched,custodian-paydown-factor,1.106e-08,2009-03,Non-Government Backed C.M.O.s,412-2026-10-23
+981527AD6,0,tied,class-majority-default,0.000e+00,"2009-01,2009-02,2009-03,2009-04,2009-05",Asset Backed Securities,412-2026-10-23

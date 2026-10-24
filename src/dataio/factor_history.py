@@ -71,15 +71,37 @@ BLOOMBERG_MONTH_LAG = 1
 FACTOR_FILE = "factor_history.csv"
 SECURITIES_FILE = "factor_history_securities.csv"
 
+#: The 2026-10-23 delivery for the 412 CMO / CMBS / ABS securities, same three columns.
+#: ⚠️ **Its population does not share the lag above** — most of these do not shift at all.
+#: Pass the alignment table to :func:`factor_path` when reading it.
+FACTOR_FILE_412 = "factor_history_412.csv"
+
+#: Per-security month lag, derived by :mod:`scripts.build_factor_alignment` from the
+#: custodian's own ``paydown_factor``. Missing file = fall back to :data:`BLOOMBERG_MONTH_LAG`.
+ALIGNMENT_FILE = "factor_alignment.csv"
+
+#: A lag is an answer about neighbouring months. Anything further is not an alignment.
+MAX_MONTH_LAG = 2
+
+#: How a row's lag was arrived at. ``matched``/``nearest`` mean the security's own factor
+#: picked the month; the rest mean it could not, and the class majority was used.
+ALIGNMENT_STATUSES = frozenset({"matched", "nearest", "tied", "no-custodian-factor",
+                                "unmatched", "out-of-range"})
+
 
 def _shift_month(year: int, month: int, by: int) -> tuple[int, int]:
     i = (year * 12 + (month - 1)) + by
     return i // 12, i % 12 + 1
 
 
-def bloomberg_month_for(as_of: dt.date) -> str:
-    """The label Bloomberg files a given position date under. ``2009-03-31`` -> ``2009-04``."""
-    y, m = _shift_month(as_of.year, as_of.month, BLOOMBERG_MONTH_LAG)
+def bloomberg_month_for(as_of: dt.date, lag: int = BLOOMBERG_MONTH_LAG) -> str:
+    """The label Bloomberg files a given position date under. ``2009-03-31`` -> ``2009-04``.
+
+    ``lag`` defaults to :data:`BLOOMBERG_MONTH_LAG`, which is correct for the Government MBS
+    pools. ⚠️ For any other population pass the security's own lag from
+    :func:`load_factor_alignment` — see ``three_tier_method_explained`` §3.17.
+    """
+    y, m = _shift_month(as_of.year, as_of.month, lag)
     return f"{y:04d}-{m:02d}"
 
 
@@ -89,13 +111,18 @@ def as_of_for(bloomberg_month: str) -> tuple[int, int]:
     return _shift_month(y, m, -BLOOMBERG_MONTH_LAG)
 
 
-def load_factor_history(data_dir: str = "data") -> dict[str, dict[str, float]]:
+def load_factor_history(data_dir: str = "data",
+                        filename: str = FACTOR_FILE) -> dict[str, dict[str, float]]:
     """``{cusip: {bloomberg_month: factor}}``. Missing file = ``{}``.
+
+    ``filename`` selects the pull: :data:`FACTOR_FILE` (the 376 Government MBS pools) by
+    default, or :data:`FACTOR_FILE_412`. They are separate files because they are separate
+    deliveries and a stored record should stay checkable against what the terminal returned.
 
     ⚠️ The keys are Bloomberg's labels, NOT as-of dates. Callers should use
     :func:`factor_path`, which hands back a path already aligned to a valuation date.
     """
-    path = os.path.join(data_dir, FACTOR_FILE)
+    path = os.path.join(data_dir, filename)
     if not os.path.exists(path):
         return {}
     out: dict[str, dict[str, float]] = {}
@@ -122,21 +149,82 @@ def load_request_groups(data_dir: str = "data") -> dict[str, str]:
         return {r["cusip"]: r["request_group"] for r in csv.DictReader(fh)}
 
 
-def factor_path(history: dict[str, dict[str, float]], cusip: str,
-                as_of: dt.date) -> list[float]:
-    """The observed factor path from ``as_of`` forward, aligned by :data:`BLOOMBERG_MONTH_LAG`.
+def load_factor_alignment(data_dir: str = "data") -> dict[str, dict]:
+    """``{cusip: row}`` from :data:`ALIGNMENT_FILE`. Missing file = ``{}``.
+
+    Each row carries ``month_lag`` (int), ``status``, ``lag_source``, ``residual``,
+    ``matched_month``, ``sub_category`` and ``population``. ⭐ Read ``lag_source``: where it
+    is ``class-majority-default`` the security's own factor could **not** choose the month,
+    because it did not move — the lag is a named default and a driver should say so in its
+    output rather than present it as measured.
+
+    Raises ``ValueError`` on an unrecognised status, a non-integer lag, a lag beyond
+    :data:`MAX_MONTH_LAG`, or a repeated CUSIP — the table is generated, so any of those
+    means it was edited by hand.
+    """
+    path = os.path.join(data_dir, ALIGNMENT_FILE)
+    if not os.path.exists(path):
+        return {}
+    out: dict[str, dict] = {}
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh):
+            cusip = (row.get("cusip") or "").strip()
+            if not cusip:
+                continue
+            if cusip in out:
+                raise ValueError(f"factor_alignment: {cusip} appears twice")
+            status = (row.get("status") or "").strip()
+            if status not in ALIGNMENT_STATUSES:
+                raise ValueError(
+                    f"factor_alignment: unrecognised status {status!r} for {cusip}; "
+                    f"expected one of {sorted(ALIGNMENT_STATUSES)}")
+            try:
+                lag = int(row["month_lag"])
+            except (KeyError, TypeError, ValueError):
+                raise ValueError(
+                    f"factor_alignment: {cusip} has a non-integer month_lag "
+                    f"{row.get('month_lag')!r}") from None
+            if abs(lag) > MAX_MONTH_LAG:
+                raise ValueError(
+                    f"factor_alignment: {cusip} has month_lag {lag}, beyond "
+                    f"+/-{MAX_MONTH_LAG}; that is not an alignment")
+            out[cusip] = dict(row, month_lag=lag, status=status)
+    return out
+
+
+def lag_for(cusip: str, alignment: dict[str, dict] | None = None) -> int:
+    """The month lag to use for one security.
+
+    Falls back to :data:`BLOOMBERG_MONTH_LAG` when no alignment table is supplied or the
+    security is absent from it, which keeps every existing caller bit-identical.
+    """
+    if not alignment:
+        return BLOOMBERG_MONTH_LAG
+    row = alignment.get(cusip)
+    return BLOOMBERG_MONTH_LAG if row is None else int(row["month_lag"])
+
+
+def factor_path(history: dict[str, dict[str, float]], cusip: str, as_of: dt.date,
+                alignment: dict[str, dict] | None = None) -> list[float]:
+    """The observed factor path from ``as_of`` forward.
 
     Element 0 is the factor **at the valuation date**; element *k* is *k* months later.
     Returns ``[]`` when the security is absent, and stops at the first gap — a series that
     ends is a security that has finished paying, not an error.
+
+    ⚠️ Without ``alignment`` the months are shifted by :data:`BLOOMBERG_MONTH_LAG`, which is
+    measured-correct for the Government MBS pools and **wrong for most of the 412**. Pass
+    :func:`load_factor_alignment` for any other population; the lag is then per security,
+    because it is not a property of the vendor and not even of the asset class.
     """
     months = history.get(cusip)
     if not months:
         return []
+    lag = lag_for(cusip, alignment)
     y, m = as_of.year, as_of.month
     out: list[float] = []
     while True:
-        key = bloomberg_month_for(dt.date(y, m, 1))
+        key = bloomberg_month_for(dt.date(y, m, 1), lag)
         if key not in months:
             break
         out.append(months[key])
