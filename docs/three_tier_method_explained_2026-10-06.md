@@ -808,8 +808,22 @@ vendor's habits — invert against a number you already trust.** We hold the cus
 
 Three readings, in order of importance:
 
-1. ⭐ **The published 376 are right.** 238 of the 241 that can be decided say T+1, which is what
-   the loader does. Nothing already shipped moves.
+1. ⭐ **The published 376 are almost all right** — 238 of the 241 that can be decided say T+1,
+   which is what the loader does. ⚠️ **Three do not, and they were genuinely mis-aligned:**
+   `31393LFM0` and `31393U4Q3` match `2009-03`, `31397RTS5` matches `2009-05`, at residuals of
+   1.19e-07, 1.57e-07 and 1.24e-08 — clean unique matches, not noise. They were corrected on
+   2026-10-24 and **exactly 3 rows of 882 moved**.
+   ⭐ **The reason to fix it was not the spread.** The two that carry risk numbers moved by
+   **−0.12 bp and −0.29 bp**, and their durations by 0.0026 years — nothing, because the price
+   is anchored to the custodian's mark, so a shift in timing is absorbed by the recalibrated
+   spread. What was actually wrong was the **provenance**: both rows claimed **209** observed
+   months when they have **210**, and closed **20.91%** and **7.14%** of the balance by
+   convention when the truthful figures are **20.73%** and **7.05%**. The rows were
+   understating their own evidence. The third is an I/O strip whose spread and duration are
+   withheld anyway, so only its `cf_life_years` and month count moved.
+   No median moved, the driver's own summary is unchanged, and **18 of the 19 artifact hashes
+   in `release_facts` are identical** — which is the independent proof that nothing else was
+   touched.
 2. ⚠️ **The 412 mostly do not shift.** Loading them through the existing loader would put 224
    CMO tranches a month out — silently, because a factor one month off is still a perfectly
    plausible factor.

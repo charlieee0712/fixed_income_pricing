@@ -84,8 +84,20 @@ The largest is an I/O strip whose risk numbers are already withheld, so two rows
 and a duration computed off a path starting a month late. Not fixed in the landing commit --
 it moves a published artifact and gets its own step.
 
-**Open:** realign those three and measure it; re-ask the 37 inside the reply to this delivery;
-the reset-frequency route to floater duration; a driver for the 412.
+**Realigned the same day.** `tier1_structured.py` now passes the alignment table to
+`factor_path`, and **exactly 3 rows of 882 moved**. The spreads moved by −0.12 bp and
+−0.29 bp and the durations by 0.0026 years -- nothing, because the price is anchored to the
+custodian's mark and a timing shift is absorbed by the recalibrated spread. ⭐ The reason it
+was worth fixing is the provenance, not the spread: both rows claimed `months_observed` 209
+when they have 210, and `residual_pct` fell 20.91 -> 20.73 and 7.14 -> 7.05, so they had been
+closing more of the balance by convention than the record requires. The third, an I/O strip,
+moved only its `cf_life_years` and month count because its risk numbers are withheld. No
+median moved, the driver's printed summary is unchanged, 771 tests pass, and 18 of the 19
+artifact hashes in `release_facts` are identical. Record regenerated as
+`docs/release_facts_2026-10-24.md`. ⚠ The 2026-10-15 Drive package predates this.
+
+**Open:** re-ask the 37 inside the reply to this delivery; the reset-frequency route to
+floater duration; a driver for the 412.
 
 **Hours:** [TO FILL]
 

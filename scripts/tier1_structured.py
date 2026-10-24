@@ -106,7 +106,8 @@ from curves.zero_curve import ZeroCurve  # noqa: E402
 from dataio.coupon_structure import (load_coupon_structure,  # noqa: E402
                                      rate_behaviour)
 from dataio.dispositions import reconcile  # noqa: E402
-from dataio.factor_history import factor_path, load_factor_history  # noqa: E402
+from dataio.factor_history import (factor_path,                     # noqa: E402
+                                   load_factor_alignment, load_factor_history)
 from dataio.phase2 import (build_pool_universe, load_master_phase2,  # noqa: E402
                            parse_tba_terms)
 # ⚠️ Through the ASSETS layer, never the core. That layer owns the percent/decimal
@@ -325,6 +326,10 @@ def main():
     # value, exactly as `pool_risk.py` merges them -- not on the universe frame.
     pools = pools.merge(recon, on="asset_id", how="left")
     hist = load_factor_history(data_dir)
+    # ⚠️ The month a factor label describes is a property of the SECURITY, not of Bloomberg
+    # and not of the asset class (three of these pools disagree with the module constant).
+    # Without this table every path here would start at whatever month the constant picks.
+    align = load_factor_alignment(data_dir)
     cus = pd.read_csv("outputs/mbs_data_check_2026-07-30.csv")[["asset_id", "cusip"]]
     pools = pools.merge(cus, on="asset_id", how="left")
 
@@ -352,7 +357,8 @@ def main():
             route=None, flag="",
         )
         bt, cpn = _num(r["gold_price"]), _num(r["net_coupon_pct"])
-        path = factor_path(hist, r["cusip"], VAL_DATE) if pd.notna(r.get("cusip")) else []
+        path = (factor_path(hist, r["cusip"], VAL_DATE, align)
+                if pd.notna(r.get("cusip")) else [])
 
         if curve is None:
             named[aid] = ("curve-blocked", _REASON["curve-blocked"])

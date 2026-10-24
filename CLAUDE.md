@@ -1355,14 +1355,30 @@ Plain-language write-up:
   508k) match **`2009-03`** at 1.19e-07 / 1.57e-07 while the loader reads `2009-04` (8.5e-3 /
   1.25e-2 away); **`31397RTS5`** (FHLMC 3430 AI, par 17.0M) matches **`2009-05`** at 1.24e-08
   against `2009-04` 2.62e-2 away. ⭐ **The largest of the three is an I/O strip whose spread and
-  duration are already withheld**, so only two rows carry risk numbers computed off a path that
-  starts a month late (391.09bp / 5.59y and 417.06bp / 4.70y). **Deliberately NOT fixed in the
-  landing commit** — it moves a published artifact, so it gets its own step and its own
-  measurement; `test_factor_alignment` pins these three as the ONLY disagreement so a fourth
-  cannot appear unnoticed.
-- **OPEN:** ① realign those three and measure what moves; ② re-ask the 37 — one sentence, use
-  the `security` column, inside the reply to this delivery; ③ the reset-frequency route to
-  floater duration; ④ a driver for the 412 (the data is there, nothing prices them yet).
+  duration are already withheld**, so only two rows carried risk numbers computed off a path
+  that starts a month late. `test_factor_alignment` pins these three as the ONLY disagreement,
+  so a fourth cannot appear unnoticed.
+- **⭐ FIXED 2026-10-24 — `tier1_structured.py` now passes the alignment table to `factor_path`.
+  EXACTLY 3 ROWS OF 882 MOVED**, and the measurement is the point:
+  ⭐⭐ **the spread barely moves and that is not why it was worth fixing.** `31393LFM0`
+  **391.086 → 390.963 bp** (−0.12) with duration **5.59331 → 5.59591 y**; `31393U4Q3`
+  **417.057 → 416.771 bp** (−0.29) with duration **4.70377 → 4.70120 y**. The price is anchored
+  to the custodian mark, so a one-month timing shift is absorbed by the recalibrated spread.
+  ⚠️ **What was actually wrong was the PROVENANCE:** both rows claimed **`months_observed` 209
+  when they have 210**, and `residual_pct` **20.91 → 20.73** and **7.14 → 7.05** — i.e. they
+  were closing more of the balance by convention than the record requires. A row understating
+  its own evidence is the defect; the 0.1 bp is incidental. The third (`31397RTS5`, the I/O)
+  moved only `cf_life_years` **1.2608 → 1.2381** and `months_observed` **41 → 40**, its risk
+  numbers being withheld already.
+  **No median moved** (observed-path spread and duration medians identical to 4 dp), the
+  driver's own printed summary is unchanged, **771 tests pass**, and ⭐ **18 of the 19 artifact
+  hashes in `release_facts` are identical** — the independent proof nothing else was touched.
+  Record regenerated: `docs/release_facts_2026-10-24.md`.
+  ⚠️ **The 2026-10-15 Drive package predates this** and still carries the old
+  `tier1_structured_2009-03-31.csv`; refresh it at the next delivery, not before.
+- **OPEN:** ① re-ask the 37 — one sentence, use the `security` column, inside the reply to this
+  delivery; ② the reset-frequency route to floater duration; ③ a driver for the 412 (the data
+  is there, nothing prices them yet).
   ⚠️ **Still NOT raised with Mario:** the live-date question (revaluation vs scenario risk).
 
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)
