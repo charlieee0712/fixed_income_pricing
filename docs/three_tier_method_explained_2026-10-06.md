@@ -152,10 +152,15 @@ the 27 TBA forwards**, where the two differ by precisely the settlement lag. Not
 their cash flows respond to anything, but because a forward price carries the spread in only
 one of its two places. See **§3.8**.
 
-⭐ We already have a live example of the separation in our own book: **an FRN's duration is
-≈ the time to its next reset (near zero), because bumping the curve re-projects its future
-coupons — while its spread duration is ≈ its full remaining life.** Same bond, two very
-different numbers, and the difference exists *only because the cash flows move*.
+⭐ We already have a live example of the separation in our own book: **an FRN's rate duration
+comes from bumping the curve, which re-projects its future coupons, while its spread duration
+is ≈ its full remaining life.** Same bond, two very different numbers, and the difference
+exists *only because the cash flows move*.
+
+⚠️ **"≈ the time to its next reset, near zero" is the PAR-floater case and this book is not
+at par.** Measured on 2026-10-24 across 94 ordinary floaters, the rate duration is **negative
+on 84 of the 85 priced below par** and positive above it — and for an inverse floater it is
+*longer* than the spread duration, not shorter. **§3.20** has the mechanism and the numbers.
 
 ### 3.5 Why an I/O strip has negative duration — and why Tier 1 cannot see it
 
@@ -402,7 +407,7 @@ in the record (`docs/bloomberg_return_2026-10-01.md` §B, `CLAUDE.md`, `WORKLOG.
 `scripts/tier1_structured.py:124`) describe the 25.05 / 25.83 as a *realised CPR*. They are a
 realised **decay**. Same class of fix as 376 → 373: the word, not the method.
 
-### 3.12 The floating-coupon unknown, and why 1.77 years is the whole of it
+### 3.12 The floating-coupon unknown, and the bound that turned out not to be the whole of it
 
 `income_rate` reports a *rate*, never a *structure*, so nothing in the custodian file says
 whether a coupon floats — and that single bit normally decides whether a security's duration is
@@ -434,15 +439,29 @@ error  ≤  w_int × L_int            w_int = the interest leg as a share of PV
    median  =  15.3 % × 2.73 y  ≈  0.42 years
 ```
 
-Conservative twice over: it takes the p90 of *both* factors simultaneously, and it assumes the
-true floating-leg duration is exactly 0 — which is itself the generous end, since a floater's
-coupon rises with rates and its PV therefore barely moves (the same mechanism that makes an
-FRN's duration ≈ its time to next reset, §3.4).
+Conservative in one way: it takes the p90 of *both* factors simultaneously.
 
-⇒ against the **~21 years** that bulleting at legal maturity costs (§3.3), the unknown is worth
-about a twelfth of the defect being repaired. ⭐ **That is why this round did not wait for
-Liping** — and why her pull, when it lands, improves the answer by at most ~1.8 years rather
-than unblocking it.
+⚠⚠ **AND WRONG IN ANOTHER, CORRECTED 2026-10-24.** The paragraph used to continue: *"and it
+assumes the true floating-leg duration is exactly 0 — which is itself the generous end, since
+a floater's coupon rises with rates and its PV therefore barely moves."* **Zero is not the
+generous end**, and the sentence was wrong in both directions at once:
+
+* below par a floating leg's duration is **negative**, not zero — so the swing is larger than
+  losing the leg's duration, it is losing it *and gaining the opposite*;
+* and **46 of the 64** Government-MBS floaters whose multiplier we now know are **INVERSE**,
+  where the coupon *falls* as rates rise, so their duration gets **longer**, which the
+  sentence did not consider at all.
+
+Measured directly, the rate duration sits a median **3.19 years** from the published spread
+duration on this book — against a bound that said 1.77. ⭐ The two are not in contradiction,
+because they answer different questions: the bound **decomposes** this duration, while 3.19
+says what the duration would **be** if the coupon moved. But a reader reaching for the bound
+wants the second, so **§3.20** now carries it and the flag quotes it instead.
+
+⇒ The conclusion of this section survives. Against the **~21 years** that bulleting at legal
+maturity costs (§3.3), the unknown is worth a small fraction of the defect being repaired.
+⭐ **That is why this round did not wait for Liping** — and why the coupon data, when it lands,
+sharpens the answer rather than unblocking it.
 
 ---
 
@@ -990,6 +1009,180 @@ formula table.
 
 ---
 
+### 3.19 ⚠️ The custodian's duration means different things in different books
+
+`dur_eff_custodian` is in every table as evidence, and `aq_divergence` measures how far our
+number sits from it. ⚠️ **The two books' divergence columns cannot be read side by side**, and
+the reason only became visible when the securitised book existed to compare against.
+
+Split by whether the coupon moves, ours against the custodian's, at 2009-03-31:
+
+| | n | ours | custodian |
+|---|---:|---:|---:|
+| securitised, coupon MOVES | 180 | 3.14 | **0.13** |
+| securitised, coupon FIXED | 191 | 2.02 | 1.06 |
+| government, coupon MOVES | 71 | 2.33 | **3.67** |
+| government, coupon FIXED | 302 | 2.93 | 3.75 |
+
+In the securitised book the custodian is far **shorter** than us on floaters — which looks
+like a par-floater convention, duration ≈ time to next reset. In the government book it is
+**longer**, on floaters and fixed alike, so whatever it is doing there, it is not that.
+
+⭐ So "custodian 0.13 against our 3.14" is **not** evidence that we are nine times wrong. It is
+the project's standing rule — *AQ means different things per class* — finally visible in one
+table. The rule was written in September after a near-miss: a routing rule keyed on custodian
+duration would have priced the corporate callables as bullets.
+
+⇒ Use it as evidence in a sentence, never as a target to converge on, and **never compare the
+two books' divergences to each other.**
+
+---
+
+### 3.20 ⭐⭐ The duration we publish answers a different question from the one you may have in mind
+
+This is the longest section here because it is the one that reads as a mistake and is not.
+
+#### The two questions
+
+A duration answers "something moves by 1bp — how much does the price move?" There are two
+somethings, and for most of this book they give the same answer, which is exactly why the
+difference is easy to miss.
+
+| | what moves | does the coupon move? |
+|---|---|---|
+| **spread duration** (what we publish) | the **spread** the market demands | no — a spread has nothing to do with the coupon |
+| **rate duration** | the **interest rate** itself | **yes**, if the coupon is tied to a rate |
+
+For a **fixed-coupon** security the two are identical, and §3.4 explains why: the price depends
+only on the sum `z + s`, so bumping either dial is the same arithmetic. That is why `DV01` and
+`CS01` match **exactly, on 757 of 757 rows**. It is a property, not a coincidence.
+
+For a **floating-coupon** security they are not identical — and we were publishing one of them
+with a flag that said only *"this assumes the coupon stays put"*, with no number attached.
+
+⭐ **So the finding is not that a number is wrong. It is that a correct answer to question one
+was sitting where a reader would look for question two.**
+
+#### What the second answer actually is
+
+| | n | spread duration (published) | rate duration | apart by |
+|---|---:|---:|---:|---:|
+| government book | 62 | 2.29 y | **+4.72 y** | 3.19 y |
+| securitised book | 83 | 3.25 y | **−2.75 y** | 6.89 y |
+
+On the securitised book the rate duration is **negative on 79 of 83**. That looks like an
+error and is not one.
+
+#### ⭐⭐ Why a floater's rate duration goes negative — and why it flips exactly at par
+
+A rate rise does two things to a floater, pulling opposite ways:
+
+* **discounting** — every future payment is worth less. This effect scales with the **price**
+  you actually paid.
+* **the coupon** — you receive more. This effect scales with the **face value**, because a
+  coupon is a percentage of face, not of price.
+
+At par those bases are the same number and the two cancel: duration ≈ 0, the textbook answer.
+**Below par the face is bigger than the price, so the coupon effect wins and the price RISES
+when rates rise.**
+
+That is a prediction, so here it is tested — 94 ordinary floaters (multiplier exactly +1),
+sorted by the custodian's price:
+
+| price | n | rate duration, median | negative |
+|---|---:|---:|---:|
+| under 50 | 41 | −4.77 y | 41 of 41 |
+| 50–80 | 24 | −1.65 y | 24 of 24 |
+| 80–95 | 9 | −0.05 y | 9 of 9 |
+| 95–101 | 11 | −0.03 y | 10 of 11 |
+| **over 101** | 9 | **+0.03 y** | 2 of 9 |
+
+Monotone in price, crossing zero at par: **84 of the 85 below par are negative, 7 of the 9
+above par are positive.** The mechanism is not a story told after the fact.
+
+⭐ And it is ordinary economics. You paid 40 for a bond that pays a coupon on 100 of face. If
+the index rises a point, you collect a point more on the full 100 while only 40 is exposed to
+the discounting. You gain.
+
+#### ⚠⚠ The mistake I made, because it is the instructive part
+
+The first measurement assumed every coupon rises one-for-one with the index. **46 of the 64
+Government-MBS floaters whose multiplier we know are INVERSE** — their coupon *falls* when
+rates rise, several of them at two or three times the move.
+
+A real one, `TNTD03135962`, priced at 74.77:
+
+```
+Bloomberg's rule      -1.500 * US0001M + 9.000%
+1M LIBOR at 2009-03-31      0.50063%
+  so the coupon is     9.000 - 1.500 x 0.50063  =  8.249%
+  the custodian reports                            8.255%      <- 0.006 apart
+```
+
+Now raise rates by a point. LIBOR goes to 1.50%, and the coupon goes **down** to 6.75%. The
+cash flows shrink *and* the discount rate rises — both push the price down. Its rate duration
+is therefore **longer** than a fixed-rate bond's, not shorter.
+
+Assuming +1 for these inverted them. The median rate duration on the government book came out
+at **−0.005 years**; with each security's own multiplier it is **+4.72**. Not a rounding error
+— a different answer, on 46 of 68 securities. ⭐ The multiplier was in `coupon_formula.csv` the
+whole time, which is how that table finally entered the production path.
+
+⭐ And the multipliers check out: of the 111 inverse floaters we hold, **104 have a formula
+that reproduces the custodian's own coupon within 0.25 of a point.**
+
+#### ⚠️ So why is the rate duration not published?
+
+Three reasons, each sufficient on its own.
+
+**① No caps or floors.** `missing_data.md` G7d. With 1M LIBOR at **0.50%**, an inverse floater
+is close to its coupon ceiling — the index cannot fall below zero, so `TNTD03135962`'s coupon
+cannot exceed 9.000%, and it is already at 8.249%. **It is 0.75 points from a wall.** A 1bp
+bump is locally exact and says nothing useful about a real rate move.
+
+**② More than half the population has no multiplier.** 97 of the 180 securitised floaters have
+no rule in force at all. A column measured on 83 and assumed on 97, with nothing in the row to
+tell them apart, is worse than no column.
+
+**③ Nothing validates it.** It is *not* closer to the custodian than the spread duration
+already is — 3.52 against 3.19 on the securitised book, 2.98 against 2.38 on the government
+one. ⭐ Compare this with the one place the project *did* publish a second duration: the 27 TBA
+forwards (§3.8), where `rate = spread − settle` holds as an identity to **9.99e-09**. There,
+the second number was provable. Here it is a model output with no check against it.
+
+⇒ The same discipline as the I/O refusal (§3.5): **publish a risk number only when you know it
+is right, and otherwise name the gap precisely.**
+
+#### What ships instead
+
+* **`coupon_multiplier`** — a new column on both tables. The client's own datum, not a model
+  output. ⚠️ **Blank means unknown and must never be read as 1.0**; that is the assumption
+  that inverted 46 answers.
+* **a flag that carries the measured gap** — 3.19 years on the government book, 6.89 on the
+  securitised one, with the sign warning — instead of the old bare "assumes the coupon stays
+  put".
+
+⚠⚠ **One trap inside the column we do publish: a big multiplier is not a big sensitivity.**
+`TNTD03386552` reads `-7.083 * US0001M + 51.000%`, which at that day's index works out to
+**47.45%** — against a custodian coupon of **8.50%**. ⭐ Our own parser **refuses** it: 47.45%
+falls outside the measured coupon band `[0, 20]%`, and the refusal says the rule "needs a cap,
+a floor or a reset date that the source field does not carry". The cap is doing all the work
+and we do not hold it. So the multiplier is published as a **fact about the contract**, and
+multiplying it out is exactly what the band exists to stop.
+
+#### What would make it publishable
+
+The caps and floors (G7d) and a multiplier for the 97. Neither blocks anything today — both
+are on the list in §4 — and with them the rate duration stops being a number we can compute
+and becomes one we can stand behind.
+
+⚠️ One population is **not** covered by any of this: the **61** government rows that run on an
+assumed CPR rather than a measured path. They disclose a moving coupon and publish a duration,
+and the comparison above was never made for them, because it needs the observed-paydown engine
+and they go through the pool engine. Their flag says so.
+
+---
+
 ## 4. ⭐ Numbers that are easy to confuse
 
 This is the section to come back to. **Five counts** first, four of which nearly match and mean
@@ -1125,3 +1318,6 @@ separately identify defaults and recoveries, which may not exist for 2009 privat
 | **ISDA fallback spread adjustment** | the fixed add-on converting a LIBOR rate to Term SOFR, set 2021-03-05: **0.11448%** 1M · **0.26161%** 3M · **0.42826%** 6M. §3.14 |
 | **observation vs reconstruction** | the custodian's `income_rate` is the coupon that was actually paid; a formula evaluated at the valuation date is a model of it. The second can match the first, never beat it — §3.18 |
 | **`RFUCCT1Y` · `RFUCCT6M`** | two ARM indices Bloomberg does not carry. 43 securities reference them — all Government MBS ARM pools, all already priced on the custodian's observed coupon ⇒ ⭐ a gap that **confirms**, never **blocks** |
+| **spread duration · rate duration** | what the price does when the **spread** moves, versus when the **interest rate** moves. Identical for a fixed coupon, different for a floating one — §3.20 |
+| **coupon multiplier** | how far a coupon moves per unit move in its index. `+1` an ordinary floater, `-1` or less an inverse one. ⚠️ Blank means **unknown**, never 1.0 |
+| **inverse floater** (rate risk) | coupon falls as rates rise, so BOTH its cash flows and its discounting push the price the same way ⇒ its rate duration is **longer** than a fixed bond's, not shorter |

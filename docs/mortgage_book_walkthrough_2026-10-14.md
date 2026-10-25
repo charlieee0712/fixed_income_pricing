@@ -21,6 +21,8 @@ one for *why we did it*:
 | what a measured history buys, and why `CPN` is not `MTG_FACTOR` | same, §3.15 |
 | why a factor's month label is not always its month — and why no class rule fixes it | same, §3.17 |
 | why an observed coupon beats a formula **at the valuation date**, and loses after it | same, §3.18 |
+| why the custodian's duration cannot be compared across the two books | same, §3.19 |
+| why a floater's duration goes **negative** below par, and what we publish instead | same, §3.20 |
 | the decision record behind Mario's three tiers | `client_directive_three_tier_structured_method_2026-10-06.md` |
 | the factor validation in full | `bloomberg_return_2026-10-01.md` §7 |
 | every open data gap | `missing_data.md`, G1–G7 |
@@ -66,6 +68,7 @@ Mario's position (2026-10-06): *"very expensive and difficult to get"* — so Ti
 | **2026-10-14** | the coupon **formulas**; a finding retracted; four corporate hybrids unstuck | G3 mostly closed |
 | **2026-10-16** | Mario's call: three questions, and our own evidence found to be borrowed | the two asks re-sorted — factor **blocks**, coupon **qualifies** |
 | **2026-10-23/24** | the data comes back: 372 of 412, no `CPN` **by decision** | ⭐ the T+1 shift turns out to belong to the **security** |
+| **2026-10-24** | the 412 priced — the book reaches ~88% — and the published duration found to be a **spread** duration | ⭐ `coupon_formula` enters production |
 
 ---
 
@@ -427,7 +430,44 @@ MBS ARM pools, and all already priced on the custodian's observed coupon.
 
 ---
 
-## 12. ⭐⭐⭐ The one idea that keeps paying
+## 12. Act 10 — the last category priced, and a duration that answered the wrong question (24 Oct)
+
+Two pieces of work, one small and one that changed what we say about every floating-rate row.
+
+**The 412 are priced.** `scripts/tier1_securitized.py` produces 412 rows — **371 on measured
+factor paths, 41 named** for having none. A sibling driver rather than an extension of the
+882-row table, which is already delivered; but the pricing core is imported from it, so the two
+cannot disagree about how a measured path is priced. Validated the way the 882 were: principal
+conserves to **1.42e-14** over 364 paths, the same floor. ⭐ The whole book is now **about 88%
+priced** — 1,999 of 2,260 securities.
+
+Two of its numbers looked wrong and both resolve. A **1,098 bp** median spread is simply what
+non-agency paper cost in March 2009 — CMBS 771, ABS 1,052, CMO 1,334, against 226 for the
+agency book, off marks with a median of 78. And a 2.61-year duration against a custodian 0.28
+is the second piece of work.
+
+**⭐⭐ The duration we publish is a SPREAD duration.** For a fixed coupon that is also the rate
+duration; for the 312 rows whose coupon moves it is not, and the flag said only "this assumes
+the coupon stays put" with no number. Measured, the two are a median **3.19 years** apart on
+the government book and **6.89** on the securitised one, where the rate duration turns negative
+on 79 of 83 — because below par a floater's coupon gain, which scales with face, beats its
+discounting loss, which scales with price.
+
+⚠⚠ **The first measurement was wrong and that is the part worth remembering.** It assumed
+every coupon rises one-for-one with its index; **46 of 64** government floaters are inverse,
+several leveraged to −3.0, and the naive assumption put the median at **−0.005 years instead
+of +4.72**. The multiplier was in `coupon_formula.csv` all along — which is how that table
+finally entered the production path rather than an audit script.
+
+What shipped is a fact and a disclosure, not a model output: a `coupon_multiplier` column
+(blank where unknown, never defaulted to 1.0) and a flag carrying the measured gap. The rate
+duration itself is **not** published — no caps or floors are held, 97 of 180 securitised
+floaters have no multiplier, and it is no closer to the custodian than what we already publish.
+Explainer §3.19–§3.20.
+
+---
+
+## 13. ⭐⭐⭐ The one idea that keeps paying
 
 **Measure what happened; do not model what should have happened.**
 
@@ -442,7 +482,7 @@ recorded number already contains the answer. ⭐ The second row is the first row
 applied to the other leg of the cash flow, and it is why the ask is a coupon *history* rather
 than the formula inputs.
 
-## 13. ⭐ The discipline that keeps showing up
+## 14. ⭐ The discipline that keeps showing up
 
 **Do not publish a number whose sign or whose units you cannot vouch for.** It has now fired
 five times, each time on different material:
@@ -459,7 +499,7 @@ say it measured *nothing* is not evidence. It caught a spurious "13 of 34 within
 rate was below chance) — and the very same technique, applied honestly a week later, is what
 retracted our own conclusion.
 
-## 14. Where it stands, and what is missing
+## 15. Where it stands, and what is missing
 
 ```
 2,260 securities in the portfolio
@@ -479,7 +519,7 @@ ARM reset/cap fields (`missing_data.md` G7a/G7d) · four Eurobond margins whose 
 comes back empty, so re-pulling it will not help · and `COVERAGE.md` / `PROJECT_STATUS.md`,
 which still do not describe the mortgage book.
 
-## 15. Every headline number, and where it comes from
+## 16. Every headline number, and where it comes from
 
 | number | meaning | source |
 |---|---|---|

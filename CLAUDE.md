@@ -1020,7 +1020,7 @@ The **narrative** of the whole securitised arc, July → October: how it went fr
 no data to 882 published rows, what was decided at each fork, and what we got wrong. ⭐ Written
 for a reader coming back cold. It deliberately does NOT re-explain the concepts — the split is
 **narrative + decisions here, mechanism in `three_tier_method_explained_2026-10-06.md`** — and
-its §15 is a provenance table giving the source of every headline number in it. Start there
+its §16 is a provenance table giving the source of every headline number in it. Start there
 before this file's per-round sections, which are records rather than explanations.
 
 ## The coupon FORMULAS (Mario 2026-10-14) — DONE, 753 tests
