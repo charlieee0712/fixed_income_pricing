@@ -120,21 +120,36 @@ def test_principal_is_conserved_on_every_measured_path(priced):
     assert worst < 1e-12, f"principal conservation worst deviation {worst:.3e}"
 
 
-def test_the_government_books_1_77y_bound_is_not_borrowed(table):
-    """⭐ A measured bound belongs to the population it was measured on.
+def test_no_figure_measured_on_the_government_book_appears_here(table):
+    """⭐ A measured number belongs to the population it was measured on.
 
-    The government driver's disclosure quotes 1.77y, derived from p90 interest share times
-    p90 interest life on *its* paths. The median divergence from the custodian here is 2.49y,
-    so inheriting that sentence would understate by more than the bound itself.
+    Two of the government driver's figures must never turn up in this table: the 1.77y
+    interest-leg bound, and the 3.19-year rate-versus-spread gap measured on its floaters.
+    This book's own gap is 6.89 years, more than twice it.
     """
     for r in table:
         flag = r.get("flag") or ""
         assert "bounded at 1.77y" not in flag, r["asset_id"]
         assert "p90 interest share" not in flag, r["asset_id"]
+        assert "median of 3.19 years" not in flag, r["asset_id"]
     disclosed = [r for r in table if "coupon-structure:" in (r.get("flag") or "")]
     assert disclosed, "nothing disclosed a moving coupon at all"
     for r in disclosed:
-        assert "does NOT apply to this population" in r["flag"], r["asset_id"]
+        assert "median of 6.89 years" in r["flag"], r["asset_id"]
+        assert "SPREAD duration" in r["flag"], r["asset_id"]
+
+
+def test_an_unknown_coupon_multiplier_is_blank_and_never_one(table):
+    """⚠️ 97 of the 180 disclosed rows here have no multiplier at all. A blank that a reader
+    could mistake for 1.0 would make an assumed rate sensitivity indistinguishable from a
+    measured one."""
+    known = [r for r in table if (r.get("coupon_multiplier") or "").strip()]
+    assert len(known) == 90, len(known)
+    inverse = [r for r in known if float(r["coupon_multiplier"]) < 0]
+    assert len(inverse) == 10, len(inverse)
+    disclosed = [r for r in table if "coupon-structure:" in (r.get("flag") or "")]
+    without = [r for r in disclosed if not (r.get("coupon_multiplier") or "").strip()]
+    assert len(without) == 97, len(without)
 
 
 def test_the_moving_coupon_disclosure_lands_on_exactly_the_right_rows(table):

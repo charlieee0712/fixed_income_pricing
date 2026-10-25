@@ -103,6 +103,8 @@ import pandas as pd  # noqa: E402
 
 import pool_risk as D  # noqa: E402  — reuse its loaders rather than copy them
 from curves.zero_curve import ZeroCurve  # noqa: E402
+from dataio.coupon_formula import (coupon_multiplier,  # noqa: E402
+                                   load_coupon_formulas)
 from dataio.coupon_structure import (load_coupon_structure,  # noqa: E402
                                      rate_behaviour)
 from dataio.dispositions import reconcile  # noqa: E402
@@ -188,18 +190,34 @@ _REASON = {
 #: interest leg is in doubt and the error is bounded by that leg's share of PV times its own
 #: life. On an ASSUMED CPR there is no measured principal, so the modelled amortisation rests
 #: on the same assumption and that bound does not transfer.
+#: ⚠️ REWRITTEN 2026-10-24. The earlier text reassured the reader that the assumption
+#: "only affects the interest leg, bounded at 1.77y". That bound is true and it answers a
+#: DIFFERENT question from the one a risk reader asks: it decomposes this duration, it does
+#: not say what the duration would be if the coupon moved. Measured directly, the RATE
+#: duration differs from this SPREAD duration by a median of **3.19 years** here, because a
+#: floating coupon does not merely lose its rate exposure -- it gains the opposite one. The
+#: reassurance therefore understated the consequence while being literally correct, which is
+#: the worst shape for a disclosure to have. ⭐ The decomposition survives in
+#: `three_tier_method_explained` §3.12; the flag now carries the operational number.
 _COUPON_STRUCTURE_NOTE = {
     "observed-factor-path": (
-        "coupon-structure: Bloomberg reports {kind}; this duration assumes the coupon stays "
-        "at the custodian's valuation-date level. Principal timing comes from the measured "
-        "factor path, so only the interest leg is affected -- bounded at 1.77y (p90 interest "
-        "share 36.7% x p90 interest life 4.83y; about 0.42y at the median)."
+        "coupon-structure: Bloomberg reports {kind}; this is a SPREAD duration -- the "
+        "discount rate is bumped with the coupon held at the custodian's valuation-date "
+        "level. Principal timing comes from the measured factor path, so only the interest "
+        "leg is affected. The RATE duration, which moves the coupon by its own multiplier "
+        "(see coupon_multiplier), differs here by a median of 3.19 years, and 46 of the 64 "
+        "with a known multiplier are INVERSE floaters, so the two can carry opposite signs. "
+        "It is measured but not published: no cap or floor is held for these, and with "
+        "one-month LIBOR at 0.50% an inverse floater sits near its coupon ceiling, so a "
+        "small-bump rate duration is locally exact and not usable as a risk measure."
     ),
     "assumed-cpr": (
-        "coupon-structure: Bloomberg reports {kind}; this duration assumes the coupon stays "
-        "at the custodian's valuation-date level. There is no measured path here, so BOTH the "
-        "interest leg and the modelled amortisation rest on that assumption and the 1.77y "
-        "interest-leg bound does NOT apply to this row."
+        "coupon-structure: Bloomberg reports {kind}; this is a SPREAD duration and it "
+        "assumes the coupon stays at the custodian's valuation-date level. There is no "
+        "measured path here, so BOTH the interest leg and the modelled amortisation rest on "
+        "that assumption. ⚠️ The rate-duration comparison made for the measured-path rows "
+        "was NOT made for these: it needs the observed-paydown engine, and these rows run "
+        "through the pool engine instead."
     ),
 }
 
@@ -475,6 +493,14 @@ def main():
     structure = load_coupon_structure()
     out["coupon_structure"] = out["asset_id"].map(
         lambda aid: (structure.get(aid) or {}).get("coupon_type") or "")
+    # The client's own datum, not a model output: how far the coupon moves per unit move in
+    # its index. ⚠️ Blank means UNKNOWN and must never be read as 1.0 -- assuming that for
+    # all of them moved the median rate duration from +4.72 years to -0.005.
+    formulas = load_coupon_formulas()
+    cusip_isin = {r["asset_id"]: [r.get("cusip") or "", r.get("isin") or ""]
+                  for _, r in out.iterrows()}
+    out["coupon_multiplier"] = out["asset_id"].map(
+        lambda aid: coupon_multiplier(formulas, cusip_isin.get(aid, []), VAL_DATE))
     moves = out["coupon_structure"].map(
         lambda kind: bool(kind) and rate_behaviour(kind) == "rate-sensitive")
     disclose = moves & out["eff_duration_years"].notna()

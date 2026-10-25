@@ -315,23 +315,50 @@ def test_the_note_fires_on_a_published_duration_and_nowhere_else():
 
 
 @pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
-def test_the_bound_is_claimed_only_where_a_measured_path_earns_it():
-    """⭐⭐ The load-bearing distinction. On a MEASURED factor path the principal timing is
-    history, so only the interest leg is in doubt and 1.77y bounds it. On an ASSUMED CPR the
-    modelled amortisation rests on the same constant-coupon assumption, so that bound does not
-    transfer -- and a single sentence covering both populations is exactly how the weaker claim
-    would get the stronger one's number."""
+def test_the_rate_duration_comparison_is_claimed_only_where_a_measured_path_earns_it():
+    """⭐⭐ The load-bearing distinction, carried over from the 1.77y bound it replaced.
+
+    On a MEASURED factor path the principal timing is history, so the rate-versus-spread
+    duration comparison concerns the interest leg alone and was actually measured. On an
+    ASSUMED CPR the modelled amortisation rests on the same constant-coupon assumption and
+    the comparison was never made -- a single sentence covering both populations is exactly
+    how the weaker claim would get the stronger one's number.
+
+    ⚠️ The text changed on 2026-10-24 because the old one was true and misleading: "only the
+    interest leg is affected, bounded at 1.77y" decomposes this duration, but a floating
+    coupon does not merely lose its rate exposure, it gains the opposite one, and the two
+    durations are a median of 3.19 years apart.
+    """
     noted = [r for r in _rows(OUT) if "coupon-structure:" in r["flag"]]
     observed = [r for r in noted if r["paydown_source"] == "observed-factor-path"]
     assumed = [r for r in noted if r["paydown_source"] == "assumed-cpr"]
     assert len(observed) == 71 and len(assumed) == 61, (len(observed), len(assumed))
     for r in observed:
-        assert "bounded at 1.77y" in r["flag"]
-        assert "measured factor path" in r["flag"]
+        assert "SPREAD duration" in r["flag"], r["asset_id"]
+        assert "median of 3.19 years" in r["flag"], r["asset_id"]
+        assert "measured factor path" in r["flag"], r["asset_id"]
     for r in assumed:
-        assert "does NOT apply to this row" in r["flag"]
-        assert "bounded at 1.77y" not in r["flag"], (
-            f"{r['asset_id']} has no measured path and must not claim the interest-leg bound")
+        assert "was NOT made for these" in r["flag"], r["asset_id"]
+        assert "median of 3.19 years" not in r["flag"], (
+            f"{r['asset_id']} has no measured path and must not claim the comparison")
+
+
+@pytest.mark.skipif(not OUT.exists(), reason="driver output not present")
+def test_an_unknown_coupon_multiplier_is_blank_and_never_one():
+    """⚠️ The assumption that cost 46 answers. Blank means the formula table names no rule in
+    force, which is a different fact from a multiplier of 1.0; reading one as the other moved
+    the measured median rate duration from +4.72 years to -0.005."""
+    rows = _rows(OUT)
+    known = [r for r in rows if (r.get("coupon_multiplier") or "").strip()]
+    assert len(known) == 178, len(known)
+    inverse = [r for r in known if float(r["coupon_multiplier"]) < 0]
+    # ⚠️ 101 over the WHOLE column; the flag text's "46 of 64" is the subset that both
+    # discloses a moving coupon and publishes a duration. Two populations, two counts.
+    assert len(inverse) == 101, len(inverse)
+    assert min(float(r["coupon_multiplier"]) for r in inverse) <= -3.0
+    for r in rows:
+        if not (r.get("coupon_multiplier") or "").strip():
+            assert (r.get("coupon_multiplier") or "") == ""
 
 
 @pytest.mark.skipif(not OUT.exists(), reason="driver output not present")

@@ -207,3 +207,38 @@ def coupon_from_rule(rule, index_level_pct=None) -> float:
             "floor or a reset date that the source field does not carry"
             % (rule.get("formula_raw"), value, lo, hi))
     return value
+
+
+def coupon_multiplier(formulas, keys, when: datetime.date):
+    """How far the coupon moves per unit move in its index, or ``None``.
+
+    Inputs
+    ------
+    1. formulas : dict — from :func:`load_coupon_formulas`.
+    2. keys     : iterable of str — identifiers to try in order. The table is keyed by CUSIP
+       where one exists and by ISIN otherwise, and a caller usually holds only one of them,
+       so the candidates are tried rather than guessed.
+    3. when     : datetime.date — the valuation date.
+
+    Returns the ``multiplier`` of the rule in force: ``+1.0`` for an ordinary floater,
+    ``-1.0`` or less for an inverse one, and a large number for a leveraged tranche.
+    ``None`` means **unknown**, not one — no record, no period in force, a rule that names no
+    index (so the coupon does not track a curve at all), or a rule with no multiplier.
+
+    ⭐ The distinction matters more than it looks. Of the 64 Government-MBS floaters whose
+    multiplier is known, **46 are inverse**: assuming ``+1`` for all of them moves the median
+    rate duration from **+4.72 years to −0.005**, which is a different answer, not a rounding
+    error. ⚠️ And ``None`` must not be defaulted to 1.0 by a caller — 97 of the 180 securitised
+    floaters have no multiplier at all, and a rate sensitivity assumed for them would be
+    indistinguishable in the output from one that was measured.
+    """
+    for key in keys:
+        key = (key or "").strip()
+        if not key or key not in formulas:
+            continue
+        rule = rule_in_force(formulas[key], when)
+        if rule is None or not (rule.get("index") or ""):
+            continue
+        mult = rule.get("multiplier")
+        return None if mult is None else float(mult)
+    return None

@@ -44,6 +44,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pool_risk as D                                               # noqa: E402
 from curves.zero_curve import ZeroCurve                             # noqa: E402
+from dataio.coupon_formula import (coupon_multiplier,               # noqa: E402
+                                   load_coupon_formulas)
 from dataio.coupon_structure import (load_coupon_structure,         # noqa: E402
                                      rate_behaviour)
 from dataio.dispositions import reconcile                           # noqa: E402
@@ -68,16 +70,27 @@ NO_PATH = ("no-factor-path",
            "no monthly factor history for this security, so there is no measured repayment "
            "profile and no pool-level assumption that could stand in for one")
 
-#: ⚠️ The government book's text quotes a **1.77-year** bound on the interest leg. That bound
-#: was measured on *its* paths — p90 interest share times p90 interest life — and it is NOT
-#: transferred here. Letting this population borrow it would be the weaker claim taking the
-#: stronger one's number. Measuring the equivalent for this book is a named follow-up.
+#: ⚠️ The government book's text used to quote a **1.77-year** bound on the interest leg,
+#: measured on *its* paths. That is a different quantity from the one a reader acts on, and
+#: it is not transferred here. What IS carried is the measurement made 2026-10-24: the
+#: published duration is a SPREAD duration, and the RATE duration — which moves the coupon
+#: by its own multiplier — differs by a median of **6.89 years** on this book and turns
+#: negative on **79 of the 83** floaters whose multiplier is known.
+#:
+#: ⚠️⚠️ It is measured and deliberately NOT published, for three reasons that each stand
+#: alone: no cap or floor is held for these securities (``missing_data.md`` G7d); **97 of
+#: the 180** rows have no multiplier at all, so the column would be half measured and half
+#: assumed with nothing in the row to tell them apart; and the result is no closer to the
+#: custodian's own duration than the spread duration already is. ⭐ Same discipline as the
+#: I/O refusal: name the gap precisely rather than publish a number nothing validates.
 _COUPON_NOTE = (
-    "coupon-structure: Bloomberg reports {kind}; this duration assumes the coupon stays at "
-    "the custodian's valuation-date level. Principal timing comes from the measured factor "
-    "path, so only the interest leg is affected -- but the 1.77y bound measured on the "
-    "government mortgage book does NOT apply to this population and no equivalent has been "
-    "measured for it yet."
+    "coupon-structure: Bloomberg reports {kind}; this is a SPREAD duration -- the discount "
+    "rate is bumped with the coupon held at the custodian's valuation-date level. Principal "
+    "timing comes from the measured factor path, so only the interest leg is affected. The "
+    "RATE duration, which moves the coupon by its own multiplier (see coupon_multiplier), "
+    "differs here by a median of 6.89 years and turns negative on 79 of the 83 floaters "
+    "whose multiplier is known; it is measured but not published, because no cap or floor is "
+    "held for these and 97 of these 180 rows have no multiplier at all."
 )
 
 
@@ -191,6 +204,14 @@ def main() -> int:
     structure = load_coupon_structure()
     out["coupon_structure"] = out["asset_id"].map(
         lambda a: (structure.get(a) or {}).get("coupon_type") or "")
+    # The client's own datum, not a model output: how far the coupon moves per unit move in
+    # its index. Blank means UNKNOWN -- no rule in force names an index -- and must never be
+    # read as 1.0, which is the assumption that inverted 46 answers when it was tried.
+    formulas = load_coupon_formulas()
+    keys = {r["asset_id"]: [r.get("cusip") or "", r.get("isin") or ""]
+            for _, r in out.iterrows()}
+    out["coupon_multiplier"] = out["asset_id"].map(
+        lambda a: coupon_multiplier(formulas, keys.get(a, []), VAL_DATE))
     moves = out["coupon_structure"].map(
         lambda kind: bool(kind) and rate_behaviour(kind) == "rate-sensitive")
     disclose = moves & out["eff_duration_years"].notna()
@@ -225,7 +246,10 @@ def main() -> int:
     if len(a):
         print(f"\n  ** duration median {a.eff_duration_years.median():.2f}y against the "
               f"custodian's own {a.aq_custodian.median():.2f}y")
-    print(f"  ** disclosed moving coupon on {int(disclose.sum())} priced rows")
+    known = int(out["coupon_multiplier"].notna().sum())
+    inverse = int((out["coupon_multiplier"].fillna(0) < 0).sum())
+    print(f"  ** disclosed moving coupon on {int(disclose.sum())} priced rows; "
+          f"multiplier known on {known} ({inverse} inverse)")
     return 0
 
 
