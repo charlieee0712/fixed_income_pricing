@@ -125,9 +125,41 @@ not have, a conservation check telescoping the raw path rather than the engine's
 pre-send recompute hard-coding semi-annual where the file says annual. An audit finding is a
 hypothesis until the tool that produced it has itself been checked.
 
-**Open:** re-ask the 37 inside the reply to this delivery; the floater-duration job, now worth
-doing once across both books (121 government + 180 securitised rows, all with a reset
-frequency); the 77 that do not classify.
+**The floater-duration job, done as a disclosure rather than a number (commit `2c74147`).**
+Both Tier-1 tables publish an effective duration computed with the coupon held at the
+custodian's valuation-date level. That is a SPREAD duration; for the 312 rows whose coupon
+moves it is not the rate duration, and the flag said only "this assumes the coupon stays put"
+with no number attached. Measured, the two sit a median 3.19 years apart on the government
+book and 6.89 on the securitised one, where the rate duration turns negative on 79 of the 83
+floaters whose multiplier is known.
+
+⚠⚠ **The first measurement was wrong, and that is the lesson.** It assumed every coupon
+tracks its index one-for-one. 46 of the 64 government floaters with a known multiplier are
+inverse, several leveraged to -3.0, so the naive assumption inverted them: the median came
+out at -0.005 years instead of +4.72, and 46 of 68 answers changed.
+`data/coupon_formula.csv` carries the multiplier, so the measurement now uses it -- the first
+time that table has been in the production path rather than an audit script.
+
+What ships is the client's own datum and a disclosure: an additive `coupon_multiplier` column
+on both tables, blank where no rule is in force and never defaulted to 1.0, and a flag
+carrying the measured gap. The rate duration itself is NOT published -- no caps or floors are
+held, 97 of the 180 securitised floaters have no multiplier at all, and it is no closer to the
+custodian than the spread duration already is. The TBA precedent argues the same way: there a
+second duration was published because rate = spread - settle held to 9.99e-09, and here there
+is no identity and no validation.
+
+The government book's "bounded at 1.77y" sentence is retired from the flag. It was true and
+misleading -- it decomposes the duration rather than saying what the duration would be if the
+coupon moved, and a floating coupon gains the opposite exposure rather than merely losing its
+own.
+
+Purely additive, proved by regenerating both tables from the previous code and diffing cell by
+cell: one column added, 132 and 180 flag texts rewritten, zero numbers moved. 783 -> 785 tests,
+three locks mutation-verified.
+
+**Open:** re-ask the 37 inside the reply to this delivery; the 61 assumed-CPR government rows,
+for which the comparison was not made; caps and floors plus a multiplier for the 97, which is
+what would make the rate duration publishable; the 77 that do not classify.
 
 **Hours:** [TO FILL]
 

@@ -1429,12 +1429,52 @@ Plain-language write-up:
   pre-send audit's hard-coded semi-annual frequency where the file says annual. ⭐ **An audit
   finding is a hypothesis until the tool that produced it has itself been checked** — four
   instances in one session is enough to stop treating that as a slogan.
+- **⭐⭐ THE PUBLISHED DURATION IS A *SPREAD* DURATION, AND THE ROWS NOW SAY SO (2026-10-24).**
+  Both Tier-1 tables bump the discount rate with the coupon held at the custodian's
+  valuation-date level. For a fixed coupon that is also the rate duration; for the **312**
+  rows whose coupon moves it is not, and the flag used to say only *"this assumes the coupon
+  stays put"* — an assumption with **no number attached**.
+  **Measured:** rate minus spread duration is a median **3.19y** apart on the government book
+  and **6.89y** on the securitised one, where it turns **negative on 79 of the 83** floaters
+  with a known multiplier.
+- **⚠⚠ THE FIRST MEASUREMENT WAS WRONG AND THE ERROR IS THE LESSON: it assumed every coupon
+  tracks its index ONE-FOR-ONE.** **46 of the 64** government floaters with a known multiplier
+  are **INVERSE**, several leveraged to **−3.0** — so the naive assumption inverted them and
+  put the median at **−0.005y instead of +4.72y**, changing **46 of 68** answers.
+  ⭐ `data/coupon_formula.csv` carries the multiplier, so the measurement now uses it —
+  **the first time that table has been in the production path** rather than an audit script
+  (`dataio.coupon_formula.coupon_multiplier`).
+- **⭐ WHAT SHIPS IS A FACT AND A DISCLOSURE, NOT A MODEL OUTPUT.** New additive column
+  **`coupon_multiplier`** on both tables — the client's own datum, **blank where no rule is in
+  force and never defaulted to 1.0** — and a flag carrying the measured gap.
+  ⚠️ **The rate duration itself is deliberately NOT published**, for three reasons that each
+  stand alone: no cap or floor is held (G7d), and with 1M LIBOR at **0.50%** an inverse floater
+  sits near its coupon ceiling, so a small-bump number is locally exact and unusable as risk;
+  **97 of the 180** securitised floaters have no multiplier at all; and it is **no closer to
+  the custodian** than the spread duration (3.52 vs 3.19 securitised, 2.98 vs 2.38 government).
+  ⭐ Same discipline as the I/O refusal. ⚠️ The TBA precedent argues the same way: there a
+  second duration WAS published because `rate = spread − settle` held to **9.99e-09**; here
+  no identity and no validation.
+- **⚠️ THE GOVERNMENT BOOK'S "bounded at 1.77y" SENTENCE IS RETIRED FROM THE FLAG** — it was
+  **true and misleading**, the worst shape a disclosure can have. It decomposes the duration
+  (p90 interest share × p90 interest life) rather than saying what the duration would be if
+  the coupon moved; a floating coupon does not merely lose its rate exposure, it gains the
+  opposite one, which is why the real gap is 3.19y. The decomposition survives in the
+  explainer; the flag now carries the operational number.
+- **PURELY ADDITIVE, PROVED NOT ASSERTED:** both tables regenerated from the previous code and
+  diffed cell by cell — **one column added, 132 + 180 flag texts rewritten, ZERO numbers
+  moved**, same ids, same row counts. `release_facts` moves exactly 6 lines (2 hashes,
+  2 text fingerprints, header, pytest). **783 → 785 tests**, three locks mutation-verified:
+  defaulting an unknown multiplier to 1.0 turns **both** books red, and quoting the government
+  book's 3.19 figure in the securitised table turns its borrowing lock red.
 - **OPEN:** ① re-ask the 37 — one sentence, use the `security` column, inside the reply to
-  this delivery; ② **the floater-duration job, now worth doing ONCE over both books** — 121
-  government rows and 180 securitised rows publish a duration that holds the coupon flat, and
-  all of them carry a reset frequency; ③ 77 of the 371 do not classify under `pool_structure`
-  and default to amortising (benign — the 4 with a negative custodian duration are
-  floating-rate ABS near zero, **not** I/O strips, which was my first guess and was wrong).
+  this delivery; ② **the 61 assumed-CPR government rows** disclose a moving coupon and publish
+  a duration, and the comparison was **not made for them** — they run through the pool engine,
+  not the observed-paydown one; ③ what would make the rate duration publishable: **caps and
+  floors** (G7d) and a multiplier for the 97; ④ 77 of the 371 do not classify under
+  `pool_structure` and default to amortising (benign — the 4 with a negative custodian
+  duration are floating-rate ABS near zero, **not** I/O strips, which was my first guess and
+  was wrong).
   ⚠️ **Still NOT raised with Mario:** the live-date question (revaluation vs scenario risk).
 
 ## ⭐ Rules for a data request (earned 2026-09-29 → 10-02)

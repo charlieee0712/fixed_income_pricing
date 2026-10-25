@@ -1,6 +1,6 @@
 # Release facts — 2026-10-24
 
-**Generated from the live repository at `6c83822` on 2026-10-24.** Every number below is
+**Generated from the live repository at `2c74147` on 2026-10-24.** Every number below is
 read out of a file a driver just wrote. Regenerate with `PYTHONPATH=src python
 scripts/release_facts.py` after any code-bearing change, and re-run the drivers first.
 
@@ -17,8 +17,8 @@ scripts/release_facts.py` after any code-bearing change, and re-run the drivers 
 | `sovereign_risk_2009-06-10.csv` | 154 | `d91e3c8ff42724a48ce5e4ceb0855202` |
 | `pool_risk_2009-03-31.csv` | 505 | `3aa9f3baa89627f60acc18181a070b4c` |
 | `pool_risk_2009-06-10.csv` | 478 | `86891918319bb0d6af70a1cc76b49661` |
-| `tier1_structured_2009-03-31.csv` | 882 | `f672b8ca5ff202f0e0b90f55ba4524cd` |
-| `tier1_securitized_2009-03-31.csv` | 412 | `d0797f00759cbfb07d15b1df339754b8` |
+| `tier1_structured_2009-03-31.csv` | 882 | `a0a16f28ae4f8a1da718d713d8959ef1` |
+| `tier1_securitized_2009-03-31.csv` | 412 | `a406fc69c6f8a4dd93c063d4ad0720f4` |
 
 ## Disposition sidecars — every security accounted for, at both dates
 
@@ -64,8 +64,8 @@ Checked on any machine by `PYTHONPATH=src python scripts/platform_parity.py`.
 | `sovereign_risk_2009-06-10.csv` | 20 | `b9519b9260184405` |
 | `pool_risk_2009-03-31.csv` | 12 | `d4d022e3b04735bb` |
 | `pool_risk_2009-06-10.csv` | 10 | `f56d434a13554d91` |
-| `tier1_structured_2009-03-31.csv` | 11 | `145a5bf21bd5b3fe` |
-| `tier1_securitized_2009-03-31.csv` | 12 | `6950bb0aaf7f2386` |
+| `tier1_structured_2009-03-31.csv` | 11 | `535a4d7abad60d08` |
+| `tier1_securitized_2009-03-31.csv` | 12 | `72575a16fc9cf512` |
 | `corporate_disposition_2009-03-31.csv` | 5 | `d7a83a7b1f377094` |
 | `corporate_disposition_2009-06-10.csv` | 5 | `df819ce056b736f9` |
 | `callable_disposition_2009-03-31.csv` | 5 | `605e56988db3808b` |
@@ -110,5 +110,5 @@ says so in the row it appears in — not only in prose somewhere else.
 
 ## Test suite
 
-`pytest -q` → **783 passed in 64.18s (0:01:04)** (local, Python 3.13.5).
+`pytest -q` → **785 passed in 87.50s (0:01:27)** (local, Python 3.13.5).
 
