@@ -117,7 +117,11 @@ wonder what he missed. The corrected position is simply stated as our position.
 > Tier 2 is for — so this isn't a substitute for Tier 2, it's Tier 2's input, which your own
 > slide already lists as the existing engineering work.
 >
-> Next from us: pricing the 412 the way the 882 are priced.
+> Next from us: the 412 are priced already — 371 of them, on the paths you just sent,
+> the same way the 882 are. I will write the numbers up properly, but the short version
+> is that they land where non-agency paper belonged in March 2009: commercial
+> mortgage-backeds tightest at about 770 basis points, asset-backeds about 1,050, the
+> private-label CMOs widest at about 1,330, against 226 for the agency book.
 
 ---
 
